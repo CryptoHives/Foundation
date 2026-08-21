@@ -52,7 +52,10 @@ public class KemConfig : ManualConfig
 
         Orderer = new CategoryThenOperationOrderer();
         AddColumn(new DescriptionColumn());
-        HideColumns("Method", "TestKemAlgorithm");
+
+        // "Code Size" is hidden here, because it is mostly NA.
+        // The disassembly itself is still exported.
+        HideColumns("Method", "TestKemAlgorithm", "Code Size");
 
         // Markdown for docfx, plus full JSON so append_results.py can ingest results without extra flags.
         AddExporter(ShortExporter);

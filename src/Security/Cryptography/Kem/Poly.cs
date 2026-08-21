@@ -22,7 +22,7 @@ internal static class Poly
     /// <param name="a">First operand.</param>
     /// <param name="b">Second operand.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Add(short[] r, short[] a, short[] b)
+    public static void Add(Span<short> r, ReadOnlySpan<short> a, ReadOnlySpan<short> b)
     {
         for (int i = 0; i < MLKemParams.N; i++)
         {
@@ -37,7 +37,7 @@ internal static class Poly
     /// <param name="a">First operand.</param>
     /// <param name="b">Second operand.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Sub(short[] r, short[] a, short[] b)
+    public static void Sub(Span<short> r, ReadOnlySpan<short> a, ReadOnlySpan<short> b)
     {
         for (int i = 0; i < MLKemParams.N; i++)
         {
@@ -50,7 +50,7 @@ internal static class Poly
     /// </summary>
     /// <param name="r">The polynomial to reduce in-place.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Reduce(short[] r)
+    public static void Reduce(Span<short> r)
     {
         for (int i = 0; i < MLKemParams.N; i++)
         {
@@ -63,7 +63,7 @@ internal static class Poly
     /// </summary>
     /// <param name="r">The polynomial to normalize in-place.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Normalize(short[] r)
+    public static void Normalize(Span<short> r)
     {
         for (int i = 0; i < MLKemParams.N; i++)
         {
@@ -76,7 +76,7 @@ internal static class Poly
     /// </summary>
     /// <param name="r">The polynomial to convert in-place.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ToMontgomery(short[] r)
+    public static void ToMontgomery(Span<short> r)
     {
         for (int i = 0; i < MLKemParams.N; i++)
         {
@@ -95,7 +95,7 @@ internal static class Poly
     /// <param name="a">First operand (NTT domain).</param>
     /// <param name="b">Second operand (NTT domain).</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void PointwiseMultiplyAccumulate(short[] r, short[] a, short[] b)
+    public static void PointwiseMultiplyAccumulate(Span<short> r, ReadOnlySpan<short> a, ReadOnlySpan<short> b)
     {
         for (int i = 0; i < MLKemParams.N / 4; i++)
         {
@@ -110,7 +110,7 @@ internal static class Poly
     /// </summary>
     /// <param name="input">The 384-byte input buffer.</param>
     /// <param name="coeffs">The 256-element output polynomial.</param>
-    public static void FromBytes(ReadOnlySpan<byte> input, short[] coeffs)
+    public static void FromBytes(ReadOnlySpan<byte> input, Span<short> coeffs)
     {
         Encode.ByteDecode12(input, coeffs);
     }
@@ -120,7 +120,7 @@ internal static class Poly
     /// </summary>
     /// <param name="coeffs">The 256-element polynomial.</param>
     /// <param name="output">The 384-byte output buffer.</param>
-    public static void ToBytes(short[] coeffs, Span<byte> output)
+    public static void ToBytes(ReadOnlySpan<short> coeffs, Span<byte> output)
     {
         Encode.ByteEncode12(coeffs, output);
     }
@@ -134,7 +134,7 @@ internal static class Poly
     /// </remarks>
     /// <param name="msg">The 32-byte message.</param>
     /// <param name="coeffs">The 256-element output polynomial.</param>
-    public static void FromMessage(ReadOnlySpan<byte> msg, short[] coeffs)
+    public static void FromMessage(ReadOnlySpan<byte> msg, Span<short> coeffs)
     {
         Encode.ByteDecode1(msg, coeffs);
         Compress.DecompressPoly(coeffs, 1);
@@ -149,10 +149,10 @@ internal static class Poly
     /// </remarks>
     /// <param name="coeffs">The 256-element polynomial (will be modified).</param>
     /// <param name="msg">The 32-byte output message buffer.</param>
-    public static void ToMessage(short[] coeffs, Span<byte> msg)
+    public static void ToMessage(ReadOnlySpan<short> coeffs, Span<byte> msg)
     {
         var temp = new short[MLKemParams.N];
-        Array.Copy(coeffs, temp, MLKemParams.N);
+        coeffs.CopyTo(temp);
         Compress.CompressPoly(temp, 1);
         Encode.ByteEncode1(temp, msg);
         MLKemCore.Zero(temp);
@@ -168,7 +168,7 @@ internal static class Poly
     /// <param name="seed">The 34-byte seed (ρ ‖ i ‖ j).</param>
     /// <param name="coeffs">The 256-element output polynomial.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void SampleNtt(ReadOnlySpan<byte> seed, short[] coeffs)
+    public static void SampleNtt(ReadOnlySpan<byte> seed, Span<short> coeffs)
     {
         using var xof = Hash.Shake128.Create(504);
         xof.Absorb(seed);

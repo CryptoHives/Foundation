@@ -60,43 +60,44 @@ internal static class MLKemCore
         ReadOnlySpan<byte> sigma = gOutput.Slice(32, 32);
 
         // Generate matrix Â in NTT domain
-        short[][][] aHat = GenerateMatrix(k, rho);
+        short[] aHat = new short[PolyVec.MatrixLength(k)];
+        GenerateMatrix(aHat, k, rho);
 
         // Sample secret vector s
         byte nonce = 0;
-        short[][] s = PolyVec.Create(k);
+        short[] s = new short[PolyVec.VectorLength(k)];
         for (int i = 0; i < k; i++)
         {
-            SampleCbd(sigma, nonce++, p.Eta1, s[i]);
+            SampleCbd(sigma, nonce++, p.Eta1, PolyVec.Poly(s, i));
         }
 
         // Sample error vector e
-        short[][] e = PolyVec.Create(k);
+        short[] e = new short[PolyVec.VectorLength(k)];
         for (int i = 0; i < k; i++)
         {
-            SampleCbd(sigma, nonce++, p.Eta1, e[i]);
+            SampleCbd(sigma, nonce++, p.Eta1, PolyVec.Poly(e, i));
         }
 
         // NTT(s), NTT(e)
-        PolyVec.Ntt(s);
-        PolyVec.Ntt(e);
-        PolyVec.Reduce(s);
+        PolyVec.Ntt(s, k);
+        PolyVec.Ntt(e, k);
+        PolyVec.Reduce(s, k);
 
         // t̂ = Â ◦ ŝ + ê
-        short[][] tHat = PolyVec.Create(k);
-        PolyVec.MatrixVectorMultiply(tHat, aHat, s, transpose: false);
-        PolyVec.ToMontgomery(tHat);
-        PolyVec.Add(tHat, tHat, e);
-        PolyVec.Reduce(tHat);
+        short[] tHat = new short[PolyVec.VectorLength(k)];
+        PolyVec.MatrixVectorMultiply(tHat, aHat, s, k, transpose: false);
+        PolyVec.ToMontgomery(tHat, k);
+        PolyVec.Add(tHat, tHat, e, k);
+        PolyVec.Reduce(tHat, k);
 
         // ekPKE = ByteEncode₁₂(t̂) ‖ ρ
-        PolyVec.Normalize(tHat);
-        PolyVec.ToBytes(tHat, ekPke.Slice(0, p.PolyVecEncodedBytes));
+        PolyVec.Normalize(tHat, k);
+        PolyVec.ToBytes(tHat, k, ekPke.Slice(0, p.PolyVecEncodedBytes));
         rho.CopyTo(ekPke.Slice(p.PolyVecEncodedBytes));
 
         // dkPKE = ByteEncode₁₂(ŝ)
-        PolyVec.Normalize(s);
-        PolyVec.ToBytes(s, dkPke.Slice(0, p.PolyVecEncodedBytes));
+        PolyVec.Normalize(s, k);
+        PolyVec.ToBytes(s, k, dkPke.Slice(0, p.PolyVecEncodedBytes));
 
         CryptographicOperations.ZeroMemory(gInput);
         CryptographicOperations.ZeroMemory(gOutput);
@@ -123,43 +124,44 @@ internal static class MLKemCore
         int k = p.K;
 
         // Decode t̂ from ekPKE
-        short[][] tHat = PolyVec.Create(k);
-        PolyVec.FromBytes(ekPke.Slice(0, p.PolyVecEncodedBytes), tHat);
+        short[] tHat = new short[PolyVec.VectorLength(k)];
+        PolyVec.FromBytes(ekPke.Slice(0, p.PolyVecEncodedBytes), tHat, k);
         ReadOnlySpan<byte> rho = ekPke.Slice(p.PolyVecEncodedBytes, 32);
 
         // Regenerate Â from ρ
-        short[][][] aHat = GenerateMatrix(k, rho);
+        short[] aHat = new short[PolyVec.MatrixLength(k)];
+        GenerateMatrix(aHat, k, rho);
 
         // Sample r vector, e1 vector, and e2 polynomial
         byte nonce = 0;
-        short[][] rv = PolyVec.Create(k);
+        short[] rv = new short[PolyVec.VectorLength(k)];
         for (int i = 0; i < k; i++)
         {
-            SampleCbd(r, nonce++, p.Eta1, rv[i]);
+            SampleCbd(r, nonce++, p.Eta1, PolyVec.Poly(rv, i));
         }
 
-        short[][] e1 = PolyVec.Create(k);
+        short[] e1 = new short[PolyVec.VectorLength(k)];
         for (int i = 0; i < k; i++)
         {
-            SampleCbd(r, nonce++, p.Eta2, e1[i]);
+            SampleCbd(r, nonce++, p.Eta2, PolyVec.Poly(e1, i));
         }
 
         short[] e2 = new short[MLKemParams.N];
         SampleCbd(r, nonce, p.Eta2, e2);
 
         // NTT(r)
-        PolyVec.Ntt(rv);
+        PolyVec.Ntt(rv, k);
 
         // u = NTT⁻¹(Âᵀ ◦ r̂) + e₁
-        short[][] u = PolyVec.Create(k);
-        PolyVec.MatrixVectorMultiply(u, aHat, rv, transpose: true);
-        PolyVec.InverseNtt(u);
-        PolyVec.Add(u, u, e1);
-        PolyVec.Reduce(u);
+        short[] u = new short[PolyVec.VectorLength(k)];
+        PolyVec.MatrixVectorMultiply(u, aHat, rv, k, transpose: true);
+        PolyVec.InverseNtt(u, k);
+        PolyVec.Add(u, u, e1, k);
+        PolyVec.Reduce(u, k);
 
         // v = NTT⁻¹(t̂ᵀ ◦ r̂) + e₂ + Decompress₁(ByteDecode₁(m))
         short[] v = new short[MLKemParams.N];
-        PolyVec.InnerProduct(v, tHat, rv);
+        PolyVec.InnerProduct(v, tHat, rv, k);
         Ntt.Inverse(v);
 
         short[] msgPoly = new short[MLKemParams.N];
@@ -170,8 +172,8 @@ internal static class MLKemCore
         Poly.Reduce(v);
 
         // c₁ = ByteEncode_du(Compress_du(u))
-        PolyVec.Normalize(u);
-        PolyVec.CompressAndEncode(u, p.Du, ciphertext.Slice(0, p.PolyVecCompressedBytes));
+        PolyVec.Normalize(u, k);
+        PolyVec.CompressAndEncode(u, k, p.Du, ciphertext.Slice(0, p.PolyVecCompressedBytes));
 
         // c₂ = ByteEncode_dv(Compress_dv(v))
         Poly.Normalize(v);
@@ -201,8 +203,8 @@ internal static class MLKemCore
         int k = p.K;
 
         // Decode u from c₁
-        short[][] u = PolyVec.Create(k);
-        PolyVec.DecodeAndDecompress(ciphertext.Slice(0, p.PolyVecCompressedBytes), p.Du, u);
+        short[] u = new short[PolyVec.VectorLength(k)];
+        PolyVec.DecodeAndDecompress(ciphertext.Slice(0, p.PolyVecCompressedBytes), p.Du, u, k);
 
         // Decode v from c₂
         short[] v = new short[MLKemParams.N];
@@ -210,15 +212,15 @@ internal static class MLKemCore
         Compress.DecompressPoly(v, p.Dv);
 
         // Decode ŝ from dkPKE
-        short[][] sHat = PolyVec.Create(k);
-        PolyVec.FromBytes(dkPke.Slice(0, p.PolyVecEncodedBytes), sHat);
+        short[] sHat = new short[PolyVec.VectorLength(k)];
+        PolyVec.FromBytes(dkPke.Slice(0, p.PolyVecEncodedBytes), sHat, k);
 
         // NTT(u)
-        PolyVec.Ntt(u);
+        PolyVec.Ntt(u, k);
 
         // w = NTT⁻¹(ŝᵀ ◦ û)
         short[] w = new short[MLKemParams.N];
-        PolyVec.InnerProduct(w, sHat, u);
+        PolyVec.InnerProduct(w, sHat, u, k);
         Ntt.Inverse(w);
 
         // m = ByteEncode₁(Compress₁(v − w))
@@ -499,7 +501,13 @@ internal static class MLKemCore
     /// <summary>
     /// Samples a polynomial using CBD from PRF output.
     /// </summary>
-    private static void SampleCbd(ReadOnlySpan<byte> seed, byte nonce, int eta, short[] coeffs)
+    /// <remarks>
+    /// Internal rather than private for the same reason as <see cref="GenerateMatrix"/>: the
+    /// benchmark suite measures it directly. Measuring it against <c>Cbd.Eta2</c> alone is
+    /// what separates the PRF cost from the bit-extraction cost, which is the question that
+    /// decides whether vectorizing the latter is worth doing.
+    /// </remarks>
+    internal static void SampleCbd(ReadOnlySpan<byte> seed, byte nonce, int eta, Span<short> coeffs)
     {
         int prfBytes = 64 * eta;
         byte[] prfOutput = new byte[prfBytes];
@@ -511,25 +519,26 @@ internal static class MLKemCore
     /// <summary>
     /// Generates the k × k matrix Â from seed ρ using SHAKE128 (SampleNTT).
     /// </summary>
-    private static short[][][] GenerateMatrix(int k, ReadOnlySpan<byte> rho)
+    /// <remarks>
+    /// Internal rather than private so the benchmark suite can measure this directly. It is
+    /// a meaningful share of both the time and the allocation of every ML-KEM operation, and
+    /// measuring a copy of it in the test project would stop tracking the real thing the
+    /// moment either changed.
+    /// </remarks>
+    internal static void GenerateMatrix(Span<short> mat, int k, ReadOnlySpan<byte> rho)
     {
-        var mat = new short[k][][];
         Span<byte> seed = stackalloc byte[34];
         rho.CopyTo(seed);
 
         for (int i = 0; i < k; i++)
         {
-            mat[i] = new short[k][];
             for (int j = 0; j < k; j++)
             {
-                mat[i][j] = new short[MLKemParams.N];
                 seed[32] = (byte)j;
                 seed[33] = (byte)i;
-                Poly.SampleNtt(seed, mat[i][j]);
+                Poly.SampleNtt(seed, PolyVec.Poly(mat, (i * k) + j));
             }
         }
-
-        return mat;
     }
 
     /// <summary>
@@ -570,20 +579,8 @@ internal static class MLKemCore
     /// Clears a secret polynomial in a way that's not subject to compiler optimizations.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-    internal static void Zero(short[] poly)
+    internal static void Zero(Span<short> poly)
     {
-        Array.Clear(poly, 0, poly.Length);
-    }
-
-    /// <summary>
-    /// Clears a secret polynomial vector in a way that's not subject to compiler optimizations.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-    internal static void Zero(short[][] vec)
-    {
-        for (int i = 0; i < vec.Length; i++)
-        {
-            Array.Clear(vec[i], 0, vec[i].Length);
-        }
+        poly.Clear();
     }
 }

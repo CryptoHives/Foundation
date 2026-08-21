@@ -50,6 +50,7 @@ public class MLKemBenchmark
 
     private IKemRunner _runner = null!;
     private byte[] _ciphertext = null!;
+    private byte[] _rejectedCiphertext = null!;
     private byte[] _sharedSecret = null!;
 
     /// <summary>
@@ -111,10 +112,13 @@ public class MLKemBenchmark
         _ciphertext = new byte[_runner.CiphertextSizeBytes];
         _sharedSecret = new byte[_runner.SharedSecretSizeBytes];
 
-        // Seed the ciphertext so Decapsulate measures the success path rather than the
-        // implicit-rejection path. The two differ only in the final constant-time select,
-        // but starting from a valid ciphertext is the honest default.
+        // A valid ciphertext, so Decapsulate measures the success path.
         _runner.Encapsulate(_ciphertext, _sharedSecret);
+
+        // The same ciphertext with one bit flipped, which drives decapsulation down the
+        // implicit-rejection path instead. See DecapsulateRejected.
+        _rejectedCiphertext = (byte[])_ciphertext.Clone();
+        _rejectedCiphertext[0] ^= 0x01;
     }
 
     /// <summary>
@@ -178,6 +182,37 @@ public class MLKemBenchmark
     /// </summary>
     [Benchmark(Description = "Decapsulate")]
     public void Decapsulate() => _runner.Decapsulate(_ciphertext, _sharedSecret);
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void DecapsulateRejectedTest()
+    {
+        byte[] rejected = new byte[_runner.SharedSecretSizeBytes];
+        _runner.Decapsulate(_rejectedCiphertext, rejected);
+
+        byte[] accepted = new byte[_runner.SharedSecretSizeBytes];
+        _runner.Decapsulate(_ciphertext, accepted);
+
+        Assert.That(rejected, Is.Not.EqualTo(accepted),
+            "A tampered ciphertext must not yield the sender's secret.");
+        Assert.That(rejected, Is.Not.All.Zero,
+            "Implicit rejection must return a pseudorandom secret, not an error or zeros.");
+    }
+
+    /// <summary>
+    /// Benchmarks decapsulation of a tampered ciphertext, which takes the FIPS 203 implicit
+    /// rejection path.
+    /// </summary>
+    /// <remarks>
+    /// This exists to be compared against <see cref="Decapsulate"/>, not read on its own.
+    /// ML-KEM rejects implicitly: rather than reporting an error it re-encrypts and returns
+    /// a pseudorandom secret, and the accept/reject choice is a constant-time select. The
+    /// two measurements should therefore be indistinguishable. A reliable gap between them
+    /// is a timing oracle that tells an attacker whether their ciphertext was well-formed —
+    /// so a divergence here is a security finding, not a performance one.
+    /// </remarks>
+    [Benchmark(Description = "Decapsulate (rejected)")]
+    public void DecapsulateRejected() => _runner.Decapsulate(_rejectedCiphertext, _sharedSecret);
 
     private static IKem CreateStatelessKem(string category) => category switch {
         "ML-KEM-512" => MLKem512.Create(),

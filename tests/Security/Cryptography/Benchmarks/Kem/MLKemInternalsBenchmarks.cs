@@ -56,6 +56,12 @@ public class MLKemInternalsBenchmark
     private byte[] _ekPke = null!;
     private byte[] _dkPke = null!;
     private byte[] _matrixSeed = null!;
+    private byte[] _rho = null!;
+    private short[] _matrix = null!;
+    private byte[] _cbdSeed = null!;
+    private byte[] _cbdBuf2 = null!;
+    private byte[] _cbdBuf3 = null!;
+    private short[] _cbdCoeffs = null!;
     private short[] _poly = null!;
     private short[] _decoded = null!;
     private byte[] _packed = null!;
@@ -120,11 +126,39 @@ public class MLKemInternalsBenchmark
         _ekPke = new byte[_params.EncapsulationKeyBytes];
         _dkPke = new byte[_params.PolyVecEncodedBytes];
 
-        // ρ ‖ j ‖ i, the 34-byte XOF seed for one matrix entry.
+        // ρ ‖ j ‖ i, the 34-byte XOF seed for one matrix entry. GenerateMatrix appends the
+        // two index bytes itself, so it takes the bare 32-byte ρ.
         _matrixSeed = new byte[34];
         for (int i = 0; i < 32; i++)
         {
             _matrixSeed[i] = (byte)((i * 11 + 7) & 0xFF);
+        }
+
+        _rho = new byte[32];
+        Array.Copy(_matrixSeed, _rho, 32);
+        _matrix = new short[PolyVec.MatrixLength(_params.K)];
+
+        // CBD inputs. The PRF emits 64·η bytes per polynomial: 128 for η=2, 192 for η=3.
+        // Contents are irrelevant to timing — CBD is data-independent by construction, which
+        // is the point — but they are filled so the range assertions in the tests mean something.
+        _cbdSeed = new byte[32];
+        _cbdBuf2 = new byte[64 * 2];
+        _cbdBuf3 = new byte[64 * 3];
+        _cbdCoeffs = new short[MLKemParams.N];
+        for (int i = 0; i < _cbdSeed.Length; i++)
+        {
+            _cbdSeed[i] = (byte)((i * 23 + 5) & 0xFF);
+        }
+
+        for (int i = 0; i < _cbdBuf3.Length; i++)
+        {
+            byte value = (byte)((i * 97 + 41) & 0xFF);
+            if (i < _cbdBuf2.Length)
+            {
+                _cbdBuf2[i] = value;
+            }
+
+            _cbdBuf3[i] = value;
         }
 
         _poly = new short[MLKemParams.N];
@@ -196,10 +230,110 @@ public class MLKemInternalsBenchmark
     /// </summary>
     /// <remarks>
     /// Multiply by k² for the per-operation cost: 4 entries at ML-KEM-512, 9 at 768,
-    /// 16 at 1024.
+    /// 16 at 1024. See <see cref="GenerateMatrix"/> for the whole thing measured directly.
     /// </remarks>
     [Benchmark(Description = "SampleNtt (one matrix entry)")]
     public void SampleNttEntry() => Poly.SampleNtt(_matrixSeed, _poly);
+
+    [Test]
+    [NonParallelizable]
+    public void SampleCbdTest()
+    {
+        SampleCbd();
+
+        int eta = _params.Eta1;
+        Assert.That(_cbdCoeffs, Has.All.InRange((short)-eta, (short)eta),
+            $"CBD coefficients must lie in [-{eta}, {eta}].");
+    }
+
+    /// <summary>
+    /// Benchmarks the production CBD sampling path — PRF plus bit extraction — at this
+    /// parameter set's η₁.
+    /// </summary>
+    /// <remarks>
+    /// This is the row to read against <see cref="CbdEta2"/> and <see cref="CbdEta3"/>: the
+    /// difference is the SHAKE256 PRF, and it decides whether vectorizing the bit extraction
+    /// is worth doing at all. The Allocated column is also the per-polynomial <c>byte[64·η]</c>
+    /// this method allocates, which is one of the items in the allocation cleanup.
+    /// <para>
+    /// η₁ is 3 for ML-KEM-512 and 2 for ML-KEM-768/1024, so this row is not comparable
+    /// across parameter sets — 512 does strictly more work per call.
+    /// </para>
+    /// </remarks>
+    [Benchmark(Description = "SampleCbd (PRF + CBD)")]
+    public void SampleCbd() => MLKemCore.SampleCbd(_cbdSeed, 0, _params.Eta1, _cbdCoeffs);
+
+    [Test]
+    [NonParallelizable]
+    public void CbdEta2Test()
+    {
+        CbdEta2();
+        Assert.That(_cbdCoeffs, Has.All.InRange((short)-2, (short)2),
+            "B₂ coefficients must lie in [-2, 2].");
+    }
+
+    /// <summary>
+    /// Benchmarks CBD bit extraction alone for η=2, over the 128 bytes the PRF would supply.
+    /// </summary>
+    /// <remarks>
+    /// η=2 is used for every error vector in encryption and for s and e at ML-KEM-768/1024,
+    /// so this is the hot one. The work does not vary by parameter set: identical figures
+    /// across the three rows are the expected result, and a spread is a noise-floor warning
+    /// rather than a finding.
+    /// </remarks>
+    [Benchmark(Description = "Cbd.Eta2 (bit extraction only)")]
+    public void CbdEta2() => Cbd.Eta2(_cbdBuf2, _cbdCoeffs);
+
+    [Test]
+    [NonParallelizable]
+    public void CbdEta3Test()
+    {
+        CbdEta3();
+        Assert.That(_cbdCoeffs, Has.All.InRange((short)-3, (short)3),
+            "B₃ coefficients must lie in [-3, 3].");
+    }
+
+    /// <summary>
+    /// Benchmarks CBD bit extraction alone for η=3, over the 192 bytes the PRF would supply.
+    /// </summary>
+    /// <remarks>
+    /// η=3 is reached only by ML-KEM-512 key generation. Measured on every parameter set
+    /// anyway so it can be compared against <see cref="CbdEta2"/> directly: its 3-bit fields
+    /// do not align to nibbles, so it is the harder of the two to vectorize and the less
+    /// valuable to.
+    /// </remarks>
+    [Benchmark(Description = "Cbd.Eta3 (bit extraction only)")]
+    public void CbdEta3() => Cbd.Eta3(_cbdBuf3, _cbdCoeffs);
+
+    [Test]
+    [NonParallelizable]
+    public void GenerateMatrixTest()
+    {
+        GenerateMatrix();
+
+        Assert.That(_matrix, Has.Length.EqualTo(_params.K * _params.K * MLKemParams.N));
+        Assert.That(_matrix, Is.Not.All.Zero, "Every matrix entry must be sampled.");
+        Assert.That(_matrix, Has.All.InRange((short)0, (short)(MLKemParams.Q - 1)),
+            "SampleNTT coefficients must lie in [0, q).");
+    }
+
+    /// <summary>
+    /// Benchmarks generation of the whole k × k matrix Â, as every ML-KEM operation does.
+    /// </summary>
+    /// <remarks>
+    /// Measures the production <c>MLKemCore.GenerateMatrix</c> rather than a copy, so it
+    /// includes the jagged-array allocation that <see cref="SampleNttEntry"/> alone does
+    /// not. Compare directly against the Encapsulate and Decapsulate rows in
+    /// <c>MLKemBenchmark</c>: this is work every operation repeats, and every entry is
+    /// consumed exactly once, so none of it needs to be materialized up front.
+    /// <para>
+    /// The destination buffer is allocated once in setup, so this row is the sampling work
+    /// alone. Production still allocates one flat <c>short[k²·N]</c> per call — the
+    /// Allocated column on the Encapsulate and Decapsulate rows carries that cost.
+    /// </para>
+    /// </remarks>
+    [Benchmark(Description = "GenerateMatrix (k x k)")]
+    public void GenerateMatrix() => MLKemCore.GenerateMatrix(_matrix, _params.K, _rho);
 
     [Test]
     [NonParallelizable]

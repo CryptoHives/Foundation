@@ -3,6 +3,8 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
+using System;
+
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -31,7 +33,7 @@ internal static class Ntt
     /// Precomputed zeta values in Montgomery form (ζ^BitRev(i) · R mod q).
     /// FIPS 203 §4.3: ζ = 17 is a primitive 256th root of unity modulo 3329.
     /// </summary>
-    private static readonly short[] Zetas =
+    private static ReadOnlySpan<short> Zetas =>
     [
         -1044,  -758,  -359, -1517,  1493,  1422,   287,   202,
          -171,   622,  1577,   182,   962, -1202, -1474,  1468,
@@ -60,14 +62,16 @@ internal static class Ntt
     /// </remarks>
     /// <param name="r">The 256 coefficients of the polynomial, modified in-place.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Forward(short[] r)
+    public static void Forward(Span<short> r)
     {
+        // Bound once rather than re-evaluating the property in the butterfly loop.
+        ReadOnlySpan<short> zetas = Zetas;
         int k = 1;
         for (int len = 128; len >= 2; len >>= 1)
         {
             for (int start = 0; start < 256; start += 2 * len)
             {
-                short zeta = Zetas[k++];
+                short zeta = zetas[k++];
                 for (int j = start; j < start + len; j++)
                 {
                     short t = MontgomeryReduce(zeta * r[j + len]);
@@ -87,14 +91,15 @@ internal static class Ntt
     /// </remarks>
     /// <param name="r">The 256 coefficients of the polynomial, modified in-place.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Inverse(short[] r)
+    public static void Inverse(Span<short> r)
     {
+        ReadOnlySpan<short> zetas = Zetas;
         int k = 127;
         for (int len = 2; len <= 128; len <<= 1)
         {
             for (int start = 0; start < 256; start += 2 * len)
             {
-                short zeta = Zetas[k--];
+                short zeta = zetas[k--];
                 for (int j = start; j < start + len; j++)
                 {
                     short t = r[j];
@@ -127,7 +132,7 @@ internal static class Ntt
     /// <param name="bOff">Offset into <paramref name="b"/>.</param>
     /// <param name="zeta">The twist factor ζ for this base case.</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    public static void BaseCaseMultiply(short[] r, int rOff, short[] a, int aOff, short[] b, int bOff, short zeta)
+    public static void BaseCaseMultiply(Span<short> r, int rOff, ReadOnlySpan<short> a, int aOff, ReadOnlySpan<short> b, int bOff, short zeta)
     {
         int a0 = a[aOff];
         int a1 = a[aOff + 1];

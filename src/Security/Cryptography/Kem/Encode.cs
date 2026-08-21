@@ -25,7 +25,7 @@ internal static class Encode
     /// <param name="coeffs">The 256 polynomial coefficients (each in [0, q)).</param>
     /// <param name="output">The 384-byte output buffer.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ByteEncode12(short[] coeffs, Span<byte> output)
+    public static void ByteEncode12(ReadOnlySpan<short> coeffs, Span<byte> output)
     {
         for (int i = 0; i < MLKemParams.N / 2; i++)
         {
@@ -47,7 +47,7 @@ internal static class Encode
     /// <param name="input">The 384-byte input buffer.</param>
     /// <param name="coeffs">The 256-element output polynomial array.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ByteDecode12(ReadOnlySpan<byte> input, short[] coeffs)
+    public static void ByteDecode12(ReadOnlySpan<byte> input, Span<short> coeffs)
     {
         for (int i = 0; i < MLKemParams.N / 2; i++)
         {
@@ -69,7 +69,7 @@ internal static class Encode
     /// <param name="coeffs">The 256 polynomial coefficients (each 0 or 1).</param>
     /// <param name="output">The 32-byte output buffer.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ByteEncode1(short[] coeffs, Span<byte> output)
+    public static void ByteEncode1(ReadOnlySpan<short> coeffs, Span<byte> output)
     {
         for (int i = 0; i < MLKemParams.N / 8; i++)
         {
@@ -92,7 +92,7 @@ internal static class Encode
     /// <param name="input">The 32-byte input buffer.</param>
     /// <param name="coeffs">The 256-element output polynomial array.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ByteDecode1(ReadOnlySpan<byte> input, short[] coeffs)
+    public static void ByteDecode1(ReadOnlySpan<byte> input, Span<short> coeffs)
     {
         for (int i = 0; i < MLKemParams.N / 8; i++)
         {
@@ -115,7 +115,7 @@ internal static class Encode
     /// <param name="d">The bit width per coefficient.</param>
     /// <param name="output">The output buffer (32·d bytes).</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ByteEncodeD(short[] coeffs, int d, Span<byte> output)
+    public static void ByteEncodeD(ReadOnlySpan<short> coeffs, int d, Span<byte> output)
     {
         if (d == 12)
         {
@@ -155,7 +155,7 @@ internal static class Encode
     /// <param name="d">The bit width per coefficient.</param>
     /// <param name="coeffs">The 256-element output polynomial array.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void ByteDecodeD(ReadOnlySpan<byte> input, int d, short[] coeffs)
+    public static void ByteDecodeD(ReadOnlySpan<byte> input, int d, Span<short> coeffs)
     {
         if (d == 12)
         {
