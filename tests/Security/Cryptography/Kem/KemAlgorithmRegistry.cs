@@ -46,7 +46,10 @@ public static class KemAlgorithmRegistry
         Managed,
 
         /// <summary>BouncyCastle implementation.</summary>
-        BouncyCastle
+        BouncyCastle,
+
+        /// <summary>KyberNET implementation.</summary>
+        KyberNET
     }
 
     /// <summary>
@@ -166,6 +169,15 @@ public static class KemAlgorithmRegistry
         list.Add(new(family, "BouncyCastle",
             () => new BouncyCastleKemAdapter(bouncyCastle), Source.BouncyCastle));
 
+#if KYBERNET
+        // The only independent managed competitor: everything else is the OS, a wrapper over
+        // it, or BouncyCastle. Absent on net48, where the package has no applicable asset.
+        var kyberNet = KyberNetParameter(family);
+        int ciphertextSize = managed.CiphertextSizeInBytes;
+        list.Add(new(family, "KyberNET",
+            () => new KyberNetKemAdapter(kyberNet, ciphertextSize), Source.KyberNET));
+#endif
+
 #if NET10_0_OR_GREATER
 #pragma warning disable SYSLIB5006 // Post-quantum cryptography APIs may be experimental.
         System.Security.Cryptography.MLKemAlgorithm os = OSAlgorithm(family);
@@ -190,6 +202,16 @@ public static class KemAlgorithmRegistry
         "ML-KEM-1024" => CH.MLKem1024.Create(),
         _ => throw new ArgumentException($"Unknown parameter set: {family}", nameof(family)),
     };
+
+#if KYBERNET
+    private static KyberNET.Constants.KyberParameter KyberNetParameter(string family) => family switch
+    {
+        "ML-KEM-512" => KyberNET.Constants.KyberParameter.MlKem512,
+        "ML-KEM-768" => KyberNET.Constants.KyberParameter.MlKem768,
+        "ML-KEM-1024" => KyberNET.Constants.KyberParameter.MlKem1024,
+        _ => throw new ArgumentException($"Unknown parameter set: {family}", nameof(family)),
+    };
+#endif
 
     private static BC.MLKemParameters BouncyCastleParameters(string family) => family switch {
         "ML-KEM-512" => BC.MLKemParameters.ml_kem_512,

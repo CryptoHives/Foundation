@@ -111,6 +111,8 @@ public class KemConfig : ManualConfig
                 return "CryptoHives-Stateless";
             if (name.EndsWith("(BouncyCastle)", StringComparison.InvariantCultureIgnoreCase))
                 return "BouncyCastle";
+            if (name.EndsWith("(KyberNET)", StringComparison.InvariantCultureIgnoreCase))
+                return "KyberNET";
             return name;
         }
     }

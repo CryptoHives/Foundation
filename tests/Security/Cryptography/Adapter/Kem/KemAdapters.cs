@@ -327,3 +327,106 @@ public sealed class OSKemAdapter : IKemRunner
 
 #pragma warning restore SYSLIB5006
 #endif
+
+#if KYBERNET
+
+/// <summary>
+/// Adapts KyberNET, an independent pure-managed ML-KEM implementation.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The reason this one is here: BouncyCastle aside, every other competitor is either the
+/// operating system or a wrapper over it, so without KyberNET there is no second
+/// <i>managed</i> implementation to measure the managed code against.
+/// </para>
+/// <para>
+/// <b>Reading its Allocated column:</b> KyberNET's API returns objects — an encapsulation
+/// result, a ciphertext, a fresh <c>byte[]</c> shared secret — where the others write into
+/// caller-owned buffers. Its allocation figures are therefore dominated by API shape rather
+/// than by the implementation, and are not comparable with the rest of the table. The
+/// timings are.
+/// </para>
+/// <para>
+/// Unavailable on the net48 leg: the package targets netstandard2.1 and net10.0.
+/// </para>
+/// </remarks>
+public sealed class KyberNetKemAdapter : IKemRunner
+{
+    private readonly KyberNET.Constants.KyberParameter _parameter;
+    private KyberNET.Keys.KyberEncapsulationKey? _encapsulationKey;
+    private KyberNET.Keys.KyberDecapsulationKey? _decapsulationKey;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="KyberNetKemAdapter"/> class.
+    /// </summary>
+    /// <param name="parameter">The KyberNET parameter set.</param>
+    /// <param name="ciphertextSizeBytes">The ciphertext size for that parameter set.</param>
+    public KyberNetKemAdapter(KyberNET.Constants.KyberParameter parameter, int ciphertextSizeBytes)
+    {
+        _parameter = parameter;
+        CiphertextSizeBytes = ciphertextSizeBytes;
+    }
+
+    /// <inheritdoc/>
+    public int EncapsulationKeySizeBytes { get; private set; }
+
+    /// <inheritdoc/>
+    public int DecapsulationKeySizeBytes { get; private set; }
+
+    /// <inheritdoc/>
+    public int CiphertextSizeBytes { get; }
+
+    /// <inheritdoc/>
+    public int SharedSecretSizeBytes => 32;
+
+    /// <inheritdoc/>
+    public void Prepare(byte[] encapsulationKey, byte[] decapsulationKey)
+    {
+        EncapsulationKeySizeBytes = encapsulationKey.Length;
+        DecapsulationKeySizeBytes = decapsulationKey.Length;
+
+        _encapsulationKey = KyberNET.Keys.KyberEncapsulationKey.FromBytes(encapsulationKey);
+        _decapsulationKey = KyberNET.Keys.KyberDecapsulationKey.FromBytes(decapsulationKey);
+    }
+
+    /// <inheritdoc/>
+    public object GenerateKeyPair()
+        => KyberNET.KyberKeyGenerator.Generate(_parameter, SystemRandomProvider.Instance);
+
+    /// <inheritdoc/>
+    public void Encapsulate(byte[] ciphertext, byte[] sharedSecret)
+    {
+        using KyberNET.Keys.KyberEncapsulationResult result =
+            _encapsulationKey!.Encapsulate(SystemRandomProvider.Instance);
+
+        result.CipherText.WriteTo(ciphertext);
+        result.CopySharedSecretTo(sharedSecret);
+    }
+
+    /// <inheritdoc/>
+    public void Decapsulate(byte[] ciphertext, byte[] sharedSecret)
+    {
+        // Both the ciphertext wrapper and the returned secret are allocations the API
+        // requires; there is no span-based overload to write into caller buffers.
+        KyberNET.Keys.KyberCipherText wrapped = KyberNET.Keys.KyberCipherText.FromBytes(ciphertext);
+        byte[] secret = _decapsulationKey!.Decapsulate(wrapped);
+        secret.CopyTo(sharedSecret, 0);
+    }
+
+    /// <inheritdoc/>
+    public void Dispose() => _decapsulationKey?.Dispose();
+
+    /// <summary>
+    /// Bridges KyberNET's randomness abstraction onto the platform CSPRNG. KyberNET's own
+    /// default provider is internal to that assembly.
+    /// </summary>
+    private sealed class SystemRandomProvider : KyberNET.IRandomProvider
+    {
+        public static readonly SystemRandomProvider Instance = new();
+
+        public void FillWithRandom(byte[] buffer)
+            => System.Security.Cryptography.RandomNumberGenerator.Fill(buffer);
+    }
+}
+
+#endif
