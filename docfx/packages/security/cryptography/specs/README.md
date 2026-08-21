@@ -320,14 +320,15 @@ official sources.
 
 | Algorithm | Security Category | Status | Class |
 |-----------|-------------------|--------|-------|
-| ML-KEM-512 | 1 (~AES-128) | ✅ Implemented | `MlKem512`, `MlKem` |
-| ML-KEM-768 | 3 (~AES-192) | ✅ Implemented | `MlKem768`, `MlKem` |
-| ML-KEM-1024 | 5 (~AES-256) | ✅ Implemented | `MlKem1024`, `MlKem` |
+| ML-KEM-512 | 1 (~AES-128) | ✅ Implemented | `MLKem512`, `MLKem` |
+| ML-KEM-768 | 3 (~AES-192) | ✅ Implemented | `MLKem768`, `MLKem` |
+| ML-KEM-1024 | 5 (~AES-256) | ✅ Implemented | `MLKem1024`, `MLKem` |
 
 > **Note:** Validated against official NIST ACVP vectors (key generation, encapsulation,
 > decapsulation including implicit rejection, and the FIPS 203 §7.2/§7.3 key checks) and
 > cross-checked against BouncyCastle and .NET 10 `System.Security.Cryptography.MLKem`.
-> The `MlKem` key-holding class mirrors the .NET 10 API shape on all target frameworks.
+> The `MLKem` key-holding class mirrors the .NET 10 API shape on all target frameworks.
+
 
 ---
 

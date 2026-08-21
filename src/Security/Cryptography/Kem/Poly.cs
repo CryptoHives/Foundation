@@ -24,7 +24,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Add(short[] r, short[] a, short[] b)
     {
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             r[i] = (short)(a[i] + b[i]);
         }
@@ -39,7 +39,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Sub(short[] r, short[] a, short[] b)
     {
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             r[i] = (short)(a[i] - b[i]);
         }
@@ -52,7 +52,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Reduce(short[] r)
     {
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             r[i] = Ntt.BarrettReduce(r[i]);
         }
@@ -65,7 +65,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Normalize(short[] r)
     {
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             r[i] = Ntt.ConditionalSubQ(r[i]);
         }
@@ -78,7 +78,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ToMontgomery(short[] r)
     {
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             r[i] = Ntt.ToMontgomery(r[i]);
         }
@@ -97,7 +97,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void PointwiseMultiplyAccumulate(short[] r, short[] a, short[] b)
     {
-        for (int i = 0; i < MlKemParams.N / 4; i++)
+        for (int i = 0; i < MLKemParams.N / 4; i++)
         {
             int offset = 4 * i;
             Ntt.BaseCaseMultiply(r, offset, a, offset, b, offset, Ntt.GetZeta(64 + i));
@@ -151,11 +151,11 @@ internal static class Poly
     /// <param name="msg">The 32-byte output message buffer.</param>
     public static void ToMessage(short[] coeffs, Span<byte> msg)
     {
-        var temp = new short[MlKemParams.N];
-        Array.Copy(coeffs, temp, MlKemParams.N);
+        var temp = new short[MLKemParams.N];
+        Array.Copy(coeffs, temp, MLKemParams.N);
         Compress.CompressPoly(temp, 1);
         Encode.ByteEncode1(temp, msg);
-        MlKemCore.Zero(temp);
+        MLKemCore.Zero(temp);
     }
 
     /// <summary>
@@ -176,17 +176,17 @@ internal static class Poly
         int count = 0;
         Span<byte> buf = stackalloc byte[504];
 
-        while (count < MlKemParams.N)
+        while (count < MLKemParams.N)
         {
             xof.Squeeze(buf);
-            for (int i = 0; i + 2 < buf.Length && count < MlKemParams.N; i += 3)
+            for (int i = 0; i + 2 < buf.Length && count < MLKemParams.N; i += 3)
             {
                 ushort d1 = (ushort)(((ushort)buf[i] | ((ushort)buf[i + 1] << 8)) & 0x0FFF);
                 ushort d2 = (ushort)((((ushort)buf[i + 1] >> 4) | ((ushort)buf[i + 2] << 4)) & 0x0FFF);
 
-                if (d1 < MlKemParams.Q)
+                if (d1 < MLKemParams.Q)
                     coeffs[count++] = (short)d1;
-                if (count < MlKemParams.N && d2 < MlKemParams.Q)
+                if (count < MLKemParams.N && d2 < MLKemParams.Q)
                     coeffs[count++] = (short)d2;
             }
         }
