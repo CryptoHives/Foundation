@@ -16,6 +16,16 @@ using System.Runtime.CompilerServices;
 internal static class Poly
 {
     /// <summary>
+    /// Bytes squeezed from SHAKE128 per rejection-sampling round in <see cref="SampleNtt"/>.
+    /// </summary>
+    /// <remarks>
+    /// 504 = 3 × 168, a whole number of both SHAKE128 blocks and 3-byte sample groups, so a
+    /// round never splits a group across squeezes. It yields 336 candidates against the 256
+    /// needed, so a second round is required only about 0.7% of the time.
+    /// </remarks>
+    public const int SampleNttBlockBytes = 504;
+
+    /// <summary>
     /// Adds two polynomials coefficient-wise: r[i] = a[i] + b[i].
     /// </summary>
     /// <param name="r">The output polynomial.</param>
@@ -97,11 +107,13 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void PointwiseMultiplyAccumulate(Span<short> r, ReadOnlySpan<short> a, ReadOnlySpan<short> b)
     {
+        ReadOnlySpan<short> zetas = Ntt.ZetaTable;
         for (int i = 0; i < MLKemParams.N / 4; i++)
         {
             int offset = 4 * i;
-            Ntt.BaseCaseMultiply(r, offset, a, offset, b, offset, Ntt.GetZeta(64 + i));
-            Ntt.BaseCaseMultiply(r, offset + 2, a, offset + 2, b, offset + 2, (short)-Ntt.GetZeta(64 + i));
+            short zeta = zetas[64 + i];
+            Ntt.BaseCaseMultiply(r, offset, a, offset, b, offset, zeta);
+            Ntt.BaseCaseMultiply(r, offset + 2, a, offset + 2, b, offset + 2, (short)-zeta);
         }
     }
 
@@ -149,9 +161,11 @@ internal static class Poly
     /// </remarks>
     /// <param name="coeffs">The 256-element polynomial (will be modified).</param>
     /// <param name="msg">The 32-byte output message buffer.</param>
+    [SkipLocalsInit]
     public static void ToMessage(ReadOnlySpan<short> coeffs, Span<byte> msg)
     {
-        var temp = new short[MLKemParams.N];
+        // 512 bytes, never escapes: no reason for this to reach the heap.
+        Span<short> temp = stackalloc short[MLKemParams.N];
         coeffs.CopyTo(temp);
         Compress.CompressPoly(temp, 1);
         Encode.ByteEncode1(temp, msg);
@@ -165,16 +179,21 @@ internal static class Poly
     /// FIPS 203 Algorithm 6 (SampleNTT). Produces a polynomial in NTT domain
     /// with coefficients uniformly distributed in [0, q).
     /// </remarks>
+    /// <param name="xof">
+    /// A SHAKE128 instance owned by the caller. It is reset on entry, so one instance can be
+    /// reused across every entry of a matrix instead of allocating one per entry.
+    /// </param>
     /// <param name="seed">The 34-byte seed (ρ ‖ i ‖ j).</param>
     /// <param name="coeffs">The 256-element output polynomial.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void SampleNtt(ReadOnlySpan<byte> seed, Span<short> coeffs)
+    [SkipLocalsInit]
+    public static void SampleNtt(Hash.Shake128 xof, ReadOnlySpan<byte> seed, Span<short> coeffs)
     {
-        using var xof = Hash.Shake128.Create(504);
+        xof.Reset();
         xof.Absorb(seed);
 
         int count = 0;
-        Span<byte> buf = stackalloc byte[504];
+        Span<byte> buf = stackalloc byte[SampleNttBlockBytes];
 
         while (count < MLKemParams.N)
         {
@@ -185,9 +204,14 @@ internal static class Poly
                 ushort d2 = (ushort)((((ushort)buf[i + 1] >> 4) | ((ushort)buf[i + 2] << 4)) & 0x0FFF);
 
                 if (d1 < MLKemParams.Q)
+                {
                     coeffs[count++] = (short)d1;
+                }
+
                 if (count < MLKemParams.N && d2 < MLKemParams.Q)
+                {
                     coeffs[count++] = (short)d2;
+                }
             }
         }
     }

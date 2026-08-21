@@ -4,6 +4,7 @@
 namespace Cryptography.Tests.Benchmarks.Kem;
 
 using BenchmarkDotNet.Attributes;
+using CryptoHives.Foundation.Security.Cryptography.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Kem;
 using NUnit.Framework;
 using System;
@@ -58,6 +59,8 @@ public class MLKemInternalsBenchmark
     private byte[] _matrixSeed = null!;
     private byte[] _rho = null!;
     private short[] _matrix = null!;
+    private Shake128 _xof = null!;
+    private Shake256 _prf = null!;
     private byte[] _cbdSeed = null!;
     private byte[] _cbdBuf2 = null!;
     private byte[] _cbdBuf3 = null!;
@@ -137,6 +140,8 @@ public class MLKemInternalsBenchmark
         _rho = new byte[32];
         Array.Copy(_matrixSeed, _rho, 32);
         _matrix = new short[PolyVec.MatrixLength(_params.K)];
+        _xof = Shake128.Create(Poly.SampleNttBlockBytes);
+        _prf = Shake256.Create(64 * MLKemParams.MaxEta);
 
         // CBD inputs. The PRF emits 64·η bytes per polynomial: 128 for η=2, 192 for η=3.
         // Contents are irrelevant to timing — CBD is data-independent by construction, which
@@ -163,7 +168,7 @@ public class MLKemInternalsBenchmark
 
         _poly = new short[MLKemParams.N];
         _decoded = new short[MLKemParams.N];
-        Poly.SampleNtt(_matrixSeed, _poly);
+        Poly.SampleNtt(_xof, _matrixSeed, _poly);
 
         // Coefficients must be in [0, 2^du) for the packers, matching what
         // PolyVec.CompressAndEncode hands them after compression.
@@ -175,6 +180,17 @@ public class MLKemInternalsBenchmark
 
         _packed = new byte[32 * _params.Du];
         Encode.ByteEncodeD(_poly, _params.Du, _packed);
+    }
+
+    /// <summary>
+    /// Releases the reusable XOF instances.
+    /// </summary>
+    [OneTimeTearDown]
+    [GlobalCleanup]
+    public virtual void GlobalCleanup()
+    {
+        _xof?.Dispose();
+        _prf?.Dispose();
     }
 
     [Test]
@@ -233,7 +249,7 @@ public class MLKemInternalsBenchmark
     /// 16 at 1024. See <see cref="GenerateMatrix"/> for the whole thing measured directly.
     /// </remarks>
     [Benchmark(Description = "SampleNtt (one matrix entry)")]
-    public void SampleNttEntry() => Poly.SampleNtt(_matrixSeed, _poly);
+    public void SampleNttEntry() => Poly.SampleNtt(_xof, _matrixSeed, _poly);
 
     [Test]
     [NonParallelizable]
@@ -261,7 +277,7 @@ public class MLKemInternalsBenchmark
     /// </para>
     /// </remarks>
     [Benchmark(Description = "SampleCbd (PRF + CBD)")]
-    public void SampleCbd() => MLKemCore.SampleCbd(_cbdSeed, 0, _params.Eta1, _cbdCoeffs);
+    public void SampleCbd() => MLKemCore.SampleCbd(_prf, _cbdSeed, 0, _params.Eta1, _cbdCoeffs);
 
     [Test]
     [NonParallelizable]

@@ -197,6 +197,18 @@ internal static class Ntt
     public static short GetZeta(int index) => Zetas[index];
 
     /// <summary>
+    /// Gets the whole zeta table, for callers that index it repeatedly.
+    /// </summary>
+    /// <remarks>
+    /// Binding the table once beats calling <see cref="GetZeta"/> per index. In optimized
+    /// builds the JIT folds the underlying <c>CreateSpan</c> either way, but in unoptimized
+    /// builds it does not, and each access then materializes the span — which
+    /// <see cref="Poly.PointwiseMultiplyAccumulate"/> would otherwise pay 128 times per
+    /// polynomial. Debug builds are what the test suite runs.
+    /// </remarks>
+    public static ReadOnlySpan<short> ZetaTable => Zetas;
+
+    /// <summary>
     /// Converts a value to Montgomery form: a · R mod q.
     /// </summary>
     /// <param name="a">The value to convert.</param>
