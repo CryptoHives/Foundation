@@ -210,7 +210,32 @@ public class MLKemInternalsBenchmark
     /// actually pays. Compare against <see cref="KPkeKeyGenCore"/>.
     /// </remarks>
     [Benchmark(Description = "KeyGen (with PCT)")]
-    public void KeyGen() => MLKemCore.KeyGen(_params, _seed, _encapsulationKey, _decapsulationKey);
+    public void KeyGen()
+        => MLKemCore.KeyGen(_params, _seed, _encapsulationKey, _decapsulationKey,
+            performPairwiseConsistencyTest: true);
+
+    [Test]
+    [NonParallelizable]
+    public void KeyGenNoPctTest()
+    {
+        KeyGenNoPct();
+        Assert.That(_encapsulationKey, Is.Not.All.Zero);
+        Assert.That(_decapsulationKey, Is.Not.All.Zero);
+    }
+
+    /// <summary>
+    /// Benchmarks full ML-KEM key generation with the pairwise consistency test disabled.
+    /// </summary>
+    /// <remarks>
+    /// The difference against <see cref="KeyGen"/> is the exact cost of the consistency
+    /// test — a whole encapsulation plus a whole decapsulation. Unlike
+    /// <see cref="KPkeKeyGenCore"/>, which only approximates it, both rows here run the same
+    /// code path and differ by one flag.
+    /// </remarks>
+    [Benchmark(Description = "KeyGen (no PCT)")]
+    public void KeyGenNoPct()
+        => MLKemCore.KeyGen(_params, _seed, _encapsulationKey, _decapsulationKey,
+            performPairwiseConsistencyTest: false);
 
     [Test]
     [NonParallelizable]

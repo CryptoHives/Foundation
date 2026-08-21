@@ -287,7 +287,12 @@ internal static class MLKemCore
     /// <param name="seed">The 64-byte seed (d ‖ z).</param>
     /// <param name="ek">Output: encapsulation key (384·k + 32 bytes).</param>
     /// <param name="dk">Output: decapsulation key (768·k + 96 bytes).</param>
-    public static void KeyGen(MLKemParams p, ReadOnlySpan<byte> seed, Span<byte> ek, Span<byte> dk)
+    /// <param name="performPairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the generated key pair with an encapsulate/decapsulate
+    /// round trip; <see langword="false"/> to skip it.
+    /// </param>
+    public static void KeyGen(MLKemParams p, ReadOnlySpan<byte> seed, Span<byte> ek, Span<byte> dk,
+                              bool performPairwiseConsistencyTest)
     {
         ReadOnlySpan<byte> d = seed.Slice(0, 32);
         ReadOnlySpan<byte> z = seed.Slice(32, 32);
@@ -306,7 +311,10 @@ internal static class MLKemCore
 
         z.CopyTo(dk.Slice(offset, 32));
 
-        PairwiseConsistencyTest(p, ek, dk);
+        if (performPairwiseConsistencyTest)
+        {
+            PairwiseConsistencyTest(p, seed, ek, dk);
+        }
     }
 
     /// <summary>
@@ -315,10 +323,19 @@ internal static class MLKemCore
     /// </summary>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
     [SkipLocalsInit]
-    private static void PairwiseConsistencyTest(MLKemParams p, ReadOnlySpan<byte> ek, ReadOnlySpan<byte> dk)
+    private static void PairwiseConsistencyTest(MLKemParams p, ReadOnlySpan<byte> seed,
+                                                ReadOnlySpan<byte> ek, ReadOnlySpan<byte> dk)
     {
+        // The test message is derived from the seed rather than drawn from the OS RNG.
+        //
+        // Expanding a stored (d ‖ z) seed is pure FIPS 203 arithmetic and is documented as
+        // deterministic, so it must not depend on an RNG being present, and must not consume
+        // entropy the caller never asked to spend. A predictable message is harmless here:
+        // the ciphertext and both secrets are local, discarded and zeroed, and never reach a
+        // wire. The domain prefix keeps it from ever coinciding with a real encapsulation
+        // message derived from the same seed.
         Span<byte> m = stackalloc byte[MLKemParams.EncapsSeedBytes];
-        GenerateRandomSeed(m);
+        DerivePctMessage(seed, m);
 
         Span<byte> ct = stackalloc byte[MLKemParams.MaxCiphertextBytes];
         ct = ct.Slice(0, p.CiphertextBytes);
@@ -339,6 +356,31 @@ internal static class MLKemCore
             throw new OS.CryptographicException("ML-KEM key generation failed the pairwise consistency test.");
         }
     }
+
+    /// <summary>
+    /// Derives the pairwise consistency test's message deterministically from the key seed.
+    /// </summary>
+    /// <param name="seed">The 64-byte (d ‖ z) seed.</param>
+    /// <param name="m">Receives the 32-byte message.</param>
+    private static void DerivePctMessage(ReadOnlySpan<byte> seed, Span<byte> m)
+    {
+        Shake256 shake = HashAlgorithmPool<Shake256>.Shared.Get();
+        try
+        {
+            shake.Absorb(PctDomain);
+            shake.Absorb(seed);
+            shake.Squeeze(m);
+        }
+        finally
+        {
+            HashAlgorithmPool<Shake256>.Shared.Return(shake);
+        }
+    }
+
+    /// <summary>
+    /// Domain separation prefix for <see cref="DerivePctMessage"/>.
+    /// </summary>
+    private static ReadOnlySpan<byte> PctDomain => "CryptoHives-ML-KEM-PCT"u8;
 
     /// <summary>
     /// Performs the FIPS 203 §7.2 encapsulation key check (modulus check).

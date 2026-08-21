@@ -192,6 +192,44 @@ public class MLKemApiTests
     }
 
     [Test]
+    [TestCaseSource(nameof(Algorithms))]
+    public void ImportPrivateSeed_IsDeterministic_AndMatchesPctFreeExpansion(MLKemAlgorithm algorithm)
+    {
+        byte[] seed = new byte[algorithm.PrivateSeedSizeInBytes];
+        for (int i = 0; i < seed.Length; i++)
+        {
+            seed[i] = (byte)((i * 31 + 13) & 0xFF);
+        }
+
+        using var withCheck = MLKem.ImportPrivateSeed(algorithm, seed);
+        using var withoutCheck = MLKem.ImportPrivateSeed(algorithm, seed, performPairwiseConsistencyTest: false);
+
+        // Skipping the consistency test must not change the key it produces, and expanding
+        // the same seed twice must be bit-identical — the test message is derived from the
+        // seed, so no randomness enters key expansion at all.
+        Assert.Multiple(() => {
+            Assert.That(withoutCheck.ExportEncapsulationKey(), Is.EqualTo(withCheck.ExportEncapsulationKey()));
+            Assert.That(withoutCheck.ExportDecapsulationKey(), Is.EqualTo(withCheck.ExportDecapsulationKey()));
+            Assert.That(withoutCheck.ExportPrivateSeed(), Is.EqualTo(seed));
+        });
+
+        // And the key still works with the check disabled.
+        byte[] ct = new byte[algorithm.CiphertextSizeInBytes];
+        byte[] ss1 = new byte[algorithm.SharedSecretSizeInBytes];
+        withoutCheck.Encapsulate(ct, ss1);
+        Assert.That(withCheck.Decapsulate(ct), Is.EqualTo(ss1));
+    }
+
+    [Test]
+    public void GenerateKey_PctOptOut_ProducesUsableKeys()
+    {
+        using var kem = MLKem.GenerateKey(MLKemAlgorithm.MLKem768, performPairwiseConsistencyTest: false);
+
+        kem.Encapsulate(out byte[] ciphertext, out byte[] senderSecret);
+        Assert.That(kem.Decapsulate(ciphertext), Is.EqualTo(senderSecret));
+    }
+
+    [Test]
     public void IsSupported_IsAlwaysTrue()
     {
         // Unlike the in-box MLKem, the managed implementation never depends on OS support.
