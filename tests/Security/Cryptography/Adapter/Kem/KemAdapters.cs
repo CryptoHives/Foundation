@@ -1,38 +1,38 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-#pragma warning disable CA1050 // Declare types in namespaces
+namespace Cryptography.Tests.Adapter.Kem;
 
-using CryptoHives.Foundation.Security.Cryptography.Kem;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Kems;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
 using System;
+using CH = CryptoHives.Foundation.Security.Cryptography.Kem;
 
 /// <summary>
-/// Uniform surface over the four ML-KEM implementations under comparison, so the
-/// benchmark methods contain the operation itself and nothing else.
+/// Uniform surface over the ML-KEM implementations under comparison, so tests and
+/// benchmarks can drive all of them through one shape.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The four implementations have genuinely different shapes — key-holding versus stateless,
-/// span-based versus <c>byte[]</c>-with-offsets — so a fair comparison needs a common
-/// surface. Two rules keep it honest:
+/// Plays the same role for KEMs that <c>IOneShotHash</c> plays for hashes and <c>IMac</c>
+/// for MACs: the implementations have genuinely different APIs — key-holding versus
+/// stateless, span-based versus <c>byte[]</c>-with-offsets — and a fair comparison needs a
+/// common one. Two rules keep it honest:
 /// </para>
 /// <list type="bullet">
 ///   <item><description>
 ///     All buffers are <c>byte[]</c>. BouncyCastle's encapsulator only accepts
-///     <c>byte[]</c> with offsets, so exposing spans here would force a per-call copy on
-///     one competitor and distort the result.
+///     <c>byte[]</c> with offsets, so exposing spans would force a per-call copy on one
+///     competitor and distort the result.
 ///   </description></item>
 ///   <item><description>
-///     Everything that an implementation can legitimately hoist out of the operation —
-///     importing a key, constructing an encapsulator — happens in <see cref="Prepare"/>,
-///     which runs once during setup. Work that an implementation genuinely repeats per
-///     call stays inside the measured method. That is deliberate: the stateless
-///     <see cref="IKem"/> path re-validates the decapsulation key on every
-///     <c>Decapsulate</c>, and the benchmark is meant to show that.
+///     Everything an implementation can legitimately hoist out of the operation — importing
+///     a key, constructing an encapsulator — happens in <see cref="Prepare"/>. Work an
+///     implementation genuinely repeats per call stays inside the measured method. That is
+///     deliberate: the stateless <see cref="CH.IKem"/> path re-validates the decapsulation
+///     key on every <c>Decapsulate</c>, and a benchmark should show that rather than hide it.
 ///   </description></item>
 /// </list>
 /// </remarks>
@@ -52,47 +52,49 @@ public interface IKemRunner : IDisposable
 
     /// <summary>
     /// Imports the key material the <see cref="Encapsulate"/> and <see cref="Decapsulate"/>
-    /// benchmarks operate on. Called once from setup.
+    /// methods operate on. Called once from setup.
     /// </summary>
-    /// <remarks>
-    /// Every implementation is handed the same bytes, produced deterministically from a
-    /// fixed seed, so no implementation gets an easier key than another.
-    /// </remarks>
+    /// <param name="encapsulationKey">The encapsulation key.</param>
+    /// <param name="decapsulationKey">The expanded decapsulation key.</param>
     void Prepare(byte[] encapsulationKey, byte[] decapsulationKey);
 
     /// <summary>
     /// Produces a fresh key pair using the implementation's own natural API and returns the
     /// result so the work cannot be optimized away.
     /// </summary>
+    /// <returns>The generated key pair, in whatever form the implementation produces.</returns>
     /// <remarks>
-    /// The allocation profiles differ by design and the memory diagnoser should show that:
-    /// the stateless <see cref="IKem"/> path writes into caller-owned buffers, while the
-    /// key-holding APIs allocate a key object per call.
+    /// The allocation profiles differ by design: the stateless path writes into caller-owned
+    /// buffers, while the key-holding APIs allocate a key object per call.
     /// </remarks>
     object GenerateKeyPair();
 
     /// <summary>Encapsulates into caller-owned buffers.</summary>
+    /// <param name="ciphertext">Receives the ciphertext.</param>
+    /// <param name="sharedSecret">Receives the shared secret.</param>
     void Encapsulate(byte[] ciphertext, byte[] sharedSecret);
 
     /// <summary>Decapsulates into a caller-owned buffer.</summary>
+    /// <param name="ciphertext">The ciphertext.</param>
+    /// <param name="sharedSecret">Receives the shared secret.</param>
     void Decapsulate(byte[] ciphertext, byte[] sharedSecret);
 }
 
 /// <summary>
-/// The key-holding <see cref="MLKem"/> API — the recommended entry point, and the one
-/// that mirrors <c>System.Security.Cryptography.MLKem</c>.
+/// Adapts the key-holding <see cref="CH.MLKem"/> API — the recommended entry point, and the
+/// one that mirrors <c>System.Security.Cryptography.MLKem</c>.
 /// </summary>
-public sealed class MLKemKeyHoldingRunner : IKemRunner
+public sealed class MLKemAdapter : IKemRunner
 {
-    private readonly MLKemAlgorithm _algorithm;
-    private MLKem? _encapsulator;
-    private MLKem? _decapsulator;
+    private readonly CH.MLKemAlgorithm _algorithm;
+    private CH.MLKem? _encapsulator;
+    private CH.MLKem? _decapsulator;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MLKemKeyHoldingRunner"/> class.
+    /// Initializes a new instance of the <see cref="MLKemAdapter"/> class.
     /// </summary>
-    /// <param name="algorithm">The parameter set to benchmark.</param>
-    public MLKemKeyHoldingRunner(MLKemAlgorithm algorithm) => _algorithm = algorithm;
+    /// <param name="algorithm">The parameter set.</param>
+    public MLKemAdapter(CH.MLKemAlgorithm algorithm) => _algorithm = algorithm;
 
     /// <inheritdoc/>
     public int EncapsulationKeySizeBytes => _algorithm.EncapsulationKeySizeInBytes;
@@ -109,12 +111,12 @@ public sealed class MLKemKeyHoldingRunner : IKemRunner
     /// <inheritdoc/>
     public void Prepare(byte[] encapsulationKey, byte[] decapsulationKey)
     {
-        _encapsulator = MLKem.ImportEncapsulationKey(_algorithm, encapsulationKey);
-        _decapsulator = MLKem.ImportDecapsulationKey(_algorithm, decapsulationKey);
+        _encapsulator = CH.MLKem.ImportEncapsulationKey(_algorithm, encapsulationKey);
+        _decapsulator = CH.MLKem.ImportDecapsulationKey(_algorithm, decapsulationKey);
     }
 
     /// <inheritdoc/>
-    public object GenerateKeyPair() => MLKem.GenerateKey(_algorithm);
+    public object GenerateKeyPair() => CH.MLKem.GenerateKey(_algorithm);
 
     /// <inheritdoc/>
     public void Encapsulate(byte[] ciphertext, byte[] sharedSecret)
@@ -133,21 +135,21 @@ public sealed class MLKemKeyHoldingRunner : IKemRunner
 }
 
 /// <summary>
-/// The stateless <see cref="IKem"/> API, where the caller owns the raw key bytes.
+/// Adapts the stateless <see cref="CH.IKem"/> API, where the caller owns the raw key bytes.
 /// </summary>
-public sealed class MLKemStatelessRunner : IKemRunner
+public sealed class MLKemStatelessAdapter : IKemRunner
 {
-    private readonly IKem _kem;
-    private byte[] _encapsulationKey = [];
-    private byte[] _decapsulationKey = [];
+    private readonly CH.IKem _kem;
     private readonly byte[] _keyGenEk;
     private readonly byte[] _keyGenDk;
+    private byte[] _encapsulationKey = [];
+    private byte[] _decapsulationKey = [];
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MLKemStatelessRunner"/> class.
+    /// Initializes a new instance of the <see cref="MLKemStatelessAdapter"/> class.
     /// </summary>
-    /// <param name="kem">The stateless KEM instance to benchmark.</param>
-    public MLKemStatelessRunner(IKem kem)
+    /// <param name="kem">The stateless KEM instance.</param>
+    public MLKemStatelessAdapter(CH.IKem kem)
     {
         _kem = kem;
         _keyGenEk = new byte[kem.EncapsulationKeySizeBytes];
@@ -174,10 +176,7 @@ public sealed class MLKemStatelessRunner : IKemRunner
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// Writes into buffers owned by this instance, so unlike the key-holding APIs it
-    /// allocates nothing per call.
-    /// </remarks>
+    /// <remarks>Writes into buffers owned by this adapter, so it allocates nothing per call.</remarks>
     public object GenerateKeyPair()
     {
         _kem.GenerateKeyPair(_keyGenEk, _keyGenDk);
@@ -190,8 +189,8 @@ public sealed class MLKemStatelessRunner : IKemRunner
 
     /// <inheritdoc/>
     /// <remarks>
-    /// This re-runs the FIPS 203 §7.3 hash check on every call, by design of the stateless
-    /// API — there is no imported key to attach the check to.
+    /// Re-runs the FIPS 203 §7.3 hash check on every call, by design of the stateless API —
+    /// there is no imported key to attach the check to.
     /// </remarks>
     public void Decapsulate(byte[] ciphertext, byte[] sharedSecret)
         => _kem.Decapsulate(_decapsulationKey, ciphertext, sharedSecret);
@@ -201,9 +200,9 @@ public sealed class MLKemStatelessRunner : IKemRunner
 }
 
 /// <summary>
-/// BouncyCastle's ML-KEM, available on every target framework.
+/// Adapts BouncyCastle's ML-KEM, available on every target framework.
 /// </summary>
-public sealed class BouncyCastleKemRunner : IKemRunner
+public sealed class BouncyCastleKemAdapter : IKemRunner
 {
     private readonly MLKemParameters _parameters;
     private readonly SecureRandom _random = new();
@@ -212,10 +211,10 @@ public sealed class BouncyCastleKemRunner : IKemRunner
     private MLKemDecapsulator? _decapsulator;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="BouncyCastleKemRunner"/> class.
+    /// Initializes a new instance of the <see cref="BouncyCastleKemAdapter"/> class.
     /// </summary>
-    /// <param name="parameters">The BouncyCastle parameter set to benchmark.</param>
-    public BouncyCastleKemRunner(MLKemParameters parameters)
+    /// <param name="parameters">The BouncyCastle parameter set.</param>
+    public BouncyCastleKemAdapter(MLKemParameters parameters)
     {
         _parameters = parameters;
         _generator.Init(new MLKemKeyGenerationParameters(_random, parameters));
@@ -269,24 +268,24 @@ public sealed class BouncyCastleKemRunner : IKemRunner
 #pragma warning disable SYSLIB5006 // Post-quantum cryptography APIs may be experimental.
 
 /// <summary>
-/// The in-box <c>System.Security.Cryptography.MLKem</c>, backed by the OS provider.
+/// Adapts the in-box <c>System.Security.Cryptography.MLKem</c>, backed by the OS provider.
 /// </summary>
 /// <remarks>
-/// Only constructed when <c>MLKem.IsSupported</c> is true, which on Windows means a recent
-/// CNG build and on Linux means OpenSSL 3.5+. This is the reference point the managed
+/// Only usable where <c>MLKem.IsSupported</c> is true, which on Windows means a recent CNG
+/// build and on Linux means OpenSSL 3.5+. This is the reference point the managed
 /// implementation is measured against.
 /// </remarks>
-public sealed class DotnetKemRunner : IKemRunner
+public sealed class OSKemAdapter : IKemRunner
 {
     private readonly System.Security.Cryptography.MLKemAlgorithm _algorithm;
     private System.Security.Cryptography.MLKem? _encapsulator;
     private System.Security.Cryptography.MLKem? _decapsulator;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="DotnetKemRunner"/> class.
+    /// Initializes a new instance of the <see cref="OSKemAdapter"/> class.
     /// </summary>
-    /// <param name="algorithm">The in-box parameter set to benchmark.</param>
-    public DotnetKemRunner(System.Security.Cryptography.MLKemAlgorithm algorithm) => _algorithm = algorithm;
+    /// <param name="algorithm">The in-box parameter set.</param>
+    public OSKemAdapter(System.Security.Cryptography.MLKemAlgorithm algorithm) => _algorithm = algorithm;
 
     /// <inheritdoc/>
     public int EncapsulationKeySizeBytes => _algorithm.EncapsulationKeySizeInBytes;

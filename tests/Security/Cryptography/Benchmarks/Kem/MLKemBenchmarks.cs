@@ -4,6 +4,7 @@
 namespace Cryptography.Tests.Benchmarks.Kem;
 
 using BenchmarkDotNet.Attributes;
+using Cryptography.Tests.Adapter.Kem;
 using CryptoHives.Foundation.Security.Cryptography.Kem;
 using NUnit.Framework;
 using System;
@@ -74,22 +75,10 @@ public class MLKemBenchmark
     /// Gets every (parameter set, implementation) pair to benchmark.
     /// </summary>
     /// <remarks>
-    /// Unsupported implementations are filtered out here rather than skipped later. The
-    /// in-box <c>MLKem</c> is absent on platforms without a recent CNG or OpenSSL 3.5+, and
-    /// BenchmarkDotNet has no notion of skipping a case at run time — a setup method that
-    /// tried to opt out would fail the run instead. Dropping them at the source keeps both
-    /// the benchmark and the NUnit fixture honest.
+    /// Drawn from <c>KemAlgorithmRegistry</c>, which already filters out implementations
+    /// that are unsupported here or excluded from benchmarking.
     /// </remarks>
-    public static IEnumerable<KemAlgorithmType> Algorithms()
-    {
-        foreach (var algorithm in KemAlgorithmType.All())
-        {
-            if (algorithm.IsSupported)
-            {
-                yield return algorithm;
-            }
-        }
-    }
+    public static IEnumerable<KemAlgorithmType> Algorithms() => KemAlgorithmType.MLKem();
 
     /// <summary>
     /// Gets the NUnit fixture arguments.
