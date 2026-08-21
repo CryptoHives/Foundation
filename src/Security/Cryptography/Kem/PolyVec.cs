@@ -111,7 +111,7 @@ internal static class PolyVec
         int k = vec.Length;
         for (int i = 0; i < k; i++)
         {
-            Array.Clear(r[i], 0, MlKemParams.N);
+            Array.Clear(r[i], 0, MLKemParams.N);
             for (int j = 0; j < k; j++)
             {
                 short[] matEntry = transpose ? mat[j][i] : mat[i][j];
@@ -204,7 +204,7 @@ internal static class PolyVec
         var vec = new short[k][];
         for (int i = 0; i < k; i++)
         {
-            vec[i] = new short[MlKemParams.N];
+            vec[i] = new short[MLKemParams.N];
         }
 
         return vec;

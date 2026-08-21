@@ -15,7 +15,7 @@ using System.Runtime.CompilerServices;
 internal static class Ntt
 {
     /// <summary>q = 3329.</summary>
-    private const int Q = MlKemParams.Q;
+    private const int Q = MLKemParams.Q;
 
     /// <summary>
     /// Montgomery parameter: R² mod q, where R = 2^16. Used for converting to Montgomery form.

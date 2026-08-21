@@ -28,7 +28,7 @@ internal static class Cbd
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Eta2(ReadOnlySpan<byte> buf, short[] coeffs)
     {
-        for (int i = 0; i < MlKemParams.N / 8; i++)
+        for (int i = 0; i < MLKemParams.N / 8; i++)
         {
             uint t = (uint)buf[4 * i]
                    | ((uint)buf[4 * i + 1] << 8)
@@ -59,7 +59,7 @@ internal static class Cbd
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Eta3(ReadOnlySpan<byte> buf, short[] coeffs)
     {
-        for (int i = 0; i < MlKemParams.N / 4; i++)
+        for (int i = 0; i < MLKemParams.N / 4; i++)
         {
             uint t = (uint)buf[3 * i]
                    | ((uint)buf[3 * i + 1] << 8)
