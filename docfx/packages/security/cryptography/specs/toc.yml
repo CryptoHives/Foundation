@@ -16,6 +16,8 @@
       href: RFC-2104.md
     - name: SP 800-38B (CMAC, GMAC)
       href: NIST-SP-800-38B.md
+    - name: FIPS 203 (ML-KEM)
+      href: NIST-FIPS-203.md
 - name: Test Vectors
   items:
     - name: SHA-1 (Legacy)
@@ -60,3 +62,5 @@
       href: ChaCha20-vectors.md
     - name: XChaCha20-Poly1305
       href: XChaCha20-vectors.md
+    - name: ML-KEM (FIPS 203)
+      href: ML-KEM-vectors.md
