@@ -329,6 +329,40 @@ official sources.
 > cross-checked against BouncyCastle and .NET 10 `System.Security.Cryptography.MLKem`.
 > The `MLKem` key-holding class mirrors the .NET 10 API shape on all target frameworks.
 
+
+---
+
+## Digital Signature Algorithms
+
+### FIPS 204 (Module-Lattice-Based Digital Signature Algorithm)
+
+| Algorithm | Security Category | Status | Class |
+|-----------|-------------------|--------|-------|
+| ML-DSA-44 | 2 | ✅ Implemented | `MlDsa44`, `MlDsa` |
+| ML-DSA-65 | 3 | ✅ Implemented | `MlDsa65`, `MlDsa` |
+| ML-DSA-87 | 5 | ✅ Implemented | `MlDsa87`, `MlDsa` |
+| HashML-DSA (pre-hash) | - | ⬜ Not implemented | - |
+
+> **Note:** Validated against official NIST ACVP vectors (key generation, deterministic
+> and hedged signing with byte-exact signatures, and verification including modified
+> commitment/z/hint/message rejections) and cross-checked against BouncyCastle and
+> .NET 10 `System.Security.Cryptography.MLDsa`. The `MlDsa` key-holding class mirrors
+> the .NET 10 API shape on all target frameworks.
+
+### FIPS 205 (Stateless Hash-Based Digital Signature Algorithm)
+
+| Algorithm | Security Category | Status | Class |
+|-----------|-------------------|--------|-------|
+| SLH-DSA-{SHA2,SHAKE}-128{s,f} | 1 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
+| SLH-DSA-{SHA2,SHAKE}-192{s,f} | 3 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
+| SLH-DSA-{SHA2,SHAKE}-256{s,f} | 5 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
+| HashSLH-DSA (pre-hash) | - | ⬜ Not implemented | - |
+
+> **Note:** Validated against official NIST ACVP vectors (key generation for all 12
+> parameter sets, deterministic and hedged signing with byte-exact signatures, and
+> verification including modified R/SIGFORS/SIGHT/message and wrong-length rejections)
+> and cross-checked against BouncyCastle and .NET 10 `System.Security.Cryptography.SlhDsa`.
+
 ---
 
 ## Sources
@@ -482,6 +516,22 @@ The official FIPS 203 specification and ACVP test vectors are available from NIS
 - [NIST FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) - Module-Lattice-Based Key-Encapsulation Mechanism Standard
 - [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - ML-KEM-keyGen-FIPS203 and ML-KEM-encapDecap-FIPS203
 
+### ML-DSA (FIPS 204)
+
+The official FIPS 204 specification and ACVP test vectors are available from NIST:
+- **[NIST-FIPS-204.md](NIST-FIPS-204.md)** - Local reference with algorithm details
+- **[ML-DSA-vectors.md](ML-DSA-vectors.md)** - Test vector documentation (NIST ACVP)
+- [NIST FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) - Module-Lattice-Based Digital Signature Standard
+- [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - ML-DSA-keyGen/sigGen/sigVer-FIPS204
+
+### SLH-DSA (FIPS 205)
+
+The official FIPS 205 specification and ACVP test vectors are available from NIST:
+- **[NIST-FIPS-205.md](NIST-FIPS-205.md)** - Local reference with algorithm details
+- **[SLH-DSA-vectors.md](SLH-DSA-vectors.md)** - Test vector documentation (NIST ACVP)
+- [NIST FIPS 205](https://csrc.nist.gov/pubs/fips/205/final) - Stateless Hash-Based Digital Signature Standard
+- [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - SLH-DSA-keyGen/sigGen/sigVer-FIPS205
+
 ## File Organization
 
 ```
@@ -518,7 +568,11 @@ specs/
 ├── ChaCha20-vectors.md    # ChaCha20, Poly1305, ChaCha20-Poly1305 test vectors
 ├── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
 ├── NIST-FIPS-203.md       # NIST FIPS 203 - ML-KEM reference
-└── ML-KEM-vectors.md      # ML-KEM test vectors (NIST ACVP)
+├── ML-KEM-vectors.md      # ML-KEM test vectors (NIST ACVP)
+├── NIST-FIPS-204.md       # NIST FIPS 204 - ML-DSA reference
+├── ML-DSA-vectors.md      # ML-DSA test vectors (NIST ACVP)
+├── NIST-FIPS-205.md       # NIST FIPS 205 - SLH-DSA reference
+└── SLH-DSA-vectors.md     # SLH-DSA test vectors (NIST ACVP)
 ```
 
 ## Usage
