@@ -29,9 +29,9 @@ ML-KEM replaces RSA and (EC)DH key establishment in a post-quantum setting and i
 
 | Algorithm | Status | Class |
 |-----------|--------|-------|
-| ML-KEM-512 | ✅ Implemented | `MlKem512`, `MlKem` + `MlKemAlgorithm.MlKem512` |
-| ML-KEM-768 | ✅ Implemented | `MlKem768`, `MlKem` + `MlKemAlgorithm.MlKem768` |
-| ML-KEM-1024 | ✅ Implemented | `MlKem1024`, `MlKem` + `MlKemAlgorithm.MlKem1024` |
+| ML-KEM-512 | ✅ Implemented | `MLKem512`, `MLKem` + `MLKemAlgorithm.MLKem512` |
+| ML-KEM-768 | ✅ Implemented | `MLKem768`, `MLKem` + `MLKemAlgorithm.MLKem768` |
+| ML-KEM-1024 | ✅ Implemented | `MLKem1024`, `MLKem` + `MLKemAlgorithm.MLKem1024` |
 
 ---
 
@@ -76,24 +76,24 @@ All symmetric primitives are instantiated from the FIPS 202 Keccak family (imple
 | Alg. 8 SamplePolyCBD | Centered binomial distribution η ∈ {2, 3} | `Cbd.Sample` |
 | Alg. 9/10 NTT / NTT⁻¹ | Number-theoretic transform, ζ = 17 | `Ntt.Forward` / `Ntt.Inverse` (Montgomery arithmetic) |
 | Alg. 11 BaseCaseMultiply | Degree-1 products in ℤ_q[X]/(X² − ζ) | `Ntt.BaseCaseMultiply` |
-| Alg. 13–15 K-PKE | Inner PKE KeyGen/Encrypt/Decrypt | `MlKemCore.KPkeKeyGen/KPkeEncrypt/KPkeDecrypt` |
-| Alg. 16 ML-KEM.KeyGen | (ek, dk) from 64-byte seed (d ‖ z) | `MlKemCore.KeyGen` |
-| Alg. 17 ML-KEM.Encaps | (K, c) from ek and random m | `MlKemCore.Encaps` |
-| Alg. 18 ML-KEM.Decaps | K from dk and c, implicit rejection | `MlKemCore.Decaps` |
+| Alg. 13–15 K-PKE | Inner PKE KeyGen/Encrypt/Decrypt | `MLKemCore.KPkeKeyGen/KPkeEncrypt/KPkeDecrypt` |
+| Alg. 16 ML-KEM.KeyGen | (ek, dk) from 64-byte seed (d ‖ z) | `MLKemCore.KeyGen` |
+| Alg. 17 ML-KEM.Encaps | (K, c) from ek and random m | `MLKemCore.Encaps` |
+| Alg. 18 ML-KEM.Decaps | K from dk and c, implicit rejection | `MLKemCore.Decaps` |
 
 ### Input Checks (FIPS 203 §7)
 
 | Check | Where | Behavior |
 |-------|-------|----------|
-| §7.2 modulus check on ek | `Encapsulate`, `MlKem.ImportEncapsulationKey` | Every 12-bit coefficient < q, else rejected |
-| §7.3 hash check on dk | `Decapsulate`, `MlKem.ImportDecapsulationKey` | Stored H(ekPKE) must match recomputed hash |
+| §7.2 modulus check on ek | `Encapsulate`, `MLKem.ImportEncapsulationKey` | Every 12-bit coefficient < q, else rejected |
+| §7.3 hash check on dk | `Decapsulate`, `MLKem.ImportDecapsulationKey` | Stored H(ekPKE) must match recomputed hash |
 | Pairwise consistency test | Key generation | Encaps/decaps round-trip verified (FIPS 140-3) |
 
 ### Side-Channel Notes
 
 - Decapsulation compares c with the re-encrypted c′ in constant time and selects K′ or K̄ via a branchless byte mask — the accept/reject decision never surfaces as a branch or a `bool`.
 - Modular reduction uses Barrett and Montgomery multiply-shift sequences; no secret-dependent division or lookup.
-- Secret intermediates are zeroized before scope exit; disposal of `MlKem` zeroizes retained key material.
+- Secret intermediates are zeroized before scope exit; disposal of `MLKem` zeroizes retained key material.
 
 ---
 

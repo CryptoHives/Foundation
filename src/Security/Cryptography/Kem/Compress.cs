@@ -27,7 +27,7 @@ internal static class Compress
     public static ushort CompressD(ushort x, int d)
     {
         // ⌈(2^d / q) · x⌋ = ⌊(2^d · x + q/2) / q⌋
-        uint t = ((uint)x << d) + (MlKemParams.Q >> 1);
+        uint t = ((uint)x << d) + (MLKemParams.Q >> 1);
         // Division by q = 3329 using multiply-shift:
         // q^(-1) approx = ceil(2^36 / 3329) = 20642680
         // This gives exact results for all x < q and d ≤ 12.
@@ -48,7 +48,7 @@ internal static class Compress
     public static ushort DecompressD(ushort y, int d)
     {
         // ⌈(q / 2^d) · y⌋ = ⌊(q · y + 2^(d-1)) / 2^d⌋
-        return (ushort)(((uint)y * MlKemParams.Q + (1u << (d - 1))) >> d);
+        return (ushort)(((uint)y * MLKemParams.Q + (1u << (d - 1))) >> d);
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ internal static class Compress
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void CompressPoly(short[] coeffs, int d)
     {
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             coeffs[i] = (short)CompressD((ushort)coeffs[i], d);
         }
@@ -73,7 +73,7 @@ internal static class Compress
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void DecompressPoly(short[] coeffs, int d)
     {
-        for (int i = 0; i < MlKemParams.N; i++)
+        for (int i = 0; i < MLKemParams.N; i++)
         {
             coeffs[i] = (short)DecompressD((ushort)coeffs[i], d);
         }

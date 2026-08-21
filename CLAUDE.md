@@ -103,10 +103,10 @@ Self-contained managed implementations of cryptographic algorithms — no OS/har
 - HKDF, KBKDF, ConcatKDF, PBKDF2
 
 **KEM (`src/Security/Cryptography/Kem/`):**
-- `IKem` — low-level stateless span-based KEM interface; `MlKem512`/`MlKem768`/`MlKem1024` implement it
-- `MlKem` + `MlKemAlgorithm` — key-holding API mirroring .NET 10's `System.Security.Cryptography.MLKem` (seed retention, §7.2/§7.3 import checks, zeroization on dispose)
-- `MlKemCore` — FIPS 203 K-PKE and ML-KEM algorithms; `Ntt`/`Poly`/`PolyVec`/`Cbd`/`Compress`/`Encode` are the ML-KEM-specific math layer (q = 3329; do not reuse for ML-DSA, which needs int-based polys)
-- Conformance: NIST ACVP vectors in `MlKemAcvpTests.cs` (keyGen, encaps, decaps incl. implicit rejection, key checks); interop vs BouncyCastle and .NET 10 `MLKem` in `MlKemInteropTests.cs`
+- `IKem` — low-level stateless span-based KEM interface; `MLKem512`/`MLKem768`/`MLKem1024` implement it
+- `MLKem` + `MLKemAlgorithm` — key-holding API mirroring .NET 10's `System.Security.Cryptography.MLKem` (seed retention, §7.2/§7.3 import checks, zeroization on dispose)
+- `MLKemCore` — FIPS 203 K-PKE and ML-KEM algorithms; `Ntt`/`Poly`/`PolyVec`/`Cbd`/`Compress`/`Encode` are the ML-KEM-specific math layer (q = 3329; do not reuse for ML-DSA, which needs int-based polys)
+- Conformance: NIST ACVP vectors in `MLKemAcvpTests.cs` (keyGen, encaps, decaps incl. implicit rejection, key checks); interop vs BouncyCastle and .NET 10 `MLKem` in `MLKemInteropTests.cs`
 
 **Signatures (`src/Security/Cryptography/Dsa/`):**
 - `IDsa` — low-level stateless span-based signature interface; `MlDsa44`/`MlDsa65`/`MlDsa87` implement it via shared `MlDsaEngine` validation
@@ -114,6 +114,7 @@ Self-contained managed implementations of cryptographic algorithms — no OS/har
 - `MlDsaCore` — FIPS 204 KeyGen/Sign/Verify (rejection loop, hedged + deterministic); `Ntt` (q = 8380417, int-based, runtime-computed zeta table)/`Poly`/`PolyVec`/`Sampling`/`Encode` are the ML-DSA-specific math layer — independent of the ML-KEM layer by design
 - Conformance: NIST ACVP vectors in `MlDsaAcvpTests.cs` (keyGen, sigGen deterministic + hedged with injected rnd, sigVer incl. modified commitment/z/hint/message); interop vs BouncyCastle and .NET 10 `MLDsa` in `MlDsaInteropTests.cs`
 - SLH-DSA (FIPS 205) in `Dsa/SlhDsa/`: key-holding `SlhDsa` + `SlhDsaAlgorithm` (12 sets, no per-set IDsa wrappers); `SlhDsaHash` abstracts the SHAKE256 vs SHA-2 instantiations (compressed ADRS, MGF1, HMAC, SHA-512 split for cat 3/5); `Wots`/`XmssTree`/`Hypertree`/`Fors` are pure hash plumbing over the existing SHA-2/SHAKE cores. The 's' sets sign slowly by design — tests default to 'f' sets, full matrix is `[Explicit]`. ACVP + BC + .NET 10 playbook as for ML-KEM/ML-DSA
+
 
 ### `CryptoHives.Foundation.Threading`
 

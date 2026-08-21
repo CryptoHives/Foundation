@@ -50,22 +50,37 @@ ML-KEM is specified in [FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) (fi
 
 | API | Classes | Best For |
 |-----|---------|----------|
-| Key-holding (recommended) | `MlKem`, `MlKemAlgorithm` | Application code; mirrors .NET 10's `System.Security.Cryptography.MLKem` |
-| Low-level, stateless | `IKem`, `MlKem512`, `MlKem768`, `MlKem1024` | Protocol implementations that manage raw key bytes; allocation-free span APIs |
+| Key-holding (recommended) | `MLKem`, `MLKemAlgorithm` | Application code; mirrors .NET 10's `System.Security.Cryptography.MLKem` |
+| Low-level, stateless | `IKem`, `MLKem512`, `MLKem768`, `MLKem1024` | Protocol implementations that manage raw key bytes; allocation-free span APIs |
 
-### Key-Holding API (`MlKem`)
+### Key-Holding API (`MLKem`)
 
-The `MlKem` class mirrors the .NET 10 `MLKem` API shape, so code written against the in-box type ports directly to older target frameworks:
+`MLKem` carries the same type name, member names and member signatures as .NET 10's
+`System.Security.Cryptography.MLKem`, so it is a source-level drop-in — switching to the managed
+implementation means changing the `using` and nothing else:
+
+```diff
+-using System.Security.Cryptography;
++using CryptoHives.Foundation.Security.Cryptography.Kem;
+```
+
+> Importing **both** namespaces in one file is `CS0104` (ambiguous reference) on .NET 10, which is
+> the intended consequence of matching the BCL names. Alias one of them
+> (`using Bcl = System.Security.Cryptography;`) if you need both in the same file.
+
+Unlike the in-box type, this implementation is not an abstract class with platform-backed derived
+types — it is a single sealed managed class, so `MLKem.IsSupported` is always `true` and behaviour
+is identical on every OS and every target framework down to net462.
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Kem;
 
 // Receiver: generate a key pair and publish the encapsulation key.
-using var receiver = MlKem.GenerateKey(MlKemAlgorithm.MlKem768);
+using var receiver = MLKem.GenerateKey(MLKemAlgorithm.MLKem768);
 byte[] encapsulationKey = receiver.ExportEncapsulationKey();
 
 // Sender: encapsulate a shared secret for the receiver.
-using var sender = MlKem.ImportEncapsulationKey(MlKemAlgorithm.MlKem768, encapsulationKey);
+using var sender = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, encapsulationKey);
 byte[] ciphertext   = new byte[sender.Algorithm.CiphertextSizeInBytes];
 byte[] senderSecret = new byte[sender.Algorithm.SharedSecretSizeInBytes];
 sender.Encapsulate(ciphertext, senderSecret);
@@ -81,11 +96,11 @@ receiver.Decapsulate(ciphertext, receiverSecret);
 FIPS 203 recommends storing the 64-byte private seed (d ‖ z) instead of the expanded decapsulation key. A key created from a seed can always be re-expanded deterministically:
 
 ```csharp
-using var key = MlKem.GenerateKey(MlKemAlgorithm.MlKem768);
+using var key = MLKem.GenerateKey(MLKemAlgorithm.MLKem768);
 byte[] seed = key.ExportPrivateSeed(); // 64 bytes — store this
 
 // Later / elsewhere:
-using var restored = MlKem.ImportPrivateSeed(MlKemAlgorithm.MlKem768, seed);
+using var restored = MLKem.ImportPrivateSeed(MLKemAlgorithm.MLKem768, seed);
 // restored is byte-identical to the original key pair
 ```
 
@@ -95,16 +110,23 @@ Keys imported from an expanded decapsulation key (`ImportDecapsulationKey`) hold
 
 | Method | Description |
 |--------|-------------|
-| `GenerateKey(MlKemAlgorithm)` | Generate a fresh key pair (retains the private seed) |
-| `ImportPrivateSeed(MlKemAlgorithm, ReadOnlySpan<byte>)` | Expand a 64-byte (d ‖ z) seed into a key pair |
-| `ImportDecapsulationKey(MlKemAlgorithm, ReadOnlySpan<byte>)` | Import an expanded decapsulation key (runs the §7.3 hash check) |
-| `ImportEncapsulationKey(MlKemAlgorithm, ReadOnlySpan<byte>)` | Import a public key (runs the §7.2 modulus check) |
-| `Encapsulate(Span<byte>, Span<byte>)` | Produce ciphertext + shared secret |
+| `IsSupported` | Always `true` — the managed implementation never depends on OS support |
+| `GenerateKey(MLKemAlgorithm)` | Generate a fresh key pair (retains the private seed) |
+| `ImportPrivateSeed(MLKemAlgorithm, ReadOnlySpan<byte>)` / `(…, byte[])` | Expand a 64-byte (d ‖ z) seed into a key pair |
+| `ImportDecapsulationKey(MLKemAlgorithm, ReadOnlySpan<byte>)` / `(…, byte[])` | Import an expanded decapsulation key (runs the §7.3 hash check) |
+| `ImportEncapsulationKey(MLKemAlgorithm, ReadOnlySpan<byte>)` / `(…, byte[])` | Import a public key (runs the §7.2 modulus check) |
+| `Encapsulate(Span<byte>, Span<byte>)` | Produce ciphertext + shared secret into caller buffers |
+| `Encapsulate(out byte[], out byte[])` | Produce ciphertext + shared secret as new arrays |
 | `Decapsulate(ReadOnlySpan<byte>, Span<byte>)` | Recover the shared secret (implicit rejection on invalid ciphertext) |
+| `Decapsulate(byte[])` | Recover the shared secret as a new array |
 | `ExportPrivateSeed()` / `ExportPrivateSeed(Span<byte>)` | Export the 64-byte seed (seed-created keys only) |
 | `ExportEncapsulationKey()` / `ExportEncapsulationKey(Span<byte>)` | Export the public key |
 | `ExportDecapsulationKey()` / `ExportDecapsulationKey(Span<byte>)` | Export the expanded private key |
 | `Dispose()` | Zeroize the private seed and decapsulation key |
+
+This is the complete `System.Security.Cryptography.MLKem` surface apart from the key-format
+members listed under [KEM Roadmap](#kem-roadmap). `MLKemAlgorithm` likewise matches the in-box
+type, including `IEquatable<MLKemAlgorithm>`, `==` and `!=`.
 
 ### Low-Level API (`IKem`)
 
@@ -113,20 +135,20 @@ The stateless per-parameter-set classes operate directly on caller-provided buff
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Kem;
 
-using var kem = MlKem768.Create();
+using var kem = MLKem768.Create();
 
 // Key generation (random, or deterministic from a 64-byte seed)
-byte[] ek = new byte[MlKem768.EncapsulationKeySizeBytesConst];   // 1184
-byte[] dk = new byte[MlKem768.DecapsulationKeySizeBytesConst];   // 2400
+byte[] ek = new byte[MLKem768.EncapsulationKeySizeBytesConst];   // 1184
+byte[] dk = new byte[MLKem768.DecapsulationKeySizeBytesConst];   // 2400
 kem.GenerateKeyPair(ek, dk);
 
 // Encapsulation
-byte[] ct  = new byte[MlKem768.CiphertextSizeBytesConst];        // 1088
-byte[] ss1 = new byte[MlKem768.SharedSecretSizeBytesConst];      // 32
+byte[] ct  = new byte[MLKem768.CiphertextSizeBytesConst];        // 1088
+byte[] ss1 = new byte[MLKem768.SharedSecretSizeBytesConst];      // 32
 kem.Encapsulate(ek, ct, ss1);
 
 // Decapsulation
-byte[] ss2 = new byte[MlKem768.SharedSecretSizeBytesConst];
+byte[] ss2 = new byte[MLKem768.SharedSecretSizeBytesConst];
 kem.Decapsulate(dk, ct, ss2);
 ```
 
@@ -140,7 +162,7 @@ Deterministic overloads (`GenerateKeyPair(seed, …)`, `Encapsulate(ek, seed, �
 
 Both API levels validate externally supplied keys as required by FIPS 203 §7:
 
-- **§7.2 encapsulation key check (modulus check)** — every 12-bit coefficient of the encoded key must be < q = 3329. Rejected keys throw (`ArgumentException` on the low-level API, `CryptographicException` on `MlKem` import).
+- **§7.2 encapsulation key check (modulus check)** — every 12-bit coefficient of the encoded key must be < q = 3329. Rejected keys throw (`ArgumentException` on the low-level API, `CryptographicException` on `MLKem` import).
 - **§7.3 decapsulation key check (hash check)** — the stored H(ekPKE) must match a freshly computed hash of the embedded encapsulation key.
 
 ### Implicit Rejection
@@ -157,7 +179,7 @@ Decapsulating a tampered or invalid ciphertext of the correct length does **not*
 
 - Secret intermediates (PRF output, secret/error polynomials, decrypted message, re-encryption buffer) are zeroed before scope exit.
 - Fresh key pairs run a pairwise consistency test (encapsulate/decapsulate round-trip) as expected by FIPS 140-3.
-- `MlKem.Dispose()` zeroizes the retained seed and decapsulation key.
+- `MLKem.Dispose()` zeroizes the retained seed and decapsulation key.
 
 ---
 
@@ -173,16 +195,20 @@ The implementation is validated on every target framework by three independent m
 
 ## Comparison with .NET Built-in
 
-| Feature | CryptoHives `MlKem` | `System.Security.Cryptography.MLKem` |
+| Feature | CryptoHives `MLKem` | `System.Security.Cryptography.MLKem` |
 |---------|--------------------|--------------------------------------|
 | Availability | All TFMs (.NET Framework 4.6.2+) | .NET 10+ only |
 | OS requirement | None (fully managed) | Windows CNG (recent builds) / OpenSSL 3.5+ |
+| `IsSupported` | Always `true` | Depends on the OS |
 | Cross-platform consistency | Guaranteed | Depends on OS support |
 | Parameter sets | ML-KEM-512/768/1024 | ML-KEM-512/768/1024 |
-| Private seed import/export | ✅ | ✅ |
+| Type / member names | Identical (source-level drop-in) | — |
+| Raw key + seed import/export | ✅ | ✅ |
+| `byte[]` and `Span<byte>` overloads | ✅ | ✅ |
 | §7.2 / §7.3 import checks | ✅ | ✅ |
+| `MLKemAlgorithm` value equality | ✅ | ✅ |
 | PKCS#8 / SPKI / PEM | 🔲 Planned (with X.509 support) | ✅ |
-| API shape | Mirrors `MLKem` | — |
+| Extensible base class (`MLKemCng`, `MLKemOpenSsl`) | ❌ sealed, single managed implementation | ✅ abstract |
 
 ---
 
@@ -195,6 +221,31 @@ The implementation is validated on every target framework by three independent m
 | HPKE | RFC 9180 | 🔲 Under review |
 | X-Wing (hybrid X25519 + ML-KEM-768) | draft-connolly-cfrg-xwing-kem | 🔲 Under review |
 | PKCS#8 / SPKI key formats | RFC 5208 / RFC 5280 | 🔲 Planned with X.509 support |
+
+#### Deferred: key-format import/export
+
+Raw key and seed import/export is complete; the encoded key formats are the one remaining gap
+against the in-box `MLKem` surface. Deferred members:
+
+| Direction | Members |
+|-----------|---------|
+| Import (static) | `ImportPkcs8PrivateKey`, `ImportSubjectPublicKeyInfo`, `ImportFromPem`, `ImportEncryptedPkcs8PrivateKey`, `ImportFromEncryptedPem` |
+| Export (instance) | `ExportPkcs8PrivateKey`, `ExportPkcs8PrivateKeyPem`, `ExportSubjectPublicKeyInfo`, `ExportSubjectPublicKeyInfoPem`, `ExportEncryptedPkcs8PrivateKey`, `ExportEncryptedPkcs8PrivateKeyPem`, `TryExportPkcs8PrivateKey`, `TryExportSubjectPublicKeyInfo`, `TryExportEncryptedPkcs8PrivateKey` |
+
+Notes for whoever picks this up:
+
+- The in-box `MLKem` derives the SPKI and PKCS#8 members from `ExportEncapsulationKeyCore` /
+  `TryExportPkcs8PrivateKeyCore` in its abstract base. Because this implementation is a standalone
+  sealed class rather than a subclass of the BCL type, **none of that is inherited** — every member
+  above has to be written here, including the static importers.
+- ASN.1 encoding needs `System.Formats.Asn1` (it ships netstandard2.0 assets, so it works on every
+  target framework in the matrix).
+- Private-key wire format is the ML-KEM `PrivateKey` CHOICE:
+  `seed [0] OCTET STRING (SIZE(64))`, `expandedKey OCTET STRING`, or `both SEQUENCE`, under the
+  algorithm OIDs `2.16.840.1.101.3.4.4.1` (ML-KEM-512), `.2` (768) and `.3` (1024).
+- The encoding must be byte-compatible with the in-box implementation. Add a net10.0 test that
+  round-trips our PKCS#8 and SPKI output through `System.Security.Cryptography.MLKem` and back,
+  alongside the existing interop tests in `MLKemInteropTests.cs`.
 
 ---
 

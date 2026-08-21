@@ -8,7 +8,7 @@ NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets f
 - **ML-KEM-encapDecap-FIPS203** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-KEM-encapDecap-FIPS203
 
 The curated vectors are embedded as hex constants in
-`tests/Security/Cryptography/Kem/MlKem/MlKemAcvpTests.cs`; each test case references the
+`tests/Security/Cryptography/Kem/MLKem/MLKemAcvpTests.cs`; each test case references the
 `tcId` of the original ACVP vector file so it can be traced back to the NIST source.
 
 ---
@@ -27,7 +27,7 @@ For **each** of ML-KEM-512, ML-KEM-768, and ML-KEM-1024:
 
 ## Cross-Validation (Interop)
 
-In addition to the ACVP known-answer tests, `MlKemTests`/`MlKemInteropTests` cross-validate against independent implementations on every target framework:
+In addition to the ACVP known-answer tests, `MLKemTests`/`MLKemInteropTests` cross-validate against independent implementations on every target framework:
 
 | Peer | Tests |
 |------|-------|
@@ -38,7 +38,7 @@ In addition to the ACVP known-answer tests, `MlKemTests`/`MlKemInteropTests` cro
 
 ## Sample Vectors
 
-Complete vectors are thousands of hex characters; the samples below show the short values in full and truncate keys/ciphertexts (lengths noted). Full data: `MlKemAcvpTests.cs` or the ACVP repository.
+Complete vectors are thousands of hex characters; the samples below show the short values in full and truncate keys/ciphertexts (lengths noted). Full data: `MLKemAcvpTests.cs` or the ACVP repository.
 
 ### Key Generation (ML-KEM-512, ACVP keyGen tcId 1)
 
