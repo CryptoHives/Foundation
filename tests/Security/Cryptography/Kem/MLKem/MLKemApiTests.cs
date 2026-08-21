@@ -292,6 +292,7 @@ public class MLKemApiTests
         MLKemAlgorithm mlKem512 = MLKemAlgorithm.MLKem512;
         MLKemAlgorithm mlKem1024 = MLKemAlgorithm.MLKem1024;
         MLKemAlgorithm? nothing = null;
+        object foreignType = "ML-KEM-768";
 
         Assert.Multiple(() => {
             Assert.That(mlKem768 == MLKemAlgorithm.MLKem768, Is.True);
@@ -300,7 +301,7 @@ public class MLKemApiTests
             Assert.That(mlKem768.Equals((object)MLKemAlgorithm.MLKem768), Is.True);
             Assert.That(mlKem768.Equals(mlKem1024), Is.False);
             Assert.That(mlKem768.Equals(nothing), Is.False);
-            Assert.That(mlKem768.Equals("ML-KEM-768"), Is.False, "Equals(object) must reject other types.");
+            Assert.That(mlKem768.Equals(foreignType), Is.False, "Equals(object) must reject other types.");
 
             // Null handling must not throw and must not report a match.
             Assert.That(nothing == mlKem512, Is.False);
