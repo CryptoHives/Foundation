@@ -109,6 +109,8 @@ public class KemConfig : ManualConfig
                 return "CryptoHives";
             if (name.EndsWith("(CryptoHives-Stateless)", StringComparison.InvariantCultureIgnoreCase))
                 return "CryptoHives-Stateless";
+            if (name.EndsWith("(CryptoHives-NoPct)", StringComparison.InvariantCultureIgnoreCase))
+                return "CryptoHives-NoPct";
             if (name.EndsWith("(BouncyCastle)", StringComparison.InvariantCultureIgnoreCase))
                 return "BouncyCastle";
             if (name.EndsWith("(KyberNET)", StringComparison.InvariantCultureIgnoreCase))
@@ -125,14 +127,16 @@ public class KemConfig : ManualConfig
         public IEnumerable<BenchmarkCase> GetExecutionOrder(ImmutableArray<BenchmarkCase> benchmarksCase,
             IEnumerable<BenchmarkLogicalGroupRule>? order = null) =>
             from benchmark in benchmarksCase
-            orderby GetCategory(benchmark),
-                benchmark.Descriptor.WorkloadMethodDisplayInfo
+            orderby MethodRank(GetMethod(benchmark)),
+                GetMethod(benchmark),
+                ParameterSetRank(GetParameterSet(benchmark))
             select benchmark;
 
         public IEnumerable<BenchmarkCase> GetSummaryOrder(ImmutableArray<BenchmarkCase> benchmarksCase, Summary summary) =>
             from benchmark in benchmarksCase
-            orderby GetCategory(benchmark),
-                benchmark.Descriptor.WorkloadMethodDisplayInfo,
+            orderby MethodRank(GetMethod(benchmark)),
+                GetMethod(benchmark),
+                ParameterSetRank(GetParameterSet(benchmark)),
                 summary[benchmark]?.ResultStatistics?.Mean ?? double.MaxValue
             select benchmark;
 
@@ -145,38 +149,69 @@ public class KemConfig : ManualConfig
         }
 
         public string GetLogicalGroupKey(ImmutableArray<BenchmarkCase> allBenchmarksCases, BenchmarkCase benchmarkCase)
-        {
-            var category = GetCategory(benchmarkCase);
-            var method = benchmarkCase.Descriptor.WorkloadMethodDisplayInfo;
-            return $"{category} | {method}";
-        }
+            => $"{GetMethod(benchmarkCase)} | {GetParameterSet(benchmarkCase)}";
 
         public IEnumerable<IGrouping<string, BenchmarkCase>> GetLogicalGroupOrder(IEnumerable<IGrouping<string, BenchmarkCase>> logicalGroups,
             IEnumerable<BenchmarkLogicalGroupRule>? order = null) =>
             logicalGroups
-                .OrderBy(g => ParameterSetRank(g.Key.Split('|')[0].Trim()))
+                .OrderBy(g => MethodRank(g.Key.Split('|')[0].Trim()))
+                .ThenBy(g => g.Key.Split('|')[0].Trim(), StringComparer.Ordinal)
                 .ThenBy(g => {
-                    var parts = g.Key.Split('|');
-                    return parts.Length > 1 ? parts[1].Trim() : "";
-                }, StringComparer.Ordinal);
+                    string[] parts = g.Key.Split('|');
+                    return ParameterSetRank(parts.Length > 1 ? parts[1].Trim() : string.Empty);
+                });
 
         public bool SeparateLogicalGroups => true;
+
+        /// <summary>
+        /// Orders the operations the way one reads them — generate a key, encapsulate,
+        /// decapsulate — rather than alphabetically, which would lead with Decapsulate.
+        /// </summary>
+        /// <remarks>
+        /// Grouping is method-major and parameter-set-minor on purpose: every implementation
+        /// of one operation sits together, and the three parameter sets run smallest first,
+        /// so a table is read down a single operation instead of hopping between blocks.
+        /// Methods without a rank fall back to alphabetical, which is what the internals
+        /// suite gets.
+        /// </remarks>
+        private static int MethodRank(string method) => method switch {
+            "KeyGen" => 0,
+            "Encapsulate" => 1,
+            "Decapsulate" => 2,
+            "Decapsulate (rejected)" => 3,
+            _ => int.MaxValue,
+        };
 
         /// <summary>
         /// Orders the parameter sets by security category rather than alphabetically, so
         /// 1024 does not sort between 512 and 768.
         /// </summary>
-        private static int ParameterSetRank(string category) => category switch {
+        private static int ParameterSetRank(string parameterSet) => parameterSet switch {
             "ML-KEM-512" => 0,
             "ML-KEM-768" => 1,
             "ML-KEM-1024" => 2,
             _ => int.MaxValue,
         };
 
-        private static string GetCategory(BenchmarkCase benchmark)
+        /// <summary>
+        /// Gets the operation name, stripped of the quotes BenchmarkDotNet adds around
+        /// descriptions containing spaces.
+        /// </summary>
+        private static string GetMethod(BenchmarkCase benchmark)
+            => benchmark.Descriptor.WorkloadMethodDisplayInfo.Trim('\'');
+
+        /// <summary>
+        /// Gets the parameter set, whether it arrives via the cross-implementation suite's
+        /// algorithm parameter or the internals suite's plain string parameter.
+        /// </summary>
+        private static string GetParameterSet(BenchmarkCase benchmark)
         {
-            var kemAlgorithm = benchmark.Parameters["TestKemAlgorithm"] as KemAlgorithmType;
-            return kemAlgorithm?.Category ?? "ML-KEM internals";
+            if (benchmark.Parameters["TestKemAlgorithm"] is KemAlgorithmType kemAlgorithm)
+            {
+                return kemAlgorithm.Category;
+            }
+
+            return benchmark.Parameters["ParameterSet"] as string ?? string.Empty;
         }
     }
 

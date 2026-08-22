@@ -84,7 +84,7 @@ public sealed class MLKem : IDisposable
     /// <returns>A new instance holding the generated key pair and its private seed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     public static MLKem GenerateKey(MLKemAlgorithm algorithm)
-        => GenerateKey(algorithm, performPairwiseConsistencyTest: true);
+        => GenerateKey(algorithm, pairwiseConsistencyTest: true);
 
     /// <summary>
     /// Generates a new ML-KEM key pair, optionally skipping the pairwise consistency test.
@@ -105,21 +105,21 @@ public sealed class MLKem : IDisposable
     /// </para>
     /// </remarks>
     /// <param name="algorithm">The parameter set to generate a key for.</param>
-    /// <param name="performPairwiseConsistencyTest">
+    /// <param name="pairwiseConsistencyTest">
     /// <see langword="true"/> to verify the generated key pair with an encapsulate/decapsulate
     /// round trip; <see langword="false"/> to skip it.
     /// </param>
     /// <returns>A new instance holding the generated key pair and its private seed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
-    public static MLKem GenerateKey(MLKemAlgorithm algorithm, bool performPairwiseConsistencyTest)
+    public static MLKem GenerateKey(MLKemAlgorithm algorithm, bool pairwiseConsistencyTest)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
 
         byte[] seed = new byte[MLKemParams.KeyGenSeedBytes];
         MLKemCore.GenerateRandomSeed(seed);
-        return FromSeed(algorithm, seed, performPairwiseConsistencyTest);
+        return FromSeed(algorithm, seed, pairwiseConsistencyTest);
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public sealed class MLKem : IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
     public static MLKem ImportPrivateSeed(MLKemAlgorithm algorithm, ReadOnlySpan<byte> source)
-        => ImportPrivateSeed(algorithm, source, performPairwiseConsistencyTest: true);
+        => ImportPrivateSeed(algorithm, source, pairwiseConsistencyTest: true);
 
     /// <summary>
     /// Imports an ML-KEM private seed (d ‖ z) and expands it into a key pair, optionally
@@ -154,7 +154,7 @@ public sealed class MLKem : IDisposable
     /// </remarks>
     /// <param name="algorithm">The parameter set of the key.</param>
     /// <param name="source">The 64-byte private seed.</param>
-    /// <param name="performPairwiseConsistencyTest">
+    /// <param name="pairwiseConsistencyTest">
     /// <see langword="true"/> to verify the expanded key pair; <see langword="false"/> to skip it.
     /// </param>
     /// <returns>A new instance holding the key pair and the seed.</returns>
@@ -162,14 +162,14 @@ public sealed class MLKem : IDisposable
     /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
     public static MLKem ImportPrivateSeed(MLKemAlgorithm algorithm, ReadOnlySpan<byte> source,
-                                          bool performPairwiseConsistencyTest)
+                                          bool pairwiseConsistencyTest)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
         if (source.Length != MLKemParams.KeyGenSeedBytes)
             throw new ArgumentException($"Private seed must be exactly {MLKemParams.KeyGenSeedBytes} bytes.", nameof(source));
 
-        return FromSeed(algorithm, source.ToArray(), performPairwiseConsistencyTest);
+        return FromSeed(algorithm, source.ToArray(), pairwiseConsistencyTest);
     }
 
     /// <summary>
@@ -491,12 +491,12 @@ public sealed class MLKem : IDisposable
         }
     }
 
-    private static MLKem FromSeed(MLKemAlgorithm algorithm, byte[] seed, bool performPairwiseConsistencyTest)
+    private static MLKem FromSeed(MLKemAlgorithm algorithm, byte[] seed, bool pairwiseConsistencyTest)
     {
         byte[] encapsulationKey = new byte[algorithm.EncapsulationKeySizeInBytes];
         byte[] decapsulationKey = new byte[algorithm.DecapsulationKeySizeInBytes];
         MLKemCore.KeyGen(algorithm.Parameters, seed, encapsulationKey, decapsulationKey,
-            performPairwiseConsistencyTest);
+            pairwiseConsistencyTest);
         return new MLKem(algorithm, seed, decapsulationKey, encapsulationKey);
     }
 

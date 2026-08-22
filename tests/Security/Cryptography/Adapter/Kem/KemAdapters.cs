@@ -87,6 +87,7 @@ public interface IKemRunner : IDisposable
 public sealed class MLKemAdapter : IKemRunner
 {
     private readonly CH.MLKemAlgorithm _algorithm;
+    private readonly bool _performPairwiseConsistencyTest;
     private CH.MLKem? _encapsulator;
     private CH.MLKem? _decapsulator;
 
@@ -94,7 +95,17 @@ public sealed class MLKemAdapter : IKemRunner
     /// Initializes a new instance of the <see cref="MLKemAdapter"/> class.
     /// </summary>
     /// <param name="algorithm">The parameter set.</param>
-    public MLKemAdapter(CH.MLKemAlgorithm algorithm) => _algorithm = algorithm;
+    /// <param name="pairwiseConsistencyTest">
+    /// Whether key generation verifies the new key pair with an encapsulate/decapsulate round
+    /// trip. Only <see cref="GenerateKeyPair"/> is affected; encapsulation and decapsulation
+    /// are identical either way, so the registry variant that turns this off exists to give
+    /// the KeyGen block a row showing what the check costs.
+    /// </param>
+    public MLKemAdapter(CH.MLKemAlgorithm algorithm, bool pairwiseConsistencyTest = true)
+    {
+        _algorithm = algorithm;
+        _performPairwiseConsistencyTest = pairwiseConsistencyTest;
+    }
 
     /// <inheritdoc/>
     public int EncapsulationKeySizeBytes => _algorithm.EncapsulationKeySizeInBytes;
@@ -116,7 +127,8 @@ public sealed class MLKemAdapter : IKemRunner
     }
 
     /// <inheritdoc/>
-    public object GenerateKeyPair() => CH.MLKem.GenerateKey(_algorithm);
+    public object GenerateKeyPair()
+        => CH.MLKem.GenerateKey(_algorithm, _performPairwiseConsistencyTest);
 
     /// <inheritdoc/>
     public void Encapsulate(byte[] ciphertext, byte[] sharedSecret)

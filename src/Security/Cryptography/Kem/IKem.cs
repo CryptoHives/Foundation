@@ -77,13 +77,12 @@ public interface IKem : IDisposable
     /// </summary>
     /// <param name="encapsulationKey">The buffer to receive the encapsulation (public) key.</param>
     /// <param name="decapsulationKey">The buffer to receive the decapsulation (private) key.</param>
-    /// <param name="performPairwiseConsistencyTest">
+    /// <param name="pairwiseConsistencyTest">
     /// <see langword="true"/> to verify the generated key pair with an encapsulate/decapsulate
     /// round trip; <see langword="false"/> to skip it. See the remarks on the KEM type.
     /// </param>
     /// <exception cref="ArgumentException">A buffer is too small.</exception>
-    void GenerateKeyPair(Span<byte> encapsulationKey, Span<byte> decapsulationKey,
-                         bool performPairwiseConsistencyTest);
+    void GenerateKeyPair(Span<byte> encapsulationKey, Span<byte> decapsulationKey, bool pairwiseConsistencyTest);
 
     /// <summary>
     /// Generates a key pair from a seed, optionally skipping the pairwise consistency test.
@@ -91,12 +90,11 @@ public interface IKem : IDisposable
     /// <param name="seed">The deterministic seed (d ‖ z) for key generation.</param>
     /// <param name="encapsulationKey">The buffer to receive the encapsulation (public) key.</param>
     /// <param name="decapsulationKey">The buffer to receive the decapsulation (private) key.</param>
-    /// <param name="performPairwiseConsistencyTest">
+    /// <param name="pairwiseConsistencyTest">
     /// <see langword="true"/> to verify the generated key pair; <see langword="false"/> to skip it.
     /// </param>
     /// <exception cref="ArgumentException">A parameter has an invalid size.</exception>
-    void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> encapsulationKey, Span<byte> decapsulationKey,
-                         bool performPairwiseConsistencyTest);
+    void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> encapsulationKey, Span<byte> decapsulationKey, bool pairwiseConsistencyTest);
 
     /// <summary>
     /// Encapsulates a shared secret using the encapsulation key.

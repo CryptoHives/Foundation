@@ -202,7 +202,7 @@ public class MLKemApiTests
         }
 
         using var withCheck = MLKem.ImportPrivateSeed(algorithm, seed);
-        using var withoutCheck = MLKem.ImportPrivateSeed(algorithm, seed, performPairwiseConsistencyTest: false);
+        using var withoutCheck = MLKem.ImportPrivateSeed(algorithm, seed, pairwiseConsistencyTest: false);
 
         // Skipping the consistency test must not change the key it produces, and expanding
         // the same seed twice must be bit-identical — the test message is derived from the
@@ -223,7 +223,7 @@ public class MLKemApiTests
     [Test]
     public void GenerateKey_PctOptOut_ProducesUsableKeys()
     {
-        using var kem = MLKem.GenerateKey(MLKemAlgorithm.MLKem768, performPairwiseConsistencyTest: false);
+        using var kem = MLKem.GenerateKey(MLKemAlgorithm.MLKem768, pairwiseConsistencyTest: false);
 
         kem.Encapsulate(out byte[] ciphertext, out byte[] senderSecret);
         Assert.That(kem.Decapsulate(ciphertext), Is.EqualTo(senderSecret));

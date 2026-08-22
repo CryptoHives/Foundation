@@ -112,11 +112,10 @@ public sealed class MLKem768 : IKem
 
     /// <inheritdoc/>
     public void GenerateKeyPair(Span<byte> encapsulationKey, Span<byte> decapsulationKey)
-        => GenerateKeyPair(encapsulationKey, decapsulationKey, performPairwiseConsistencyTest: true);
+        => GenerateKeyPair(encapsulationKey, decapsulationKey, pairwiseConsistencyTest: true);
 
     /// <inheritdoc/>
-    public void GenerateKeyPair(Span<byte> encapsulationKey, Span<byte> decapsulationKey,
-                                bool performPairwiseConsistencyTest)
+    public void GenerateKeyPair(Span<byte> encapsulationKey, Span<byte> decapsulationKey, bool pairwiseConsistencyTest)
     {
         if (encapsulationKey.Length < EncapsulationKeySizeBytesConst)
             throw new ArgumentException($"Encapsulation key buffer must be at least {EncapsulationKeySizeBytesConst} bytes.", nameof(encapsulationKey));
@@ -125,16 +124,15 @@ public sealed class MLKem768 : IKem
 
         Span<byte> seed = stackalloc byte[MLKemParams.KeyGenSeedBytes];
         MLKemCore.GenerateRandomSeed(seed);
-        MLKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey, performPairwiseConsistencyTest);
+        MLKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey, pairwiseConsistencyTest);
     }
 
     /// <inheritdoc/>
     public void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> encapsulationKey, Span<byte> decapsulationKey)
-        => GenerateKeyPair(seed, encapsulationKey, decapsulationKey, performPairwiseConsistencyTest: true);
+        => GenerateKeyPair(seed, encapsulationKey, decapsulationKey, pairwiseConsistencyTest: true);
 
     /// <inheritdoc/>
-    public void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> encapsulationKey, Span<byte> decapsulationKey,
-                                bool performPairwiseConsistencyTest)
+    public void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> encapsulationKey, Span<byte> decapsulationKey, bool pairwiseConsistencyTest)
     {
         if (seed.Length != MLKemParams.KeyGenSeedBytes)
             throw new ArgumentException($"Seed must be exactly {MLKemParams.KeyGenSeedBytes} bytes.", nameof(seed));
@@ -143,7 +141,7 @@ public sealed class MLKem768 : IKem
         if (decapsulationKey.Length < DecapsulationKeySizeBytesConst)
             throw new ArgumentException($"Decapsulation key buffer must be at least {DecapsulationKeySizeBytesConst} bytes.", nameof(decapsulationKey));
 
-        MLKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey, performPairwiseConsistencyTest);
+        MLKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey, pairwiseConsistencyTest);
     }
 
     /// <inheritdoc/>

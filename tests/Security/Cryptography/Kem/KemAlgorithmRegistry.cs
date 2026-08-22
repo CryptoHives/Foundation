@@ -163,6 +163,13 @@ public static class KemAlgorithmRegistry
         list.Add(new(family, "CryptoHives",
             () => new MLKemAdapter(managed), Source.Managed));
 
+        // Same implementation, with the FIPS 140-3 pairwise consistency test turned off. Only
+        // its KeyGen row differs from the entry above -- encapsulation and decapsulation run
+        // identical code -- so the duplicate rows in those blocks double as a repeatability
+        // check on the run.
+        list.Add(new(family, "CryptoHives-NoPct",
+            () => new MLKemAdapter(managed, pairwiseConsistencyTest: false), Source.Managed));
+
         list.Add(new(family, "CryptoHives-Stateless",
             () => new MLKemStatelessAdapter(StatelessKem(family)), Source.Managed));
 

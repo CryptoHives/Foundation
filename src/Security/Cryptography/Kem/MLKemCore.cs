@@ -287,12 +287,11 @@ internal static class MLKemCore
     /// <param name="seed">The 64-byte seed (d ‖ z).</param>
     /// <param name="ek">Output: encapsulation key (384·k + 32 bytes).</param>
     /// <param name="dk">Output: decapsulation key (768·k + 96 bytes).</param>
-    /// <param name="performPairwiseConsistencyTest">
+    /// <param name="pairwiseConsistencyTest">
     /// <see langword="true"/> to verify the generated key pair with an encapsulate/decapsulate
     /// round trip; <see langword="false"/> to skip it.
     /// </param>
-    public static void KeyGen(MLKemParams p, ReadOnlySpan<byte> seed, Span<byte> ek, Span<byte> dk,
-                              bool performPairwiseConsistencyTest)
+    public static void KeyGen(MLKemParams p, ReadOnlySpan<byte> seed, Span<byte> ek, Span<byte> dk, bool pairwiseConsistencyTest)
     {
         ReadOnlySpan<byte> d = seed.Slice(0, 32);
         ReadOnlySpan<byte> z = seed.Slice(32, 32);
@@ -311,7 +310,7 @@ internal static class MLKemCore
 
         z.CopyTo(dk.Slice(offset, 32));
 
-        if (performPairwiseConsistencyTest)
+        if (pairwiseConsistencyTest)
         {
             PairwiseConsistencyTest(p, seed, ek, dk);
         }

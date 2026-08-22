@@ -211,8 +211,7 @@ public class MLKemInternalsBenchmark
     /// </remarks>
     [Benchmark(Description = "KeyGen (with PCT)")]
     public void KeyGen()
-        => MLKemCore.KeyGen(_params, _seed, _encapsulationKey, _decapsulationKey,
-            performPairwiseConsistencyTest: true);
+        => MLKemCore.KeyGen(_params, _seed, _encapsulationKey, _decapsulationKey, pairwiseConsistencyTest: true);
 
     [Test]
     [NonParallelizable]
@@ -235,7 +234,7 @@ public class MLKemInternalsBenchmark
     [Benchmark(Description = "KeyGen (no PCT)")]
     public void KeyGenNoPct()
         => MLKemCore.KeyGen(_params, _seed, _encapsulationKey, _decapsulationKey,
-            performPairwiseConsistencyTest: false);
+            pairwiseConsistencyTest: false);
 
     [Test]
     [NonParallelizable]
