@@ -24,6 +24,8 @@ src/
 ├── Threading/                  # Threading utilities (ValueTask pooling, async primitives)
 ├── Threading.Analyzers/        # Roslyn analyzers for ValueTask misuse detection
 ├── Memory/                     # Memory utilities (pooling, buffers, streams)
+├── Security/Bcl.Certificates   # Certificates using BCL library implementation
+├── Security/Certificates       # Certificates managed implementation
 └── Security/Cryptography/      # Cryptographic algorithms
     ├── Asymmetric/             # Asymmetric algorithms
     ├── Hash/                   # Hash algorithms
