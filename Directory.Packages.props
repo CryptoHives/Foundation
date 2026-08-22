@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
@@ -36,6 +36,7 @@
     <PackageVersion Include="IndexRange" Version="1.1.1" />
     <PackageVersion Include="KeyedSemaphores" Version="6.1.0" />
     <PackageVersion Include="Konscious.Security.Cryptography.Blake2" Version="1.1.1" />
+    <PackageVersion Include="KyberNET" Version="1.0.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />

@@ -16,7 +16,7 @@ using OS = System.Security.Cryptography;
 /// .NET Framework and .NET Standard 2.0.
 /// </para>
 /// <para>
-/// An instance holds either a full key pair (created via <see cref="GenerateKey"/>,
+/// An instance holds either a full key pair (created via <see cref="GenerateKey(MLKemAlgorithm)"/>,
 /// <see cref="ImportPrivateSeed(MLKemAlgorithm, ReadOnlySpan{byte})"/>, or
 /// <see cref="ImportDecapsulationKey(MLKemAlgorithm, ReadOnlySpan{byte})"/>) or only an
 /// encapsulation key (via <see cref="ImportEncapsulationKey(MLKemAlgorithm, ReadOnlySpan{byte})"/>). Keys generated from a
@@ -84,13 +84,42 @@ public sealed class MLKem : IDisposable
     /// <returns>A new instance holding the generated key pair and its private seed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     public static MLKem GenerateKey(MLKemAlgorithm algorithm)
+        => GenerateKey(algorithm, pairwiseConsistencyTest: true);
+
+    /// <summary>
+    /// Generates a new ML-KEM key pair, optionally skipping the pairwise consistency test.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The pairwise consistency test verifies a freshly expanded key pair by running one
+    /// encapsulate/decapsulate round trip, as FIPS 140-3 IG 10.3.A expects of a validated
+    /// module. It costs roughly four fifths of key generation, because that round trip is a
+    /// full encapsulation plus a full decapsulation.
+    /// </para>
+    /// <para>
+    /// It guards against a <i>fault</i> — bad memory, a bit flip, a miscompiled build —
+    /// producing a key pair that does not round-trip. It cannot catch an implementation bug,
+    /// since both halves of the test would be wrong in the same way. Disable it only where
+    /// that trade is understood and key generation throughput actually matters; the default
+    /// on the BCL-shaped overloads keeps it enabled.
+    /// </para>
+    /// </remarks>
+    /// <param name="algorithm">The parameter set to generate a key for.</param>
+    /// <param name="pairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the generated key pair with an encapsulate/decapsulate
+    /// round trip; <see langword="false"/> to skip it.
+    /// </param>
+    /// <returns>A new instance holding the generated key pair and its private seed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
+    /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
+    public static MLKem GenerateKey(MLKemAlgorithm algorithm, bool pairwiseConsistencyTest)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
 
         byte[] seed = new byte[MLKemParams.KeyGenSeedBytes];
         MLKemCore.GenerateRandomSeed(seed);
-        return FromSeed(algorithm, seed);
+        return FromSeed(algorithm, seed, pairwiseConsistencyTest);
     }
 
     /// <summary>
@@ -102,13 +131,45 @@ public sealed class MLKem : IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
     public static MLKem ImportPrivateSeed(MLKemAlgorithm algorithm, ReadOnlySpan<byte> source)
+        => ImportPrivateSeed(algorithm, source, pairwiseConsistencyTest: true);
+
+    /// <summary>
+    /// Imports an ML-KEM private seed (d ‖ z) and expands it into a key pair, optionally
+    /// skipping the pairwise consistency test.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The pairwise consistency test verifies a freshly expanded key pair by running one
+    /// encapsulate/decapsulate round trip, as FIPS 140-3 IG 10.3.A expects of a validated
+    /// module. It costs roughly four fifths of key generation, because that round trip is a
+    /// full encapsulation plus a full decapsulation.
+    /// </para>
+    /// <para>
+    /// It guards against a <i>fault</i> — bad memory, a bit flip, a miscompiled build —
+    /// producing a key pair that does not round-trip. It cannot catch an implementation bug,
+    /// since both halves of the test would be wrong in the same way. Disable it only where
+    /// that trade is understood and key generation throughput actually matters; the default
+    /// on the BCL-shaped overloads keeps it enabled.
+    /// </para>
+    /// </remarks>
+    /// <param name="algorithm">The parameter set of the key.</param>
+    /// <param name="source">The 64-byte private seed.</param>
+    /// <param name="pairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the expanded key pair; <see langword="false"/> to skip it.
+    /// </param>
+    /// <returns>A new instance holding the key pair and the seed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
+    /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
+    public static MLKem ImportPrivateSeed(MLKemAlgorithm algorithm, ReadOnlySpan<byte> source,
+                                          bool pairwiseConsistencyTest)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
         if (source.Length != MLKemParams.KeyGenSeedBytes)
             throw new ArgumentException($"Private seed must be exactly {MLKemParams.KeyGenSeedBytes} bytes.", nameof(source));
 
-        return FromSeed(algorithm, source.ToArray());
+        return FromSeed(algorithm, source.ToArray(), pairwiseConsistencyTest);
     }
 
     /// <summary>
@@ -430,11 +491,12 @@ public sealed class MLKem : IDisposable
         }
     }
 
-    private static MLKem FromSeed(MLKemAlgorithm algorithm, byte[] seed)
+    private static MLKem FromSeed(MLKemAlgorithm algorithm, byte[] seed, bool pairwiseConsistencyTest)
     {
         byte[] encapsulationKey = new byte[algorithm.EncapsulationKeySizeInBytes];
         byte[] decapsulationKey = new byte[algorithm.DecapsulationKeySizeInBytes];
-        MLKemCore.KeyGen(algorithm.Parameters, seed, encapsulationKey, decapsulationKey);
+        MLKemCore.KeyGen(algorithm.Parameters, seed, encapsulationKey, decapsulationKey,
+            pairwiseConsistencyTest);
         return new MLKem(algorithm, seed, decapsulationKey, encapsulationKey);
     }
 

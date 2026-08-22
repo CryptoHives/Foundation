@@ -26,23 +26,26 @@ internal static class Cbd
     /// <param name="buf">The 128-byte pseudorandom input buffer.</param>
     /// <param name="coeffs">The 256-element output polynomial array.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Eta2(ReadOnlySpan<byte> buf, short[] coeffs)
+    public static void Eta2(ReadOnlySpan<byte> buf, Span<short> coeffs)
     {
         for (int i = 0; i < MLKemParams.N / 8; i++)
         {
-            uint t = (uint)buf[4 * i]
-                   | ((uint)buf[4 * i + 1] << 8)
-                   | ((uint)buf[4 * i + 2] << 16)
-                   | ((uint)buf[4 * i + 3] << 24);
+            int offset = 4 * i;
+            uint t = (uint)buf[offset]
+                | ((uint)buf[offset + 1] << 8)
+                | ((uint)buf[offset + 2] << 16)
+                | ((uint)buf[offset + 3] << 24);
 
             uint d = t & 0x55555555u;
             d += (t >> 1) & 0x55555555u;
 
+            offset *= 2;
             for (int j = 0; j < 8; j++)
             {
-                short a = (short)((d >> (4 * j)) & 0x3);
-                short b = (short)((d >> (4 * j + 2)) & 0x3);
-                coeffs[8 * i + j] = (short)(a - b);
+                int shift = 4 * j;
+                short a = (short)((d >> shift) & 0x3);
+                short b = (short)((d >> (shift + 2)) & 0x3);
+                coeffs[offset + j] = (short)(a - b);
             }
         }
     }
@@ -57,23 +60,26 @@ internal static class Cbd
     /// <param name="buf">The 192-byte pseudorandom input buffer.</param>
     /// <param name="coeffs">The 256-element output polynomial array.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void Eta3(ReadOnlySpan<byte> buf, short[] coeffs)
+    public static void Eta3(ReadOnlySpan<byte> buf, Span<short> coeffs)
     {
         for (int i = 0; i < MLKemParams.N / 4; i++)
         {
-            uint t = (uint)buf[3 * i]
-                   | ((uint)buf[3 * i + 1] << 8)
-                   | ((uint)buf[3 * i + 2] << 16);
+            int offset = 3 * i;
+            uint t = (uint)buf[offset]
+                | ((uint)buf[offset + 1] << 8)
+                | ((uint)buf[offset + 2] << 16);
 
             uint d = t & 0x00249249u;
             d += (t >> 1) & 0x00249249u;
             d += (t >> 2) & 0x00249249u;
 
+            offset += i;
             for (int j = 0; j < 4; j++)
             {
-                short a = (short)((d >> (6 * j)) & 0x7);
-                short b = (short)((d >> (6 * j + 3)) & 0x7);
-                coeffs[4 * i + j] = (short)(a - b);
+                int shift = 6 * j;
+                short a = (short)((d >> shift) & 0x7);
+                short b = (short)((d >> (shift + 3)) & 0x7);
+                coeffs[offset + j] = (short)(a - b);
             }
         }
     }
@@ -85,7 +91,7 @@ internal static class Cbd
     /// <param name="eta">The CBD parameter (2 or 3).</param>
     /// <param name="coeffs">The 256-element output polynomial array.</param>
     /// <exception cref="ArgumentException"><paramref name="eta"/> is not 2 or 3.</exception>
-    public static void Sample(ReadOnlySpan<byte> buf, int eta, short[] coeffs)
+    public static void Sample(ReadOnlySpan<byte> buf, int eta, Span<short> coeffs)
     {
         switch (eta)
         {

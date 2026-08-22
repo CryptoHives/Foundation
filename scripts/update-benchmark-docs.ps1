@@ -228,6 +228,18 @@ $packageConfigurations = @{
             @{ Source = "AesCmacBenchmark-report.md"; Target = "aes-cmac.md" }
             @{ Source = "AesGmacBenchmark-report.md"; Target = "aes-gmac.md" }
             @{ Source = "Poly1305Benchmark-report.md"; Target = "poly1305.md" }
+
+            # Post-quantum KEM benchmarks. The 'ml-kem-' prefix is load-bearing: the trends
+            # importer derives a row's category from the archive file name, and that prefix is
+            # what files these under Kem rather than the Hash fallback.
+            #
+            # MLKemInternalsBenchmark is deliberately absent. It is a CryptoHives-only
+            # diagnostic suite whose rows carry a [Params] column instead of the
+            # 'Method - Family - Variant' description the importer parses, so importing it
+            # would collapse its three parameter sets onto one primary key and silently drop
+            # two thirds of the measurements.
+            @{ Source = "MLKemKeyGenBenchmark-report.md"; Target = "ml-kem-keygen.md" }
+            @{ Source = "MLKemBenchmark-report.md"; Target = "ml-kem-ops.md" }
         )
     }
 }
@@ -748,10 +760,33 @@ if ($machineSpec -and $resolvedDestDir) {
     }
 }
 
+# Report files with no mapping entry are otherwise invisible: the loop above iterates the
+# mapping, not the directory, so an unmapped report is never opened, never copied and never
+# mentioned. That silence is how MLKem, AriaCbc192, KalynaCbc512 and AsconAead128 results went
+# unpublished for months. Warn, but do not fail - a stray report should not abort a recording.
+$unmapped = @()
+if (Test-Path $SourceDir) {
+    $mappedSources = @($benchmarkMappings | ForEach-Object { $_.Source })
+    $unmapped = @(Get-ChildItem -Path $SourceDir -Filter "*-report.md" -File |
+        Where-Object { $mappedSources -notcontains $_.Name } |
+        Select-Object -ExpandProperty Name |
+        Sort-Object)
+}
+
+if ($unmapped.Count -gt 0) {
+    Write-Host ""
+    Write-Host "WARNING: $($unmapped.Count) report file(s) have no mapping entry and will not be published:" -ForegroundColor Yellow
+    foreach ($name in $unmapped) {
+        Write-Host "  [!!] $name" -ForegroundColor Yellow
+    }
+
+    Write-Host "  Add an entry to `$packageConfigurations['$Project'].Files in this script to include them." -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "========================================"
 Write-Host " Benchmark documentation updated!"
-Write-Host " Copied: $copied, Missing: $missing"
+Write-Host " Copied: $copied, Missing: $missing, Unmapped: $($unmapped.Count)"
 if ($PlatformId) {
     Write-Host " Platform: $PlatformId"
 }
