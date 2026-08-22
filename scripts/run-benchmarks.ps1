@@ -61,7 +61,7 @@ param(
         "HmacSha3_256", "HmacSha3_384", "HmacSha3_512",
         "AesCmac", "AesGmac", "Poly1305",
         # Post-quantum KEM (individual)
-        "MLKem", "MLKemInternals",
+        "MLKem", "MLKemKeyGen", "MLKemOps", "MLKemInternals",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "KeccakCore", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
@@ -262,10 +262,10 @@ $AlgorithmBenchmarkMap = @{
     "AesCmac"           = "AesCmac"
     "AesGmac"           = "AesGmac"
     "Poly1305"          = "Mac.Poly1305Benchmark"
-    # Post-quantum KEM. Namespace-qualified so 'MLKem' does not also drag in
-    # MLKemInternalsBenchmark, which is a CryptoHives-only diagnostic suite with no
-    # competitor rows and belongs in its own table.
-    "MLKem"             = "Kem.MLKemBenchmark"
+    # Post-quantum KEM. Namespace-qualified so the three classes stay distinct: the filters
+    # below match one class each and never overlap.
+    "MLKemOps"          = "Kem.MLKemBenchmark"
+    "MLKemKeyGen"       = "Kem.MLKemKeyGenBenchmark"
     "MLKemInternals"    = "Kem.MLKemInternalsBenchmark"
     # Group Aliases
     "All"               = "Hash"
@@ -306,7 +306,8 @@ $GroupAliases = @{
     "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
     "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
-    "KEM"            = @("MLKem", "MLKemInternals")
+    "MLKem"          = @("MLKemKeyGen", "MLKemOps")
+    "KEM"            = @("MLKemKeyGen", "MLKemOps", "MLKemInternals")
 }
 
 $GroupAliases["MAC"] = $GroupAliases["HMAC"] + @("AesCmac", "AesGmac", "Poly1305")
@@ -435,9 +436,9 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host ""
     Write-Host "Available post-quantum KEM families:" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  ML-KEM:        -Family MLKem            (FIPS 203; all three parameter sets x"
-    Write-Host "                                           CryptoHives, CryptoHives-Stateless,"
-    Write-Host "                                           BouncyCastle, and the in-box MLKem on net10.0)"
+    Write-Host "  ML-KEM:        -Family MLKem            (key generation plus encapsulation/decapsulation)"
+    Write-Host "  ML-KEM keygen: -Family MLKemKeyGen      (adds the no-pairwise-consistency-test variant)"
+    Write-Host "  ML-KEM ops:    -Family MLKemOps         (encapsulate, decapsulate, implicit rejection)"
     Write-Host "  ML-KEM core:   -Family MLKemInternals   (CryptoHives-only diagnostics: pairwise"
     Write-Host "                                           consistency test cost, SampleNtt, packers)"
     Write-Host ""
@@ -474,7 +475,8 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
     Write-Host "  -Family HMAC       runs: HmacMd5, HmacSha1, HmacSha256, HmacSha384, HmacSha512, HmacSha3_256, HmacSha3_384, HmacSha3_512"
     Write-Host "  -Family MAC        runs: All HMAC variants + AesCmac, AesGmac, Poly1305"
-    Write-Host "  -Family KEM        runs: MLKem + MLKemInternals"
+    Write-Host "  -Family MLKem      runs: MLKemKeyGen, MLKemOps"
+    Write-Host "  -Family KEM        runs: MLKemKeyGen, MLKemOps, MLKemInternals"
     Write-Host "  -Family All        runs: All Hash, Cipher, MAC, and KEM benchmarks"
     Write-Host ""
     exit 0

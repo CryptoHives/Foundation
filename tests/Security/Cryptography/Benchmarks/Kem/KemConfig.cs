@@ -79,7 +79,10 @@ public class KemConfig : ManualConfig
 
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase)
         {
-            var method = benchmarkCase.Descriptor.WorkloadMethodDisplayInfo;
+            // BenchmarkDotNet wraps a description containing spaces in single quotes, which the
+            // markdown exporter then HTML-escapes into &#39;. Strip them here so neither the
+            // table nor the trends database carries them as part of the operation name.
+            var method = benchmarkCase.Descriptor.WorkloadMethodDisplayInfo.Trim('\'');
             var kemAlgorithm = benchmarkCase.Parameters["TestKemAlgorithm"] as KemAlgorithmType;
 
             if (kemAlgorithm != null)
@@ -88,10 +91,8 @@ public class KemConfig : ManualConfig
             }
 
             // Benchmarks without a TestKemAlgorithm parameter — the internals suite, which is
-            // CryptoHives-only — fall back to the method description. BenchmarkDotNet wraps
-            // that in single quotes when it contains spaces, which the markdown exporter then
-            // HTML-escapes, so strip them.
-            return method.Trim('\'');
+            // CryptoHives-only — fall back to the bare method description.
+            return method;
         }
 
         public string GetValue(Summary summary, BenchmarkCase benchmarkCase, SummaryStyle style)
