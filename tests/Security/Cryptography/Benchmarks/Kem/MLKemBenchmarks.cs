@@ -11,9 +11,9 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// Benchmarks for ML-KEM (FIPS 203) key generation, encapsulation and decapsulation,
-/// comparing the managed implementation against BouncyCastle and — on .NET 10 where the
-/// platform supports it — the in-box <c>System.Security.Cryptography.MLKem</c>.
+/// Benchmarks for ML-KEM (FIPS 203) encapsulation and decapsulation, comparing the managed
+/// implementation against BouncyCastle, KyberNET and — on .NET 10 where the platform
+/// supports it — the in-box <c>System.Security.Cryptography.MLKem</c>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -29,9 +29,10 @@ using System.Collections.Generic;
 /// belongs inside its <c>Decapsulate</c> measurement because callers really do pay it.
 /// </para>
 /// <para>
-/// <b>Reading KeyGen:</b> the managed <c>KeyGen</c> figure includes the pairwise
-/// consistency test, which runs a full encapsulate and decapsulate of its own. Compare it
-/// against <c>MLKemInternalsBenchmark.KPkeKeyGenCore</c> to separate the two.
+/// Key generation lives in <see cref="MLKemKeyGenBenchmark"/> rather than here, because it
+/// carries a variant the other operations do not: the same implementation with the pairwise
+/// consistency test disabled. Splitting the two keeps that variant out of the encapsulation
+/// and decapsulation tables, where it would run byte-identical code under a second name.
 /// </para>
 /// </remarks>
 [TestFixture]
@@ -131,22 +132,6 @@ public class MLKemBenchmark
         _runner?.Dispose();
     }
 
-    [Test]
-    [NonParallelizable]
-    public void GenerateKeyPairTest()
-    {
-        object keyPair = GenerateKeyPair();
-        Assert.That(keyPair, Is.Not.Null);
-        (keyPair as IDisposable)?.Dispose();
-    }
-
-    /// <summary>
-    /// Benchmarks key pair generation.
-    /// </summary>
-    /// <returns>The generated key pair, returned so the work is not elided.</returns>
-    [Benchmark(Description = "KeyGen")]
-    public object GenerateKeyPair() => _runner.GenerateKeyPair();
-
     [Test, Repeat(5)]
     [NonParallelizable]
     public void EncapsulateTest()
@@ -231,4 +216,103 @@ public class MLKemBenchmark
 
         return seed;
     }
+}
+
+/// <summary>
+/// Benchmarks for ML-KEM (FIPS 203) key generation across every implementation.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Separate from <see cref="MLKemBenchmark"/> because key generation has a variant the other
+/// operations do not: the managed implementation with the FIPS 140-3 pairwise consistency
+/// test disabled, which costs roughly three quarters of key generation and nothing at all
+/// elsewhere. Keeping it here puts it beside the libraries that run no such check —
+/// BouncyCastle and KyberNET — which is the comparison worth making, without adding
+/// duplicate rows to the encapsulation and decapsulation tables.
+/// </para>
+/// <para>
+/// Each implementation generates keys with its own RNG rather than from the shared seed the
+/// other suite uses: key generation is the one operation where drawing randomness is part of
+/// the work being measured.
+/// </para>
+/// </remarks>
+[TestFixture]
+[TestFixtureSource(nameof(KemAlgorithmTypeArgs))]
+[Config(typeof(KemConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Kem", "ML-KEM")]
+[NonParallelizable]
+public class MLKemKeyGenBenchmark
+{
+    private IKemRunner _runner = null!;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MLKemKeyGenBenchmark"/> class for BenchmarkDotNet.
+    /// </summary>
+    public MLKemKeyGenBenchmark()
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MLKemKeyGenBenchmark"/> class for NUnit.
+    /// </summary>
+    /// <param name="algorithm">The implementation to exercise.</param>
+    public MLKemKeyGenBenchmark(KemAlgorithmType algorithm) => TestKemAlgorithm = algorithm;
+
+    /// <summary>
+    /// Gets or sets the ML-KEM implementation under measurement.
+    /// </summary>
+    [ParamsSource(nameof(Algorithms))]
+    public KemAlgorithmType TestKemAlgorithm { get; set; } = null!;
+
+    /// <summary>
+    /// Gets every implementation to benchmark, including key-generation-only variants.
+    /// </summary>
+    public static IEnumerable<KemAlgorithmType> Algorithms() => KemAlgorithmType.MLKemKeyGen();
+
+    /// <summary>
+    /// Gets the NUnit fixture arguments.
+    /// </summary>
+    public static IEnumerable<object[]> KemAlgorithmTypeArgs()
+    {
+        foreach (var alg in Algorithms())
+        {
+            yield return new object[] { alg };
+        }
+    }
+
+    /// <summary>
+    /// Creates the runner under test.
+    /// </summary>
+    /// <remarks>
+    /// No key material is imported: key generation must not depend on <c>Prepare</c> having
+    /// run, and the test below would fail if an adapter ever made it so.
+    /// </remarks>
+    [OneTimeSetUp]
+    [GlobalSetup]
+    public virtual void GlobalSetup() => _runner = TestKemAlgorithm.Create();
+
+    /// <summary>
+    /// Releases the runner.
+    /// </summary>
+    [OneTimeTearDown]
+    [GlobalCleanup]
+    public virtual void GlobalCleanup() => _runner?.Dispose();
+
+    [Test]
+    [NonParallelizable]
+    public void GenerateKeyPairTest()
+    {
+        object keyPair = GenerateKeyPair();
+        Assert.That(keyPair, Is.Not.Null);
+        (keyPair as IDisposable)?.Dispose();
+    }
+
+    /// <summary>
+    /// Benchmarks key pair generation.
+    /// </summary>
+    /// <returns>The generated key pair, returned so the work is not elided.</returns>
+    [Benchmark(Description = "KeyGen")]
+    public object GenerateKeyPair() => _runner.GenerateKeyPair();
 }

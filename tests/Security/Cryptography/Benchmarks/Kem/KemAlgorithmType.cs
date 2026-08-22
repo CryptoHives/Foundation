@@ -76,20 +76,35 @@ public sealed class KemAlgorithmType : IFormattable
     // ========================================================================
 
     /// <summary>Returns every ML-KEM-512 implementation.</summary>
-    public static IEnumerable<KemAlgorithmType> MLKem512() => FromRegistry("ML-KEM-512");
+    public static IEnumerable<KemAlgorithmType> MLKem512() => FromRegistry("ML-KEM-512", includeKeyGenOnly: false);
 
     /// <summary>Returns every ML-KEM-768 implementation.</summary>
-    public static IEnumerable<KemAlgorithmType> MLKem768() => FromRegistry("ML-KEM-768");
+    public static IEnumerable<KemAlgorithmType> MLKem768() => FromRegistry("ML-KEM-768", includeKeyGenOnly: false);
 
     /// <summary>Returns every ML-KEM-1024 implementation.</summary>
-    public static IEnumerable<KemAlgorithmType> MLKem1024() => FromRegistry("ML-KEM-1024");
+    public static IEnumerable<KemAlgorithmType> MLKem1024() => FromRegistry("ML-KEM-1024", includeKeyGenOnly: false);
 
-    /// <summary>Returns every implementation of every parameter set.</summary>
-    public static IEnumerable<KemAlgorithmType> MLKem()
+    /// <summary>
+    /// Returns the implementations to benchmark for encapsulation and decapsulation.
+    /// </summary>
+    /// <remarks>
+    /// Excludes key-generation-only variants, whose encapsulation and decapsulation code is
+    /// identical to a sibling entry — measuring them here would duplicate rows rather than
+    /// add information. Use <see cref="MLKemKeyGen"/> for the key generation benchmark.
+    /// </remarks>
+    public static IEnumerable<KemAlgorithmType> MLKem() => All(includeKeyGenOnly: false);
+
+    /// <summary>
+    /// Returns the implementations to benchmark for key generation, including variants that
+    /// differ only there — such as the one with the pairwise consistency test disabled.
+    /// </summary>
+    public static IEnumerable<KemAlgorithmType> MLKemKeyGen() => All(includeKeyGenOnly: true);
+
+    private static IEnumerable<KemAlgorithmType> All(bool includeKeyGenOnly)
     {
         foreach (string family in KemAlgorithmRegistry.Families)
         {
-            foreach (var algorithm in FromRegistry(family))
+            foreach (var algorithm in FromRegistry(family, includeKeyGenOnly))
             {
                 yield return algorithm;
             }
@@ -102,13 +117,14 @@ public sealed class KemAlgorithmType : IFormattable
     /// BenchmarkDotNet has no notion of skipping a case at run time — a setup method that
     /// tried to opt out would fail the run instead.
     /// </remarks>
-    private static IEnumerable<KemAlgorithmType> FromRegistry(string familyName)
+    private static IEnumerable<KemAlgorithmType> FromRegistry(string familyName, bool includeKeyGenOnly)
     {
         var implementations = KemAlgorithmRegistry.All
             .Where(impl =>
                 impl.AlgorithmFamily == familyName &&
                 impl.IsSupported &&
-                !impl.ExcludeFromBenchmark)
+                !impl.ExcludeFromBenchmark &&
+                (includeKeyGenOnly || !impl.KeyGenOnly))
             .ToList();
 
         foreach (var impl in implementations)

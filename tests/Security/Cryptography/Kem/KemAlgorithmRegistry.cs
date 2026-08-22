@@ -66,13 +66,18 @@ public static class KemAlgorithmRegistry
         /// <param name="source">Where the implementation comes from.</param>
         /// <param name="supportCheck">Optional platform gate.</param>
         /// <param name="excludeFromBenchmark">Whether to keep this out of benchmark runs.</param>
+        /// <param name="keyGenOnly">
+        /// Whether this variant differs from another entry only in key generation, so it
+        /// belongs in the key generation benchmark and nowhere else.
+        /// </param>
         public KemImplementation(
             string algorithmFamily,
             string variant,
             Func<IKemRunner> factory,
             Source source,
             Func<bool>? supportCheck = null,
-            bool excludeFromBenchmark = false)
+            bool excludeFromBenchmark = false,
+            bool keyGenOnly = false)
         {
             AlgorithmFamily = algorithmFamily;
             Variant = variant;
@@ -80,6 +85,7 @@ public static class KemAlgorithmRegistry
             Source = source;
             SupportCheck = supportCheck;
             ExcludeFromBenchmark = excludeFromBenchmark;
+            KeyGenOnly = keyGenOnly;
         }
 
         /// <summary>Gets the parameter set name.</summary>
@@ -99,6 +105,16 @@ public static class KemAlgorithmRegistry
 
         /// <summary>Gets a value indicating whether this implementation is excluded from benchmarks.</summary>
         public bool ExcludeFromBenchmark { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether this variant is only meaningful for key generation.
+        /// </summary>
+        /// <remarks>
+        /// Set for variants that differ from a sibling entry solely in how a key pair is
+        /// produced. Encapsulation and decapsulation run identical code, so listing them in
+        /// those benchmarks would measure the same thing twice under two names.
+        /// </remarks>
+        public bool KeyGenOnly { get; }
 
         /// <summary>Gets the display name combining family and variant.</summary>
         public string Name => string.IsNullOrEmpty(Variant)
@@ -163,12 +179,13 @@ public static class KemAlgorithmRegistry
         list.Add(new(family, "CryptoHives",
             () => new MLKemAdapter(managed), Source.Managed));
 
-        // Same implementation, with the FIPS 140-3 pairwise consistency test turned off. Only
-        // its KeyGen row differs from the entry above -- encapsulation and decapsulation run
-        // identical code -- so the duplicate rows in those blocks double as a repeatability
-        // check on the run.
+        // Same implementation with the FIPS 140-3 pairwise consistency test turned off, so the
+        // key generation table can show what that check costs against the other libraries.
+        // Marked keyGenOnly: encapsulation and decapsulation are byte-identical to the entry
+        // above, and listing them again would just measure the same code under a second name.
         list.Add(new(family, "CryptoHives-NoPct",
-            () => new MLKemAdapter(managed, pairwiseConsistencyTest: false), Source.Managed));
+            () => new MLKemAdapter(managed, pairwiseConsistencyTest: false), Source.Managed,
+            keyGenOnly: true));
 
         list.Add(new(family, "CryptoHives-Stateless",
             () => new MLKemStatelessAdapter(StatelessKem(family)), Source.Managed));
