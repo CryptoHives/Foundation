@@ -55,7 +55,7 @@
 <body>
 <h1>CryptoHives Cryptography Benchmark Trends</h1>
 <p>
-  Benchmark history for the hash, cipher and MAC implementations in
+  Benchmark history for the hash, cipher, MAC and KEM implementations in
   <code>CryptoHives.Foundation.Security.Cryptography</code>, measured against reference
   implementations (the operating system's own, BouncyCastle, and others) across platforms, target
   frameworks and data sizes.
@@ -84,7 +84,7 @@
   <label>Category
     <select id="category"></select>
   </label>
-  <label>Family
+  <label id="family-picker">Family
     <select id="family"></select>
   </label>
   <label>Method
@@ -178,6 +178,7 @@
   const metricPickerEl = document.getElementById("metric-picker");
   const rangePickerEl = document.getElementById("range-picker");
   const logPickerEl = document.getElementById("log-picker");
+  const familyPickerEl = document.getElementById("family-picker");
   const copyLinkBtn = document.getElementById("copy-link");
   const copyLinkStatusEl = document.getElementById("copy-link-status");
   const dateRangeSel = document.getElementById("date-range");
@@ -621,7 +622,8 @@
   //             and there is no chart to scale logarithmically.
   //   Scaling - plots both metrics on two axes, so the metric selector is replaced by its legend,
   //             and draws one run chosen with the run picker, which leaves the date range nothing
-  //             to narrow.
+  //             to narrow. For a category with no data-size axis it varies the family across the X
+  //             axis instead, and the family selector stops applying - see scalingVariesFamily.
   //   Trend   - reads all of them.
   function syncControlAvailability(mode) {
     const table = mode === "table";
@@ -633,6 +635,10 @@
              table ? "The table shows one run, chosen with the Run picker."
                    : "Scaling plots one run, chosen with the Run picker.");
     setInert(logPickerEl, table, "No chart axis to scale in table mode.");
+    // The one place Family genuinely does not apply: a scaling chart for a category with no size
+    // axis puts every family on the X axis, so narrowing to one would leave a single point.
+    setInert(familyPickerEl, scaling && scalingVariesFamily(),
+             "This scaling chart spans every parameter set - that is its X axis.");
   }
 
   function renderChartInstance(datasets, scales, tooltipAfterLabel) {
@@ -744,6 +750,32 @@
     { key: "allocated_bytes", axis: "yAlloc", point: "rectRot", text: "Allocated" },
   ];
 
+  // Not every category has a data-size axis. A KEM operates on a fixed-size key rather than on a
+  // caller-supplied buffer, so every one of its rows carries an empty size label and the size axis
+  // has nothing to plot. The scaling question is still worth asking there, it is just a different
+  // one - how cost grows with the security level - so the X axis varies the family instead.
+  //
+  // Detected from the data rather than hard-coded to a category name, so a future fixed-size
+  // family gets the same treatment without another branch here.
+  function scalingVariesFamily() {
+    return currentSizes.length === 1 && currentSizes[0] === "";
+  }
+
+  // Orders families the way a reader expects rather than lexicographically, which would sort
+  // ML-KEM-1024 between ML-KEM-512 and ML-KEM-768. Compares the leading text, then the trailing
+  // number; names without a trailing number fall back to plain string order.
+  function compareFamilyNames(a, b) {
+    const split = (s) => {
+      const m = /^(.*?)(\d+)$/.exec(s);
+      return m ? [m[1], Number(m[2])] : [s, NaN];
+    };
+    const [aPrefix, aNumber] = split(a);
+    const [bPrefix, bNumber] = split(b);
+    if (aPrefix !== bPrefix) return aPrefix.localeCompare(bPrefix);
+    if (Number.isNaN(aNumber) || Number.isNaN(bNumber)) return a.localeCompare(b);
+    return aNumber - bNumber;
+  }
+
   // One recorded run's size curve, chosen with the Run picker — the newest by default, which is
   // what this view used to show and all it used to be able to show. Reading a scaling curve means
   // reading one snapshot: rows stitched together from whichever run happened to be each series'
@@ -752,25 +784,32 @@
   function renderScalingChart() {
     const runValue = runSel.value;
     const [runId, runPlatform, runFramework] = (runValue || "").split(" ");
+    const byFamily = scalingVariesFamily();
     const rowsByVariant = new Map();
+    const familiesSeen = new Set();
     if (runValue) {
+      // With no size axis the family is what varies, so it moves out of the WHERE clause and into
+      // the SELECT - the chart deliberately spans every family in the category.
       const stmt = db.prepare(`
-        SELECT r.variant, r.data_size_bytes, r.data_size_label, r.run_id,
+        SELECT r.variant, r.family, r.data_size_bytes, r.data_size_label, r.run_id,
                r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
         FROM benchmark_results r
         LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
                                   AND b.framework = r.framework
         WHERE r.run_id = ? AND r.platform = ? AND r.framework = ?
-          AND r.category = ? AND r.family = ? AND r.method = ?
-        ORDER BY r.variant, r.data_size_bytes
+          AND r.category = ? AND r.method = ?
+          ${byFamily ? "" : "AND r.family = ?"}
+        ORDER BY r.variant, r.family, r.data_size_bytes
       `);
-      stmt.bind([runId, runPlatform, runFramework, categorySel.value, familySel.value,
-                 methodSel.value]);
+      stmt.bind([runId, runPlatform, runFramework, categorySel.value, methodSel.value,
+                 ...(byFamily ? [] : [familySel.value])]);
       while (stmt.step()) {
         const row = stmt.getAsObject();
         if (!rowsByVariant.has(row.variant)) rowsByVariant.set(row.variant, new Map());
-        rowsByVariant.get(row.variant).set(row.data_size_bytes, {
-          x: row.data_size_bytes,
+        familiesSeen.add(row.family);
+        rowsByVariant.get(row.variant).set(byFamily ? row.family : row.data_size_bytes, {
+          x: byFamily ? row.family : row.data_size_bytes,
+          family: row.family,
           mean_ns: row.mean_ns,
           allocated_bytes: row.allocated_bytes,
           size_label: row.data_size_label,
@@ -782,6 +821,13 @@
       stmt.free();
     }
 
+    // A category axis plots against the label itself, so the point order has to come from the
+    // ranked family list rather than from subtracting two strings.
+    const familyOrder = byFamily ? Array.from(familiesSeen).sort(compareFamilyNames) : [];
+    const compareX = byFamily
+      ? (a, b) => familyOrder.indexOf(a.x) - familyOrder.indexOf(b.x)
+      : (a, b) => a.x - b.x;
+
     const variantOrder = Array.from(rowsByVariant.keys());
     const colorForVariant = colorsForVariants(variantOrder);
 
@@ -791,7 +837,7 @@
     // the metric so a single colour still reads as one implementation across both axes.
     const datasets = [];
     for (const variant of variantOrder) {
-      const points = Array.from(rowsByVariant.get(variant).values()).sort((a, b) => a.x - b.x);
+      const points = Array.from(rowsByVariant.get(variant).values()).sort(compareX);
       for (const m of METRICS) {
         // An all-null metric contributes nothing but a legend row and an empty axis.
         if (points.every((p) => p[m.key] == null)) continue;
@@ -811,7 +857,9 @@
 
     const usesAlloc = datasets.some((d) => d.yAxisID === "yAlloc");
     const scales = {
-      x: { type: "logarithmic", title: { display: true, text: "Data size (bytes)" } },
+      x: byFamily
+        ? { type: "category", labels: familyOrder, title: { display: true, text: "Parameter set" } }
+        : { type: "logarithmic", title: { display: true, text: "Data size (bytes)" } },
       y: { ...yAxisScale("mean_ns"), position: "left" },
     };
     if (usesAlloc) {
@@ -829,7 +877,9 @@
     renderChartInstance(
       datasets,
       scales,
-      (ctx) => `${ctx.raw.size_label} · ${pointFooter(ctx.raw)}`
+      (ctx) => byFamily
+        ? `${ctx.raw.family} · ${pointFooter(ctx.raw)}`
+        : `${ctx.raw.size_label} · ${pointFooter(ctx.raw)}`
     );
 
     renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
