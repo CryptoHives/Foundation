@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     commit_sha      TEXT,              -- full git commit SHA
     branch          TEXT,              -- git branch name
     platform        TEXT    NOT NULL,  -- e.g. 'windows-x64-amd-ryzen-5-7600x'
-    category        TEXT    NOT NULL,  -- 'Hash' | 'Cipher' | 'Mac'
+    category        TEXT    NOT NULL,  -- 'Hash' | 'Cipher' | 'Mac' | 'Kem'
     class_name      TEXT    NOT NULL,  -- e.g. 'Blake3Benchmark'
     method          TEXT    NOT NULL,  -- e.g. 'TryComputeHash', 'ComputeMac'
     family          TEXT    NOT NULL,  -- e.g. 'BLAKE3', 'HMAC-SHA256'

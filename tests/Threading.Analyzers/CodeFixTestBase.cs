@@ -72,29 +72,48 @@ public abstract class CodeFixTestBase<TAnalyzer, TCodeFix>
             CodeActionIndex = codeActionIndex
         };
 
+        test.TestState.AnalyzerConfigFiles.Add((EditorConfigPath, EditorConfig));
+
         test.ExpectedDiagnostics.AddRange(expected);
         await test.RunAsync().ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Rewrites a test source to <see cref="Environment.NewLine"/>, which is what Roslyn's formatter
-    /// emits for anything a fix inserts or reformats.
+    /// Path of the analyzer config file handed to the testing harness.
     /// </summary>
     /// <remarks>
-    /// <para>
+    /// The harness compiles a virtual document at <c>/0/Test0.cs</c> in an in-memory workspace, so
+    /// the repository's on-disk <c>.editorconfig</c> is not part of that solution and has no effect
+    /// on it. The pin has to be handed to the harness in code, at a path that is a prefix of the
+    /// virtual document's.
+    /// </remarks>
+    private const string EditorConfigPath = "/.editorconfig";
+
+    /// <summary>
+    /// Pins the newline Roslyn's formatter emits, so the expectations below are absolute rather than
+    /// relative to the machine the suite runs on.
+    /// </summary>
+    /// <remarks>
+    /// Without this the formatter takes its newline from <see cref="Environment.NewLine"/>, and only
+    /// for the lines a fix inserts or reformats - the rest of the document keeps whatever the input
+    /// had. That mismatch is invisible on Windows and fails on Linux and macOS, on the one or two
+    /// lines each fix rewrites: the opening brace of a reformatted block, or an inserted directive.
+    /// An analyzer config file overrides the environment, so <c>end_of_line = lf</c> makes the
+    /// formatter emit LF on every platform.
+    /// </remarks>
+    private const string EditorConfig = "root = true\n\n[*.cs]\nend_of_line = lf\n";
+
+    /// <summary>
+    /// Rewrites a test source to LF, matching the newline pinned by <see cref="EditorConfig"/>.
+    /// </summary>
+    /// <remarks>
     /// These sources are verbatim strings, so they carry whatever line endings the test file itself
-    /// has - LF in this repository, and whatever git's autocrlf leaves behind on a Windows checkout.
-    /// Without normalizing, every fix that adds a line would fail on line endings alone, which says
-    /// nothing about whether the fix is correct.
-    /// </para>
-    /// <para>
-    /// <see cref="Environment.NewLine"/> rather than a fixed <c>\r\n</c>: the formatter takes its
-    /// newline from the environment, not from the document it is rewriting, so only the lines a fix
-    /// touches pick it up while the rest keep whatever the input had. Hard-coding CRLF therefore
-    /// passed on Windows and failed on Linux, and only on the one or two lines each fix rewrote -
-    /// the opening brace of a reformatted block, or an inserted attribute.
-    /// </para>
+    /// has - LF in this repository, and CRLF on a Windows checkout, where <c>.gitattributes</c>'
+    /// <c>text=auto</c> makes the working tree platform-native. Without normalizing, every fix that
+    /// adds a line would fail on line endings alone, which says nothing about whether the fix is
+    /// correct. Both halves have to agree: pinning the formatter without pinning the expectations
+    /// just relocates the mismatch.
     /// </remarks>
     private static string NormalizeLineEndings(string source)
-        => source.Replace("\r\n", "\n").Replace("\n", Environment.NewLine);
+        => source.Replace("\r\n", "\n");
 }

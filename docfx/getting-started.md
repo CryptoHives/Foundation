@@ -14,7 +14,7 @@ dotnet add package CryptoHives.Foundation.Memory
 
 ### [Threading Package](packages/threading/index.md)
 
-`ValueTask`-based async synchronization primitives with pooled waiter objects: `AsyncLock`, `AsyncAutoResetEvent`, `AsyncManualResetEvent`, `AsyncBarrier`, `AsyncReaderWriterLock`, `AsyncSemaphore`, and `AsyncCountdownEvent`.
+`ValueTask`-based async synchronization primitives with pooled waiter objects: `AsyncLock`, `AsyncKeyedLock<TKey>`, `AsyncAutoResetEvent`, `AsyncManualResetEvent`, `AsyncBarrier`, `AsyncReaderWriterLock`, `AsyncSemaphore`, and `AsyncCountdownEvent`. Every acquisition takes an optional `CancellationToken` and an optional timeout.
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading
@@ -35,6 +35,13 @@ Roslyn analyzers for `ValueTask` misuse. Install this alongside the Threading pa
 ```bash
 dotnet add package CryptoHives.Foundation.Threading.Analyzers
 ```
+
+## Benchmarks
+
+Every published measurement for the Threading and Cryptography packages is browsable in an
+interactive dashboard — one recorded run as a table, trends over time, and scaling curves, all
+running client-side in the browser: [Threading](packages/threading/benchmarks.md) ·
+[Cryptography](packages/security/cryptography/benchmarks.md).
 
 ## Porting existing code
 

@@ -102,6 +102,38 @@ public async Task AccessSharedResourceAsync(CancellationToken ct)
 }
 ```
 
+### AsyncKeyedLock
+
+```csharp
+private readonly AsyncKeyedLock<string> _locksByAccount = new AsyncKeyedLock<string>();
+
+public async Task UpdateAccountAsync(string accountId, CancellationToken ct)
+{
+    using (await _locksByAccount.LockAsync(accountId, ct))
+    {
+        // Serialized per account - operations on other accounts run in parallel
+        await ApplyChangesAsync(accountId);
+    }
+}
+```
+
+`TryLock` acquires only if the key is free right now. It never waits and never allocates, which
+suits opportunistic work that can be skipped when someone else already holds the key:
+
+```csharp
+public void RefreshIfIdle(string accountId)
+{
+    if (_locksByAccount.TryLock(accountId, out var releaser))
+    {
+        using (releaser)
+        {
+            RefreshCache(accountId);
+        }
+    }
+    // Held by someone else - skip; the refresh will happen on their release
+}
+```
+
 ### AsyncAutoResetEvent
 
 ```csharp
@@ -154,6 +186,29 @@ public async Task AccessLimitedResourceAsync(CancellationToken ct)
     {
         // Max 3 concurrent tasks can access this section
         await AccessResourceAsync();
+    }
+    finally
+    {
+        _semaphore.Release();
+    }
+}
+
+// Shed load instead of queueing indefinitely: give up after two seconds
+public async Task<bool> TryAccessAsync(CancellationToken ct)
+{
+    try
+    {
+        await _semaphore.WaitAsync(TimeSpan.FromSeconds(2), ct);
+    }
+    catch (TimeoutException)
+    {
+        return false; // no permit came free in time
+    }
+
+    try
+    {
+        await AccessResourceAsync();
+        return true;
     }
     finally
     {
@@ -219,11 +274,48 @@ public async Task WriteAsync(CancellationToken ct)
         await WriteDataAsync();
     }
 }
+
+// Writer that would rather fail fast than block a request thread behind long readers
+public async Task<bool> TryWriteAsync(CancellationToken ct)
+{
+    try
+    {
+        using (await _rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(250), ct))
+        {
+            await WriteDataAsync();
+            return true;
+        }
+    }
+    catch (TimeoutException)
+    {
+        return false;
+    }
+}
 ```
 
 ## Timeout Support
 
-Every synchronization primitive accepts an optional timeout, so you can attempt a non-blocking acquire or build timeout-based retry logic instead of waiting indefinitely:
+Every wait and every acquisition takes an optional timeout, as an overload that sits in front of the `CancellationToken`:
+
+| Primitive | Method taking a timeout |
+|-----------|-------------------------|
+| `AsyncLock` | `LockAsync(TimeSpan, CancellationToken)` |
+| `AsyncKeyedLock<TKey>` | `LockAsync(TKey, TimeSpan, CancellationToken)` — plus `TryLock(TKey, out Releaser)`, which never waits at all |
+| `AsyncSemaphore` | `WaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncAutoResetEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncManualResetEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncCountdownEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncBarrier` | `SignalAndWaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncReaderWriterLock` | `ReaderLockAsync` / `UpgradeableReaderLockAsync` / `WriterLockAsync(TimeSpan, CancellationToken)`, and `UpgradeToWriterLockAsync(TimeSpan, CancellationToken)` on an upgradeable releaser |
+
+The semantics are the same across every primitive:
+
+- Elapsing throws `TimeoutException`; the wait is abandoned and nothing is acquired.
+- `Timeout.InfiniteTimeSpan` waits indefinitely, exactly like the overload without a timeout.
+- `TimeSpan.Zero` is an immediate attempt — it either succeeds or throws right away.
+- Any other negative value throws `ArgumentOutOfRangeException`.
+- An already-cancelled token wins over a zero timeout: you get `OperationCanceledException`, which carries the token, rather than a `TimeoutException` that names neither.
+- The timer costs nothing until it is needed. Nothing is allocated when the primitive is available immediately, when the timeout is infinite, or when a zero timeout fails outright — only a genuine wait on a finite timeout allocates one, and it is disposed when the `ValueTask` is awaited.
 
 ```csharp
 // Non-blocking attempt using TimeSpan.Zero
@@ -237,6 +329,27 @@ try
 catch (TimeoutException)
 {
     // Lock not immediately available
+}
+```
+
+```csharp
+// Per-key timeout: a slow tenant delays only callers working on that tenant
+private readonly AsyncKeyedLock<string> _locksByTenant = new AsyncKeyedLock<string>();
+
+public async Task<bool> TryImportAsync(string tenantId, CancellationToken ct)
+{
+    try
+    {
+        using (await _locksByTenant.LockAsync(tenantId, TimeSpan.FromSeconds(5), ct))
+        {
+            await ImportAsync(tenantId);
+            return true;
+        }
+    }
+    catch (TimeoutException)
+    {
+        return false; // another import for this tenant is still running
+    }
 }
 ```
 

@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -44,6 +44,18 @@
 
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED;BLAKE3_DISSIMILIS</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    KyberNET is an independent pure-managed ML-KEM implementation, used as a benchmark
+    competitor. It targets netstandard2.1/net10.0, so it is unavailable on the net48 leg.
+  -->
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
+    <PackageReference Include="KyberNET" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
+    <DefineConstants>$(DefineConstants);KYBERNET</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">

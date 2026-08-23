@@ -9,9 +9,9 @@ An open, community-driven collection of cryptography and performance libraries f
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
-Fully managed, OS-independent implementations of hash, MAC, KDF, and cipher algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
+Fully managed, OS-independent implementations of hash, MAC, KDF, cipher, and post-quantum KEM algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
 
-No OS crypto dependency means deterministic results on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics are used automatically.
+No OS crypto dependency means deterministic results on every platform. Where the hardware supports it, intrinsics are used automatically — AES-NI, PCLMULQDQ/VPCLMULQDQ, SSE2, SSSE3, AVX2 and AVX-512 on x86/x64; ARM AES, ARM SHA-1/SHA-2, PMULL and NEON on Arm64.
 
 ---
 
@@ -27,7 +27,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 
 - **OS-independent** — identical results on Windows, Linux, macOS, and anywhere else .NET runs
 - **Standards-based** — implemented from NIST, RFC, and ISO specifications; validated against official test vectors
-- **Hardware-accelerated** — automatic AES-NI, AVX2, SSSE3 dispatch, with a scalar fallback always available
+- **Hardware-accelerated** — automatic dispatch across AES-NI/AVX2/AVX-512 and the Arm64 crypto and NEON paths, with a scalar fallback always available
 - **Allocation-free hot paths** — `Span<byte>`-based APIs, friendly to `stackalloc`
 - **XOF streaming** — `IExtendableOutput` (`Absorb` / `Squeeze` / `Reset`) on all XOF algorithms
 - **`HashAlgorithm` compatible** — drop-in for anything consuming `System.Security.Cryptography.HashAlgorithm`
@@ -54,6 +54,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR), ChaCha20 |
 | Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
+| Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
 
 ---
 
@@ -75,7 +76,7 @@ blake3.TryComputeHash(data, hash, out _);
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 // Variable-length output via IExtendableOutput
-using var shake = Shake256.Create(outputLength: 64);
+using var shake = Shake256.Create(outputBytes: 64);
 shake.Absorb(context);
 shake.Absorb(message);
 
@@ -91,13 +92,17 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using var hmac = new HmacSha256(key);
 Span<byte> tag = stackalloc byte[32];
-hmac.TryComputeHash(message, tag, out _);
+
+hmac.Update(message);      // call as often as needed
+hmac.Finalize(tag);        // writes the 32-byte tag
+hmac.Reset();              // reuse the instance for the next message
 ```
 
 ### Authenticated Encryption (`AES-GCM`)
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
+using System.Security.Cryptography;   // for CryptographicException
 
 using var aesGcm = new AesGcm256(key);
 
@@ -115,15 +120,56 @@ if (!aesGcm.Decrypt(nonce, ciphertext, tag, recovered, associatedData))
 }
 ```
 
+### Post-Quantum Key Encapsulation (`ML-KEM`)
+
+`MLKem` and `MLKemAlgorithm` carry the same names and the same member signatures as
+`System.Security.Cryptography.MLKem` from .NET 10, so switching to the managed
+implementation is a one-line change — swap the `using`, and everything downstream compiles
+unchanged:
+
+```diff
+-using System.Security.Cryptography;   // .NET 10 only, and only where the OS provides ML-KEM
++using CryptoHives.Foundation.Security.Cryptography.Kem;
+```
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kem;
+
+// MLKem.IsSupported is always true here: no OS or hardware dependency,
+// on every target framework down to net462.
+using var receiver = MLKem.GenerateKey(MLKemAlgorithm.MLKem768);
+byte[] encapsulationKey = receiver.ExportEncapsulationKey();
+
+// Sender: encapsulate a shared secret for the receiver.
+using var sender = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, encapsulationKey);
+sender.Encapsulate(out byte[] ciphertext, out byte[] senderSecret);
+
+// Receiver: recover the same shared secret.
+byte[] receiverSecret = receiver.Decapsulate(ciphertext);
+```
+
+Both the allocating overloads above and the allocation-free span overloads
+(`Encapsulate(Span<byte>, Span<byte>)`, `Decapsulate(ReadOnlySpan<byte>, Span<byte>)`) are
+available, matching the in-box type.
+
+Keys are validated on import per FIPS 203 §7.2/§7.3, decapsulation uses constant-time
+implicit rejection, and all three parameter sets are verified against the official
+NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
+
+> **Not yet implemented:** the PKCS#8, SubjectPublicKeyInfo and PEM import/export members
+> (`ImportPkcs8PrivateKey`, `ExportSubjectPublicKeyInfo`, `ImportFromPem`, …). Raw key and
+> seed import/export is complete. See the
+> [KEM roadmap](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html).
+
 ### cSHAKE — Domain-Separated XOF
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using var cshake = CShake128.Create(
-    functionName: "MyApp"u8,
-    customization: "v1"u8,
-    outputLength: 32);
+    outputBytes: 32,
+    functionName: "MyApp"u8.ToArray(),
+    customization: "v1"u8.ToArray());
 
 cshake.Absorb(input);
 Span<byte> derived = stackalloc byte[32];
@@ -140,9 +186,9 @@ cshake.Squeeze(derived);
 | Hash algorithms guide | [cryptohives.github.io/…/hash-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/hash-algorithms.html) |
 | Cipher algorithms guide | [cryptohives.github.io/…/cipher-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/cipher-algorithms.html) |
 | XOF mode guide | [cryptohives.github.io/…/xof-mode](https://cryptohives.github.io/Foundation/packages/security/cryptography/xof-mode.html) |
-| Hash benchmarks | [cryptohives.github.io/…/benchmarks-hash](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-hash.html) |
-| Cipher benchmarks | [cryptohives.github.io/…/benchmarks-cipher](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks-cipher.html) |
-| API reference | [cryptohives.github.io/Foundation/api](https://cryptohives.github.io/Foundation/api/index.html) |
+| Benchmarks (interactive dashboard) | [cryptohives.github.io/…/benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks.html) |
+| MAC algorithms guide | [cryptohives.github.io/…/mac-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/mac-algorithms.html) |
+| API reference | [cryptohives.github.io/…/api/…Cryptography.Hash](https://cryptohives.github.io/Foundation/api/CryptoHives.Foundation.Security.Cryptography.Hash.html) |
 | Source repository | [github.com/CryptoHives/Foundation](https://github.com/CryptoHives/Foundation) |
 
 ---

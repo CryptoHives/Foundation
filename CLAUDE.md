@@ -102,6 +102,12 @@ Self-contained managed implementations of cryptographic algorithms — no OS/har
 **KDF (`src/Security/Cryptography/Kdf/`):**
 - HKDF, KBKDF, ConcatKDF, PBKDF2
 
+**KEM (`src/Security/Cryptography/Kem/`):**
+- `IKem` — low-level stateless span-based KEM interface; `MLKem512`/`MLKem768`/`MLKem1024` implement it
+- `MLKem` + `MLKemAlgorithm` — key-holding API mirroring .NET 10's `System.Security.Cryptography.MLKem` (seed retention, §7.2/§7.3 import checks, zeroization on dispose)
+- `MLKemCore` — FIPS 203 K-PKE and ML-KEM algorithms; `Ntt`/`Poly`/`PolyVec`/`Cbd`/`Compress`/`Encode` are the ML-KEM-specific math layer (q = 3329; do not reuse for ML-DSA, which needs int-based polys)
+- Conformance: NIST ACVP vectors in `MLKemAcvpTests.cs` (keyGen, encaps, decaps incl. implicit rejection, key checks); interop vs BouncyCastle and .NET 10 `MLKem` in `MLKemInteropTests.cs`
+
 ### `CryptoHives.Foundation.Threading`
 
 Allocation-free async synchronization primitives backed by pooled `IValueTaskSource<T>` implementations. Designed to return `ValueTask` instead of `Task` for the hot path.
@@ -164,5 +170,6 @@ Diagnostics:
 
 - **Nerdbank.GitVersioning** controls package versions (local builds only; CI injects versions separately via `.azurepipelines/set-version.ps1`)
 - CI pipelines: `.azurepipelines/test.yml` (test matrix across Windows/Linux/macOS), `azure-pipelines-nuget.yml` (NuGet packaging on main)
+- `.github/workflows/test-published-packages.yml` runs weekly (and on demand) against the packages published on nuget.org: `scripts/get-published-version.ps1` resolves the newest version all four packages share, the run checks out that version's release tag, and the tests build with `/p:UsePackedNuGetPackages=true` so they consume the published artifacts. The Threading and Cryptography suites need the `STRONG_NAME_KEY` secret (base64 of the signing key) because the published assemblies grant `InternalsVisibleTo` to a signed test assembly; without it the run narrows to Memory
 - `ContinuousIntegrationBuild=true` is set automatically in CI (enables deterministic builds, source linking); disabled when `CollectCoverage=true`
 - Deterministic builds require `CryptoHives.Foundation.Key.snk` to be present for strong-name signing
