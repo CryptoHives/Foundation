@@ -3,9 +3,9 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
-using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
+using System.Buffers;
 using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
@@ -45,6 +45,7 @@ internal static class MLKemCore
     /// <param name="ekPke">Output: encryption key (384·k + 32 bytes).</param>
     /// <param name="dkPke">Output: decryption key (384·k bytes).</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [SkipLocalsInit]
     public static void KPkeKeyGen(MLKemParams p, ReadOnlySpan<byte> d, Span<byte> ekPke, Span<byte> dkPke)
     {
         int k = p.K;
@@ -59,49 +60,64 @@ internal static class MLKemCore
         ReadOnlySpan<byte> rho = gOutput.Slice(0, 32);
         ReadOnlySpan<byte> sigma = gOutput.Slice(32, 32);
 
-        // Generate matrix Â in NTT domain
-        short[][][] aHat = GenerateMatrix(k, rho);
-
-        // Sample secret vector s
-        byte nonce = 0;
-        short[][] s = PolyVec.Create(k);
-        for (int i = 0; i < k; i++)
+        // One pooled rental carved into every working vector this algorithm needs, so the
+        // whole of K-PKE key generation costs no allocation once the pool is warm.
+        short[] rented = ArrayPool<short>.Shared.Rent(PolyVec.MatrixLength(k) + (3 * PolyVec.VectorLength(k)));
+        Shake256 prf = HashAlgorithmPool<Shake256>.Shared.Get();
+        try
         {
-            SampleCbd(sigma, nonce++, p.Eta1, s[i]);
-        }
+            Span<short> scratch = rented;
+            Span<short> aHat = Take(ref scratch, PolyVec.MatrixLength(k));
+            Span<short> s = Take(ref scratch, PolyVec.VectorLength(k));
+            Span<short> e = Take(ref scratch, PolyVec.VectorLength(k));
+            Span<short> tHat = Take(ref scratch, PolyVec.VectorLength(k));
 
-        // Sample error vector e
-        short[][] e = PolyVec.Create(k);
-        for (int i = 0; i < k; i++)
+            // Generate matrix Â in NTT domain
+            GenerateMatrix(aHat, k, rho);
+
+            // Sample secret vector s
+            byte nonce = 0;
+            for (int i = 0; i < k; i++)
+            {
+                SampleCbd(prf, sigma, nonce++, p.Eta1, PolyVec.Poly(s, i));
+            }
+
+            // Sample error vector e
+            for (int i = 0; i < k; i++)
+            {
+                SampleCbd(prf, sigma, nonce++, p.Eta1, PolyVec.Poly(e, i));
+            }
+
+            // NTT(s), NTT(e)
+            PolyVec.Ntt(s, k);
+            PolyVec.Ntt(e, k);
+            PolyVec.Reduce(s, k);
+
+            // t̂ = Â ◦ ŝ + ê
+            PolyVec.MatrixVectorMultiply(tHat, aHat, s, k, transpose: false);
+            PolyVec.ToMontgomery(tHat, k);
+            PolyVec.Add(tHat, tHat, e, k);
+            PolyVec.Reduce(tHat, k);
+
+            // ekPKE = ByteEncode₁₂(t̂) ‖ ρ
+            PolyVec.Normalize(tHat, k);
+            PolyVec.ToBytes(tHat, k, ekPke.Slice(0, p.PolyVecEncodedBytes));
+            rho.CopyTo(ekPke.Slice(p.PolyVecEncodedBytes));
+
+            // dkPKE = ByteEncode₁₂(ŝ)
+            PolyVec.Normalize(s, k);
+            PolyVec.ToBytes(s, k, dkPke.Slice(0, p.PolyVecEncodedBytes));
+
+            CryptographicOperations.ZeroMemory(gInput);
+            CryptographicOperations.ZeroMemory(gOutput);
+        }
+        finally
         {
-            SampleCbd(sigma, nonce++, p.Eta1, e[i]);
+            // clearArray: true wipes s and e — and every other working vector — before the
+            // buffer can be handed to an unrelated caller.
+            ArrayPool<short>.Shared.Return(rented, clearArray: true);
+            HashAlgorithmPool<Shake256>.Shared.Return(prf);
         }
-
-        // NTT(s), NTT(e)
-        PolyVec.Ntt(s);
-        PolyVec.Ntt(e);
-        PolyVec.Reduce(s);
-
-        // t̂ = Â ◦ ŝ + ê
-        short[][] tHat = PolyVec.Create(k);
-        PolyVec.MatrixVectorMultiply(tHat, aHat, s, transpose: false);
-        PolyVec.ToMontgomery(tHat);
-        PolyVec.Add(tHat, tHat, e);
-        PolyVec.Reduce(tHat);
-
-        // ekPKE = ByteEncode₁₂(t̂) ‖ ρ
-        PolyVec.Normalize(tHat);
-        PolyVec.ToBytes(tHat, ekPke.Slice(0, p.PolyVecEncodedBytes));
-        rho.CopyTo(ekPke.Slice(p.PolyVecEncodedBytes));
-
-        // dkPKE = ByteEncode₁₂(ŝ)
-        PolyVec.Normalize(s);
-        PolyVec.ToBytes(s, dkPke.Slice(0, p.PolyVecEncodedBytes));
-
-        CryptographicOperations.ZeroMemory(gInput);
-        CryptographicOperations.ZeroMemory(gOutput);
-        Zero(s);
-        Zero(e);
     }
 
     /// <summary>
@@ -122,66 +138,80 @@ internal static class MLKemCore
     {
         int k = p.K;
 
-        // Decode t̂ from ekPKE
-        short[][] tHat = PolyVec.Create(k);
-        PolyVec.FromBytes(ekPke.Slice(0, p.PolyVecEncodedBytes), tHat);
-        ReadOnlySpan<byte> rho = ekPke.Slice(p.PolyVecEncodedBytes, 32);
-
-        // Regenerate Â from ρ
-        short[][][] aHat = GenerateMatrix(k, rho);
-
-        // Sample r vector, e1 vector, and e2 polynomial
-        byte nonce = 0;
-        short[][] rv = PolyVec.Create(k);
-        for (int i = 0; i < k; i++)
+        short[] rented = ArrayPool<short>.Shared.Rent(
+            PolyVec.MatrixLength(k) + (4 * PolyVec.VectorLength(k)) + (3 * MLKemParams.N));
+        Shake256 prf = HashAlgorithmPool<Shake256>.Shared.Get();
+        try
         {
-            SampleCbd(r, nonce++, p.Eta1, rv[i]);
-        }
+            Span<short> scratch = rented;
+            Span<short> tHat = Take(ref scratch, PolyVec.VectorLength(k));
+            Span<short> aHat = Take(ref scratch, PolyVec.MatrixLength(k));
+            Span<short> rv = Take(ref scratch, PolyVec.VectorLength(k));
+            Span<short> e1 = Take(ref scratch, PolyVec.VectorLength(k));
+            Span<short> u = Take(ref scratch, PolyVec.VectorLength(k));
+            Span<short> e2 = Take(ref scratch, MLKemParams.N);
+            Span<short> v = Take(ref scratch, MLKemParams.N);
+            Span<short> msgPoly = Take(ref scratch, MLKemParams.N);
 
-        short[][] e1 = PolyVec.Create(k);
-        for (int i = 0; i < k; i++)
+            // Decode t̂ from ekPKE
+            PolyVec.FromBytes(ekPke.Slice(0, p.PolyVecEncodedBytes), tHat, k);
+            ReadOnlySpan<byte> rho = ekPke.Slice(p.PolyVecEncodedBytes, 32);
+
+            // Regenerate Â from ρ
+            GenerateMatrix(aHat, k, rho);
+
+            // Sample r vector, e1 vector, and e2 polynomial
+            byte nonce = 0;
+            for (int i = 0; i < k; i++)
+            {
+                SampleCbd(prf, r, nonce++, p.Eta1, PolyVec.Poly(rv, i));
+            }
+
+            for (int i = 0; i < k; i++)
+            {
+                SampleCbd(prf, r, nonce++, p.Eta2, PolyVec.Poly(e1, i));
+            }
+
+            SampleCbd(prf, r, nonce, p.Eta2, e2);
+
+            // NTT(r)
+            PolyVec.Ntt(rv, k);
+
+            // u = NTT⁻¹(Âᵀ ◦ r̂) + e₁
+            PolyVec.MatrixVectorMultiply(u, aHat, rv, k, transpose: true);
+            PolyVec.InverseNtt(u, k);
+            PolyVec.Add(u, u, e1, k);
+            PolyVec.Reduce(u, k);
+
+            // v = NTT⁻¹(t̂ᵀ ◦ r̂) + e₂ + Decompress₁(ByteDecode₁(m))
+            // Rented scratch arrives dirty and InnerProduct accumulates, so the accumulator
+            // must start at zero. Every other carved span above is fully written before it is
+            // read; these two are the exceptions.
+            v.Clear();
+            PolyVec.InnerProduct(v, tHat, rv, k);
+            Ntt.Inverse(v);
+
+            Poly.FromMessage(msg, msgPoly);
+
+            Poly.Add(v, v, e2);
+            Poly.Add(v, v, msgPoly);
+            Poly.Reduce(v);
+
+            // c₁ = ByteEncode_du(Compress_du(u))
+            PolyVec.Normalize(u, k);
+            PolyVec.CompressAndEncode(u, k, p.Du, ciphertext.Slice(0, p.PolyVecCompressedBytes));
+
+            // c₂ = ByteEncode_dv(Compress_dv(v))
+            Poly.Normalize(v);
+            Compress.CompressPoly(v, p.Dv);
+            Encode.ByteEncodeD(v, p.Dv, ciphertext.Slice(p.PolyVecCompressedBytes, p.PolyCompressedBytes));
+
+        }
+        finally
         {
-            SampleCbd(r, nonce++, p.Eta2, e1[i]);
+            ArrayPool<short>.Shared.Return(rented, clearArray: true);
+            HashAlgorithmPool<Shake256>.Shared.Return(prf);
         }
-
-        short[] e2 = new short[MLKemParams.N];
-        SampleCbd(r, nonce, p.Eta2, e2);
-
-        // NTT(r)
-        PolyVec.Ntt(rv);
-
-        // u = NTT⁻¹(Âᵀ ◦ r̂) + e₁
-        short[][] u = PolyVec.Create(k);
-        PolyVec.MatrixVectorMultiply(u, aHat, rv, transpose: true);
-        PolyVec.InverseNtt(u);
-        PolyVec.Add(u, u, e1);
-        PolyVec.Reduce(u);
-
-        // v = NTT⁻¹(t̂ᵀ ◦ r̂) + e₂ + Decompress₁(ByteDecode₁(m))
-        short[] v = new short[MLKemParams.N];
-        PolyVec.InnerProduct(v, tHat, rv);
-        Ntt.Inverse(v);
-
-        short[] msgPoly = new short[MLKemParams.N];
-        Poly.FromMessage(msg, msgPoly);
-
-        Poly.Add(v, v, e2);
-        Poly.Add(v, v, msgPoly);
-        Poly.Reduce(v);
-
-        // c₁ = ByteEncode_du(Compress_du(u))
-        PolyVec.Normalize(u);
-        PolyVec.CompressAndEncode(u, p.Du, ciphertext.Slice(0, p.PolyVecCompressedBytes));
-
-        // c₂ = ByteEncode_dv(Compress_dv(v))
-        Poly.Normalize(v);
-        Compress.CompressPoly(v, p.Dv);
-        Encode.ByteEncodeD(v, p.Dv, ciphertext.Slice(p.PolyVecCompressedBytes, p.PolyCompressedBytes));
-
-        Zero(rv);
-        Zero(e1);
-        Zero(e2);
-        Zero(msgPoly);
     }
 
     /// <summary>
@@ -200,36 +230,45 @@ internal static class MLKemCore
     {
         int k = p.K;
 
-        // Decode u from c₁
-        short[][] u = PolyVec.Create(k);
-        PolyVec.DecodeAndDecompress(ciphertext.Slice(0, p.PolyVecCompressedBytes), p.Du, u);
+        short[] rented = ArrayPool<short>.Shared.Rent((2 * PolyVec.VectorLength(k)) + (2 * MLKemParams.N));
+        try
+        {
+            Span<short> scratch = rented;
+            Span<short> u = Take(ref scratch, PolyVec.VectorLength(k));
+            Span<short> sHat = Take(ref scratch, PolyVec.VectorLength(k));
+            Span<short> v = Take(ref scratch, MLKemParams.N);
+            Span<short> w = Take(ref scratch, MLKemParams.N);
 
-        // Decode v from c₂
-        short[] v = new short[MLKemParams.N];
-        Encode.ByteDecodeD(ciphertext.Slice(p.PolyVecCompressedBytes, p.PolyCompressedBytes), p.Dv, v);
-        Compress.DecompressPoly(v, p.Dv);
+            // Decode u from c₁
+            PolyVec.DecodeAndDecompress(ciphertext.Slice(0, p.PolyVecCompressedBytes), p.Du, u, k);
 
-        // Decode ŝ from dkPKE
-        short[][] sHat = PolyVec.Create(k);
-        PolyVec.FromBytes(dkPke.Slice(0, p.PolyVecEncodedBytes), sHat);
+            // Decode v from c₂
+            Encode.ByteDecodeD(ciphertext.Slice(p.PolyVecCompressedBytes, p.PolyCompressedBytes), p.Dv, v);
+            Compress.DecompressPoly(v, p.Dv);
 
-        // NTT(u)
-        PolyVec.Ntt(u);
+            // Decode ŝ from dkPKE
+            PolyVec.FromBytes(dkPke.Slice(0, p.PolyVecEncodedBytes), sHat, k);
 
-        // w = NTT⁻¹(ŝᵀ ◦ û)
-        short[] w = new short[MLKemParams.N];
-        PolyVec.InnerProduct(w, sHat, u);
-        Ntt.Inverse(w);
+            // NTT(u)
+            PolyVec.Ntt(u, k);
 
-        // m = ByteEncode₁(Compress₁(v − w))
-        Poly.Sub(v, v, w);
-        Poly.Reduce(v);
-        Poly.Normalize(v);
-        Poly.ToMessage(v, msg);
+            // w = NTT⁻¹(ŝᵀ ◦ û)
+            // See KPkeEncrypt: accumulator, so it must start zeroed.
+            w.Clear();
+            PolyVec.InnerProduct(w, sHat, u, k);
+            Ntt.Inverse(w);
 
-        Zero(sHat);
-        Zero(w);
-        Zero(v);
+            // m = ByteEncode₁(Compress₁(v − w))
+            Poly.Sub(v, v, w);
+            Poly.Reduce(v);
+            Poly.Normalize(v);
+            Poly.ToMessage(v, msg);
+
+        }
+        finally
+        {
+            ArrayPool<short>.Shared.Return(rented, clearArray: true);
+        }
     }
 
     // ========================================================================
@@ -248,7 +287,11 @@ internal static class MLKemCore
     /// <param name="seed">The 64-byte seed (d ‖ z).</param>
     /// <param name="ek">Output: encapsulation key (384·k + 32 bytes).</param>
     /// <param name="dk">Output: decapsulation key (768·k + 96 bytes).</param>
-    public static void KeyGen(MLKemParams p, ReadOnlySpan<byte> seed, Span<byte> ek, Span<byte> dk)
+    /// <param name="pairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the generated key pair with an encapsulate/decapsulate
+    /// round trip; <see langword="false"/> to skip it.
+    /// </param>
+    public static void KeyGen(MLKemParams p, ReadOnlySpan<byte> seed, Span<byte> ek, Span<byte> dk, bool pairwiseConsistencyTest)
     {
         ReadOnlySpan<byte> d = seed.Slice(0, 32);
         ReadOnlySpan<byte> z = seed.Slice(32, 32);
@@ -267,7 +310,10 @@ internal static class MLKemCore
 
         z.CopyTo(dk.Slice(offset, 32));
 
-        PairwiseConsistencyTest(p, ek, dk);
+        if (pairwiseConsistencyTest)
+        {
+            PairwiseConsistencyTest(p, seed, ek, dk);
+        }
     }
 
     /// <summary>
@@ -275,12 +321,23 @@ internal static class MLKemCore
     /// round-trip, as expected by FIPS 140-3 for key generation.
     /// </summary>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
-    private static void PairwiseConsistencyTest(MLKemParams p, ReadOnlySpan<byte> ek, ReadOnlySpan<byte> dk)
+    [SkipLocalsInit]
+    private static void PairwiseConsistencyTest(MLKemParams p, ReadOnlySpan<byte> seed,
+                                                ReadOnlySpan<byte> ek, ReadOnlySpan<byte> dk)
     {
+        // The test message is derived from the seed rather than drawn from the OS RNG.
+        //
+        // Expanding a stored (d ‖ z) seed is pure FIPS 203 arithmetic and is documented as
+        // deterministic, so it must not depend on an RNG being present, and must not consume
+        // entropy the caller never asked to spend. A predictable message is harmless here:
+        // the ciphertext and both secrets are local, discarded and zeroed, and never reach a
+        // wire. The domain prefix keeps it from ever coinciding with a real encapsulation
+        // message derived from the same seed.
         Span<byte> m = stackalloc byte[MLKemParams.EncapsSeedBytes];
-        GenerateRandomSeed(m);
+        DerivePctMessage(seed, m);
 
-        byte[] ct = new byte[p.CiphertextBytes];
+        Span<byte> ct = stackalloc byte[MLKemParams.MaxCiphertextBytes];
+        ct = ct.Slice(0, p.CiphertextBytes);
         Span<byte> ss1 = stackalloc byte[MLKemParams.SharedSecretBytes];
         Span<byte> ss2 = stackalloc byte[MLKemParams.SharedSecretBytes];
 
@@ -298,6 +355,31 @@ internal static class MLKemCore
             throw new OS.CryptographicException("ML-KEM key generation failed the pairwise consistency test.");
         }
     }
+
+    /// <summary>
+    /// Derives the pairwise consistency test's message deterministically from the key seed.
+    /// </summary>
+    /// <param name="seed">The 64-byte (d ‖ z) seed.</param>
+    /// <param name="m">Receives the 32-byte message.</param>
+    private static void DerivePctMessage(ReadOnlySpan<byte> seed, Span<byte> m)
+    {
+        Shake256 shake = HashAlgorithmPool<Shake256>.Shared.Get();
+        try
+        {
+            shake.Absorb(PctDomain);
+            shake.Absorb(seed);
+            shake.Squeeze(m);
+        }
+        finally
+        {
+            HashAlgorithmPool<Shake256>.Shared.Return(shake);
+        }
+    }
+
+    /// <summary>
+    /// Domain separation prefix for <see cref="DerivePctMessage"/>.
+    /// </summary>
+    private static ReadOnlySpan<byte> PctDomain => "CryptoHives-ML-KEM-PCT"u8;
 
     /// <summary>
     /// Performs the FIPS 203 §7.2 encapsulation key check (modulus check).
@@ -358,6 +440,7 @@ internal static class MLKemCore
     /// <param name="m">The 32-byte random message seed.</param>
     /// <param name="ciphertext">Output: the ciphertext.</param>
     /// <param name="sharedSecret">Output: the 32-byte shared secret.</param>
+    [SkipLocalsInit]
     public static void Encaps(MLKemParams p, ReadOnlySpan<byte> ek, ReadOnlySpan<byte> m,
                               Span<byte> ciphertext, Span<byte> sharedSecret)
     {
@@ -396,6 +479,7 @@ internal static class MLKemCore
     /// <param name="dk">The decapsulation key (768·k + 96 bytes).</param>
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="sharedSecret">Output: the 32-byte shared secret.</param>
+    [SkipLocalsInit]
     public static void Decaps(MLKemParams p, ReadOnlySpan<byte> dk, ReadOnlySpan<byte> ciphertext,
                               Span<byte> sharedSecret)
     {
@@ -423,7 +507,8 @@ internal static class MLKemCore
         ReadOnlySpan<byte> rPrime = gOutput.Slice(32, 32);
 
         // c' = K-PKE.Encrypt(ekPKE, m', r')
-        byte[] cPrime = new byte[p.CiphertextBytes];
+        Span<byte> cPrime = stackalloc byte[MLKemParams.MaxCiphertextBytes];
+        cPrime = cPrime.Slice(0, p.CiphertextBytes);
         KPkeEncrypt(p, ekPke, mPrime, rPrime, cPrime);
 
         // K̄ = J(z ‖ c)
@@ -435,7 +520,7 @@ internal static class MLKemCore
         // would reintroduce a secret-dependent branch.
         int mask = CryptographicOperations.FixedTimeEqualsMask(
             ciphertext.Slice(0, p.CiphertextBytes),
-            cPrime.AsSpan(0, p.CiphertextBytes));
+            cPrime);
 
         // Constant-time select: K = mask all-ones ? K' : K̄
         ConstantTimeSelect(sharedSecret, kPrime, kBar, mask);
@@ -456,8 +541,15 @@ internal static class MLKemCore
     /// </summary>
     private static void HashH(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        using var sha = SHA3_256.Create();
-        sha.TryComputeHash(input, output.Slice(0, 32), out _);
+        SHA3_256 sha = HashAlgorithmPool<SHA3_256>.Shared.Get();
+        try
+        {
+            sha.TryComputeHash(input, output.Slice(0, 32), out _);
+        }
+        finally
+        {
+            HashAlgorithmPool<SHA3_256>.Shared.Return(sha);
+        }
     }
 
     /// <summary>
@@ -465,8 +557,15 @@ internal static class MLKemCore
     /// </summary>
     private static void HashG(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        using var sha = SHA3_512.Create();
-        sha.TryComputeHash(input, output.Slice(0, 64), out _);
+        SHA3_512 sha = HashAlgorithmPool<SHA3_512>.Shared.Get();
+        try
+        {
+            sha.TryComputeHash(input, output.Slice(0, 64), out _);
+        }
+        finally
+        {
+            HashAlgorithmPool<SHA3_512>.Shared.Return(sha);
+        }
     }
 
     /// <summary>
@@ -474,18 +573,26 @@ internal static class MLKemCore
     /// </summary>
     private static void HashJ(ReadOnlySpan<byte> z, ReadOnlySpan<byte> c, Span<byte> output)
     {
-        using var shake = Shake256.Create(32);
-        shake.Absorb(z);
-        shake.Absorb(c);
-        shake.Squeeze(output.Slice(0, 32));
+        Shake256 shake = HashAlgorithmPool<Shake256>.Shared.Get();
+        try
+        {
+            shake.Absorb(z);
+            shake.Absorb(c);
+            shake.Squeeze(output.Slice(0, 32));
+        }
+        finally
+        {
+            // Returning resets the sponge, erasing the state derived from z.
+            HashAlgorithmPool<Shake256>.Shared.Return(shake);
+        }
     }
 
     /// <summary>
     /// PRF(seed, nonce) = SHAKE256(seed ‖ nonce, len) for CBD sampling.
     /// </summary>
-    private static void Prf(ReadOnlySpan<byte> seed, byte nonce, Span<byte> output)
+    private static void Prf(Shake256 shake, ReadOnlySpan<byte> seed, byte nonce, Span<byte> output)
     {
-        using var shake = Shake256.Create(output.Length);
+        shake.Reset();
         shake.Absorb(seed);
         ReadOnlySpan<byte> n = stackalloc byte[] { nonce };
         shake.Absorb(n);
@@ -499,11 +606,21 @@ internal static class MLKemCore
     /// <summary>
     /// Samples a polynomial using CBD from PRF output.
     /// </summary>
-    private static void SampleCbd(ReadOnlySpan<byte> seed, byte nonce, int eta, short[] coeffs)
+    /// <remarks>
+    /// Internal rather than private for the same reason as <see cref="GenerateMatrix"/>: the
+    /// benchmark suite measures it directly. Measuring it against <c>Cbd.Eta2</c> alone is
+    /// what separates the PRF cost from the bit-extraction cost, which is the question that
+    /// decides whether vectorizing the latter is worth doing.
+    /// </remarks>
+    [SkipLocalsInit]
+    internal static void SampleCbd(Shake256 shake, ReadOnlySpan<byte> seed, byte nonce, int eta, Span<short> coeffs)
     {
-        int prfBytes = 64 * eta;
-        byte[] prfOutput = new byte[prfBytes];
-        Prf(seed, nonce, prfOutput);
+        // 64·η is 128 or 192 bytes — small, fixed, and never escapes, so it lives on the stack
+        // rather than costing an allocation on every one of the 2k or 2k+1 calls per operation.
+        Span<byte> prfOutput = stackalloc byte[64 * MLKemParams.MaxEta];
+        prfOutput = prfOutput.Slice(0, 64 * eta);
+
+        Prf(shake, seed, nonce, prfOutput);
         Cbd.Sample(prfOutput, eta, coeffs);
         CryptographicOperations.ZeroMemory(prfOutput);
     }
@@ -511,25 +628,37 @@ internal static class MLKemCore
     /// <summary>
     /// Generates the k × k matrix Â from seed ρ using SHAKE128 (SampleNTT).
     /// </summary>
-    private static short[][][] GenerateMatrix(int k, ReadOnlySpan<byte> rho)
+    /// <remarks>
+    /// Internal rather than private so the benchmark suite can measure this directly. It is
+    /// a meaningful share of both the time and the allocation of every ML-KEM operation, and
+    /// measuring a copy of it in the test project would stop tracking the real thing the
+    /// moment either changed.
+    /// </remarks>
+    [SkipLocalsInit]
+    internal static void GenerateMatrix(Span<short> mat, int k, ReadOnlySpan<byte> rho)
     {
-        var mat = new short[k][][];
         Span<byte> seed = stackalloc byte[34];
         rho.CopyTo(seed);
 
-        for (int i = 0; i < k; i++)
+        // One XOF for the whole matrix. SampleNtt resets it per entry, so the k² entries cost
+        // one instance instead of k² — measurably ~20% of an operation's allocation.
+        Shake128 xof = HashAlgorithmPool<Shake128>.Shared.Get();
+        try
         {
-            mat[i] = new short[k][];
-            for (int j = 0; j < k; j++)
+            for (int i = 0; i < k; i++)
             {
-                mat[i][j] = new short[MLKemParams.N];
-                seed[32] = (byte)j;
-                seed[33] = (byte)i;
-                Poly.SampleNtt(seed, mat[i][j]);
+                for (int j = 0; j < k; j++)
+                {
+                    seed[32] = (byte)j;
+                    seed[33] = (byte)i;
+                    Poly.SampleNtt(xof, seed, PolyVec.Poly(mat, (i * k) + j));
+                }
             }
         }
-
-        return mat;
+        finally
+        {
+            HashAlgorithmPool<Shake128>.Shared.Return(xof);
+        }
     }
 
     /// <summary>
@@ -567,23 +696,30 @@ internal static class MLKemCore
     }
 
     /// <summary>
-    /// Clears a secret polynomial in a way that's not subject to compiler optimizations.
+    /// Carves the next <paramref name="length"/> values off a pooled scratch buffer.
     /// </summary>
-    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-    internal static void Zero(short[] poly)
+    /// <param name="scratch">The remaining scratch, advanced past the returned slice.</param>
+    /// <param name="length">The number of values to take.</param>
+    /// <returns>The carved slice.</returns>
+    /// <remarks>
+    /// One pooled rental carved into named pieces, rather than a rental each: fewer pool
+    /// round-trips, and returning the single buffer with <c>clearArray: true</c> wipes every
+    /// secret it held in one step.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Span<short> Take(ref Span<short> scratch, int length)
     {
-        Array.Clear(poly, 0, poly.Length);
+        Span<short> taken = scratch.Slice(0, length);
+        scratch = scratch.Slice(length);
+        return taken;
     }
 
     /// <summary>
-    /// Clears a secret polynomial vector in a way that's not subject to compiler optimizations.
+    /// Clears a secret polynomial in a way that's not subject to compiler optimizations.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-    internal static void Zero(short[][] vec)
+    internal static void Zero(Span<short> poly)
     {
-        for (int i = 0; i < vec.Length; i++)
-        {
-            Array.Clear(vec[i], 0, vec[i].Length);
-        }
+        poly.Clear();
     }
 }
