@@ -57,6 +57,10 @@ CIPHER_PREFIXES = (
     "aria-cbc", "camellia-cbc", "kuznyechik-cbc", "kalyna-cbc", "seed-cbc",
 )
 MAC_EXACT = {"aes-cmac", "aes-gmac", "poly1305"}
+# Post-quantum KEM. Unlike the hash/cipher/MAC scenarios these carry no data-size axis: the
+# ordered dimension is the FIPS 203 parameter set, which the Description column already puts in
+# the family slot (ML-KEM-512/768/1024), so data_size_label comes out empty for every row.
+KEM_PREFIXES = ("ml-kem",)
 
 # A handful of historical commits (e.g. KMAC128/256 at 471b6052d4, 2026-02-09) had a
 # DescriptionColumn bug where the "family" slot got filled with a benchmark method name
@@ -158,6 +162,14 @@ NORMALIZE_METHOD = {
 
 
 def normalize_method(method: str) -> str:
+    # BenchmarkDotNet wraps a [Benchmark(Description = ...)] containing spaces in single quotes,
+    # and the markdown exporter then HTML-escapes them, so a description like
+    # "Decapsulate (rejected)" arrives as "&#39;Decapsulate (rejected)&#39;". Strip both forms
+    # before the lookup, or the quotes become part of the method name in the database.
+    method = method.strip()
+    if method.startswith("&#39;") and method.endswith("&#39;"):
+        method = method[5:-5].strip()
+    method = method.strip("'").strip()
     return NORMALIZE_METHOD.get(method, method)
 
 
@@ -167,6 +179,8 @@ def classify_category(filename: str) -> str:
         return "Mac"
     if stem.startswith(CIPHER_PREFIXES):
         return "Cipher"
+    if stem.startswith(KEM_PREFIXES):
+        return "Kem"
     return "Hash"
 
 
