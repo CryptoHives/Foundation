@@ -354,6 +354,111 @@ public class MLKemInteropTests
 #pragma warning restore SYSLIB5006
 #endif
 
+
+#if KYBERNET
+
+    [Test]
+    [TestCaseSource(nameof(ParameterSets))]
+    public void KeyGen_SameSeed_KyberNetAgrees(string name, Func<IKem> factory)
+    {
+        using IKem kem = factory();
+
+        byte[] seed = new byte[64];
+        for (int i = 0; i < 64; i++) seed[i] = (byte)((i * 19 + 11) & 0xFF);
+
+        byte[] ek = new byte[kem.EncapsulationKeySizeBytes];
+        byte[] dk = new byte[kem.DecapsulationKeySizeBytes];
+        kem.GenerateKeyPair(seed, ek, dk);
+
+        // KyberNET must accept our FIPS 203 expanded decapsulation key verbatim, and derive
+        // the same encapsulation key from it.
+        using var theirPrivate = KyberNET.Keys.KyberDecapsulationKey.FromBytes(dk);
+        Assert.That(theirPrivate.FullBytes, Is.EqualTo(dk),
+            "KyberNET must round-trip our decapsulation key unchanged.");
+
+        var theirPublic = KyberNET.Keys.KyberEncapsulationKey.FromBytes(ek);
+        Assert.That(theirPublic.FullBytes, Is.EqualTo(ek),
+            "KyberNET must round-trip our encapsulation key unchanged.");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(ParameterSets))]
+    public void Encapsulate_KyberNetDecapsulates(string name, Func<IKem> factory)
+    {
+        using IKem kem = factory();
+
+        byte[] ek = new byte[kem.EncapsulationKeySizeBytes];
+        byte[] dk = new byte[kem.DecapsulationKeySizeBytes];
+        kem.GenerateKeyPair(ek, dk);
+
+        byte[] ct = new byte[kem.CiphertextSizeBytes];
+        byte[] ss = new byte[kem.SharedSecretSizeBytes];
+        kem.Encapsulate(ek, ct, ss);
+
+        using var theirPrivate = KyberNET.Keys.KyberDecapsulationKey.FromBytes(dk);
+        byte[] theirSecret = theirPrivate.Decapsulate(KyberNET.Keys.KyberCipherText.FromBytes(ct));
+
+        Assert.That(theirSecret, Is.EqualTo(ss),
+            "KyberNET must recover the shared secret from our encapsulation.");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(ParameterSets))]
+    public void Decapsulate_KyberNetEncapsulates(string name, Func<IKem> factory)
+    {
+        using IKem kem = factory();
+
+        byte[] ek = new byte[kem.EncapsulationKeySizeBytes];
+        byte[] dk = new byte[kem.DecapsulationKeySizeBytes];
+        kem.GenerateKeyPair(ek, dk);
+
+        var theirPublic = KyberNET.Keys.KyberEncapsulationKey.FromBytes(ek);
+        using var theirResult = theirPublic.Encapsulate(KyberNetRandom.Instance);
+
+        byte[] ss = new byte[kem.SharedSecretSizeBytes];
+        kem.Decapsulate(dk, theirResult.CipherText.FullBytes, ss);
+
+        Assert.That(ss, Is.EqualTo(theirResult.SharedSecretKey),
+            "We must recover the shared secret from KyberNET's encapsulation.");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(ParameterSets))]
+    public void ImplicitRejection_MatchesKyberNet(string name, Func<IKem> factory)
+    {
+        using IKem kem = factory();
+
+        byte[] ek = new byte[kem.EncapsulationKeySizeBytes];
+        byte[] dk = new byte[kem.DecapsulationKeySizeBytes];
+        kem.GenerateKeyPair(ek, dk);
+
+        byte[] ct = new byte[kem.CiphertextSizeBytes];
+        byte[] ssGood = new byte[kem.SharedSecretSizeBytes];
+        kem.Encapsulate(ek, ct, ssGood);
+
+        ct[2] ^= 0x40;
+
+        byte[] ours = new byte[kem.SharedSecretSizeBytes];
+        kem.Decapsulate(dk, ct, ours);
+
+        using var theirPrivate = KyberNET.Keys.KyberDecapsulationKey.FromBytes(dk);
+        byte[] theirs = theirPrivate.Decapsulate(KyberNET.Keys.KyberCipherText.FromBytes(ct));
+
+        Assert.That(ours, Is.Not.EqualTo(ssGood), "Tampered ciphertext must not yield the sender's secret.");
+        Assert.That(ours, Is.EqualTo(theirs), "Implicit-rejection output must match KyberNET.");
+    }
+
+    /// <summary>Bridges KyberNET's randomness abstraction; its own provider is internal.</summary>
+    private sealed class KyberNetRandom : KyberNET.IRandomProvider
+    {
+        public static readonly KyberNetRandom Instance = new();
+
+        public void FillWithRandom(byte[] buffer)
+            => System.Security.Cryptography.RandomNumberGenerator.Fill(buffer);
+    }
+
+#endif
+
     private static MLKemParameters BcParameters(string name) => name switch {
         "ML-KEM-512" => MLKemParameters.ml_kem_512,
         "ML-KEM-768" => MLKemParameters.ml_kem_768,

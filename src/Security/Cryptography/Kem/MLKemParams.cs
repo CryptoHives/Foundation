@@ -32,6 +32,24 @@ internal sealed class MLKemParams
     /// <summary>The randomness size for encapsulation (m = 32 bytes).</summary>
     public const int EncapsSeedBytes = 32;
 
+    /// <summary>
+    /// The largest η across all parameter sets (η₁ = 3 for ML-KEM-512).
+    /// </summary>
+    /// <remarks>
+    /// Fixes the size of the stack buffer CBD sampling writes its PRF output into, so the
+    /// buffer can be a compile-time constant rather than a per-call allocation.
+    /// </remarks>
+    public const int MaxEta = 3;
+
+    /// <summary>
+    /// The largest ciphertext across all parameter sets (ML-KEM-1024, 1568 bytes).
+    /// </summary>
+    /// <remarks>
+    /// Fixes the size of the stack buffer decapsulation re-encrypts into, so the buffer is a
+    /// compile-time constant rather than a per-call allocation sized from the parameter set.
+    /// </remarks>
+    public const int MaxCiphertextBytes = 1568;
+
     /// <summary>The module rank (number of polynomials per vector).</summary>
     public readonly int K;
 

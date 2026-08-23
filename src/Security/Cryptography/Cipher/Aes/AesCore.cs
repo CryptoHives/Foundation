@@ -61,11 +61,13 @@ internal static class AesCore
     /// AES S-box (SubBytes transformation).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The S-box is a non-linear substitution table used in SubBytes.
     /// It is derived from the multiplicative inverse over GF(2^8) followed
     /// by an affine transformation.
+    /// </para>
     /// </remarks>
-    private static readonly byte[] SBox =
+    private static ReadOnlySpan<byte> SBox =>
     [
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
         0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -88,7 +90,7 @@ internal static class AesCore
     /// <summary>
     /// AES inverse S-box (InvSubBytes transformation).
     /// </summary>
-    private static readonly byte[] InvSBox =
+    private static ReadOnlySpan<byte> InvSBox =>
     [
         0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
         0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
@@ -115,7 +117,7 @@ internal static class AesCore
     /// Rcon[i] = x^(i-1) in GF(2^8), where x = {02}.
     /// Only the first byte of each word is non-zero.
     /// </remarks>
-    private static readonly byte[] Rcon =
+    private static ReadOnlySpan<byte> Rcon =>
     [
         0x00, // Not used (index 0)
         0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36
@@ -284,14 +286,14 @@ internal static class AesCore
             }
 
             // Final round (no MixColumns)
-            t0 = ((uint)SBox[(s0 >> 24) & 0xff] << 24) ^ ((uint)SBox[(s1 >> 16) & 0xff] << 16) ^
-                 ((uint)SBox[(s2 >> 8) & 0xff] << 8) ^ SBox[s3 & 0xff] ^ roundKeys[keyOffset];
-            t1 = ((uint)SBox[(s1 >> 24) & 0xff] << 24) ^ ((uint)SBox[(s2 >> 16) & 0xff] << 16) ^
-                 ((uint)SBox[(s3 >> 8) & 0xff] << 8) ^ SBox[s0 & 0xff] ^ roundKeys[keyOffset + 1];
-            t2 = ((uint)SBox[(s2 >> 24) & 0xff] << 24) ^ ((uint)SBox[(s3 >> 16) & 0xff] << 16) ^
-                 ((uint)SBox[(s0 >> 8) & 0xff] << 8) ^ SBox[s1 & 0xff] ^ roundKeys[keyOffset + 2];
-            t3 = ((uint)SBox[(s3 >> 24) & 0xff] << 24) ^ ((uint)SBox[(s0 >> 16) & 0xff] << 16) ^
-                 ((uint)SBox[(s1 >> 8) & 0xff] << 8) ^ SBox[s2 & 0xff] ^ roundKeys[keyOffset + 3];
+            t0 = ((uint)SBox[(int)((s0 >> 24) & 0xff)] << 24) ^ ((uint)SBox[(int)((s1 >> 16) & 0xff)] << 16) ^
+                 ((uint)SBox[(int)((s2 >> 8) & 0xff)] << 8) ^ SBox[(int)(s3 & 0xff)] ^ roundKeys[keyOffset];
+            t1 = ((uint)SBox[(int)((s1 >> 24) & 0xff)] << 24) ^ ((uint)SBox[(int)((s2 >> 16) & 0xff)] << 16) ^
+                 ((uint)SBox[(int)((s3 >> 8) & 0xff)] << 8) ^ SBox[(int)(s0 & 0xff)] ^ roundKeys[keyOffset + 1];
+            t2 = ((uint)SBox[(int)((s2 >> 24) & 0xff)] << 24) ^ ((uint)SBox[(int)((s3 >> 16) & 0xff)] << 16) ^
+                 ((uint)SBox[(int)((s0 >> 8) & 0xff)] << 8) ^ SBox[(int)(s1 & 0xff)] ^ roundKeys[keyOffset + 2];
+            t3 = ((uint)SBox[(int)((s3 >> 24) & 0xff)] << 24) ^ ((uint)SBox[(int)((s0 >> 16) & 0xff)] << 16) ^
+                 ((uint)SBox[(int)((s1 >> 8) & 0xff)] << 8) ^ SBox[(int)(s2 & 0xff)] ^ roundKeys[keyOffset + 3];
 
             // Store output
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
@@ -335,14 +337,14 @@ internal static class AesCore
             }
 
             // Final round (no InvMixColumns)
-            t0 = ((uint)InvSBox[(s0 >> 24) & 0xff] << 24) ^ ((uint)InvSBox[(s3 >> 16) & 0xff] << 16) ^
-                 ((uint)InvSBox[(s2 >> 8) & 0xff] << 8) ^ InvSBox[s1 & 0xff] ^ roundKeys[keyOffset];
-            t1 = ((uint)InvSBox[(s1 >> 24) & 0xff] << 24) ^ ((uint)InvSBox[(s0 >> 16) & 0xff] << 16) ^
-                 ((uint)InvSBox[(s3 >> 8) & 0xff] << 8) ^ InvSBox[s2 & 0xff] ^ roundKeys[keyOffset + 1];
-            t2 = ((uint)InvSBox[(s2 >> 24) & 0xff] << 24) ^ ((uint)InvSBox[(s1 >> 16) & 0xff] << 16) ^
-                 ((uint)InvSBox[(s0 >> 8) & 0xff] << 8) ^ InvSBox[s3 & 0xff] ^ roundKeys[keyOffset + 2];
-            t3 = ((uint)InvSBox[(s3 >> 24) & 0xff] << 24) ^ ((uint)InvSBox[(s2 >> 16) & 0xff] << 16) ^
-                 ((uint)InvSBox[(s1 >> 8) & 0xff] << 8) ^ InvSBox[s0 & 0xff] ^ roundKeys[keyOffset + 3];
+            t0 = ((uint)InvSBox[(int)((s0 >> 24) & 0xff)] << 24) ^ ((uint)InvSBox[(int)((s3 >> 16) & 0xff)] << 16) ^
+                 ((uint)InvSBox[(int)((s2 >> 8) & 0xff)] << 8) ^ InvSBox[(int)(s1 & 0xff)] ^ roundKeys[keyOffset];
+            t1 = ((uint)InvSBox[(int)((s1 >> 24) & 0xff)] << 24) ^ ((uint)InvSBox[(int)((s0 >> 16) & 0xff)] << 16) ^
+                 ((uint)InvSBox[(int)((s3 >> 8) & 0xff)] << 8) ^ InvSBox[(int)(s2 & 0xff)] ^ roundKeys[keyOffset + 1];
+            t2 = ((uint)InvSBox[(int)((s2 >> 24) & 0xff)] << 24) ^ ((uint)InvSBox[(int)((s1 >> 16) & 0xff)] << 16) ^
+                 ((uint)InvSBox[(int)((s0 >> 8) & 0xff)] << 8) ^ InvSBox[(int)(s3 & 0xff)] ^ roundKeys[keyOffset + 2];
+            t3 = ((uint)InvSBox[(int)((s3 >> 24) & 0xff)] << 24) ^ ((uint)InvSBox[(int)((s2 >> 16) & 0xff)] << 16) ^
+                 ((uint)InvSBox[(int)((s1 >> 8) & 0xff)] << 8) ^ InvSBox[(int)(s0 & 0xff)] ^ roundKeys[keyOffset + 3];
 
             // Store output
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
@@ -364,10 +366,10 @@ internal static class AesCore
     {
         unchecked
         {
-            return ((uint)SBox[(w >> 24) & 0xff] << 24) |
-                   ((uint)SBox[(w >> 16) & 0xff] << 16) |
-                   ((uint)SBox[(w >> 8) & 0xff] << 8) |
-                   SBox[w & 0xff];
+            return ((uint)SBox[(int)((w >> 24) & 0xff)] << 24) |
+                   ((uint)SBox[(int)((w >> 16) & 0xff)] << 16) |
+                   ((uint)SBox[(int)((w >> 8) & 0xff)] << 8) |
+                   SBox[(int)(w & 0xff)];
         }
     }
 
@@ -391,10 +393,10 @@ internal static class AesCore
     {
         unchecked
         {
-            return Td0[SBox[(w >> 24) & 0xff]] ^
-                   Td1[SBox[(w >> 16) & 0xff]] ^
-                   Td2[SBox[(w >> 8) & 0xff]] ^
-                   Td3[SBox[w & 0xff]];
+            return Td0[SBox[(int)((w >> 24) & 0xff)]] ^
+                   Td1[SBox[(int)((w >> 16) & 0xff)]] ^
+                   Td2[SBox[(int)((w >> 8) & 0xff)]] ^
+                   Td3[SBox[(int)(w & 0xff)]];
         }
     }
 
