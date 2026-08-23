@@ -105,6 +105,29 @@ Measured on the transform, which is where the round keys and chaining state live
 | BLAKE2s (keyed) | 120 B | 64 B | 640 B | Same as BLAKE2s + key material |
 | BLAKE3 (keyed) | 3,072 B | 64 B | — | Same as BLAKE3 with key words |
 
+### Post-Quantum KEM
+
+Unlike the tables above, an ML-KEM object holds key material rather than absorbing state, so its
+footprint is fixed by the parameter set and does not depend on any input. The three arrays it retains
+are the seed (`d ‖ z`), the decapsulation key and the encapsulation key; all three are zeroed on
+`Dispose`.
+
+| Algorithm | Instance State | Encapsulation Key | Decapsulation Key | Ciphertext | Static Tables |
+|-----------|---------------|-------------------|-------------------|-----------|---------------|
+| ML-KEM-512 | 2,496 B | 800 B | 1,632 B | 768 B | 256 B + 3.6 KB |
+| ML-KEM-768 | 3,648 B | 1,184 B | 2,400 B | 1,088 B | 256 B + 3.6 KB |
+| ML-KEM-1024 | 4,800 B | 1,568 B | 3,168 B | 1,568 B | 256 B + 3.6 KB |
+
+> Instance state is seed + decapsulation key + encapsulation key. A key imported from a
+> decapsulation key rather than generated from a seed keeps no seed and is 64 B smaller; an
+> encapsulation-key-only object keeps just that array. The 256 B of static tables are the 128
+> NTT zetas; the 3.6 KB is the Keccak constant block shared with every SHA-3/SHAKE instance,
+> which ML-KEM uses for G, H, J and the XOF — it is not a second copy.
+>
+> `Encapsulate` and `Decapsulate` allocate nothing on the managed heap: their working polynomials
+> come from `ArrayPool<short>`, the hash and XOF objects from the shared `HashAlgorithmPool`, and
+> the small fixed-size buffers from the stack.
+
 > **Static tables** are shared across all instances of algorithms in the same family and are loaded
 > once into memory. AES T-tables (8.5 KB) are shared by all AES-based algorithms (ECB, CBC, CTR, GCM,
 > CCM, CMAC, GMAC). The Keccak figure is 192 B of round constants plus ~3.5 KB of SIMD constant
@@ -161,7 +184,14 @@ Measured on the transform, which is where the round keys and chaining state live
    The script derives a platform id from the report's machine-spec preamble (override with `-PlatformId`
    for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass
    `-CodeCommit` when recording after the fact. It never commits or pushes: review the result and commit
-   in that worktree when the run is worth keeping. Pushing the branch does not republish the site on
+   in that worktree when the run is worth keeping.
+
+   A new benchmark class also needs an entry in `scripts/update-benchmark-docs.ps1`, which maps report
+   file names onto the archive's scenario names. The script copies what its mapping lists, so a report
+   with no entry is silently skipped and never reaches the archive, the database or the dashboard; it
+   warns about each unmapped report it finds, but the warning does not stop the run. The archive name
+   matters beyond being a label — the trends importer derives the category from its prefix, which is why
+   the KEM reports are recorded as `ml-kem-*.md`. Pushing the branch does not republish the site on
    its own — GitHub only runs workflows that exist in the pushed branch, and the orphan archive branch
    carries no `.github/`. Publish a new run deliberately with `gh workflow run docfx.yml`, or let the
    next push to `main` pick it up.

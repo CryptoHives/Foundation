@@ -3,6 +3,8 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
+using System;
+
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -57,7 +59,7 @@ internal static class Compress
     /// <param name="coeffs">The polynomial coefficients (modified in-place).</param>
     /// <param name="d">The target bit width.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void CompressPoly(short[] coeffs, int d)
+    public static void CompressPoly(Span<short> coeffs, int d)
     {
         for (int i = 0; i < MLKemParams.N; i++)
         {
@@ -71,7 +73,7 @@ internal static class Compress
     /// <param name="coeffs">The polynomial coefficients (modified in-place).</param>
     /// <param name="d">The bit width of the compressed representation.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public static void DecompressPoly(short[] coeffs, int d)
+    public static void DecompressPoly(Span<short> coeffs, int d)
     {
         for (int i = 0; i < MLKemParams.N; i++)
         {
