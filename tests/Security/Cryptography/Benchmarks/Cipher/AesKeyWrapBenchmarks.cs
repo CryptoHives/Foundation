@@ -17,7 +17,7 @@ using System;
 [HideColumns("Namespace")]
 [BenchmarkCategory("Cipher", "KeyWrap", "AES-KW-KWP")]
 [NonParallelizable]
-public sealed class AesKeyWrapBenchmark
+public class AesKeyWrapBenchmark
 {
     private const int RandomSeed = 0x43727970;
 
