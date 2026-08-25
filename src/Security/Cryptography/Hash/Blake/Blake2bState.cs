@@ -48,7 +48,7 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
     private const int ScratchSize = BlockSizeBytes / sizeof(ulong);
 
     // BLAKE2b IV constants (same as SHA-512)
-    private static ReadOnlySpan<ulong> IV =>
+    private static readonly ulong[] IV =
     [
         0x6a09e667f3bcc908UL,
         0xbb67ae8584caa73bUL,

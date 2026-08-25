@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Core AES (Rijndael) operations shared by all AES key sizes.
@@ -61,13 +62,11 @@ internal static class AesCore
     /// AES S-box (SubBytes transformation).
     /// </summary>
     /// <remarks>
-    /// <para>
     /// The S-box is a non-linear substitution table used in SubBytes.
     /// It is derived from the multiplicative inverse over GF(2^8) followed
     /// by an affine transformation.
-    /// </para>
     /// </remarks>
-    private static ReadOnlySpan<byte> SBox =>
+    private static readonly byte[] SBox =
     [
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
         0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -90,7 +89,7 @@ internal static class AesCore
     /// <summary>
     /// AES inverse S-box (InvSubBytes transformation).
     /// </summary>
-    private static ReadOnlySpan<byte> InvSBox =>
+    private static readonly byte[] InvSBox =
     [
         0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
         0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
@@ -117,7 +116,7 @@ internal static class AesCore
     /// Rcon[i] = x^(i-1) in GF(2^8), where x = {02}.
     /// Only the first byte of each word is non-zero.
     /// </remarks>
-    private static ReadOnlySpan<byte> Rcon =>
+    private static readonly byte[] Rcon =
     [
         0x00, // Not used (index 0)
         0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36
@@ -273,27 +272,34 @@ internal static class AesCore
             uint t0, t1, t2, t3;
             int keyOffset = 4;
 
+            ref uint te0 = ref MemoryMarshal.GetArrayDataReference(Te0);
+            ref uint te1 = ref MemoryMarshal.GetArrayDataReference(Te1);
+            ref uint te2 = ref MemoryMarshal.GetArrayDataReference(Te2);
+            ref uint te3 = ref MemoryMarshal.GetArrayDataReference(Te3);
+
             // Main rounds (all except last)
             for (int round = 1; round < nr; round++)
             {
-                t0 = Te0[(s0 >> 24) & 0xff] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^ Te3[s3 & 0xff] ^ roundKeys[keyOffset];
-                t1 = Te0[(s1 >> 24) & 0xff] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >> 8) & 0xff] ^ Te3[s0 & 0xff] ^ roundKeys[keyOffset + 1];
-                t2 = Te0[(s2 >> 24) & 0xff] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >> 8) & 0xff] ^ Te3[s1 & 0xff] ^ roundKeys[keyOffset + 2];
-                t3 = Te0[(s3 >> 24) & 0xff] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^ Te3[s2 & 0xff] ^ roundKeys[keyOffset + 3];
+                t0 = Unsafe.Add(ref te0, (s0 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s1 >> 16) & 0xff) ^ Unsafe.Add(ref te2, (s2 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s3 & 0xff) ^ roundKeys[keyOffset];
+                t1 = Unsafe.Add(ref te0, (s1 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s2 >> 16) & 0xff) ^ Unsafe.Add(ref te2, (s3 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s0 & 0xff) ^ roundKeys[keyOffset + 1];
+                t2 = Unsafe.Add(ref te0, (s2 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s3 >> 16) & 0xff) ^ Unsafe.Add(ref te2, (s0 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s1 & 0xff) ^ roundKeys[keyOffset + 2];
+                t3 = Unsafe.Add(ref te0, (s3 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s0 >> 16) & 0xff) ^ Unsafe.Add(ref te2, (s1 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s2 & 0xff) ^ roundKeys[keyOffset + 3];
 
                 s0 = t0; s1 = t1; s2 = t2; s3 = t3;
                 keyOffset += 4;
             }
 
+            ref byte sbox = ref MemoryMarshal.GetArrayDataReference(SBox);
+
             // Final round (no MixColumns)
-            t0 = ((uint)SBox[(int)((s0 >> 24) & 0xff)] << 24) ^ ((uint)SBox[(int)((s1 >> 16) & 0xff)] << 16) ^
-                 ((uint)SBox[(int)((s2 >> 8) & 0xff)] << 8) ^ SBox[(int)(s3 & 0xff)] ^ roundKeys[keyOffset];
-            t1 = ((uint)SBox[(int)((s1 >> 24) & 0xff)] << 24) ^ ((uint)SBox[(int)((s2 >> 16) & 0xff)] << 16) ^
-                 ((uint)SBox[(int)((s3 >> 8) & 0xff)] << 8) ^ SBox[(int)(s0 & 0xff)] ^ roundKeys[keyOffset + 1];
-            t2 = ((uint)SBox[(int)((s2 >> 24) & 0xff)] << 24) ^ ((uint)SBox[(int)((s3 >> 16) & 0xff)] << 16) ^
-                 ((uint)SBox[(int)((s0 >> 8) & 0xff)] << 8) ^ SBox[(int)(s1 & 0xff)] ^ roundKeys[keyOffset + 2];
-            t3 = ((uint)SBox[(int)((s3 >> 24) & 0xff)] << 24) ^ ((uint)SBox[(int)((s0 >> 16) & 0xff)] << 16) ^
-                 ((uint)SBox[(int)((s1 >> 8) & 0xff)] << 8) ^ SBox[(int)(s2 & 0xff)] ^ roundKeys[keyOffset + 3];
+            t0 = ((uint)Unsafe.Add(ref sbox, (s0 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s1 >> 16) & 0xff) << 16) ^
+                 ((uint)Unsafe.Add(ref sbox, (s2 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s3 & 0xff) ^ roundKeys[keyOffset];
+            t1 = ((uint)Unsafe.Add(ref sbox, (s1 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s2 >> 16) & 0xff) << 16) ^
+                 ((uint)Unsafe.Add(ref sbox, (s3 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s0 & 0xff) ^ roundKeys[keyOffset + 1];
+            t2 = ((uint)Unsafe.Add(ref sbox, (s2 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s3 >> 16) & 0xff) << 16) ^
+                 ((uint)Unsafe.Add(ref sbox, (s0 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s1 & 0xff) ^ roundKeys[keyOffset + 2];
+            t3 = ((uint)Unsafe.Add(ref sbox, (s3 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s0 >> 16) & 0xff) << 16) ^
+                 ((uint)Unsafe.Add(ref sbox, (s1 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s2 & 0xff) ^ roundKeys[keyOffset + 3];
 
             // Store output
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
@@ -324,27 +330,34 @@ internal static class AesCore
             uint t0, t1, t2, t3;
             int keyOffset = 4;
 
+            ref uint td0 = ref MemoryMarshal.GetArrayDataReference(Td0);
+            ref uint td1 = ref MemoryMarshal.GetArrayDataReference(Td1);
+            ref uint td2 = ref MemoryMarshal.GetArrayDataReference(Td2);
+            ref uint td3 = ref MemoryMarshal.GetArrayDataReference(Td3);
+
             // Main rounds (all except last)
             for (int round = 1; round < nr; round++)
             {
-                t0 = Td0[(s0 >> 24) & 0xff] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >> 8) & 0xff] ^ Td3[s1 & 0xff] ^ roundKeys[keyOffset];
-                t1 = Td0[(s1 >> 24) & 0xff] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >> 8) & 0xff] ^ Td3[s2 & 0xff] ^ roundKeys[keyOffset + 1];
-                t2 = Td0[(s2 >> 24) & 0xff] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >> 8) & 0xff] ^ Td3[s3 & 0xff] ^ roundKeys[keyOffset + 2];
-                t3 = Td0[(s3 >> 24) & 0xff] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >> 8) & 0xff] ^ Td3[s0 & 0xff] ^ roundKeys[keyOffset + 3];
+                t0 = Unsafe.Add(ref td0, (s0 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s3 >> 16) & 0xff) ^ Unsafe.Add(ref td2, (s2 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s1 & 0xff) ^ roundKeys[keyOffset];
+                t1 = Unsafe.Add(ref td0, (s1 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s0 >> 16) & 0xff) ^ Unsafe.Add(ref td2, (s3 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s2 & 0xff) ^ roundKeys[keyOffset + 1];
+                t2 = Unsafe.Add(ref td0, (s2 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s1 >> 16) & 0xff) ^ Unsafe.Add(ref td2, (s0 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s3 & 0xff) ^ roundKeys[keyOffset + 2];
+                t3 = Unsafe.Add(ref td0, (s3 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s2 >> 16) & 0xff) ^ Unsafe.Add(ref td2, (s1 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s0 & 0xff) ^ roundKeys[keyOffset + 3];
 
                 s0 = t0; s1 = t1; s2 = t2; s3 = t3;
                 keyOffset += 4;
             }
 
+            ref byte invSbox = ref MemoryMarshal.GetArrayDataReference(InvSBox);
+
             // Final round (no InvMixColumns)
-            t0 = ((uint)InvSBox[(int)((s0 >> 24) & 0xff)] << 24) ^ ((uint)InvSBox[(int)((s3 >> 16) & 0xff)] << 16) ^
-                 ((uint)InvSBox[(int)((s2 >> 8) & 0xff)] << 8) ^ InvSBox[(int)(s1 & 0xff)] ^ roundKeys[keyOffset];
-            t1 = ((uint)InvSBox[(int)((s1 >> 24) & 0xff)] << 24) ^ ((uint)InvSBox[(int)((s0 >> 16) & 0xff)] << 16) ^
-                 ((uint)InvSBox[(int)((s3 >> 8) & 0xff)] << 8) ^ InvSBox[(int)(s2 & 0xff)] ^ roundKeys[keyOffset + 1];
-            t2 = ((uint)InvSBox[(int)((s2 >> 24) & 0xff)] << 24) ^ ((uint)InvSBox[(int)((s1 >> 16) & 0xff)] << 16) ^
-                 ((uint)InvSBox[(int)((s0 >> 8) & 0xff)] << 8) ^ InvSBox[(int)(s3 & 0xff)] ^ roundKeys[keyOffset + 2];
-            t3 = ((uint)InvSBox[(int)((s3 >> 24) & 0xff)] << 24) ^ ((uint)InvSBox[(int)((s2 >> 16) & 0xff)] << 16) ^
-                 ((uint)InvSBox[(int)((s1 >> 8) & 0xff)] << 8) ^ InvSBox[(int)(s0 & 0xff)] ^ roundKeys[keyOffset + 3];
+            t0 = ((uint)Unsafe.Add(ref invSbox, (s0 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref invSbox, (s3 >> 16) & 0xff) << 16) ^
+                 ((uint)Unsafe.Add(ref invSbox, (s2 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s1 & 0xff) ^ roundKeys[keyOffset];
+            t1 = ((uint)Unsafe.Add(ref invSbox, (s1 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref invSbox, (s0 >> 16) & 0xff) << 16) ^
+                 ((uint)Unsafe.Add(ref invSbox, (s3 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s2 & 0xff) ^ roundKeys[keyOffset + 1];
+            t2 = ((uint)Unsafe.Add(ref invSbox, (s2 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref invSbox, (s1 >> 16) & 0xff) << 16) ^
+                 ((uint)Unsafe.Add(ref invSbox, (s0 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s3 & 0xff) ^ roundKeys[keyOffset + 2];
+            t3 = ((uint)Unsafe.Add(ref invSbox, (s3 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref invSbox, (s2 >> 16) & 0xff) << 16) ^
+                 ((uint)Unsafe.Add(ref invSbox, (s1 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s0 & 0xff) ^ roundKeys[keyOffset + 3];
 
             // Store output
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
@@ -366,10 +379,11 @@ internal static class AesCore
     {
         unchecked
         {
-            return ((uint)SBox[(int)((w >> 24) & 0xff)] << 24) |
-                   ((uint)SBox[(int)((w >> 16) & 0xff)] << 16) |
-                   ((uint)SBox[(int)((w >> 8) & 0xff)] << 8) |
-                   SBox[(int)(w & 0xff)];
+            ref byte sbox = ref MemoryMarshal.GetArrayDataReference(SBox);
+            return ((uint)Unsafe.Add(ref sbox, (w >> 24) & 0xff) << 24) |
+                   ((uint)Unsafe.Add(ref sbox, (w >> 16) & 0xff) << 16) |
+                   ((uint)Unsafe.Add(ref sbox, (w >> 8) & 0xff) << 8) |
+                   Unsafe.Add(ref sbox, w & 0xff);
         }
     }
 
@@ -393,10 +407,15 @@ internal static class AesCore
     {
         unchecked
         {
-            return Td0[SBox[(int)((w >> 24) & 0xff)]] ^
-                   Td1[SBox[(int)((w >> 16) & 0xff)]] ^
-                   Td2[SBox[(int)((w >> 8) & 0xff)]] ^
-                   Td3[SBox[(int)(w & 0xff)]];
+            ref byte sbox = ref MemoryMarshal.GetArrayDataReference(SBox);
+            ref uint td0 = ref MemoryMarshal.GetArrayDataReference(Td0);
+            ref uint td1 = ref MemoryMarshal.GetArrayDataReference(Td1);
+            ref uint td2 = ref MemoryMarshal.GetArrayDataReference(Td2);
+            ref uint td3 = ref MemoryMarshal.GetArrayDataReference(Td3);
+            return Unsafe.Add(ref td0, Unsafe.Add(ref sbox, (w >> 24) & 0xff)) ^
+                   Unsafe.Add(ref td1, Unsafe.Add(ref sbox, (w >> 16) & 0xff)) ^
+                   Unsafe.Add(ref td2, Unsafe.Add(ref sbox, (w >> 8) & 0xff)) ^
+                   Unsafe.Add(ref td3, Unsafe.Add(ref sbox, w & 0xff));
         }
     }
 

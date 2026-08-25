@@ -33,7 +33,7 @@ internal unsafe struct KalynaCore
     private int _keyWords;
 
     // S-boxes from DSTU 7624:2014
-    private static ReadOnlySpan<byte> S0 =>
+    private static readonly byte[] S0 =
     [
         0xA8, 0x43, 0x5F, 0x06, 0x6B, 0x75, 0x6C, 0x59, 0x71, 0xDF, 0x87, 0x95, 0x17, 0xF0, 0xD8, 0x09,
         0x6D, 0xF3, 0x1D, 0xCB, 0xC9, 0x4D, 0x2C, 0xAF, 0x79, 0xE0, 0x97, 0xFD, 0x6F, 0x4B, 0x45, 0x39,
@@ -53,7 +53,7 @@ internal unsafe struct KalynaCore
         0x81, 0x54, 0xC0, 0xED, 0x4E, 0x44, 0xA7, 0x2A, 0x85, 0x25, 0xE6, 0xCA, 0x7C, 0x8B, 0x56, 0x80
     ];
 
-    private static ReadOnlySpan<byte> S1 =>
+    private static readonly byte[] S1 =
     [
         0xCE, 0xBB, 0xEB, 0x92, 0xEA, 0xCB, 0x13, 0xC1, 0xE9, 0x3A, 0xD6, 0xB2, 0xD2, 0x90, 0x17, 0xF8,
         0x42, 0x15, 0x56, 0xB4, 0x65, 0x1C, 0x88, 0x43, 0xC5, 0x5C, 0x36, 0xBA, 0xF5, 0x57, 0x67, 0x8D,
@@ -73,7 +73,7 @@ internal unsafe struct KalynaCore
         0xB6, 0xC2, 0x01, 0xF0, 0x5A, 0xED, 0xA7, 0x66, 0x21, 0x7F, 0x8A, 0x27, 0xC7, 0xC0, 0x29, 0xD7
     ];
 
-    private static ReadOnlySpan<byte> S2 =>
+    private static readonly byte[] S2 =
     [
         0x93, 0xD9, 0x9A, 0xB5, 0x98, 0x22, 0x45, 0xFC, 0xBA, 0x6A, 0xDF, 0x02, 0x9F, 0xDC, 0x51, 0x59,
         0x4A, 0x17, 0x2B, 0xC2, 0x94, 0xF4, 0xBB, 0xA3, 0x62, 0xE4, 0x71, 0xD4, 0xCD, 0x70, 0x16, 0xE1,
@@ -93,7 +93,7 @@ internal unsafe struct KalynaCore
         0x42, 0x04, 0xA0, 0xDB, 0x39, 0x86, 0x54, 0xAA, 0x8C, 0x34, 0x21, 0x8B, 0xF8, 0x0C, 0x74, 0x67
     ];
 
-    private static ReadOnlySpan<byte> S3 =>
+    private static readonly byte[] S3 =
     [
         0x68, 0x8D, 0xCA, 0x4D, 0x73, 0x4B, 0x4E, 0x2A, 0xD4, 0x52, 0x26, 0xB3, 0x54, 0x1E, 0x19, 0x1F,
         0x22, 0x03, 0x46, 0x3D, 0x2D, 0x4A, 0x53, 0x83, 0x13, 0x8A, 0xB7, 0xD5, 0x25, 0x79, 0xF5, 0xBD,
@@ -1023,16 +1023,21 @@ internal unsafe struct KalynaCore
         int lo = (int)value;
         int hi = (int)(value >> 32);
 
-        byte t0 = S0[lo & 0xFF];
-        byte t1 = S1[(lo >> 8) & 0xFF];
-        byte t2 = S2[(lo >> 16) & 0xFF];
-        byte t3 = S3[(lo >> 24) & 0xFF];
+        ref byte s0 = ref MemoryMarshal.GetArrayDataReference(S0);
+        ref byte s1 = ref MemoryMarshal.GetArrayDataReference(S1);
+        ref byte s2 = ref MemoryMarshal.GetArrayDataReference(S2);
+        ref byte s3 = ref MemoryMarshal.GetArrayDataReference(S3);
+
+        byte t0 = Unsafe.Add(ref s0, lo & 0xFF);
+        byte t1 = Unsafe.Add(ref s1, (lo >> 8) & 0xFF);
+        byte t2 = Unsafe.Add(ref s2, (lo >> 16) & 0xFF);
+        byte t3 = Unsafe.Add(ref s3, (lo >> 24) & 0xFF);
         lo = t0 | (t1 << 8) | (t2 << 16) | (t3 << 24);
 
-        byte t4 = S0[hi & 0xFF];
-        byte t5 = S1[(hi >> 8) & 0xFF];
-        byte t6 = S2[(hi >> 16) & 0xFF];
-        byte t7 = S3[(hi >> 24) & 0xFF];
+        byte t4 = Unsafe.Add(ref s0, hi & 0xFF);
+        byte t5 = Unsafe.Add(ref s1, (hi >> 8) & 0xFF);
+        byte t6 = Unsafe.Add(ref s2, (hi >> 16) & 0xFF);
+        byte t7 = Unsafe.Add(ref s3, (hi >> 24) & 0xFF);
         hi = t4 | (t5 << 8) | (t6 << 16) | (t7 << 24);
 
         return (uint)lo | ((ulong)(uint)hi << 32);
@@ -1043,16 +1048,21 @@ internal unsafe struct KalynaCore
         int lo = (int)value;
         int hi = (int)(value >> 32);
 
-        byte t0 = IS0[lo & 0xFF];
-        byte t1 = IS1[(lo >> 8) & 0xFF];
-        byte t2 = IS2[(lo >> 16) & 0xFF];
-        byte t3 = IS3[(lo >> 24) & 0xFF];
+        ref byte is0 = ref MemoryMarshal.GetArrayDataReference(IS0);
+        ref byte is1 = ref MemoryMarshal.GetArrayDataReference(IS1);
+        ref byte is2 = ref MemoryMarshal.GetArrayDataReference(IS2);
+        ref byte is3 = ref MemoryMarshal.GetArrayDataReference(IS3);
+
+        byte t0 = Unsafe.Add(ref is0, lo & 0xFF);
+        byte t1 = Unsafe.Add(ref is1, (lo >> 8) & 0xFF);
+        byte t2 = Unsafe.Add(ref is2, (lo >> 16) & 0xFF);
+        byte t3 = Unsafe.Add(ref is3, (lo >> 24) & 0xFF);
         lo = t0 | (t1 << 8) | (t2 << 16) | (t3 << 24);
 
-        byte t4 = IS0[hi & 0xFF];
-        byte t5 = IS1[(hi >> 8) & 0xFF];
-        byte t6 = IS2[(hi >> 16) & 0xFF];
-        byte t7 = IS3[(hi >> 24) & 0xFF];
+        byte t4 = Unsafe.Add(ref is0, hi & 0xFF);
+        byte t5 = Unsafe.Add(ref is1, (hi >> 8) & 0xFF);
+        byte t6 = Unsafe.Add(ref is2, (hi >> 16) & 0xFF);
+        byte t7 = Unsafe.Add(ref is3, (hi >> 24) & 0xFF);
         hi = t4 | (t5 << 8) | (t6 << 16) | (t7 << 24);
 
         return (uint)lo | ((ulong)(uint)hi << 32);
@@ -1122,17 +1132,21 @@ internal unsafe struct KalynaCore
         // For 128-bit block (2 columns of 8 bytes):
         // Column 0: S0, S1, S2, S3, S0, S1, S2, S3
         // Column 1: S0, S1, S2, S3, S0, S1, S2, S3
+        ref byte s0 = ref MemoryMarshal.GetArrayDataReference(S0);
+        ref byte s1 = ref MemoryMarshal.GetArrayDataReference(S1);
+        ref byte s2 = ref MemoryMarshal.GetArrayDataReference(S2);
+        ref byte s3 = ref MemoryMarshal.GetArrayDataReference(S3);
         for (int col = 0; col < NumWords; col++)
         {
             int off = col * 8;
-            state[off + 0] = S0[state[off + 0]];
-            state[off + 1] = S1[state[off + 1]];
-            state[off + 2] = S2[state[off + 2]];
-            state[off + 3] = S3[state[off + 3]];
-            state[off + 4] = S0[state[off + 4]];
-            state[off + 5] = S1[state[off + 5]];
-            state[off + 6] = S2[state[off + 6]];
-            state[off + 7] = S3[state[off + 7]];
+            state[off + 0] = Unsafe.Add(ref s0, state[off + 0]);
+            state[off + 1] = Unsafe.Add(ref s1, state[off + 1]);
+            state[off + 2] = Unsafe.Add(ref s2, state[off + 2]);
+            state[off + 3] = Unsafe.Add(ref s3, state[off + 3]);
+            state[off + 4] = Unsafe.Add(ref s0, state[off + 4]);
+            state[off + 5] = Unsafe.Add(ref s1, state[off + 5]);
+            state[off + 6] = Unsafe.Add(ref s2, state[off + 6]);
+            state[off + 7] = Unsafe.Add(ref s3, state[off + 7]);
         }
     }
 
