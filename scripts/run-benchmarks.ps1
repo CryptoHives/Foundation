@@ -52,10 +52,12 @@ param(
         "ChaCha20",
         "ChaCha20Poly1305", "XChaCha20Poly1305",
         # Regional cipher algorithms (individual)
-        "Sm4Cbc", "AriaCbc128", "AriaCbc256",
+        "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256",
         "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256",
-        "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256",
+        "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512",
         "SeedCbc",
+        # AEAD and key wrapping (individual)
+        "AsconAead128", "AesKeyWrap",
         # MAC algorithms (individual)
         "HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512",
         "HmacSha3_256", "HmacSha3_384", "HmacSha3_512",
@@ -241,6 +243,7 @@ $AlgorithmBenchmarkMap = @{
     # Ciphers - Regional
     "Sm4Cbc"            = "Sm4Cbc"
     "AriaCbc128"        = "AriaCbc128"
+    "AriaCbc192"        = "AriaCbc192"
     "AriaCbc256"        = "AriaCbc256"
     "CamelliaCbc128"    = "CamelliaCbc128"
     "CamelliaCbc192"    = "CamelliaCbc192"
@@ -248,7 +251,11 @@ $AlgorithmBenchmarkMap = @{
     "KuznyechikCbc"     = "KuznyechikCbc"
     "KalynaCbc128"      = "KalynaCbc128"
     "KalynaCbc256"      = "KalynaCbc256"
+    "KalynaCbc512"      = "KalynaCbc512"
     "SeedCbc"           = "SeedCbc"
+    # Ciphers - AEAD and key wrapping
+    "AsconAead128"      = "AsconAead128"
+    "AesKeyWrap"        = "AesKeyWrap"
     # MAC - HMAC
     "HmacMd5"           = "HmacMd5"
     "HmacSha1"          = "HmacSha1"
@@ -301,9 +308,9 @@ $GroupAliases = @{
     "AES-CCM"        = @("AesCcm128", "AesCcm256")
     "AES-CBC"        = @("AesCbc128", "AesCbc256")
     "ChaCha"         = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
-    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
+    "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
+    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128")
+    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "AesKeyWrap", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
     "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
     "MLKem"          = @("MLKemKeyGen", "MLKemOps")
@@ -424,7 +431,7 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  AES-CCM:       -Family AesCcm128, AesCcm256"
     Write-Host "  AES-CBC:       -Family AesCbc128, AesCbc256"
     Write-Host "  ChaCha:        -Family ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
-    Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
+    Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc192, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
     Write-Host "                          KuznyechikCbc, KalynaCbc128, KalynaCbc256, SeedCbc"
     Write-Host ""
     Write-Host "Available MAC algorithm families:" -ForegroundColor Yellow
