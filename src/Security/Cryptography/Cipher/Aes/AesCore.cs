@@ -272,10 +272,10 @@ internal static class AesCore
             uint t0, t1, t2, t3;
             int keyOffset = 4;
 
-            ref uint te0 = ref MemoryMarshal.GetArrayDataReference(Te0);
-            ref uint te1 = ref MemoryMarshal.GetArrayDataReference(Te1);
-            ref uint te2 = ref MemoryMarshal.GetArrayDataReference(Te2);
-            ref uint te3 = ref MemoryMarshal.GetArrayDataReference(Te3);
+            ref uint te0 = ref MemoryMarshalEx.GetArrayDataReference(Te0);
+            ref uint te1 = ref MemoryMarshalEx.GetArrayDataReference(Te1);
+            ref uint te2 = ref MemoryMarshalEx.GetArrayDataReference(Te2);
+            ref uint te3 = ref MemoryMarshalEx.GetArrayDataReference(Te3);
 
             // Main rounds (all except last)
             for (int round = 1; round < nr; round++)
@@ -289,7 +289,7 @@ internal static class AesCore
                 keyOffset += 4;
             }
 
-            ref byte sbox = ref MemoryMarshal.GetArrayDataReference(SBox);
+            ref byte sbox = ref MemoryMarshalEx.GetArrayDataReference(SBox);
 
             // Final round (no MixColumns)
             t0 = ((uint)Unsafe.Add(ref sbox, (s0 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s1 >> 16) & 0xff) << 16) ^
@@ -321,43 +321,49 @@ internal static class AesCore
     {
         unchecked
         {
+            ref uint rk = ref MemoryMarshal.GetReference(roundKeys);
+
             // Load input as 4 columns and add initial round key
-            uint s0 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(0 * sizeof(UInt32))) ^ roundKeys[0];
-            uint s1 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(1 * sizeof(UInt32))) ^ roundKeys[1];
-            uint s2 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(2 * sizeof(UInt32))) ^ roundKeys[2];
-            uint s3 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(3 * sizeof(UInt32))) ^ roundKeys[3];
+            uint s0 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(0 * sizeof(UInt32))) ^ Unsafe.Add(ref rk, 0);
+            uint s1 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(1 * sizeof(UInt32))) ^ Unsafe.Add(ref rk, 1);
+            uint s2 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(2 * sizeof(UInt32))) ^ Unsafe.Add(ref rk, 2);
+            uint s3 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(3 * sizeof(UInt32))) ^ Unsafe.Add(ref rk, 3);
 
             uint t0, t1, t2, t3;
             int keyOffset = 4;
 
-            ref uint td0 = ref MemoryMarshal.GetArrayDataReference(Td0);
-            ref uint td1 = ref MemoryMarshal.GetArrayDataReference(Td1);
-            ref uint td2 = ref MemoryMarshal.GetArrayDataReference(Td2);
-            ref uint td3 = ref MemoryMarshal.GetArrayDataReference(Td3);
+            ref uint td0 = ref MemoryMarshalEx.GetArrayDataReference(Td0);
+            ref uint td1 = ref MemoryMarshalEx.GetArrayDataReference(Td1);
+            ref uint td2 = ref MemoryMarshalEx.GetArrayDataReference(Td2);
+            ref uint td3 = ref MemoryMarshalEx.GetArrayDataReference(Td3);
 
             // Main rounds (all except last)
             for (int round = 1; round < nr; round++)
             {
-                t0 = Unsafe.Add(ref td0, (s0 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s3 >> 16) & 0xff) ^ Unsafe.Add(ref td2, (s2 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s1 & 0xff) ^ roundKeys[keyOffset];
-                t1 = Unsafe.Add(ref td0, (s1 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s0 >> 16) & 0xff) ^ Unsafe.Add(ref td2, (s3 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s2 & 0xff) ^ roundKeys[keyOffset + 1];
-                t2 = Unsafe.Add(ref td0, (s2 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s1 >> 16) & 0xff) ^ Unsafe.Add(ref td2, (s0 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s3 & 0xff) ^ roundKeys[keyOffset + 2];
-                t3 = Unsafe.Add(ref td0, (s3 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s2 >> 16) & 0xff) ^ Unsafe.Add(ref td2, (s1 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s0 & 0xff) ^ roundKeys[keyOffset + 3];
+                t0 = Unsafe.Add(ref td0, (s0 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s3 >> 16) & 0xff) ^
+                    Unsafe.Add(ref td2, (s2 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s1 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 0);
+                t1 = Unsafe.Add(ref td0, (s1 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s0 >> 16) & 0xff) ^
+                    Unsafe.Add(ref td2, (s3 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s2 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 1);
+                t2 = Unsafe.Add(ref td0, (s2 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s1 >> 16) & 0xff) ^
+                    Unsafe.Add(ref td2, (s0 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s3 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 2);
+                t3 = Unsafe.Add(ref td0, (s3 >> 24) & 0xff) ^ Unsafe.Add(ref td1, (s2 >> 16) & 0xff) ^
+                    Unsafe.Add(ref td2, (s1 >> 8) & 0xff) ^ Unsafe.Add(ref td3, s0 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 3);
 
                 s0 = t0; s1 = t1; s2 = t2; s3 = t3;
                 keyOffset += 4;
             }
 
-            ref byte invSbox = ref MemoryMarshal.GetArrayDataReference(InvSBox);
+            ref byte invSbox = ref MemoryMarshalEx.GetArrayDataReference(InvSBox);
 
             // Final round (no InvMixColumns)
             t0 = ((uint)Unsafe.Add(ref invSbox, (s0 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref invSbox, (s3 >> 16) & 0xff) << 16) ^
-                 ((uint)Unsafe.Add(ref invSbox, (s2 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s1 & 0xff) ^ roundKeys[keyOffset];
+                 ((uint)Unsafe.Add(ref invSbox, (s2 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s1 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 0);
             t1 = ((uint)Unsafe.Add(ref invSbox, (s1 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref invSbox, (s0 >> 16) & 0xff) << 16) ^
-                 ((uint)Unsafe.Add(ref invSbox, (s3 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s2 & 0xff) ^ roundKeys[keyOffset + 1];
+                 ((uint)Unsafe.Add(ref invSbox, (s3 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s2 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 1);
             t2 = ((uint)Unsafe.Add(ref invSbox, (s2 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref invSbox, (s1 >> 16) & 0xff) << 16) ^
-                 ((uint)Unsafe.Add(ref invSbox, (s0 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s3 & 0xff) ^ roundKeys[keyOffset + 2];
+                 ((uint)Unsafe.Add(ref invSbox, (s0 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s3 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 2);
             t3 = ((uint)Unsafe.Add(ref invSbox, (s3 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref invSbox, (s2 >> 16) & 0xff) << 16) ^
-                 ((uint)Unsafe.Add(ref invSbox, (s1 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s0 & 0xff) ^ roundKeys[keyOffset + 3];
+                 ((uint)Unsafe.Add(ref invSbox, (s1 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref invSbox, s0 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 3);
 
             // Store output
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
@@ -379,7 +385,7 @@ internal static class AesCore
     {
         unchecked
         {
-            ref byte sbox = ref MemoryMarshal.GetArrayDataReference(SBox);
+            ref byte sbox = ref MemoryMarshalEx.GetArrayDataReference(SBox);
             return ((uint)Unsafe.Add(ref sbox, (w >> 24) & 0xff) << 24) |
                    ((uint)Unsafe.Add(ref sbox, (w >> 16) & 0xff) << 16) |
                    ((uint)Unsafe.Add(ref sbox, (w >> 8) & 0xff) << 8) |
@@ -407,11 +413,11 @@ internal static class AesCore
     {
         unchecked
         {
-            ref byte sbox = ref MemoryMarshal.GetArrayDataReference(SBox);
-            ref uint td0 = ref MemoryMarshal.GetArrayDataReference(Td0);
-            ref uint td1 = ref MemoryMarshal.GetArrayDataReference(Td1);
-            ref uint td2 = ref MemoryMarshal.GetArrayDataReference(Td2);
-            ref uint td3 = ref MemoryMarshal.GetArrayDataReference(Td3);
+            ref byte sbox = ref MemoryMarshalEx.GetArrayDataReference(SBox);
+            ref uint td0 = ref MemoryMarshalEx.GetArrayDataReference(Td0);
+            ref uint td1 = ref MemoryMarshalEx.GetArrayDataReference(Td1);
+            ref uint td2 = ref MemoryMarshalEx.GetArrayDataReference(Td2);
+            ref uint td3 = ref MemoryMarshalEx.GetArrayDataReference(Td3);
             return Unsafe.Add(ref td0, Unsafe.Add(ref sbox, (w >> 24) & 0xff)) ^
                    Unsafe.Add(ref td1, Unsafe.Add(ref sbox, (w >> 16) & 0xff)) ^
                    Unsafe.Add(ref td2, Unsafe.Add(ref sbox, (w >> 8) & 0xff)) ^

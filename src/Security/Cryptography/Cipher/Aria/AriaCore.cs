@@ -274,10 +274,10 @@ internal static class AriaCore
         ref byte x8, ref byte x9, ref byte x10, ref byte x11,
         ref byte x12, ref byte x13, ref byte x14, ref byte x15)
     {
-        ref byte sb1 = ref MemoryMarshal.GetArrayDataReference(SB1);
-        ref byte sb2 = ref MemoryMarshal.GetArrayDataReference(SB2);
-        ref byte sb3 = ref MemoryMarshal.GetArrayDataReference(SB3);
-        ref byte sb4 = ref MemoryMarshal.GetArrayDataReference(SB4);
+        ref byte sb1 = ref MemoryMarshalEx.GetArrayDataReference(SB1);
+        ref byte sb2 = ref MemoryMarshalEx.GetArrayDataReference(SB2);
+        ref byte sb3 = ref MemoryMarshalEx.GetArrayDataReference(SB3);
+        ref byte sb4 = ref MemoryMarshalEx.GetArrayDataReference(SB4);
         x0 = Unsafe.Add(ref sb1, x0); x1 = Unsafe.Add(ref sb2, x1); x2 = Unsafe.Add(ref sb3, x2); x3 = Unsafe.Add(ref sb4, x3);
         x4 = Unsafe.Add(ref sb1, x4); x5 = Unsafe.Add(ref sb2, x5); x6 = Unsafe.Add(ref sb3, x6); x7 = Unsafe.Add(ref sb4, x7);
         x8 = Unsafe.Add(ref sb1, x8); x9 = Unsafe.Add(ref sb2, x9); x10 = Unsafe.Add(ref sb3, x10); x11 = Unsafe.Add(ref sb4, x11);
@@ -301,10 +301,10 @@ internal static class AriaCore
         ref byte x8, ref byte x9, ref byte x10, ref byte x11,
         ref byte x12, ref byte x13, ref byte x14, ref byte x15)
     {
-        ref byte sb1 = ref MemoryMarshal.GetArrayDataReference(SB1);
-        ref byte sb2 = ref MemoryMarshal.GetArrayDataReference(SB2);
-        ref byte sb3 = ref MemoryMarshal.GetArrayDataReference(SB3);
-        ref byte sb4 = ref MemoryMarshal.GetArrayDataReference(SB4);
+        ref byte sb1 = ref MemoryMarshalEx.GetArrayDataReference(SB1);
+        ref byte sb2 = ref MemoryMarshalEx.GetArrayDataReference(SB2);
+        ref byte sb3 = ref MemoryMarshalEx.GetArrayDataReference(SB3);
+        ref byte sb4 = ref MemoryMarshalEx.GetArrayDataReference(SB4);
         x0 = Unsafe.Add(ref sb3, x0); x1 = Unsafe.Add(ref sb4, x1); x2 = Unsafe.Add(ref sb1, x2); x3 = Unsafe.Add(ref sb2, x3);
         x4 = Unsafe.Add(ref sb3, x4); x5 = Unsafe.Add(ref sb4, x5); x6 = Unsafe.Add(ref sb1, x6); x7 = Unsafe.Add(ref sb2, x7);
         x8 = Unsafe.Add(ref sb3, x8); x9 = Unsafe.Add(ref sb4, x9); x10 = Unsafe.Add(ref sb1, x10); x11 = Unsafe.Add(ref sb2, x11);

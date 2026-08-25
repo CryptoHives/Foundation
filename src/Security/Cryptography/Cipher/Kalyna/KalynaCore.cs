@@ -275,25 +275,14 @@ internal unsafe struct KalynaCore
             ulong* rk = pCore->_roundKeys;
             int nr = _rounds;
 
-#if NET5_0_OR_GREATER
-            ref ulong rf0 = ref MemoryMarshal.GetArrayDataReference(TF0);
-            ref ulong rf1 = ref MemoryMarshal.GetArrayDataReference(TF1);
-            ref ulong rf2 = ref MemoryMarshal.GetArrayDataReference(TF2);
-            ref ulong rf3 = ref MemoryMarshal.GetArrayDataReference(TF3);
-            ref ulong rf4 = ref MemoryMarshal.GetArrayDataReference(TF4);
-            ref ulong rf5 = ref MemoryMarshal.GetArrayDataReference(TF5);
-            ref ulong rf6 = ref MemoryMarshal.GetArrayDataReference(TF6);
-            ref ulong rf7 = ref MemoryMarshal.GetArrayDataReference(TF7);
-#else
-            ref ulong rf0 = ref MemoryMarshal.GetReference(TF0);
-            ref ulong rf1 = ref MemoryMarshal.GetReference(TF1);
-            ref ulong rf2 = ref MemoryMarshal.GetReference(TF2);
-            ref ulong rf3 = ref MemoryMarshal.GetReference(TF3);
-            ref ulong rf4 = ref MemoryMarshal.GetReference(TF4);
-            ref ulong rf5 = ref MemoryMarshal.GetReference(TF5);
-            ref ulong rf6 = ref MemoryMarshal.GetReference(TF6);
-            ref ulong rf7 = ref MemoryMarshal.GetReference(TF7);
-#endif
+            ref ulong rf0 = ref MemoryMarshalEx.GetArrayDataReference(TF0);
+            ref ulong rf1 = ref MemoryMarshalEx.GetArrayDataReference(TF1);
+            ref ulong rf2 = ref MemoryMarshalEx.GetArrayDataReference(TF2);
+            ref ulong rf3 = ref MemoryMarshalEx.GetArrayDataReference(TF3);
+            ref ulong rf4 = ref MemoryMarshalEx.GetArrayDataReference(TF4);
+            ref ulong rf5 = ref MemoryMarshalEx.GetArrayDataReference(TF5);
+            ref ulong rf6 = ref MemoryMarshalEx.GetArrayDataReference(TF6);
+            ref ulong rf7 = ref MemoryMarshalEx.GetArrayDataReference(TF7);
 
             // Pre-whitening: modular addition with round key 0
             ulong s0 = w0 + rk[0];
@@ -382,19 +371,19 @@ internal unsafe struct KalynaCore
             int nr = _rounds;
 
 #if NET5_0_OR_GREATER
-            ref ulong ri0 = ref MemoryMarshal.GetArrayDataReference(TI0);
-            ref ulong ri1 = ref MemoryMarshal.GetArrayDataReference(TI1);
-            ref ulong ri2 = ref MemoryMarshal.GetArrayDataReference(TI2);
-            ref ulong ri3 = ref MemoryMarshal.GetArrayDataReference(TI3);
-            ref ulong ri4 = ref MemoryMarshal.GetArrayDataReference(TI4);
-            ref ulong ri5 = ref MemoryMarshal.GetArrayDataReference(TI5);
-            ref ulong ri6 = ref MemoryMarshal.GetArrayDataReference(TI6);
-            ref ulong ri7 = ref MemoryMarshal.GetArrayDataReference(TI7);
+            ref ulong ri0 = ref MemoryMarshalEx.GetArrayDataReference(TI0);
+            ref ulong ri1 = ref MemoryMarshalEx.GetArrayDataReference(TI1);
+            ref ulong ri2 = ref MemoryMarshalEx.GetArrayDataReference(TI2);
+            ref ulong ri3 = ref MemoryMarshalEx.GetArrayDataReference(TI3);
+            ref ulong ri4 = ref MemoryMarshalEx.GetArrayDataReference(TI4);
+            ref ulong ri5 = ref MemoryMarshalEx.GetArrayDataReference(TI5);
+            ref ulong ri6 = ref MemoryMarshalEx.GetArrayDataReference(TI6);
+            ref ulong ri7 = ref MemoryMarshalEx.GetArrayDataReference(TI7);
 
-            ref byte pIs0 = ref MemoryMarshal.GetArrayDataReference(IS0);
-            ref byte pIs1 = ref MemoryMarshal.GetArrayDataReference(IS1);
-            ref byte pIs2 = ref MemoryMarshal.GetArrayDataReference(IS2);
-            ref byte pIs3 = ref MemoryMarshal.GetArrayDataReference(IS3);
+            ref byte pIs0 = ref MemoryMarshalEx.GetArrayDataReference(IS0);
+            ref byte pIs1 = ref MemoryMarshalEx.GetArrayDataReference(IS1);
+            ref byte pIs2 = ref MemoryMarshalEx.GetArrayDataReference(IS2);
+            ref byte pIs3 = ref MemoryMarshalEx.GetArrayDataReference(IS3);
 #else
             ref ulong ri0 = ref MemoryMarshal.GetReference(TI0);
             ref ulong ri1 = ref MemoryMarshal.GetReference(TI1);
@@ -1023,10 +1012,10 @@ internal unsafe struct KalynaCore
         int lo = (int)value;
         int hi = (int)(value >> 32);
 
-        ref byte s0 = ref MemoryMarshal.GetArrayDataReference(S0);
-        ref byte s1 = ref MemoryMarshal.GetArrayDataReference(S1);
-        ref byte s2 = ref MemoryMarshal.GetArrayDataReference(S2);
-        ref byte s3 = ref MemoryMarshal.GetArrayDataReference(S3);
+        ref byte s0 = ref MemoryMarshalEx.GetArrayDataReference(S0);
+        ref byte s1 = ref MemoryMarshalEx.GetArrayDataReference(S1);
+        ref byte s2 = ref MemoryMarshalEx.GetArrayDataReference(S2);
+        ref byte s3 = ref MemoryMarshalEx.GetArrayDataReference(S3);
 
         byte t0 = Unsafe.Add(ref s0, lo & 0xFF);
         byte t1 = Unsafe.Add(ref s1, (lo >> 8) & 0xFF);
@@ -1048,10 +1037,10 @@ internal unsafe struct KalynaCore
         int lo = (int)value;
         int hi = (int)(value >> 32);
 
-        ref byte is0 = ref MemoryMarshal.GetArrayDataReference(IS0);
-        ref byte is1 = ref MemoryMarshal.GetArrayDataReference(IS1);
-        ref byte is2 = ref MemoryMarshal.GetArrayDataReference(IS2);
-        ref byte is3 = ref MemoryMarshal.GetArrayDataReference(IS3);
+        ref byte is0 = ref MemoryMarshalEx.GetArrayDataReference(IS0);
+        ref byte is1 = ref MemoryMarshalEx.GetArrayDataReference(IS1);
+        ref byte is2 = ref MemoryMarshalEx.GetArrayDataReference(IS2);
+        ref byte is3 = ref MemoryMarshalEx.GetArrayDataReference(IS3);
 
         byte t0 = Unsafe.Add(ref is0, lo & 0xFF);
         byte t1 = Unsafe.Add(ref is1, (lo >> 8) & 0xFF);
@@ -1132,10 +1121,10 @@ internal unsafe struct KalynaCore
         // For 128-bit block (2 columns of 8 bytes):
         // Column 0: S0, S1, S2, S3, S0, S1, S2, S3
         // Column 1: S0, S1, S2, S3, S0, S1, S2, S3
-        ref byte s0 = ref MemoryMarshal.GetArrayDataReference(S0);
-        ref byte s1 = ref MemoryMarshal.GetArrayDataReference(S1);
-        ref byte s2 = ref MemoryMarshal.GetArrayDataReference(S2);
-        ref byte s3 = ref MemoryMarshal.GetArrayDataReference(S3);
+        ref byte s0 = ref MemoryMarshalEx.GetArrayDataReference(S0);
+        ref byte s1 = ref MemoryMarshalEx.GetArrayDataReference(S1);
+        ref byte s2 = ref MemoryMarshalEx.GetArrayDataReference(S2);
+        ref byte s3 = ref MemoryMarshalEx.GetArrayDataReference(S3);
         for (int col = 0; col < NumWords; col++)
         {
             int off = col * 8;

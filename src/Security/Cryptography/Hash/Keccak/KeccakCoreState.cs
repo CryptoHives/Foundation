@@ -496,7 +496,7 @@ internal unsafe partial struct KeccakCoreState
 
         fixed (ulong* statePtr = _state)
         {
-            ref Vector256<ulong> rcBase = ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx2);
+            ref Vector256<ulong> rcBase = ref MemoryMarshalEx.GetArrayDataReference(RoundConstantsAvx2);
 
             // Load state into vectors
             // Key detail: we use Vector256.Create(value) for the U-lanes so that the value
@@ -893,7 +893,7 @@ internal unsafe partial struct KeccakCoreState
     private static ulong GetRoundConstants(int round)
     {
 #if NET8_0_OR_GREATER
-        return Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(RoundConstants), round);
+        return Unsafe.Add(ref MemoryMarshalEx.GetArrayDataReference(RoundConstants), round);
 #else
         return RoundConstants[round];
 #endif

@@ -92,8 +92,7 @@ internal static partial class SHA256Core
             uint h = state[7];
 
             // 8 Unrolled compression rounds with implicit variable rotation
-#if NET8_0_OR_GREATER
-            ref uint kPtr = ref MemoryMarshal.GetArrayDataReference(K);
+            ref uint kPtr = ref MemoryMarshalEx.GetArrayDataReference(K);
             ref uint wPtr = ref MemoryMarshal.GetReference(w);
 
             // notes: unroll only a single round of variable rotation to improve IL generation and cache locality
@@ -108,19 +107,6 @@ internal static partial class SHA256Core
                 Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, Unsafe.Add(ref kPtr, i + 6), Unsafe.Add(ref wPtr, i + 6));
                 Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, Unsafe.Add(ref kPtr, i + 7), Unsafe.Add(ref wPtr, i + 7));
             }
-#else
-            for (int i = 0; i < Rounds; i += 8)
-            {
-                Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, K[i + 0], w[i + 0]);
-                Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, K[i + 1], w[i + 1]);
-                Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, K[i + 2], w[i + 2]);
-                Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, K[i + 3], w[i + 3]);
-                Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, K[i + 4], w[i + 4]);
-                Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, K[i + 5], w[i + 5]);
-                Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, K[i + 6], w[i + 6]);
-                Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, K[i + 7], w[i + 7]);
-            }
-#endif
 
             // Add compressed chunk to current hash value
             state[0] += a;
