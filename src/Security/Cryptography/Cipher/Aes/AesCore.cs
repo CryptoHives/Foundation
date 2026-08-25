@@ -228,12 +228,25 @@ internal static class AesCore
     /// <param name="encRoundKeys">The encryption round keys.</param>
     /// <param name="decRoundKeys">Output buffer for decryption round keys.</param>
     /// <param name="nr">Number of rounds.</param>
+    /// <exception cref="ArgumentException">Either schedule buffer is too small to hold nr + 1 round keys.</exception>
     public static void CreateDecryptionKeys(ReadOnlySpan<uint> encRoundKeys, Span<uint> decRoundKeys, int nr)
     {
+        int nw = Nb * (nr + 1);
+
+        // Checked once per key rather than once per block, matching ExpandKey: DecryptBlock
+        // reads this schedule with Unsafe.Add and relies on the length holding.
+        if (encRoundKeys.Length < nw)
+        {
+            throw new ArgumentException("Encryption round key schedule is too small for the key size.", nameof(encRoundKeys));
+        }
+
+        if (decRoundKeys.Length < nw)
+        {
+            throw new ArgumentException("Round key schedule buffer is too small for the key size.", nameof(decRoundKeys));
+        }
+
         unchecked
         {
-            int nw = Nb * (nr + 1);
-
             // First and last round keys are the same (just reversed order)
             for (int i = 0; i < Nb; i++)
             {
