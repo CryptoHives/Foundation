@@ -525,8 +525,14 @@ if ($ExtraArgs) {
     }
 }
 
-# Show command
-$cmdDisplay = "dotnet " + ($dotnetArgs -join " ")
+# Show command. Quote any argument a shell would otherwise treat specially (wildcards,
+# whitespace, etc.) so this line is safe to copy-paste and re-run directly - the actual
+# invocation below uses Start-Process -ArgumentList and never goes through a shell, so it
+# doesn't need this, but a printed "*Aes*" left unquoted will glob-expand (or error with
+# "no matches found" under zsh's nomatch) if pasted as-is.
+$cmdDisplay = "dotnet " + (($dotnetArgs | ForEach-Object {
+    if ($_ -match '[\s\*\?\$`"''|<>&;()\[\]{}]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+}) -join " ")
 Write-Host "Command: $cmdDisplay" -ForegroundColor Cyan
 Write-Host ""
 
