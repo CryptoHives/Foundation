@@ -370,7 +370,6 @@ internal unsafe struct KalynaCore
             ulong* rk = pCore->_roundKeys;
             int nr = _rounds;
 
-#if NET5_0_OR_GREATER
             ref ulong ri0 = ref MemoryMarshalEx.GetArrayDataReference(TI0);
             ref ulong ri1 = ref MemoryMarshalEx.GetArrayDataReference(TI1);
             ref ulong ri2 = ref MemoryMarshalEx.GetArrayDataReference(TI2);
@@ -384,21 +383,6 @@ internal unsafe struct KalynaCore
             ref byte pIs1 = ref MemoryMarshalEx.GetArrayDataReference(IS1);
             ref byte pIs2 = ref MemoryMarshalEx.GetArrayDataReference(IS2);
             ref byte pIs3 = ref MemoryMarshalEx.GetArrayDataReference(IS3);
-#else
-            ref ulong ri0 = ref MemoryMarshal.GetReference(TI0);
-            ref ulong ri1 = ref MemoryMarshal.GetReference(TI1);
-            ref ulong ri2 = ref MemoryMarshal.GetReference(TI2);
-            ref ulong ri3 = ref MemoryMarshal.GetReference(TI3);
-            ref ulong ri4 = ref MemoryMarshal.GetReference(TI4);
-            ref ulong ri5 = ref MemoryMarshal.GetReference(TI5);
-            ref ulong ri6 = ref MemoryMarshal.GetReference(TI6);
-            ref ulong ri7 = ref MemoryMarshal.GetReference(TI7);
-
-            ref byte pIs0 = ref MemoryMarshal.GetReference(IS0);
-            ref byte pIs1 = ref MemoryMarshal.GetReference(IS1);
-            ref byte pIs2 = ref MemoryMarshal.GetReference(IS2);
-            ref byte pIs3 = ref MemoryMarshal.GetReference(IS3);
-#endif
             // Pre-whitening: modular subtraction with round key nr
             ulong s0 = w0 - rk[nr * 2];
             ulong s1 = w1 - rk[nr * 2 + 1];

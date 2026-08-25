@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -176,11 +177,19 @@ internal static class AesCore
     /// <param name="key">The cipher key (16, 24, or 32 bytes).</param>
     /// <param name="roundKeys">Output buffer for round keys (44, 52, or 60 words).</param>
     /// <returns>The number of rounds (10, 12, or 14).</returns>
+    /// <exception cref="ArgumentException"><paramref name="roundKeys"/> is too small to hold the schedule.</exception>
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<uint> roundKeys)
     {
         int nk = key.Length / 4; // Key length in 32-bit words (4, 6, or 8)
         int nr = nk + 6;         // Number of rounds (10, 12, or 14)
         int nw = Nb * (nr + 1);  // Number of round key words (44, 52, or 60)
+
+        // Checked once per key rather than once per block: EncryptBlock and DecryptBlock read
+        // the schedule with Unsafe.Add and rely on this length holding.
+        if (roundKeys.Length < nw)
+        {
+            throw new ArgumentException("Round key schedule buffer is too small for the key size.", nameof(roundKeys));
+        }
 
         unchecked
         {
@@ -263,11 +272,16 @@ internal static class AesCore
     {
         unchecked
         {
+            // The key-schedule builders reject a shorter buffer, so this cannot happen at runtime.
+            Debug.Assert(roundKeys.Length >= (nr + 1) * 4, "round key schedule is shorter than nr + 1 round keys");
+
+            ref uint rk = ref MemoryMarshal.GetReference(roundKeys);
+
             // Load input as 4 columns (state) and add initial round key
-            uint s0 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(0 * sizeof(UInt32))) ^ roundKeys[0];
-            uint s1 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(1 * sizeof(UInt32))) ^ roundKeys[1];
-            uint s2 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(2 * sizeof(UInt32))) ^ roundKeys[2];
-            uint s3 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(3 * sizeof(UInt32))) ^ roundKeys[3];
+            uint s0 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(0 * sizeof(UInt32))) ^ Unsafe.Add(ref rk, 0);
+            uint s1 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(1 * sizeof(UInt32))) ^ Unsafe.Add(ref rk, 1);
+            uint s2 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(2 * sizeof(UInt32))) ^ Unsafe.Add(ref rk, 2);
+            uint s3 = BinaryPrimitives.ReadUInt32BigEndian(input.Slice(3 * sizeof(UInt32))) ^ Unsafe.Add(ref rk, 3);
 
             uint t0, t1, t2, t3;
             int keyOffset = 4;
@@ -280,10 +294,14 @@ internal static class AesCore
             // Main rounds (all except last)
             for (int round = 1; round < nr; round++)
             {
-                t0 = Unsafe.Add(ref te0, (s0 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s1 >> 16) & 0xff) ^ Unsafe.Add(ref te2, (s2 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s3 & 0xff) ^ roundKeys[keyOffset];
-                t1 = Unsafe.Add(ref te0, (s1 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s2 >> 16) & 0xff) ^ Unsafe.Add(ref te2, (s3 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s0 & 0xff) ^ roundKeys[keyOffset + 1];
-                t2 = Unsafe.Add(ref te0, (s2 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s3 >> 16) & 0xff) ^ Unsafe.Add(ref te2, (s0 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s1 & 0xff) ^ roundKeys[keyOffset + 2];
-                t3 = Unsafe.Add(ref te0, (s3 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s0 >> 16) & 0xff) ^ Unsafe.Add(ref te2, (s1 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s2 & 0xff) ^ roundKeys[keyOffset + 3];
+                t0 = Unsafe.Add(ref te0, (s0 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s1 >> 16) & 0xff) ^
+                    Unsafe.Add(ref te2, (s2 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s3 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 0);
+                t1 = Unsafe.Add(ref te0, (s1 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s2 >> 16) & 0xff) ^
+                    Unsafe.Add(ref te2, (s3 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s0 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 1);
+                t2 = Unsafe.Add(ref te0, (s2 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s3 >> 16) & 0xff) ^
+                    Unsafe.Add(ref te2, (s0 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s1 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 2);
+                t3 = Unsafe.Add(ref te0, (s3 >> 24) & 0xff) ^ Unsafe.Add(ref te1, (s0 >> 16) & 0xff) ^
+                    Unsafe.Add(ref te2, (s1 >> 8) & 0xff) ^ Unsafe.Add(ref te3, s2 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 3);
 
                 s0 = t0; s1 = t1; s2 = t2; s3 = t3;
                 keyOffset += 4;
@@ -293,13 +311,13 @@ internal static class AesCore
 
             // Final round (no MixColumns)
             t0 = ((uint)Unsafe.Add(ref sbox, (s0 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s1 >> 16) & 0xff) << 16) ^
-                 ((uint)Unsafe.Add(ref sbox, (s2 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s3 & 0xff) ^ roundKeys[keyOffset];
+                 ((uint)Unsafe.Add(ref sbox, (s2 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s3 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 0);
             t1 = ((uint)Unsafe.Add(ref sbox, (s1 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s2 >> 16) & 0xff) << 16) ^
-                 ((uint)Unsafe.Add(ref sbox, (s3 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s0 & 0xff) ^ roundKeys[keyOffset + 1];
+                 ((uint)Unsafe.Add(ref sbox, (s3 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s0 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 1);
             t2 = ((uint)Unsafe.Add(ref sbox, (s2 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s3 >> 16) & 0xff) << 16) ^
-                 ((uint)Unsafe.Add(ref sbox, (s0 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s1 & 0xff) ^ roundKeys[keyOffset + 2];
+                 ((uint)Unsafe.Add(ref sbox, (s0 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s1 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 2);
             t3 = ((uint)Unsafe.Add(ref sbox, (s3 >> 24) & 0xff) << 24) ^ ((uint)Unsafe.Add(ref sbox, (s0 >> 16) & 0xff) << 16) ^
-                 ((uint)Unsafe.Add(ref sbox, (s1 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s2 & 0xff) ^ roundKeys[keyOffset + 3];
+                 ((uint)Unsafe.Add(ref sbox, (s1 >> 8) & 0xff) << 8) ^ Unsafe.Add(ref sbox, s2 & 0xff) ^ Unsafe.Add(ref rk, keyOffset + 3);
 
             // Store output
             BinaryPrimitives.WriteUInt32BigEndian(output.Slice(0), t0);
@@ -321,6 +339,9 @@ internal static class AesCore
     {
         unchecked
         {
+            // The key-schedule builders reject a shorter buffer, so this cannot happen at runtime.
+            Debug.Assert(roundKeys.Length >= (nr + 1) * 4, "round key schedule is shorter than nr + 1 round keys");
+
             ref uint rk = ref MemoryMarshal.GetReference(roundKeys);
 
             // Load input as 4 columns and add initial round key

@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>MemoryMarshalEx.GetArrayDataReference</c> was introduced in .NET 5 and is absent from
+/// <c>MemoryMarshal.GetArrayDataReference</c> was introduced in .NET 5 and is absent from
 /// net462, net472, netstandard2.0 and netstandard2.1, none of which the
 /// <c>System.Memory</c> package fills in.
 /// </para>
