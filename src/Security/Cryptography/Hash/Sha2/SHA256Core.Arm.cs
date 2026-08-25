@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 #if NET8_0_OR_GREATER
 
 using System;
+using System.Diagnostics;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -58,6 +59,12 @@ internal static partial class SHA256Core
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     internal static void ProcessBlockArm(ReadOnlySpan<byte> block, Span<uint> state)
     {
+        // Both spans are read through raw refs below, so their sizes are a precondition
+        // rather than something the loads check. Sha2HashAlgorithm always slices a whole
+        // block and passes its fixed state, but nothing in the signature says so.
+        Debug.Assert(block.Length >= BlockSizeBytes, "SHA-256 ARM block must be a full block");
+        Debug.Assert(state.Length >= 8, "SHA-256 ARM state must hold the full chaining value");
+
         // Load state into two Vector128<uint>: abcd = state[0..3], efgh = state[4..7]
         ref uint stateRef = ref MemoryMarshal.GetReference(state);
         var abcd = Vector128.LoadUnsafe(ref stateRef);

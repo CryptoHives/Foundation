@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -117,6 +118,11 @@ internal readonly partial struct ChaChaCore
         ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
         ReadOnlySpan<byte> input, Span<byte> output)
     {
+        // Every path below writes output through a raw ref for input.Length bytes, so the
+        // size relation is a precondition, not something the stores check. The cipher
+        // transform and both AEAD wrappers check it at their public entry points.
+        Debug.Assert(output.Length >= input.Length, "ChaCha output buffer must be at least as long as the input");
+
 #if NET8_0_OR_GREATER
         if ((_simdSupport & SimdSupport.Avx2) != 0)
         {

@@ -53,8 +53,11 @@ EXCLUDE_FILENAMES = {
 }
 
 CIPHER_PREFIXES = (
-    "aes-cbc", "aes-gcm", "aes-ccm", "chacha20", "xchacha20", "sm4-cbc",
+    "aes-cbc", "aes-gcm", "aes-ccm", "aes-key-wrap", "chacha20", "xchacha20", "sm4-cbc",
     "aria-cbc", "camellia-cbc", "kuznyechik-cbc", "kalyna-cbc", "seed-cbc",
+    # Ascon-AEAD128 is a cipher; the Ascon hash and XOF stems (asconhash/asconxof) are not
+    # matched by this prefix and stay under Hash.
+    "ascon-aead",
 )
 MAC_EXACT = {"aes-cmac", "aes-gmac", "poly1305"}
 # Post-quantum KEM. Unlike the hash/cipher/MAC scenarios these carry no data-size axis: the

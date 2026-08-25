@@ -202,9 +202,14 @@ $packageConfigurations = @{
             @{ Source = "ChaCha20Poly1305Benchmark-report.md"; Target = "chacha20-poly1305.md" }
             @{ Source = "XChaCha20Poly1305Benchmark-report.md"; Target = "xchacha20-poly1305.md" }
 
+            # Cipher benchmarks - Ascon AEAD. The "ascon-aead" stem is what files this under
+            # Cipher rather than Hash; the Ascon hash and XOF stems are asconhash/asconxof.
+            @{ Source = "AsconAead128Benchmark-report.md"; Target = "ascon-aead128.md" }
+
             # Cipher benchmarks - Regional
             @{ Source = "Sm4CbcBenchmark-report.md"; Target = "sm4-cbc.md" }
             @{ Source = "AriaCbc128Benchmark-report.md"; Target = "aria-cbc-128.md" }
+            @{ Source = "AriaCbc192Benchmark-report.md"; Target = "aria-cbc-192.md" }
             @{ Source = "AriaCbc256Benchmark-report.md"; Target = "aria-cbc-256.md" }
             @{ Source = "CamelliaCbc128Benchmark-report.md"; Target = "camellia-cbc-128.md" }
             @{ Source = "CamelliaCbc192Benchmark-report.md"; Target = "camellia-cbc-192.md" }
@@ -212,6 +217,7 @@ $packageConfigurations = @{
             @{ Source = "KuznyechikCbcBenchmark-report.md"; Target = "kuznyechik-cbc.md" }
             @{ Source = "KalynaCbc128Benchmark-report.md"; Target = "kalyna-cbc-128.md" }
             @{ Source = "KalynaCbc256Benchmark-report.md"; Target = "kalyna-cbc-256.md" }
+            @{ Source = "KalynaCbc512Benchmark-report.md"; Target = "kalyna-cbc-512.md" }
             @{ Source = "SeedCbcBenchmark-report.md"; Target = "seed-cbc.md" }
 
             # MAC benchmarks - HMAC

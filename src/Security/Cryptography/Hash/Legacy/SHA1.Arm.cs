@@ -8,6 +8,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 #if NET8_0_OR_GREATER
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -51,6 +52,11 @@ partial class SHA1
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ProcessBlockArm(ReadOnlySpan<byte> block, Span<uint> state)
     {
+        // Both spans are read through raw refs below, so their sizes are a precondition
+        // rather than something the loads check.
+        Debug.Assert(block.Length >= BlockSizeBytes, "SHA-1 ARM block must be a full block");
+        Debug.Assert(state.Length >= 5, "SHA-1 ARM state must hold the full chaining value");
+
         ref uint stateRef = ref MemoryMarshal.GetReference(state);
         var abcdSaved = Vector128.LoadUnsafe(ref stateRef);
         uint e0Saved = Unsafe.Add(ref stateRef, 4);
