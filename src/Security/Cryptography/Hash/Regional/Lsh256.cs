@@ -6,8 +6,10 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Computes the LSH-256 hash for the input data.
@@ -378,46 +380,59 @@ public sealed class Lsh256 : HashAlgorithm
     {
         unchecked
         {
-            uint[] el = _submsgEL, er = _submsgER;
-            uint[] ol = _submsgOL, or2 = _submsgOR;
+            // The six state arrays are readonly and allocated at NumWords in the constructor,
+            // and every index below is either a constant 0..7 or bounded by NumWords. Taking
+            // the references once here and indexing with Unsafe.Add lets the whole compression
+            // function run without per-element bounds checks, which the JIT cannot eliminate
+            // on its own because a field load hides the length from it.
+            Debug.Assert(_cvL.Length == NumWords && _cvR.Length == NumWords, "chaining variable must be NumWords long");
+            Debug.Assert(_submsgEL.Length == NumWords && _submsgER.Length == NumWords, "even sub-messages must be NumWords long");
+            Debug.Assert(_submsgOL.Length == NumWords && _submsgOR.Length == NumWords, "odd sub-messages must be NumWords long");
+
+            ref uint cvL = ref MemoryMarshalEx.GetArrayDataReference(_cvL);
+            ref uint cvR = ref MemoryMarshalEx.GetArrayDataReference(_cvR);
+            ref uint el = ref MemoryMarshalEx.GetArrayDataReference(_submsgEL);
+            ref uint er = ref MemoryMarshalEx.GetArrayDataReference(_submsgER);
+            ref uint ol = ref MemoryMarshalEx.GetArrayDataReference(_submsgOL);
+            ref uint or2 = ref MemoryMarshalEx.GetArrayDataReference(_submsgOR);
 
             // Load 32-word message block into sub-message arrays.
             for (int i = 0; i < NumWords; i++)
             {
                 int off = i << 2;
-                el[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off, sizeof(UInt32)));
-                er[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 32, sizeof(UInt32)));
-                ol[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 64, sizeof(UInt32)));
-                or2[i] = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 96, sizeof(UInt32)));
+                Unsafe.Add(ref el, i) = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off, sizeof(UInt32)));
+                Unsafe.Add(ref er, i) = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 32, sizeof(UInt32)));
+                Unsafe.Add(ref ol, i) = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 64, sizeof(UInt32)));
+                Unsafe.Add(ref or2, i) = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(off + 96, sizeof(UInt32)));
             }
 
             // Step 0 (even): MsgAdd, Mix, WordPerm
-            MsgAddEven();
-            Mix(AlphaEven, BetaEven, 0);
-            WordPerm();
+            MsgAddEven(ref cvL, ref cvR, ref el, ref er);
+            Mix(ref cvL, ref cvR, AlphaEven, BetaEven, 0);
+            WordPerm(ref cvL, ref cvR);
 
             // Step 1 (odd): MsgAdd, Mix, WordPerm
-            MsgAddOdd();
-            Mix(AlphaOdd, BetaOdd, 1);
-            WordPerm();
+            MsgAddOdd(ref cvL, ref cvR, ref ol, ref or2);
+            Mix(ref cvL, ref cvR, AlphaOdd, BetaOdd, 1);
+            WordPerm(ref cvL, ref cvR);
 
             // Steps 2..25
             for (int i = 1; i <= 12; i++)
             {
-                MsgExpEven();
-                MsgAddEven();
-                Mix(AlphaEven, BetaEven, i * 2);
-                WordPerm();
+                MsgExpEven(ref el, ref er, ref ol, ref or2);
+                MsgAddEven(ref cvL, ref cvR, ref el, ref er);
+                Mix(ref cvL, ref cvR, AlphaEven, BetaEven, i * 2);
+                WordPerm(ref cvL, ref cvR);
 
-                MsgExpOdd();
-                MsgAddOdd();
-                Mix(AlphaOdd, BetaOdd, i * 2 + 1);
-                WordPerm();
+                MsgExpOdd(ref el, ref er, ref ol, ref or2);
+                MsgAddOdd(ref cvL, ref cvR, ref ol, ref or2);
+                Mix(ref cvL, ref cvR, AlphaOdd, BetaOdd, i * 2 + 1);
+                WordPerm(ref cvL, ref cvR);
             }
 
             // Final half-step: MsgExp + MsgAdd only (no Mix, no WordPerm)
-            MsgExpEven();
-            MsgAddEven();
+            MsgExpEven(ref el, ref er, ref ol, ref or2);
+            MsgAddEven(ref cvL, ref cvR, ref el, ref er);
         }
     }
 
@@ -425,14 +440,12 @@ public sealed class Lsh256 : HashAlgorithm
     /// Adds the even sub-messages to the chaining variable.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void MsgAddEven()
+    private static void MsgAddEven(ref uint cvL, ref uint cvR, ref uint el, ref uint er)
     {
-        uint[] cvL = _cvL, cvR = _cvR;
-        uint[] el = _submsgEL, er = _submsgER;
         for (int i = 0; i < NumWords; i++)
         {
-            cvL[i] ^= el[i];
-            cvR[i] ^= er[i];
+            Unsafe.Add(ref cvL, i) ^= Unsafe.Add(ref el, i);
+            Unsafe.Add(ref cvR, i) ^= Unsafe.Add(ref er, i);
         }
     }
 
@@ -440,14 +453,12 @@ public sealed class Lsh256 : HashAlgorithm
     /// Adds the odd sub-messages to the chaining variable.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void MsgAddOdd()
+    private static void MsgAddOdd(ref uint cvL, ref uint cvR, ref uint ol, ref uint or2)
     {
-        uint[] cvL = _cvL, cvR = _cvR;
-        uint[] ol = _submsgOL, or2 = _submsgOR;
         for (int i = 0; i < NumWords; i++)
         {
-            cvL[i] ^= ol[i];
-            cvR[i] ^= or2[i];
+            Unsafe.Add(ref cvL, i) ^= Unsafe.Add(ref ol, i);
+            Unsafe.Add(ref cvR, i) ^= Unsafe.Add(ref or2, i);
         }
     }
 
@@ -455,26 +466,35 @@ public sealed class Lsh256 : HashAlgorithm
     /// Applies the mixing function to the chaining variable using the specified rotation
     /// amounts and step constant index.
     /// </summary>
+    /// <param name="cvL">Reference to the first word of the left chaining variable.</param>
+    /// <param name="cvR">Reference to the first word of the right chaining variable.</param>
     /// <param name="alpha">The first rotation amount.</param>
     /// <param name="beta">The second rotation amount.</param>
     /// <param name="step">The step index for selecting the step constant (0–25).</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void Mix(int alpha, int beta, int step)
+    private static void Mix(ref uint cvL, ref uint cvR, int alpha, int beta, int step)
     {
         unchecked
         {
-            uint[] cvL = _cvL, cvR = _cvR;
             int scBase = step * NumWords;
+            Debug.Assert((uint)(scBase + NumWords) <= (uint)StepConstants.Length, "step constant index out of range");
+            Debug.Assert(Gamma.Length == NumWords, "gamma table must be NumWords long");
+
+            ref uint sc = ref Unsafe.Add(ref MemoryMarshalEx.GetArrayDataReference(StepConstants), scBase);
+            ref int gamma = ref MemoryMarshalEx.GetArrayDataReference(Gamma);
 
             for (int i = 0; i < NumWords; i++)
             {
-                cvL[i] += cvR[i];
-                cvL[i] = BitOperations.RotateLeft(cvL[i], alpha);
-                cvL[i] ^= StepConstants[scBase + i];
-                cvR[i] += cvL[i];
-                cvR[i] = BitOperations.RotateLeft(cvR[i], beta);
-                cvL[i] += cvR[i];
-                cvR[i] = BitOperations.RotateLeft(cvR[i], Gamma[i]);
+                ref uint l = ref Unsafe.Add(ref cvL, i);
+                ref uint r = ref Unsafe.Add(ref cvR, i);
+
+                l += r;
+                l = BitOperations.RotateLeft(l, alpha);
+                l ^= Unsafe.Add(ref sc, i);
+                r += l;
+                r = BitOperations.RotateLeft(r, beta);
+                l += r;
+                r = BitOperations.RotateLeft(r, Unsafe.Add(ref gamma, i));
             }
         }
     }
@@ -483,36 +503,33 @@ public sealed class Lsh256 : HashAlgorithm
     /// Expands the even sub-messages using the τ permutation and the current odd sub-messages.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void MsgExpEven()
+    private static void MsgExpEven(ref uint el, ref uint er, ref uint ol, ref uint or2)
     {
         unchecked
         {
-            uint[] el = _submsgEL, ol = _submsgOL;
-            uint[] er = _submsgER, or2 = _submsgOR;
+            uint temp = Unsafe.Add(ref el, 0);
+            Unsafe.Add(ref el, 0) = Unsafe.Add(ref ol, 0) + Unsafe.Add(ref el, 3);
+            Unsafe.Add(ref el, 3) = Unsafe.Add(ref ol, 3) + Unsafe.Add(ref el, 1);
+            Unsafe.Add(ref el, 1) = Unsafe.Add(ref ol, 1) + Unsafe.Add(ref el, 2);
+            Unsafe.Add(ref el, 2) = Unsafe.Add(ref ol, 2) + temp;
 
-            uint temp = el[0];
-            el[0] = ol[0] + el[3];
-            el[3] = ol[3] + el[1];
-            el[1] = ol[1] + el[2];
-            el[2] = ol[2] + temp;
+            temp = Unsafe.Add(ref el, 4);
+            Unsafe.Add(ref el, 4) = Unsafe.Add(ref ol, 4) + Unsafe.Add(ref el, 7);
+            Unsafe.Add(ref el, 7) = Unsafe.Add(ref ol, 7) + Unsafe.Add(ref el, 6);
+            Unsafe.Add(ref el, 6) = Unsafe.Add(ref ol, 6) + Unsafe.Add(ref el, 5);
+            Unsafe.Add(ref el, 5) = Unsafe.Add(ref ol, 5) + temp;
 
-            temp = el[4];
-            el[4] = ol[4] + el[7];
-            el[7] = ol[7] + el[6];
-            el[6] = ol[6] + el[5];
-            el[5] = ol[5] + temp;
+            temp = Unsafe.Add(ref er, 0);
+            Unsafe.Add(ref er, 0) = Unsafe.Add(ref or2, 0) + Unsafe.Add(ref er, 3);
+            Unsafe.Add(ref er, 3) = Unsafe.Add(ref or2, 3) + Unsafe.Add(ref er, 1);
+            Unsafe.Add(ref er, 1) = Unsafe.Add(ref or2, 1) + Unsafe.Add(ref er, 2);
+            Unsafe.Add(ref er, 2) = Unsafe.Add(ref or2, 2) + temp;
 
-            temp = er[0];
-            er[0] = or2[0] + er[3];
-            er[3] = or2[3] + er[1];
-            er[1] = or2[1] + er[2];
-            er[2] = or2[2] + temp;
-
-            temp = er[4];
-            er[4] = or2[4] + er[7];
-            er[7] = or2[7] + er[6];
-            er[6] = or2[6] + er[5];
-            er[5] = or2[5] + temp;
+            temp = Unsafe.Add(ref er, 4);
+            Unsafe.Add(ref er, 4) = Unsafe.Add(ref or2, 4) + Unsafe.Add(ref er, 7);
+            Unsafe.Add(ref er, 7) = Unsafe.Add(ref or2, 7) + Unsafe.Add(ref er, 6);
+            Unsafe.Add(ref er, 6) = Unsafe.Add(ref or2, 6) + Unsafe.Add(ref er, 5);
+            Unsafe.Add(ref er, 5) = Unsafe.Add(ref or2, 5) + temp;
         }
     }
 
@@ -520,36 +537,33 @@ public sealed class Lsh256 : HashAlgorithm
     /// Expands the odd sub-messages using the τ permutation and the current even sub-messages.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void MsgExpOdd()
+    private static void MsgExpOdd(ref uint el, ref uint er, ref uint ol, ref uint or2)
     {
         unchecked
         {
-            uint[] el = _submsgEL, ol = _submsgOL;
-            uint[] er = _submsgER, or2 = _submsgOR;
+            uint temp = Unsafe.Add(ref ol, 0);
+            Unsafe.Add(ref ol, 0) = Unsafe.Add(ref el, 0) + Unsafe.Add(ref ol, 3);
+            Unsafe.Add(ref ol, 3) = Unsafe.Add(ref el, 3) + Unsafe.Add(ref ol, 1);
+            Unsafe.Add(ref ol, 1) = Unsafe.Add(ref el, 1) + Unsafe.Add(ref ol, 2);
+            Unsafe.Add(ref ol, 2) = Unsafe.Add(ref el, 2) + temp;
 
-            uint temp = ol[0];
-            ol[0] = el[0] + ol[3];
-            ol[3] = el[3] + ol[1];
-            ol[1] = el[1] + ol[2];
-            ol[2] = el[2] + temp;
+            temp = Unsafe.Add(ref ol, 4);
+            Unsafe.Add(ref ol, 4) = Unsafe.Add(ref el, 4) + Unsafe.Add(ref ol, 7);
+            Unsafe.Add(ref ol, 7) = Unsafe.Add(ref el, 7) + Unsafe.Add(ref ol, 6);
+            Unsafe.Add(ref ol, 6) = Unsafe.Add(ref el, 6) + Unsafe.Add(ref ol, 5);
+            Unsafe.Add(ref ol, 5) = Unsafe.Add(ref el, 5) + temp;
 
-            temp = ol[4];
-            ol[4] = el[4] + ol[7];
-            ol[7] = el[7] + ol[6];
-            ol[6] = el[6] + ol[5];
-            ol[5] = el[5] + temp;
+            temp = Unsafe.Add(ref or2, 0);
+            Unsafe.Add(ref or2, 0) = Unsafe.Add(ref er, 0) + Unsafe.Add(ref or2, 3);
+            Unsafe.Add(ref or2, 3) = Unsafe.Add(ref er, 3) + Unsafe.Add(ref or2, 1);
+            Unsafe.Add(ref or2, 1) = Unsafe.Add(ref er, 1) + Unsafe.Add(ref or2, 2);
+            Unsafe.Add(ref or2, 2) = Unsafe.Add(ref er, 2) + temp;
 
-            temp = or2[0];
-            or2[0] = er[0] + or2[3];
-            or2[3] = er[3] + or2[1];
-            or2[1] = er[1] + or2[2];
-            or2[2] = er[2] + temp;
-
-            temp = or2[4];
-            or2[4] = er[4] + or2[7];
-            or2[7] = er[7] + or2[6];
-            or2[6] = er[6] + or2[5];
-            or2[5] = er[5] + temp;
+            temp = Unsafe.Add(ref or2, 4);
+            Unsafe.Add(ref or2, 4) = Unsafe.Add(ref er, 4) + Unsafe.Add(ref or2, 7);
+            Unsafe.Add(ref or2, 7) = Unsafe.Add(ref er, 7) + Unsafe.Add(ref or2, 6);
+            Unsafe.Add(ref or2, 6) = Unsafe.Add(ref er, 6) + Unsafe.Add(ref or2, 5);
+            Unsafe.Add(ref or2, 5) = Unsafe.Add(ref er, 5) + temp;
         }
     }
 
@@ -561,30 +575,28 @@ public sealed class Lsh256 : HashAlgorithm
     /// two cycles and applied using temporary variables to avoid intermediate arrays.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void WordPerm()
+    private static void WordPerm(ref uint cvL, ref uint cvR)
     {
-        uint[] cvL = _cvL, cvR = _cvR;
-
         // Cycle (3, 7, 13, 11): length 4
-        uint temp = cvL[3];
-        cvL[3] = cvL[7];
-        cvL[7] = cvR[5];
-        cvR[5] = cvR[3];
-        cvR[3] = temp;
+        uint temp = Unsafe.Add(ref cvL, 3);
+        Unsafe.Add(ref cvL, 3) = Unsafe.Add(ref cvL, 7);
+        Unsafe.Add(ref cvL, 7) = Unsafe.Add(ref cvR, 5);
+        Unsafe.Add(ref cvR, 5) = Unsafe.Add(ref cvR, 3);
+        Unsafe.Add(ref cvR, 3) = temp;
 
         // Cycle (0, 6, 14, 10, 1, 4, 12, 8, 2, 5, 15, 9): length 12
-        temp = cvL[0];
-        cvL[0] = cvL[6];
-        cvL[6] = cvR[6];
-        cvR[6] = cvR[2];
-        cvR[2] = cvL[1];
-        cvL[1] = cvL[4];
-        cvL[4] = cvR[4];
-        cvR[4] = cvR[0];
-        cvR[0] = cvL[2];
-        cvL[2] = cvL[5];
-        cvL[5] = cvR[7];
-        cvR[7] = cvR[1];
-        cvR[1] = temp;
+        temp = Unsafe.Add(ref cvL, 0);
+        Unsafe.Add(ref cvL, 0) = Unsafe.Add(ref cvL, 6);
+        Unsafe.Add(ref cvL, 6) = Unsafe.Add(ref cvR, 6);
+        Unsafe.Add(ref cvR, 6) = Unsafe.Add(ref cvR, 2);
+        Unsafe.Add(ref cvR, 2) = Unsafe.Add(ref cvL, 1);
+        Unsafe.Add(ref cvL, 1) = Unsafe.Add(ref cvL, 4);
+        Unsafe.Add(ref cvL, 4) = Unsafe.Add(ref cvR, 4);
+        Unsafe.Add(ref cvR, 4) = Unsafe.Add(ref cvR, 0);
+        Unsafe.Add(ref cvR, 0) = Unsafe.Add(ref cvL, 2);
+        Unsafe.Add(ref cvL, 2) = Unsafe.Add(ref cvL, 5);
+        Unsafe.Add(ref cvL, 5) = Unsafe.Add(ref cvR, 7);
+        Unsafe.Add(ref cvR, 7) = Unsafe.Add(ref cvR, 1);
+        Unsafe.Add(ref cvR, 1) = temp;
     }
 }

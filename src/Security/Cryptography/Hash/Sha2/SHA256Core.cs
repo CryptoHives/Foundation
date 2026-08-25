@@ -7,6 +7,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -61,6 +62,9 @@ internal static partial class SHA256Core
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ProcessBlock(ReadOnlySpan<byte> block, Span<uint> state)
     {
+        Debug.Assert(state.Length >= 8, "chaining value must hold the full state");
+        ref uint sPtr = ref MemoryMarshal.GetReference(state);
+
         Span<uint> w = stackalloc uint[64];
 
         unchecked
@@ -82,14 +86,14 @@ internal static partial class SHA256Core
             }
 
             // Initialize working variables
-            uint a = state[0];
-            uint b = state[1];
-            uint c = state[2];
-            uint d = state[3];
-            uint e = state[4];
-            uint f = state[5];
-            uint g = state[6];
-            uint h = state[7];
+            uint a = Unsafe.Add(ref sPtr, 0);
+            uint b = Unsafe.Add(ref sPtr, 1);
+            uint c = Unsafe.Add(ref sPtr, 2);
+            uint d = Unsafe.Add(ref sPtr, 3);
+            uint e = Unsafe.Add(ref sPtr, 4);
+            uint f = Unsafe.Add(ref sPtr, 5);
+            uint g = Unsafe.Add(ref sPtr, 6);
+            uint h = Unsafe.Add(ref sPtr, 7);
 
             // 8 Unrolled compression rounds with implicit variable rotation
             ref uint kPtr = ref MemoryMarshalEx.GetArrayDataReference(K);
@@ -109,14 +113,14 @@ internal static partial class SHA256Core
             }
 
             // Add compressed chunk to current hash value
-            state[0] += a;
-            state[1] += b;
-            state[2] += c;
-            state[3] += d;
-            state[4] += e;
-            state[5] += f;
-            state[6] += g;
-            state[7] += h;
+            Unsafe.Add(ref sPtr, 0) += a;
+            Unsafe.Add(ref sPtr, 1) += b;
+            Unsafe.Add(ref sPtr, 2) += c;
+            Unsafe.Add(ref sPtr, 3) += d;
+            Unsafe.Add(ref sPtr, 4) += e;
+            Unsafe.Add(ref sPtr, 5) += f;
+            Unsafe.Add(ref sPtr, 6) += g;
+            Unsafe.Add(ref sPtr, 7) += h;
         }
     }
 
