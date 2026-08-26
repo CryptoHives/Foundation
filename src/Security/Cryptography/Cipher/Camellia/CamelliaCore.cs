@@ -419,15 +419,14 @@ internal static class CamelliaCore
     private static ulong F(ulong input, ulong key)
     {
         ulong x = input ^ key;
-#if NET6_0_OR_GREATER
-        ref ulong r1 = ref MemoryMarshal.GetArrayDataReference(_sp1);
-        ref ulong r2 = ref MemoryMarshal.GetArrayDataReference(_sp2);
-        ref ulong r3 = ref MemoryMarshal.GetArrayDataReference(_sp3);
-        ref ulong r4 = ref MemoryMarshal.GetArrayDataReference(_sp4);
-        ref ulong r5 = ref MemoryMarshal.GetArrayDataReference(_sp5);
-        ref ulong r6 = ref MemoryMarshal.GetArrayDataReference(_sp6);
-        ref ulong r7 = ref MemoryMarshal.GetArrayDataReference(_sp7);
-        ref ulong r8 = ref MemoryMarshal.GetArrayDataReference(_sp8);
+        ref ulong r1 = ref MemoryMarshalEx.GetArrayDataReference(_sp1);
+        ref ulong r2 = ref MemoryMarshalEx.GetArrayDataReference(_sp2);
+        ref ulong r3 = ref MemoryMarshalEx.GetArrayDataReference(_sp3);
+        ref ulong r4 = ref MemoryMarshalEx.GetArrayDataReference(_sp4);
+        ref ulong r5 = ref MemoryMarshalEx.GetArrayDataReference(_sp5);
+        ref ulong r6 = ref MemoryMarshalEx.GetArrayDataReference(_sp6);
+        ref ulong r7 = ref MemoryMarshalEx.GetArrayDataReference(_sp7);
+        ref ulong r8 = ref MemoryMarshalEx.GetArrayDataReference(_sp8);
         return Unsafe.Add(ref r1, (byte)(x >> 56))
              ^ Unsafe.Add(ref r2, (byte)(x >> 48))
              ^ Unsafe.Add(ref r3, (byte)(x >> 40))
@@ -436,27 +435,6 @@ internal static class CamelliaCore
              ^ Unsafe.Add(ref r6, (byte)(x >> 16))
              ^ Unsafe.Add(ref r7, (byte)(x >> 8))
              ^ Unsafe.Add(ref r8, (byte)x);
-#else
-        // Fallback implementation for .NET Framework: use safe array indexing.
-        // This avoids MemoryMarshal / Unsafe APIs not available on older TFMs.
-        int b1 = (int)((x >> 56) & 0xFF);
-        int b2 = (int)((x >> 48) & 0xFF);
-        int b3 = (int)((x >> 40) & 0xFF);
-        int b4 = (int)((x >> 32) & 0xFF);
-        int b5 = (int)((x >> 24) & 0xFF);
-        int b6 = (int)((x >> 16) & 0xFF);
-        int b7 = (int)((x >> 8) & 0xFF);
-        int b8 = (int)(x & 0xFF);
-
-        return _sp1[b1]
-             ^ _sp2[b2]
-             ^ _sp3[b3]
-             ^ _sp4[b4]
-             ^ _sp5[b5]
-             ^ _sp6[b6]
-             ^ _sp7[b7]
-             ^ _sp8[b8];
-#endif
     }
 
     /// <summary>

@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -570,9 +571,13 @@ public sealed class Kupyna : HashAlgorithm
     {
         unchecked
         {
-            for (int col = 0; col < _columns; ++col)
+            int cols = _columns;
+            Debug.Assert(s.Length >= cols, "state array must hold every column");
+
+            ref ulong rs = ref MemoryMarshalEx.GetArrayDataReference(s);
+            for (int col = 0; col < cols; ++col)
             {
-                s[col] ^= (ulong)((col << 4) ^ round);
+                Unsafe.Add(ref rs, col) ^= (ulong)((col << 4) ^ round);
             }
         }
     }
@@ -589,10 +594,14 @@ public sealed class Kupyna : HashAlgorithm
     {
         unchecked
         {
-            for (int col = 0; col < _columns; ++col)
+            int cols = _columns;
+            Debug.Assert(s.Length >= cols, "state array must hold every column");
+
+            ref ulong rs = ref MemoryMarshalEx.GetArrayDataReference(s);
+            for (int col = 0; col < cols; ++col)
             {
-                ulong rc = 0x00F0F0F0F0F0F0F3UL ^ ((ulong)(((_columns - col - 1) << 4) ^ round) << 56);
-                s[col] += rc;
+                ulong rc = 0x00F0F0F0F0F0F0F3UL ^ ((ulong)(((cols - col - 1) << 4) ^ round) << 56);
+                Unsafe.Add(ref rs, col) += rc;
             }
         }
     }
@@ -616,19 +625,43 @@ public sealed class Kupyna : HashAlgorithm
         {
             int cols = _columns;
             int mask = _colMask;
-            int s1 = _shifts[1], s2 = _shifts[2], s3 = _shifts[3];
-            int s4 = _shifts[4], s5 = _shifts[5], s6 = _shifts[6], s7 = _shifts[7];
+            ref int sh = ref MemoryMarshalEx.GetArrayDataReference(_shifts);
+            int s1 = Unsafe.Add(ref sh, 1), s2 = Unsafe.Add(ref sh, 2), s3 = Unsafe.Add(ref sh, 3);
+            int s4 = Unsafe.Add(ref sh, 4), s5 = Unsafe.Add(ref sh, 5);
+            int s6 = Unsafe.Add(ref sh, 6), s7 = Unsafe.Add(ref sh, 7);
+
+            // Every index below is already in range by construction: the T-table subscripts are
+            // byte casts into 256-entry tables, and the column subscripts are masked with
+            // _colMask == _columns - 1. The state arrays are allocated at _columns in the
+            // constructor. None of that is visible to the JIT behind a field load, so this runs
+            // through references and leaves roughly a thousand redundant compares per block.
+            Debug.Assert(src.Length >= cols && dst.Length >= cols, "state arrays must hold every column");
+            Debug.Assert(mask == cols - 1, "column mask must be columns - 1");
+            Debug.Assert(T0.Length == 256 && T7.Length == 256, "T-tables must be 256 entries");
+            Debug.Assert(_shifts.Length >= 8, "shift table must hold every column shift");
+
+            ref ulong rs = ref MemoryMarshalEx.GetArrayDataReference(src);
+            ref ulong rd = ref MemoryMarshalEx.GetArrayDataReference(dst);
+            ref ulong t0 = ref MemoryMarshalEx.GetArrayDataReference(T0);
+            ref ulong t1 = ref MemoryMarshalEx.GetArrayDataReference(T1);
+            ref ulong t2 = ref MemoryMarshalEx.GetArrayDataReference(T2);
+            ref ulong t3 = ref MemoryMarshalEx.GetArrayDataReference(T3);
+            ref ulong t4 = ref MemoryMarshalEx.GetArrayDataReference(T4);
+            ref ulong t5 = ref MemoryMarshalEx.GetArrayDataReference(T5);
+            ref ulong t6 = ref MemoryMarshalEx.GetArrayDataReference(T6);
+            ref ulong t7 = ref MemoryMarshalEx.GetArrayDataReference(T7);
 
             for (int col = 0; col < cols; ++col)
             {
-                dst[col] = T0[(byte)src[col]]
-                         ^ T1[(byte)(src[(col - s1) & mask] >> 8)]
-                         ^ T2[(byte)(src[(col - s2) & mask] >> 16)]
-                         ^ T3[(byte)(src[(col - s3) & mask] >> 24)]
-                         ^ T4[(byte)(src[(col - s4) & mask] >> 32)]
-                         ^ T5[(byte)(src[(col - s5) & mask] >> 40)]
-                         ^ T6[(byte)(src[(col - s6) & mask] >> 48)]
-                         ^ T7[(byte)(src[(col - s7) & mask] >> 56)];
+                Unsafe.Add(ref rd, col) =
+                      Unsafe.Add(ref t0, (byte)Unsafe.Add(ref rs, col))
+                    ^ Unsafe.Add(ref t1, (byte)(Unsafe.Add(ref rs, (col - s1) & mask) >> 8))
+                    ^ Unsafe.Add(ref t2, (byte)(Unsafe.Add(ref rs, (col - s2) & mask) >> 16))
+                    ^ Unsafe.Add(ref t3, (byte)(Unsafe.Add(ref rs, (col - s3) & mask) >> 24))
+                    ^ Unsafe.Add(ref t4, (byte)(Unsafe.Add(ref rs, (col - s4) & mask) >> 32))
+                    ^ Unsafe.Add(ref t5, (byte)(Unsafe.Add(ref rs, (col - s5) & mask) >> 40))
+                    ^ Unsafe.Add(ref t6, (byte)(Unsafe.Add(ref rs, (col - s6) & mask) >> 48))
+                    ^ Unsafe.Add(ref t7, (byte)(Unsafe.Add(ref rs, (col - s7) & mask) >> 56));
             }
         }
     }
