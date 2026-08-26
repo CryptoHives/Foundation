@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -50,6 +51,11 @@ internal static class KuznyechikCore
     /// Total size of all round keys in bytes (10 × 16 = 160).
     /// </summary>
     public const int RoundKeysTotalBytes = Rounds * BlockSizeBytes;
+
+    /// <summary>
+    /// Length of a prepared round-key schedule in 64-bit words (10 round keys × 2).
+    /// </summary>
+    public const int RoundKeyWordCount = Rounds * 2;
 
     private const int IterationConstantCount = 32;
 
@@ -109,9 +115,53 @@ internal static class KuznyechikCore
     ];
 
     /// <summary>
+    /// Products of each byte position's linear-feedback coefficient with every byte value,
+    /// as a flat <c>[position * 256 + value]</c> table (4 KB).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="GFMul"/> is a bit-serial multiply, and <see cref="LinearFeedback"/> calls it
+    /// sixteen times per R-step, sixteen R-steps per L, nine L per block - 2,304 multiplies for
+    /// every 16 bytes of data. Only eight distinct coefficients occur, so every product that can
+    /// ever be needed fits in this table. Indexing by position rather than by coefficient value
+    /// keeps the lookup a single addition, at the cost of duplicating eight of the sixteen rows.
+    /// </remarks>
+    private static readonly byte[] MulByPosition = BuildMultiplicationTable();
+
+    /// <summary>
     /// Pre-computed iteration constants C_1 through C_32 for key schedule.
     /// </summary>
+    /// <remarks>
+    /// Declared after <see cref="MulByPosition"/> because static field initializers run in
+    /// declaration order and <see cref="L"/> reads that table.
+    /// </remarks>
     private static readonly byte[] IterationConstants = ComputeIterationConstants();
+
+    /// <summary>
+    /// Fused L∘S table for encryption: entry <c>[i][b]</c> is <c>L</c> applied to the block whose
+    /// byte <c>i</c> is <c>π(b)</c> and whose other bytes are zero, held as two little-endian
+    /// 64-bit halves.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// L is additive over GF(2) - it is a composition of shifts and GF(2^8)-linear combinations -
+    /// so L(S(x)) decomposes into the XOR of its per-byte contributions:
+    /// <c>L(S(x)) = ⊕_i L(e_i · π(x_i))</c>. Tabulating those contributions turns a round from 256
+    /// R-steps into sixteen lookups and fifteen XORs.
+    /// </para>
+    /// <para>
+    /// 16 positions × 256 values × 16 bytes = 64 KB, built once on first use. Building it needs
+    /// 4,096 L evaluations, which is why <see cref="MulByPosition"/> has to exist first: against
+    /// the bit-serial multiply this construction alone would cost tens of milliseconds.
+    /// </para>
+    /// </remarks>
+    private static readonly ulong[] LsEncrypt = BuildLsTable(inverse: false);
+
+    /// <summary>
+    /// Fused L^(-1)∘S^(-1) table for decryption, in the same layout as <see cref="LsEncrypt"/>:
+    /// entry <c>[i][b]</c> is <c>L^(-1)</c> applied to the block whose byte <c>i</c> is
+    /// <c>π^(-1)(b)</c>.
+    /// </summary>
+    private static readonly ulong[] LsDecrypt = BuildLsTable(inverse: true);
 
     /// <summary>
     /// Multiplies two elements in GF(2^8) with irreducible polynomial
@@ -151,7 +201,7 @@ internal static class KuznyechikCore
         byte result = 0;
         for (int i = 0; i < BlockSizeBytes; i++)
         {
-            result ^= GFMul(Coefficients[i], block[i]);
+            result ^= MulByPosition[(i << 8) + block[i]];
         }
 
         return result;
@@ -262,59 +312,246 @@ internal static class KuznyechikCore
     }
 
     /// <summary>
+    /// Expands a 256-bit key into the prepared encryption and decryption schedules used by
+    /// <see cref="EncryptBlock"/> and <see cref="DecryptBlock"/>.
+    /// </summary>
+    /// <remarks>
+    /// The decryption schedule holds L^(-1)(K_j) rather than K_j for every round key but the
+    /// first. See <see cref="DecryptBlock"/> for why the linear layer moves onto the keys.
+    /// </remarks>
+    /// <param name="key">The 32-byte cipher key.</param>
+    /// <param name="encryptKeys">Receives <see cref="RoundKeyWordCount"/> words.</param>
+    /// <param name="decryptKeys">Receives <see cref="RoundKeyWordCount"/> words.</param>
+    public static void ExpandKeySchedules(ReadOnlySpan<byte> key, Span<ulong> encryptKeys, Span<ulong> decryptKeys)
+    {
+        Span<byte> roundKeys = stackalloc byte[RoundKeysTotalBytes];
+        Span<byte> inverted = stackalloc byte[BlockSizeBytes];
+
+        try
+        {
+            ExpandKey(key, roundKeys);
+
+            for (int j = 0; j < Rounds; j++)
+            {
+                var rk = roundKeys.Slice(j * BlockSizeBytes, BlockSizeBytes);
+                encryptKeys[j * 2] = BinaryPrimitives.ReadUInt64LittleEndian(rk);
+                encryptKeys[(j * 2) + 1] = BinaryPrimitives.ReadUInt64LittleEndian(rk.Slice(8));
+
+                if (j == 0)
+                {
+                    // K_1 is consumed after the final S^(-1), with no linear layer left to absorb.
+                    decryptKeys[0] = encryptKeys[0];
+                    decryptKeys[1] = encryptKeys[1];
+                    continue;
+                }
+
+                rk.CopyTo(inverted);
+                LInverse(inverted);
+                decryptKeys[j * 2] = BinaryPrimitives.ReadUInt64LittleEndian(inverted);
+                decryptKeys[(j * 2) + 1] = BinaryPrimitives.ReadUInt64LittleEndian(inverted.Slice(8));
+            }
+        }
+        finally
+        {
+            roundKeys.Clear();
+            inverted.Clear();
+        }
+    }
+
+    /// <summary>
     /// Encrypts a single 16-byte block using Kuznyechik.
     /// </summary>
     /// <remarks>
-    /// Implements E(a) = X[K_10] ∘ L ∘ S ∘ X[K_9] ∘ ... ∘ L ∘ S ∘ X[K_1](a).
+    /// Implements E(a) = X[K_10] ∘ L ∘ S ∘ X[K_9] ∘ ... ∘ L ∘ S ∘ X[K_1](a), with each L∘S pair
+    /// read from <see cref="LsEncrypt"/>.
     /// </remarks>
     /// <param name="input">The 16-byte plaintext block.</param>
     /// <param name="output">The 16-byte ciphertext output.</param>
-    /// <param name="roundKeys">The 160 bytes of expanded round keys.</param>
-    public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<byte> roundKeys)
+    /// <param name="encryptKeys">The schedule from <see cref="ExpandKeySchedules"/>.</param>
+    public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<ulong> encryptKeys)
     {
-        input.Slice(0, BlockSizeBytes).CopyTo(output);
+        ulong lo = BinaryPrimitives.ReadUInt64LittleEndian(input);
+        ulong hi = BinaryPrimitives.ReadUInt64LittleEndian(input.Slice(8));
 
-        for (int i = 0; i < Rounds - 1; i++)
+        for (int r = 0; r < Rounds - 1; r++)
         {
-            var rk = roundKeys.Slice(i * BlockSizeBytes, BlockSizeBytes);
-            for (int j = 0; j < BlockSizeBytes; j++)
-                output[j] ^= rk[j];
-
-            S(output);
-            L(output);
+            lo ^= encryptKeys[r * 2];
+            hi ^= encryptKeys[(r * 2) + 1];
+            ApplyLsTable(LsEncrypt, ref lo, ref hi);
         }
 
-        var lastRk = roundKeys.Slice((Rounds - 1) * BlockSizeBytes, BlockSizeBytes);
-        for (int j = 0; j < BlockSizeBytes; j++)
-            output[j] ^= lastRk[j];
+        lo ^= encryptKeys[(Rounds - 1) * 2];
+        hi ^= encryptKeys[((Rounds - 1) * 2) + 1];
+
+        BinaryPrimitives.WriteUInt64LittleEndian(output, lo);
+        BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(8), hi);
     }
 
     /// <summary>
     /// Decrypts a single 16-byte block using Kuznyechik.
     /// </summary>
     /// <remarks>
-    /// Reverses the encryption by applying inverse transforms in reverse order.
+    /// <para>
+    /// The specification's inverse rounds pair S^(-1) after L^(-1), which no single table can
+    /// serve. Because L^(-1) is additive, it commutes with the key XOR as
+    /// <c>L^(-1)(x ⊕ K) = L^(-1)(x) ⊕ L^(-1)(K)</c>, so pushing it leftwards through the round
+    /// keys - which <see cref="ExpandKeySchedules"/> does once per key - regroups the round into
+    /// the tabulatable L^(-1)∘S^(-1). This is the same restructuring as AES's equivalent inverse
+    /// cipher, and it leaves one bare L^(-1) at the head and one bare S^(-1) at the tail.
+    /// </para>
+    /// <para>
+    /// The leading L^(-1) needs no table of its own: feeding each byte through the forward S-box
+    /// first cancels the inverse S-box built into <see cref="LsDecrypt"/>.
+    /// </para>
     /// </remarks>
     /// <param name="input">The 16-byte ciphertext block.</param>
     /// <param name="output">The 16-byte plaintext output.</param>
-    /// <param name="roundKeys">The 160 bytes of expanded round keys.</param>
-    public static void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<byte> roundKeys)
+    /// <param name="decryptKeys">The schedule from <see cref="ExpandKeySchedules"/>.</param>
+    public static void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<ulong> decryptKeys)
     {
-        input.Slice(0, BlockSizeBytes).CopyTo(output);
+        ulong lo = BinaryPrimitives.ReadUInt64LittleEndian(input);
+        ulong hi = BinaryPrimitives.ReadUInt64LittleEndian(input.Slice(8));
 
-        for (int i = Rounds - 1; i >= 1; i--)
+        ApplyLsTableAfterSBox(ref lo, ref hi);
+        lo ^= decryptKeys[(Rounds - 1) * 2];
+        hi ^= decryptKeys[((Rounds - 1) * 2) + 1];
+
+        for (int r = Rounds - 2; r >= 1; r--)
         {
-            var rk = roundKeys.Slice(i * BlockSizeBytes, BlockSizeBytes);
-            for (int j = 0; j < BlockSizeBytes; j++)
-                output[j] ^= rk[j];
-
-            LInverse(output);
-            SInverse(output);
+            ApplyLsTable(LsDecrypt, ref lo, ref hi);
+            lo ^= decryptKeys[r * 2];
+            hi ^= decryptKeys[(r * 2) + 1];
         }
 
-        var firstRk = roundKeys.Slice(0, BlockSizeBytes);
-        for (int j = 0; j < BlockSizeBytes; j++)
-            output[j] ^= firstRk[j];
+        ulong plainLo = 0;
+        ulong plainHi = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            plainLo |= (ulong)PiInverse[(int)(lo & 0xFF)] << (i * 8);
+            plainHi |= (ulong)PiInverse[(int)(hi & 0xFF)] << (i * 8);
+            lo >>= 8;
+            hi >>= 8;
+        }
+
+        BinaryPrimitives.WriteUInt64LittleEndian(output, plainLo ^ decryptKeys[0]);
+        BinaryPrimitives.WriteUInt64LittleEndian(output.Slice(8), plainHi ^ decryptKeys[1]);
+    }
+
+    /// <summary>
+    /// XORs the sixteen per-byte contributions of a fused L∘S table into the state.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ApplyLsTable(ulong[] table, ref ulong lo, ref ulong hi)
+    {
+        ulong low = lo;
+        ulong high = hi;
+        ulong resultLow = 0;
+        ulong resultHigh = 0;
+
+        for (int i = 0; i < 8; i++)
+        {
+            int index = ((i << 8) + (int)(low & 0xFF)) << 1;
+            resultLow ^= table[index];
+            resultHigh ^= table[index + 1];
+            low >>= 8;
+        }
+
+        for (int i = 8; i < BlockSizeBytes; i++)
+        {
+            int index = ((i << 8) + (int)(high & 0xFF)) << 1;
+            resultLow ^= table[index];
+            resultHigh ^= table[index + 1];
+            high >>= 8;
+        }
+
+        lo = resultLow;
+        hi = resultHigh;
+    }
+
+    /// <summary>
+    /// Applies L^(-1) alone, by pre-applying π so that the π^(-1) folded into
+    /// <see cref="LsDecrypt"/> cancels.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ApplyLsTableAfterSBox(ref ulong lo, ref ulong hi)
+    {
+        ulong low = lo;
+        ulong high = hi;
+        ulong resultLow = 0;
+        ulong resultHigh = 0;
+
+        for (int i = 0; i < 8; i++)
+        {
+            int index = ((i << 8) + Pi[(int)(low & 0xFF)]) << 1;
+            resultLow ^= LsDecrypt[index];
+            resultHigh ^= LsDecrypt[index + 1];
+            low >>= 8;
+        }
+
+        for (int i = 8; i < BlockSizeBytes; i++)
+        {
+            int index = ((i << 8) + Pi[(int)(high & 0xFF)]) << 1;
+            resultLow ^= LsDecrypt[index];
+            resultHigh ^= LsDecrypt[index + 1];
+            high >>= 8;
+        }
+
+        lo = resultLow;
+        hi = resultHigh;
+    }
+
+    /// <summary>
+    /// Builds <see cref="MulByPosition"/>.
+    /// </summary>
+    private static byte[] BuildMultiplicationTable()
+    {
+        byte[] table = new byte[BlockSizeBytes * 256];
+
+        for (int i = 0; i < BlockSizeBytes; i++)
+        {
+            for (int value = 0; value < 256; value++)
+            {
+                table[(i << 8) + value] = GFMul(Coefficients[i], (byte)value);
+            }
+        }
+
+        return table;
+    }
+
+    /// <summary>
+    /// Builds <see cref="LsEncrypt"/> or <see cref="LsDecrypt"/>.
+    /// </summary>
+    /// <param name="inverse">
+    /// <see langword="true"/> to tabulate L^(-1)∘S^(-1); otherwise L∘S.
+    /// </param>
+    private static ulong[] BuildLsTable(bool inverse)
+    {
+        ulong[] table = new ulong[BlockSizeBytes * 256 * 2];
+        Span<byte> block = stackalloc byte[BlockSizeBytes];
+
+        for (int i = 0; i < BlockSizeBytes; i++)
+        {
+            for (int value = 0; value < 256; value++)
+            {
+                block.Clear();
+                block[i] = inverse ? PiInverse[value] : Pi[value];
+
+                if (inverse)
+                {
+                    LInverse(block);
+                }
+                else
+                {
+                    L(block);
+                }
+
+                int index = ((i << 8) + value) << 1;
+                table[index] = BinaryPrimitives.ReadUInt64LittleEndian(block);
+                table[index + 1] = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(8));
+            }
+        }
+
+        return table;
     }
 
     /// <summary>

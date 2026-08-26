@@ -76,6 +76,17 @@
     <PackageReference Include="CryptoHives.Foundation.Security.Cryptography$(_NuGetPackageSuffix)" />
   </ItemGroup>
 
+  <!--
+    NIST ACVP conformance vectors for ML-KEM (FIPS 203). Embedded rather than inlined as C#
+    literals: ML-KEM-1024 alone carries ~9.6 KB of hex per key generation case. Gzipped
+    because the flattened set is ~1.7 MB of hex; MLKemAcvpVectors decompresses on load.
+    Regenerate with scripts/fetch-mlkem-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mlkem-acvp-fips203.txt.gz"
+                      LogicalName="Cryptography.Tests.TestData.mlkem-acvp-fips203.txt.gz" />
+  </ItemGroup>
+
   <ItemGroup>
     <Folder Include="Properties/" />
   </ItemGroup>
