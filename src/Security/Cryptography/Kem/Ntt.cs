@@ -148,10 +148,15 @@ internal static class Ntt
     }
 
     /// <summary>
-    /// Barrett reduction: reduces a mod q using Barrett's method.
+    /// Barrett reduction: reduces a mod q to a centered residue.
     /// </summary>
-    /// <param name="a">The value to reduce (must be in range [-q, q]).</param>
-    /// <returns>The reduced value in [0, q).</returns>
+    /// <remarks>
+    /// The result is <em>centered</em>, not canonical: use <see cref="ConditionalSubQ"/> (via
+    /// <c>Poly.Normalize</c>) when a value in [0, q) is required. <c>Poly.Reduce</c> relies on
+    /// both of the ranges documented here.
+    /// </remarks>
+    /// <param name="a">The value to reduce. Any <c>short</c> value is accepted.</param>
+    /// <returns>The reduced value in [-(q-1)/2, (q-1)/2], i.e. [-1664, 1664].</returns>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static short BarrettReduce(short a)
     {
