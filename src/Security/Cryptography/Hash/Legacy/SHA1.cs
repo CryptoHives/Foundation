@@ -5,8 +5,10 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Computes the SHA-1 hash for the input data.
@@ -226,6 +228,14 @@ public sealed partial class SHA1 : HashAlgorithm
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
+        // The schedule and the chaining value are both fixed-size readonly arrays
+        // allocated in the constructor; take the references once so the 80-round
+        // expansion does not re-check a length the JIT cannot see behind a field load.
+        Debug.Assert(_state.Length >= 5, "chaining value must hold the full state");
+        Debug.Assert(_w.Length >= 80, "message schedule must hold 80 words");
+        ref uint sPtr = ref MemoryMarshalEx.GetArrayDataReference(_state);
+        ref uint wPtr = ref MemoryMarshalEx.GetArrayDataReference(_w);
+
 #if NET8_0_OR_GREATER
         if ((_simdSupport & SimdSupport.ArmSha1) != 0)
         {
@@ -238,26 +248,26 @@ public sealed partial class SHA1 : HashAlgorithm
             // Parse block into 16 32-bit words (big-endian)
             for (int i = 0; i < 16; i++)
             {
-                _w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
+                Unsafe.Add(ref wPtr, i) = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
             }
 
             // Extend 16 words to 80 words
             for (int i = 16; i < 80; i++)
             {
-                _w[i] = BitOperations.RotateLeft(_w[i - 3] ^ _w[i - 8] ^ _w[i - 14] ^ _w[i - 16], 1);
+                Unsafe.Add(ref wPtr, i) = BitOperations.RotateLeft(Unsafe.Add(ref wPtr, i - 3) ^ Unsafe.Add(ref wPtr, i - 8) ^ Unsafe.Add(ref wPtr, i - 14) ^ Unsafe.Add(ref wPtr, i - 16), 1);
             }
 
-            uint a = _state[0];
-            uint b = _state[1];
-            uint c = _state[2];
-            uint d = _state[3];
-            uint e = _state[4];
+            uint a = Unsafe.Add(ref sPtr, 0);
+            uint b = Unsafe.Add(ref sPtr, 1);
+            uint c = Unsafe.Add(ref sPtr, 2);
+            uint d = Unsafe.Add(ref sPtr, 3);
+            uint e = Unsafe.Add(ref sPtr, 4);
 
             // Round 1: 0-19
             for (int i = 0; i < 20; i++)
             {
                 uint f = (b & c) | (~b & d);
-                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x5a827999 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x5a827999 + Unsafe.Add(ref wPtr, i);
                 e = d;
                 d = c;
                 c = BitOperations.RotateLeft(b, 30);
@@ -269,7 +279,7 @@ public sealed partial class SHA1 : HashAlgorithm
             for (int i = 20; i < 40; i++)
             {
                 uint f = b ^ c ^ d;
-                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x6ed9eba1 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x6ed9eba1 + Unsafe.Add(ref wPtr, i);
                 e = d;
                 d = c;
                 c = BitOperations.RotateLeft(b, 30);
@@ -281,7 +291,7 @@ public sealed partial class SHA1 : HashAlgorithm
             for (int i = 40; i < 60; i++)
             {
                 uint f = (b & c) | (b & d) | (c & d);
-                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x8f1bbcdc + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x8f1bbcdc + Unsafe.Add(ref wPtr, i);
                 e = d;
                 d = c;
                 c = BitOperations.RotateLeft(b, 30);
@@ -293,7 +303,7 @@ public sealed partial class SHA1 : HashAlgorithm
             for (int i = 60; i < 80; i++)
             {
                 uint f = b ^ c ^ d;
-                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0xca62c1d6 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0xca62c1d6 + Unsafe.Add(ref wPtr, i);
                 e = d;
                 d = c;
                 c = BitOperations.RotateLeft(b, 30);
@@ -301,11 +311,11 @@ public sealed partial class SHA1 : HashAlgorithm
                 a = temp;
             }
 
-            _state[0] += a;
-            _state[1] += b;
-            _state[2] += c;
-            _state[3] += d;
-            _state[4] += e;
+            Unsafe.Add(ref sPtr, 0) += a;
+            Unsafe.Add(ref sPtr, 1) += b;
+            Unsafe.Add(ref sPtr, 2) += c;
+            Unsafe.Add(ref sPtr, 3) += d;
+            Unsafe.Add(ref sPtr, 4) += e;
         }
     }
 
