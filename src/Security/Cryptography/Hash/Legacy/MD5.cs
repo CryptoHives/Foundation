@@ -301,13 +301,8 @@ public sealed class MD5 : HashAlgorithm
             uint c = _c;
             uint d = _d;
 
-#if NET8_0_OR_GREATER
-            ref int gPtr = ref MemoryMarshal.GetArrayDataReference(G);
-            ref uint kPtr = ref MemoryMarshal.GetArrayDataReference(K);
-#else
-            ref int gPtr = ref MemoryMarshal.GetReference(G.AsSpan());
-            ref uint kPtr = ref MemoryMarshal.GetReference(K.AsSpan());
-#endif
+            ref int gPtr = ref MemoryMarshalEx.GetArrayDataReference(G);
+            ref uint kPtr = ref MemoryMarshalEx.GetArrayDataReference(K);
             ref uint mPtr = ref MemoryMarshal.GetReference(m);
 
             for (int i = 0; i < 16; i++)
