@@ -1139,7 +1139,8 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateCbc(new Dstu7624Engine(256), 64, "Kalyna-512-CBC"),
             Source.BouncyCastle));
 
-        // Kuznyechik-CBC - Managed (no BouncyCastle engine available)
+        // Kuznyechik-CBC - Managed. BouncyCastle's C# port has no GOST R 34.12-2015 engine (only
+        // the 1989 Gost28147Engine), so OpenGost below is the reference for this algorithm.
         implementations.Add(new CipherImplementation(
             "Kuznyechik-CBC",
             "CryptoHives-Scalar",
@@ -1152,6 +1153,20 @@ public static class CipherAlgorithmRegistry
                 return kuz;
             },
             Source.Managed));
+
+        // Kuznyechik-CBC - OpenGost, which names the cipher by the English translation of
+        // "Кузнечик". Same package already used for Streebog.
+        implementations.Add(new CipherImplementation(
+            "Kuznyechik-CBC",
+            "OpenGost",
+            256,
+            Mode.CBC,
+            () => new OpenGostCbcAdapter(
+                OpenGost.Security.Cryptography.Grasshopper.Create,
+                "Kuznyechik-CBC",
+                keySizeBytes: 32,
+                blockSizeBytes: 16),
+            Source.Regional));
 
         // SEED-CBC - Managed
         implementations.Add(new CipherImplementation(

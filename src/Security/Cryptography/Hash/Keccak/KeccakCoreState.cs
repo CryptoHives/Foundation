@@ -114,6 +114,14 @@ internal unsafe partial struct KeccakCoreState
     /// <param name="startRound">The starting round for the permutation (default 0). Use 12 for TurboSHAKE.</param>
     public KeccakCoreState(SimdSupport simdSupport = SimdSupport.None, int startRound = 0)
     {
+        // The vectorized permutations step two rounds at a time and index the round constant
+        // table at both round and round + 1, so an odd or out-of-range start would read past
+        // the table as well as compute the wrong digest.
+        if (startRound < 0 || startRound >= Rounds || (startRound & 1) != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(startRound), "Start round must be even and less than the round count.");
+        }
+
         // mask unsupported bits
         _simdSupport = simdSupport & SimdSupport;
         _startRound = startRound;
@@ -496,7 +504,7 @@ internal unsafe partial struct KeccakCoreState
 
         fixed (ulong* statePtr = _state)
         {
-            ref Vector256<ulong> rcBase = ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx2);
+            ref Vector256<ulong> rcBase = ref MemoryMarshalEx.GetArrayDataReference(RoundConstantsAvx2);
 
             // Load state into vectors
             // Key detail: we use Vector256.Create(value) for the U-lanes so that the value
@@ -893,7 +901,7 @@ internal unsafe partial struct KeccakCoreState
     private static ulong GetRoundConstants(int round)
     {
 #if NET8_0_OR_GREATER
-        return Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(RoundConstants), round);
+        return Unsafe.Add(ref MemoryMarshalEx.GetArrayDataReference(RoundConstants), round);
 #else
         return RoundConstants[round];
 #endif
@@ -1139,10 +1147,19 @@ internal unsafe partial struct KeccakCoreState
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
     /// <param name="length">The number of bytes to extract (must be ≤ rate).</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="length"/> is negative or exceeds the state size.</exception>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public void Squeeze(Span<byte> output, int length)
     {
         const int uInt64Size = sizeof(UInt64);
+
+        // The little-endian path reads length bytes straight out of the fixed state buffer,
+        // so this bound is what keeps the read inside it. Callers pass at most the rate,
+        // which is always smaller, but nothing in the type system says so.
+        if ((uint)length > (uint)(StateSize * uInt64Size))
+        {
+            throw new ArgumentOutOfRangeException(nameof(length), "Squeeze length cannot exceed the Keccak state size.");
+        }
 
         fixed (ulong* statePtr = _state)
         {

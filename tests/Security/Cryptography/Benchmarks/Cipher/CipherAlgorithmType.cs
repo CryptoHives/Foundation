@@ -391,7 +391,7 @@ public sealed class CipherAlgorithmType : IFormattable
 
         foreach (var impl in implementations)
         {
-            string label = impl.Source == CipherAlgorithmRegistry.Source.Simd
+            string label = impl.Source is CipherAlgorithmRegistry.Source.Simd or CipherAlgorithmRegistry.Source.Regional
                 ? impl.Variant
                 : SourceToString(impl.Source);
             string displayName = $"{familyName} ({label})";
@@ -417,7 +417,6 @@ public sealed class CipherAlgorithmType : IFormattable
             CipherAlgorithmRegistry.Source.OS => "OS",
             CipherAlgorithmRegistry.Source.BouncyCastle => "BouncyCastle",
             CipherAlgorithmRegistry.Source.NaClCore => "NaCl.Core",
-            CipherAlgorithmRegistry.Source.Regional => "Regional",
             _ => "Unknown"
         };
     }
