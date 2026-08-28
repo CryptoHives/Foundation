@@ -108,7 +108,7 @@ official sources.
 |------|--------|----------------|-------------|
 | Hash | ✅ | `Blake3.Create()` | Standard cryptographic hashing |
 | Keyed Hash | ✅ | `Blake3.CreateKeyed(key)` | MAC with 32-byte key |
-| Derive Key | ⬜ | - | `Blake3Mode.DeriveKey` is declared but no constructor selects it |
+| Derive Key | ✅ | `Blake3.CreateDeriveKey(context)` | Key derivation from a context string and key material |
 | XOF | ✅ | `Blake3.Create(outputBytes)` | Extendable output (any length) |
 
 ### RIPEMD Family
