@@ -4,7 +4,9 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Byte encoding and decoding of ML-KEM polynomials.
@@ -320,18 +322,25 @@ internal static class Encode
     public static void ByteEncode10(ReadOnlySpan<short> coeffs, Span<byte> output)
     {
         output = output.Slice(0, 32 * 10);
+
+        // The slice above is the length check; both subscripts below then run off
+        // references so the packing loop does not repeat it per element.
+        Debug.Assert(coeffs.Length >= MLKemParams.N, "polynomial must have N coefficients");
+        ref short rc = ref MemoryMarshal.GetReference(coeffs);
+        ref byte ro = ref MemoryMarshal.GetReference(output);
+
         for (int i = 0, o = 0; i < MLKemParams.N; i += 4, o += 5)
         {
-            uint c0 = (ushort)coeffs[i];
-            uint c1 = (ushort)coeffs[i + 1];
-            uint c2 = (ushort)coeffs[i + 2];
-            uint c3 = (ushort)coeffs[i + 3];
+            uint c0 = (ushort)Unsafe.Add(ref rc, i);
+            uint c1 = (ushort)Unsafe.Add(ref rc, i + 1);
+            uint c2 = (ushort)Unsafe.Add(ref rc, i + 2);
+            uint c3 = (ushort)Unsafe.Add(ref rc, i + 3);
 
-            output[o] = (byte)c0;
-            output[o + 1] = (byte)((c0 >> 8) | (c1 << 2));
-            output[o + 2] = (byte)((c1 >> 6) | (c2 << 4));
-            output[o + 3] = (byte)((c2 >> 4) | (c3 << 6));
-            output[o + 4] = (byte)(c3 >> 2);
+            Unsafe.Add(ref ro, o) = (byte)c0;
+            Unsafe.Add(ref ro, o + 1) = (byte)((c0 >> 8) | (c1 << 2));
+            Unsafe.Add(ref ro, o + 2) = (byte)((c1 >> 6) | (c2 << 4));
+            Unsafe.Add(ref ro, o + 3) = (byte)((c2 >> 4) | (c3 << 6));
+            Unsafe.Add(ref ro, o + 4) = (byte)(c3 >> 2);
         }
     }
 
@@ -342,18 +351,25 @@ internal static class Encode
     public static void ByteDecode10(ReadOnlySpan<byte> input, Span<short> coeffs)
     {
         input = input.Slice(0, 32 * 10);
+
+        // The slice above is the length check; both subscripts below then run off
+        // references so the packing loop does not repeat it per element.
+        Debug.Assert(coeffs.Length >= MLKemParams.N, "polynomial must have N coefficients");
+        ref byte ri = ref MemoryMarshal.GetReference(input);
+        ref short rc = ref MemoryMarshal.GetReference(coeffs);
+
         for (int i = 0, o = 0; i < MLKemParams.N; i += 4, o += 5)
         {
-            uint b0 = input[o];
-            uint b1 = input[o + 1];
-            uint b2 = input[o + 2];
-            uint b3 = input[o + 3];
-            uint b4 = input[o + 4];
+            uint b0 = Unsafe.Add(ref ri, o);
+            uint b1 = Unsafe.Add(ref ri, o + 1);
+            uint b2 = Unsafe.Add(ref ri, o + 2);
+            uint b3 = Unsafe.Add(ref ri, o + 3);
+            uint b4 = Unsafe.Add(ref ri, o + 4);
 
-            coeffs[i] = (short)((b0 | (b1 << 8)) & 0x3FF);
-            coeffs[i + 1] = (short)(((b1 >> 2) | (b2 << 6)) & 0x3FF);
-            coeffs[i + 2] = (short)(((b2 >> 4) | (b3 << 4)) & 0x3FF);
-            coeffs[i + 3] = (short)(((b3 >> 6) | (b4 << 2)) & 0x3FF);
+            Unsafe.Add(ref rc, i) = (short)((b0 | (b1 << 8)) & 0x3FF);
+            Unsafe.Add(ref rc, i + 1) = (short)(((b1 >> 2) | (b2 << 6)) & 0x3FF);
+            Unsafe.Add(ref rc, i + 2) = (short)(((b2 >> 4) | (b3 << 4)) & 0x3FF);
+            Unsafe.Add(ref rc, i + 3) = (short)(((b3 >> 6) | (b4 << 2)) & 0x3FF);
         }
     }
 
@@ -364,28 +380,35 @@ internal static class Encode
     public static void ByteEncode11(ReadOnlySpan<short> coeffs, Span<byte> output)
     {
         output = output.Slice(0, 32 * 11);
+
+        // The slice above is the length check; both subscripts below then run off
+        // references so the packing loop does not repeat it per element.
+        Debug.Assert(coeffs.Length >= MLKemParams.N, "polynomial must have N coefficients");
+        ref short rc = ref MemoryMarshal.GetReference(coeffs);
+        ref byte ro = ref MemoryMarshal.GetReference(output);
+
         for (int i = 0, o = 0; i < MLKemParams.N; i += 8, o += 11)
         {
-            uint c0 = (ushort)coeffs[i];
-            uint c1 = (ushort)coeffs[i + 1];
-            uint c2 = (ushort)coeffs[i + 2];
-            uint c3 = (ushort)coeffs[i + 3];
-            uint c4 = (ushort)coeffs[i + 4];
-            uint c5 = (ushort)coeffs[i + 5];
-            uint c6 = (ushort)coeffs[i + 6];
-            uint c7 = (ushort)coeffs[i + 7];
+            uint c0 = (ushort)Unsafe.Add(ref rc, i);
+            uint c1 = (ushort)Unsafe.Add(ref rc, i + 1);
+            uint c2 = (ushort)Unsafe.Add(ref rc, i + 2);
+            uint c3 = (ushort)Unsafe.Add(ref rc, i + 3);
+            uint c4 = (ushort)Unsafe.Add(ref rc, i + 4);
+            uint c5 = (ushort)Unsafe.Add(ref rc, i + 5);
+            uint c6 = (ushort)Unsafe.Add(ref rc, i + 6);
+            uint c7 = (ushort)Unsafe.Add(ref rc, i + 7);
 
-            output[o] = (byte)c0;
-            output[o + 1] = (byte)((c0 >> 8) | (c1 << 3));
-            output[o + 2] = (byte)((c1 >> 5) | (c2 << 6));
-            output[o + 3] = (byte)(c2 >> 2);
-            output[o + 4] = (byte)((c2 >> 10) | (c3 << 1));
-            output[o + 5] = (byte)((c3 >> 7) | (c4 << 4));
-            output[o + 6] = (byte)((c4 >> 4) | (c5 << 7));
-            output[o + 7] = (byte)(c5 >> 1);
-            output[o + 8] = (byte)((c5 >> 9) | (c6 << 2));
-            output[o + 9] = (byte)((c6 >> 6) | (c7 << 5));
-            output[o + 10] = (byte)(c7 >> 3);
+            Unsafe.Add(ref ro, o) = (byte)c0;
+            Unsafe.Add(ref ro, o + 1) = (byte)((c0 >> 8) | (c1 << 3));
+            Unsafe.Add(ref ro, o + 2) = (byte)((c1 >> 5) | (c2 << 6));
+            Unsafe.Add(ref ro, o + 3) = (byte)(c2 >> 2);
+            Unsafe.Add(ref ro, o + 4) = (byte)((c2 >> 10) | (c3 << 1));
+            Unsafe.Add(ref ro, o + 5) = (byte)((c3 >> 7) | (c4 << 4));
+            Unsafe.Add(ref ro, o + 6) = (byte)((c4 >> 4) | (c5 << 7));
+            Unsafe.Add(ref ro, o + 7) = (byte)(c5 >> 1);
+            Unsafe.Add(ref ro, o + 8) = (byte)((c5 >> 9) | (c6 << 2));
+            Unsafe.Add(ref ro, o + 9) = (byte)((c6 >> 6) | (c7 << 5));
+            Unsafe.Add(ref ro, o + 10) = (byte)(c7 >> 3);
         }
     }
 
@@ -396,28 +419,35 @@ internal static class Encode
     public static void ByteDecode11(ReadOnlySpan<byte> input, Span<short> coeffs)
     {
         input = input.Slice(0, 32 * 11);
+
+        // The slice above is the length check; both subscripts below then run off
+        // references so the packing loop does not repeat it per element.
+        Debug.Assert(coeffs.Length >= MLKemParams.N, "polynomial must have N coefficients");
+        ref byte ri = ref MemoryMarshal.GetReference(input);
+        ref short rc = ref MemoryMarshal.GetReference(coeffs);
+
         for (int i = 0, o = 0; i < MLKemParams.N; i += 8, o += 11)
         {
-            uint b0 = input[o];
-            uint b1 = input[o + 1];
-            uint b2 = input[o + 2];
-            uint b3 = input[o + 3];
-            uint b4 = input[o + 4];
-            uint b5 = input[o + 5];
-            uint b6 = input[o + 6];
-            uint b7 = input[o + 7];
-            uint b8 = input[o + 8];
-            uint b9 = input[o + 9];
-            uint b10 = input[o + 10];
+            uint b0 = Unsafe.Add(ref ri, o);
+            uint b1 = Unsafe.Add(ref ri, o + 1);
+            uint b2 = Unsafe.Add(ref ri, o + 2);
+            uint b3 = Unsafe.Add(ref ri, o + 3);
+            uint b4 = Unsafe.Add(ref ri, o + 4);
+            uint b5 = Unsafe.Add(ref ri, o + 5);
+            uint b6 = Unsafe.Add(ref ri, o + 6);
+            uint b7 = Unsafe.Add(ref ri, o + 7);
+            uint b8 = Unsafe.Add(ref ri, o + 8);
+            uint b9 = Unsafe.Add(ref ri, o + 9);
+            uint b10 = Unsafe.Add(ref ri, o + 10);
 
-            coeffs[i] = (short)((b0 | (b1 << 8)) & 0x7FF);
-            coeffs[i + 1] = (short)(((b1 >> 3) | (b2 << 5)) & 0x7FF);
-            coeffs[i + 2] = (short)(((b2 >> 6) | (b3 << 2) | (b4 << 10)) & 0x7FF);
-            coeffs[i + 3] = (short)(((b4 >> 1) | (b5 << 7)) & 0x7FF);
-            coeffs[i + 4] = (short)(((b5 >> 4) | (b6 << 4)) & 0x7FF);
-            coeffs[i + 5] = (short)(((b6 >> 7) | (b7 << 1) | (b8 << 9)) & 0x7FF);
-            coeffs[i + 6] = (short)(((b8 >> 2) | (b9 << 6)) & 0x7FF);
-            coeffs[i + 7] = (short)(((b9 >> 5) | (b10 << 3)) & 0x7FF);
+            Unsafe.Add(ref rc, i) = (short)((b0 | (b1 << 8)) & 0x7FF);
+            Unsafe.Add(ref rc, i + 1) = (short)(((b1 >> 3) | (b2 << 5)) & 0x7FF);
+            Unsafe.Add(ref rc, i + 2) = (short)(((b2 >> 6) | (b3 << 2) | (b4 << 10)) & 0x7FF);
+            Unsafe.Add(ref rc, i + 3) = (short)(((b4 >> 1) | (b5 << 7)) & 0x7FF);
+            Unsafe.Add(ref rc, i + 4) = (short)(((b5 >> 4) | (b6 << 4)) & 0x7FF);
+            Unsafe.Add(ref rc, i + 5) = (short)(((b6 >> 7) | (b7 << 1) | (b8 << 9)) & 0x7FF);
+            Unsafe.Add(ref rc, i + 6) = (short)(((b8 >> 2) | (b9 << 6)) & 0x7FF);
+            Unsafe.Add(ref rc, i + 7) = (short)(((b9 >> 5) | (b10 << 3)) & 0x7FF);
         }
     }
 }

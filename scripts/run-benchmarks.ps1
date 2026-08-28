@@ -52,10 +52,12 @@ param(
         "ChaCha20",
         "ChaCha20Poly1305", "XChaCha20Poly1305",
         # Regional cipher algorithms (individual)
-        "Sm4Cbc", "AriaCbc128", "AriaCbc256",
+        "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256",
         "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256",
-        "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256",
+        "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512",
         "SeedCbc",
+        # AEAD and key wrapping (individual)
+        "AsconAead128", "AesKeyWrap",
         # MAC algorithms (individual)
         "HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512",
         "HmacSha3_256", "HmacSha3_384", "HmacSha3_512",
@@ -241,6 +243,7 @@ $AlgorithmBenchmarkMap = @{
     # Ciphers - Regional
     "Sm4Cbc"            = "Sm4Cbc"
     "AriaCbc128"        = "AriaCbc128"
+    "AriaCbc192"        = "AriaCbc192"
     "AriaCbc256"        = "AriaCbc256"
     "CamelliaCbc128"    = "CamelliaCbc128"
     "CamelliaCbc192"    = "CamelliaCbc192"
@@ -248,7 +251,11 @@ $AlgorithmBenchmarkMap = @{
     "KuznyechikCbc"     = "KuznyechikCbc"
     "KalynaCbc128"      = "KalynaCbc128"
     "KalynaCbc256"      = "KalynaCbc256"
+    "KalynaCbc512"      = "KalynaCbc512"
     "SeedCbc"           = "SeedCbc"
+    # Ciphers - AEAD and key wrapping
+    "AsconAead128"      = "AsconAead128"
+    "AesKeyWrap"        = "AesKeyWrap"
     # MAC - HMAC
     "HmacMd5"           = "HmacMd5"
     "HmacSha1"          = "HmacSha1"
@@ -301,9 +308,9 @@ $GroupAliases = @{
     "AES-CCM"        = @("AesCcm128", "AesCcm256")
     "AES-CBC"        = @("AesCbc128", "AesCbc256")
     "ChaCha"         = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
-    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
+    "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
+    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128")
+    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "AesKeyWrap", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
     "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
     "MLKem"          = @("MLKemKeyGen", "MLKemOps")
@@ -423,9 +430,11 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  AES-GCM:       -Family AesGcm128, AesGcm192, AesGcm256"
     Write-Host "  AES-CCM:       -Family AesCcm128, AesCcm256"
     Write-Host "  AES-CBC:       -Family AesCbc128, AesCbc256"
+    Write-Host "  AES-KeyWrap:   -Family AesKeyWrap"
     Write-Host "  ChaCha:        -Family ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
-    Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
-    Write-Host "                          KuznyechikCbc, KalynaCbc128, KalynaCbc256, SeedCbc"
+    Write-Host "  Ascon-AEAD:    -Family AsconAead128"
+    Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc192, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
+    Write-Host "                          KuznyechikCbc, KalynaCbc128, KalynaCbc256, KalynaCbc512, SeedCbc"
     Write-Host ""
     Write-Host "Available MAC algorithm families:" -ForegroundColor Yellow
     Write-Host ""
@@ -470,8 +479,8 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family AES-CCM    runs: AesCcm128, AesCcm256"
     Write-Host "  -Family AES-CBC    runs: AesCbc128, AesCbc256"
     Write-Host "  -Family ChaCha     runs: ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
-    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"
-    Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA, Camellia-128/192/256, Kuznyechik, Kalyna, SEED)"
+    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128)"
+    Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA-128/192/256, Camellia-128/192/256, Kuznyechik, Kalyna-128/256/512, SEED)"
     Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
     Write-Host "  -Family HMAC       runs: HmacMd5, HmacSha1, HmacSha256, HmacSha384, HmacSha512, HmacSha3_256, HmacSha3_384, HmacSha3_512"
     Write-Host "  -Family MAC        runs: All HMAC variants + AesCmac, AesGmac, Poly1305"
@@ -525,8 +534,14 @@ if ($ExtraArgs) {
     }
 }
 
-# Show command
-$cmdDisplay = "dotnet " + ($dotnetArgs -join " ")
+# Show command. Quote any argument a shell would otherwise treat specially (wildcards,
+# whitespace, etc.) so this line is safe to copy-paste and re-run directly - the actual
+# invocation below uses Start-Process -ArgumentList and never goes through a shell, so it
+# doesn't need this, but a printed "*Aes*" left unquoted will glob-expand (or error with
+# "no matches found" under zsh's nomatch) if pasted as-is.
+$cmdDisplay = "dotnet " + (($dotnetArgs | ForEach-Object {
+    if ($_ -match '[\s\*\?\$`"''|<>&;()\[\]{}]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+}) -join " ")
 Write-Host "Command: $cmdDisplay" -ForegroundColor Cyan
 Write-Host ""
 

@@ -16,7 +16,8 @@ using System;
 /// </remarks>
 internal sealed class KuznyechikCipherTransform : BlockCipherTransform
 {
-    private readonly byte[] _roundKeys;
+    private readonly ulong[] _encryptKeys;
+    private readonly ulong[] _decryptKeys;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="KuznyechikCipherTransform"/> class.
@@ -34,25 +35,30 @@ internal sealed class KuznyechikCipherTransform : BlockCipherTransform
         PaddingMode padding)
         : base(iv, encrypting, mode, padding)
     {
-        _roundKeys = new byte[KuznyechikCore.RoundKeysTotalBytes];
-        KuznyechikCore.ExpandKey(key, _roundKeys);
+        // Both schedules are derived up front rather than per direction: a transform is created
+        // for one direction, but deriving the decryption keys costs nine L^(-1) evaluations once,
+        // which is far below the cost of branching on direction in the block path.
+        _encryptKeys = new ulong[KuznyechikCore.RoundKeyWordCount];
+        _decryptKeys = new ulong[KuznyechikCore.RoundKeyWordCount];
+        KuznyechikCore.ExpandKeySchedules(key, _encryptKeys, _decryptKeys);
     }
 
     /// <inheritdoc/>
     protected override void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        KuznyechikCore.EncryptBlock(input, output, _roundKeys);
+        KuznyechikCore.EncryptBlock(input, output, _encryptKeys);
     }
 
     /// <inheritdoc/>
     protected override void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
-        KuznyechikCore.DecryptBlock(input, output, _roundKeys);
+        KuznyechikCore.DecryptBlock(input, output, _decryptKeys);
     }
 
     /// <inheritdoc/>
     protected override void ClearState()
     {
-        Array.Clear(_roundKeys, 0, _roundKeys.Length);
+        Array.Clear(_encryptKeys, 0, _encryptKeys.Length);
+        Array.Clear(_decryptKeys, 0, _decryptKeys.Length);
     }
 }
