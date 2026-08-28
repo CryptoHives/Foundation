@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA5358
+
 namespace Cryptography.Tests.Cipher.Kuznyechik;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
