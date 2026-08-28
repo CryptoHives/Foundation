@@ -501,13 +501,5 @@ internal unsafe partial struct Blake3State
     private static Vector256<uint> RotateRight7(Vector256<uint> value) => Avx512F.VL.IsSupported
         ? Avx512F.VL.RotateRight(value, 7)
         : Avx2.Or(Avx2.ShiftRightLogical(value, 7), Avx2.ShiftLeftLogical(value, 25));
-
-    // Mirrors CompressVector256 exactly (same message schedule, same
-    // G-function groupings) at half the lane width, reusing GRound128 and
-    // the SSSE3-tier rotate helpers from Blake3State.Ssse3.cs — the
-    // G-function is a pure elementwise add/xor/rotate, so it is correct
-    // regardless of what each lane represents (there: 4 state words of one
-    // chunk; here: one word broadcast across 4 independent chunks).
-
 }
 #endif

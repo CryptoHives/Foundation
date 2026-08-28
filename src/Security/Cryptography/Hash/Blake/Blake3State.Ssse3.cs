@@ -317,11 +317,11 @@ internal unsafe partial struct Blake3State
         var q2 = Sse2.LoadVector128(m + 8);
         var q3 = Sse2.LoadVector128(m + 12);
 
-        // Round 1: 0,2,4,6 | 1,3,5,7 (columns), 8,10,12,14 | 9,11,13,15 (diagonals)
-        var colX = Gather128(q0, q1, 0x00, q0, q1, 0x88);
-        var colY = Gather128(q0, q1, 0x11, q0, q1, 0xCC);
-        var diagX = Gather128(q2, q3, 0x00, q2, q3, 0x88);
-        var diagY = Gather128(q2, q3, 0x11, q2, q3, 0xCC);
+        // Round 1: 0,2,4,6 | 1,3,5,7 (columns), 8,10,12,14 | 9,11,13,15 (diagonals).
+        var colX = Sse.Shuffle(q0.AsSingle(), q1.AsSingle(), 0x88).AsUInt32();   // 0,2,4,6
+        var colY = Sse.Shuffle(q0.AsSingle(), q1.AsSingle(), 0xDD).AsUInt32();   // 1,3,5,7
+        var diagX = Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0x88).AsUInt32();  // 8,10,12,14
+        var diagY = Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0xDD).AsUInt32();  // 9,11,13,15
 
         GRound128(ref row0, ref row1, ref row2, ref row3, colX, colY);
         DiagPermute128(ref row1, ref row2, ref row3);
@@ -329,10 +329,8 @@ internal unsafe partial struct Blake3State
         DiagPermute128(ref row3, ref row2, ref row1);
 
         // Rounds 2-7: BLAKE3's message schedule applies the same fixed
-        // permutation every round to the previous round's own output vectors.
-        // Fully unrolled (no loop/counter) so the JIT never has to pay a
-        // loop-carried register shuffle or branch between rounds — matches
-        // the reference managed implementation's approach.
+        // permutation every round to the previous round's own output vectors,
+        // so the six remaining rounds are textually identical.
         for (int i = 1; i < 7; i++)
         {
             q0 = colX; q1 = colY; q2 = diagX; q3 = diagY;
