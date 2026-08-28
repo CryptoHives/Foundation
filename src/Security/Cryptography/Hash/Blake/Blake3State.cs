@@ -155,9 +155,26 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     internal Blake3State(SimdSupport simdSupport, int outputBytes)
+        : this(simdSupport, outputBytes, baseFlags: 0)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Blake3State"/> struct seeded with the
+    /// standard IV and an explicit domain-separation flag.
+    /// </summary>
+    /// <remarks>
+    /// Plain hashing passes no flag. The first pass of derive-key passes
+    /// <see cref="FlagDeriveKeyContext"/>: it hashes the context string under the same IV as a
+    /// plain hash, differing only in that flag.
+    /// </remarks>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="baseFlags">The domain-separation flag mixed into every compression.</param>
+    internal Blake3State(SimdSupport simdSupport, int outputBytes, uint baseFlags)
     {
         _outputBytes = outputBytes;
-        _baseFlags = 0;
+        _baseFlags = baseFlags;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
         _simdSupport = simdSupport & SimdSupport;
@@ -167,15 +184,34 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Blake3State"/> struct for standard hashing.
+    /// Initializes a new instance of the <see cref="Blake3State"/> struct for keyed hashing.
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    /// <param name="key"></param>
+    /// <param name="key">The 32-byte key.</param>
     internal Blake3State(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key)
+        : this(simdSupport, outputBytes, key, FlagKeyedHash)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Blake3State"/> struct from an explicit key
+    /// and domain-separation flag.
+    /// </summary>
+    /// <remarks>
+    /// Both of BLAKE3's keyed modes have the same shape -- 32 key words replacing the IV, plus a
+    /// flag mixed into every compression -- and differ only in that flag. Keyed hashing passes
+    /// <see cref="FlagKeyedHash"/> with the caller's key; the second pass of derive-key passes
+    /// <see cref="FlagDeriveKeyMaterial"/> with the context key produced by the first pass.
+    /// </remarks>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="key">The 32-byte key words.</param>
+    /// <param name="baseFlags">The domain-separation flag mixed into every compression.</param>
+    internal Blake3State(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key, uint baseFlags)
     {
         _outputBytes = outputBytes;
-        _baseFlags = FlagKeyedHash;
+        _baseFlags = baseFlags;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
         _simdSupport = simdSupport & SimdSupport;
@@ -187,6 +223,32 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
 
         InitializeKeyed();
+    }
+
+    /// <summary>
+    /// Derives the 32-byte context key that seeds the second pass of BLAKE3 derive-key mode.
+    /// </summary>
+    /// <remarks>
+    /// This is the spec's first pass: hash the context string under the standard IV with
+    /// <see cref="FlagDeriveKeyContext"/>, taking exactly 32 bytes of output regardless of the
+    /// output size the caller asked for. Context strings are hard-coded application constants
+    /// and far below one chunk, so the one-shot path covers this without any streaming
+    /// bookkeeping. The temporary state is zeroed before it goes out of scope.
+    /// </remarks>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="contextUtf8">The UTF-8 encoded context string.</param>
+    /// <param name="contextKey">Receives the 32-byte context key.</param>
+    internal static void DeriveContextKey(SimdSupport simdSupport, ReadOnlySpan<byte> contextUtf8, Span<byte> contextKey)
+    {
+        var context = new Blake3State(simdSupport, KeySizeBytes, FlagDeriveKeyContext);
+        try
+        {
+            context.TryHashOneShot(contextUtf8, contextKey, out _);
+        }
+        finally
+        {
+            context.Dispose();
+        }
     }
 
     public bool Squeezed => _squeezed;
