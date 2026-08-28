@@ -225,11 +225,24 @@ internal unsafe partial struct KeccakCoreState
 
     }
 
-    private static readonly PermuteAvx512FVectors Avx512FVectors = new();
+    // Built only where the AVX-512 permutation can actually run. Every read of these two
+    // fields is behind the SimdSupport.Avx512F dispatch, so the empty/default values are
+    // never observed on hardware that would reject the instructions.
+    //
+    // Note this reclaims the round-constant array, not the vector struct: Avx512FVectors is a
+    // struct field, so its storage exists in the type's statics either way and only the
+    // nineteen Vector512.Create calls are saved. Reclaiming those bytes would mean putting the
+    // struct behind a reference, which adds an indirection to the hottest permute path.
+    private static readonly PermuteAvx512FVectors Avx512FVectors = Avx512F.IsSupported ? new() : default;
     private static readonly Vector512<ulong>[] RoundConstantsAvx512 = CreateRoundConstantsAvx512();
 
     private static Vector512<ulong>[] CreateRoundConstantsAvx512()
     {
+        if (!Avx512F.IsSupported)
+        {
+            return [];
+        }
+
         var constants = new Vector512<ulong>[Rounds];
         for (int i = 0; i < Rounds; i++)
         {
@@ -442,10 +455,21 @@ internal unsafe partial struct KeccakCoreState
             Avx2.ShiftRightLogicalVariable(a, Avx2.Subtract(Rol64Avx2RShift, leftShifts)));
     }
 
+    // Built only where the AVX2 permutation can actually run; see the note on
+    // RoundConstantsAvx512. Both readers (PermuteAvx2 and the two-round unroll) are behind the
+    // SimdSupport.Avx2 dispatch, and one of them takes a ref to element 0 through
+    // MemoryMarshalEx.GetArrayDataReference, whose pre-.NET-5 path would throw on an empty
+    // array -- unreachable here since this whole region is net8.0+, but the reason the guard
+    // stays rather than relying on the dispatch alone.
     private static readonly Vector256<ulong>[] RoundConstantsAvx2 = CreateRoundConstantsAvx2();
 
     private static Vector256<ulong>[] CreateRoundConstantsAvx2()
     {
+        if (!Avx2.IsSupported)
+        {
+            return [];
+        }
+
         var constants = new Vector256<ulong>[Rounds];
         for (int i = 0; i < Rounds; i++)
         {
