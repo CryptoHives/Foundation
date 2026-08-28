@@ -364,7 +364,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
             // The batched paths only apply at a chunk boundary. The scalar
             // loop's finalize step jumps back here if unaligned buffers
-            //  are processed and the chunk buffer is empty again.
+            // are processed and the chunk buffer is empty again.
         RestartBatching:
             if (_chunkBufferLength == 0)
             {
@@ -500,9 +500,74 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                         int fullChunks = (length - offset) / ChunkSizeBytes;
                         delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel = fullChunks <= 4
-                            ? &CompressChunksPartial4Avx2
+                            ? &CompressChunksPartial4Ssse3
                             : &CompressChunksPartialAvx2;
                         offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, kernel);
+                    }
+                }
+
+                // Helps to not JIT this branch where SSSE3 is unavailable
+                if (Ssse3.IsSupported)
+                {
+                    // SSSE3 4-chunk batches.
+                    //
+                    // Unlike AVX2 and NEON this tier reduces four CVs per subtree
+                    // rather than eight, using CompressParents4Ssse3 — the 8-lane
+                    // reduce needs Vector256 and is unavailable here.
+                    if ((_simdSupport & SimdSupport.Ssse3) != 0 &&
+                        length - offset >= Ssse3BatchSizeBytes)
+                    {
+                        // 64-chunk subtree groups: 16 batches reduce to one CV,
+                        // so the tree only sees one push per 64 KB instead of 64.
+                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        {
+                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerSsse3Batch,
+                                Ssse3BatchSizeBytes, batchCvs, &CompressChunksPartial4Ssse3);
+                        }
+
+                        while (length - offset >= Ssse3BatchSizeBytes)
+                        {
+                            CompressChunksPartial4Ssse3(
+                                srcPtr + offset,
+                                ChunksPerSsse3Batch,
+                                core->_keyWords,
+                                batchCvs,
+                                _chunkCounter,
+                                _baseFlags);
+
+                            bool drainsRemainingInput = offset + Ssse3BatchSizeBytes == length;
+
+                            if (!drainsRemainingInput && (_chunkCounter & (ChunksPerSsse3Batch - 1)) == 0)
+                            {
+                                // Complete aligned 4-chunk subtree, not the tail:
+                                // fold the four CVs into one before pushing.
+                                ReduceChunkCvsToSubtreeCvSsse3(batchCvs, core->_keyWords, ChunksPerSsse3Batch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, 2);
+                                _chunkCounter += ChunksPerSsse3Batch;
+                                offset += Ssse3BatchSizeBytes;
+                                continue;
+                            }
+
+                            int chunksToCommit = drainsRemainingInput ? ChunksPerSsse3Batch - 1 : ChunksPerSsse3Batch;
+
+                            // Draining means offset == length; return directly.
+                            if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
+                            {
+                                return;
+                            }
+
+                            offset += Ssse3BatchSizeBytes;
+                        }
+                    }
+
+                    // SSSE3 partial batch: exactly 3 chunks via the 4-way kernel with
+                    // one ignored lane, mirroring the NEON tier's threshold (2 chunks
+                    // did not repay the transpose cost there either).
+                    if ((_simdSupport & SimdSupport.Ssse3) != 0 &&
+                        length - offset >= 3 * ChunkSizeBytes)
+                    {
+                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartial4Ssse3);
                     }
                 }
 
@@ -716,6 +781,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         if (AdvSimd.Arm64.IsSupported)
         {
             ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+        }
+        else if (Ssse3.IsSupported && (_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) == 0)
+        {
+            // SSSE3 tier: the 8-lane reduce needs Vector256, so use the 4-lane
+            // one. Runs once per 64-chunk group (64 KB of input), so the extra
+            // runtime check here is far below the noise floor.
+            ReduceChunkCvsToSubtreeCvSsse3(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
         }
         else
         {
