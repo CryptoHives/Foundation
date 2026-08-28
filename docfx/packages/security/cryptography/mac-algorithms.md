@@ -608,7 +608,10 @@ blake3Long.TryComputeHash(message, longMac, out _);
 BLAKE3 also supports key derivation from a context string and input key material:
 
 ```csharp
-public static Blake3 CreateDeriveKey(string context, int outputBytes = 32)
+public static Blake3 CreateDeriveKey(string context);
+public static Blake3 CreateDeriveKey(string context, int outputBytes);
+public static Blake3 CreateDeriveKey(ReadOnlySpan<byte> contextUtf8);
+public static Blake3 CreateDeriveKey(ReadOnlySpan<byte> contextUtf8, int outputBytes);
 ```
 
 **Usage:**
