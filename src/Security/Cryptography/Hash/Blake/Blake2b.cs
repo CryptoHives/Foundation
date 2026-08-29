@@ -29,9 +29,15 @@ using System.Buffers;
 public sealed class Blake2b : HashAlgorithm
 {
     /// <summary>
-    /// The default optimization to use for Blake2b based algorithms.
+    /// The default optimization to use for Blake2b based algorithms. Excludes
+    /// <see cref="SimdSupport.Neon"/>: the NEON kernel benchmarks consistently
+    /// ~1.9x-2.1x slower than the scalar fallback across every input size (128B
+    /// through 128KB), so it must not be selected by default even though it is
+    /// compiled in (<c>EXPERIMENTAL</c> is on by default - see <c>common.props</c>).
+    /// It remains reachable via the internal <see cref="Create(SimdSupport, int)"/>
+    /// factory for benchmarking.
     /// </summary>
-    internal const SimdSupport Blake2bDefault = SimdSupport.All;
+    internal const SimdSupport Blake2bDefault = SimdSupport.All & ~SimdSupport.Neon;
 
     /// <summary>
     /// The maximum hash size in bits.
