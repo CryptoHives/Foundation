@@ -19,6 +19,8 @@ using System.Runtime.Intrinsics.X86;
 /// </summary>
 internal unsafe partial struct Blake2sState
 {
+    // Every SIMD path below is gated EXPERIMENTAL as they are not beating the scalar versions (yet).
+#if EXPERIMENTAL
     // Pre-computed shuffle masks for byte-aligned rotations on 32-bit words
     // Rotate right by 16 bits (swap high/low 16-bit halves within each 32-bit word)
     private static readonly Vector128<byte> RotateMask16 = Vector128.Create(
@@ -36,6 +38,8 @@ internal unsafe partial struct Blake2sState
 
     private static readonly Vector128<uint> FinalMask = Vector128.Create(0U, 0U, ~0U, 0U);
 
+#endif
+
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>
@@ -44,8 +48,8 @@ internal unsafe partial struct Blake2sState
         get
         {
             var support = SimdSupport.None;
-            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
 #if EXPERIMENTAL
+            if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
             if (Sse2.IsSupported) support |= SimdSupport.Sse2;
             if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
@@ -145,7 +149,6 @@ internal unsafe partial struct Blake2sState
         Sse2.Store(state, row0);
         Sse2.Store(state + 4, row1);
     }
-#endif
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -197,7 +200,6 @@ internal unsafe partial struct Blake2sState
         Sse2.Store(state + 4, row1);
     }
 
-#if EXPERIMENTAL
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressAvx2(byte* mPtr, uint* state, ulong bytesCompressed, bool isFinal)
@@ -288,7 +290,6 @@ internal unsafe partial struct Blake2sState
         var t3 = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftRightLogical(t3, 7), Sse2.ShiftLeftLogical(t3, 25));
     }
-#endif
 
     /// <summary>
     /// Performs one G round on 4 parallel lanes using SSSE3 shuffle for byte-aligned rotations.
@@ -337,6 +338,7 @@ internal unsafe partial struct Blake2sState
         b = Sse2.Shuffle(b, 0b01_00_11_10);
         c = Sse2.Shuffle(c, 0b10_01_00_11);
     }
+#endif
 }
 
 #endif

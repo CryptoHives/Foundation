@@ -43,7 +43,7 @@ public sealed class Keccak384 : KeccakHashCore
     /// <summary>
     /// Initializes a new instance of the <see cref="Keccak384"/> class.
     /// </summary>
-    public Keccak384() : this(SimdSupport.KeccakDefault)
+    public Keccak384() : this(KeccakDefault)
     {
     }
 
