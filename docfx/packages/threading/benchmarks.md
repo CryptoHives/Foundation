@@ -14,6 +14,26 @@ Published results live in the interactive benchmark trends dashboard below rathe
 
 [Open the dashboard in its own page →](benchmark-trends/index.html)
 
+### Library Matrix
+
+Which library implements which primitive, and which one measured fastest in a given run — the
+trends dashboard above answers "how does this one primitive compare over time"; this answers
+"across everything we benchmark, who supports what, and who wins."
+
+<iframe src="benchmark-trends/matrix.html" style="width:100%; height:700px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading library matrix"></iframe>
+
+[Open the matrix in its own page →](benchmark-trends/matrix.html)
+
+### Speed Differences
+
+How far apart competing implementations of the same primitive typically land: a heatmap of each
+library's ratio to the fastest implementation per primitive, and a chart summarizing the spread
+of that ratio across every primitive a library was benchmarked against.
+
+<iframe src="benchmark-trends/speed-diff.html" style="width:100%; height:1100px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading speed differences"></iframe>
+
+[Open the speed differences page in its own page →](benchmark-trends/speed-diff.html)
+
 ### Recording a benchmark run
 
 Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
