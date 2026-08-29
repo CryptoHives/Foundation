@@ -184,10 +184,10 @@ internal struct GcmCore
         if (_usePclmul || _usePclmulV256 || _useArmPmull)
         {
             _hClmul = PrepareH(_h);
+            _hPowers = _useArmPmull ? PrepareHPowersPmull(_hClmul) : PrepareHPowers(_hClmul);
             if (_useAesNi)
             {
                 _usePipeline = _usePclmul || _usePclmulV256;
-                _hPowers = PrepareHPowers(_hClmul);
             }
         }
 #endif
@@ -941,13 +941,13 @@ internal struct GcmCore
 #if NET8_0_OR_GREATER
         if (_usePclmul)
         {
-            GHashCompletePclmul(_hClmul, aad, ciphertext, output);
+            GHashCompletePclmul(_hPowers, aad, ciphertext, output);
             return;
         }
 
         if (_useArmPmull)
         {
-            GHashCompletePmull(_hClmul, aad, ciphertext, output);
+            GHashCompletePmull(_hPowers, aad, ciphertext, output);
             return;
         }
 #endif
@@ -1216,40 +1216,249 @@ internal struct GcmCore
     }
 
     /// <summary>
-    /// Computes GHASH over AAD and ciphertext using ARM PMULL hardware acceleration.
+    /// Precomputes powers of H for aggregated ARM PMULL GHASH: H¹ through H⁸.
+    /// Mirrors <see cref="PrepareHPowers"/> using <see cref="GfMulPmull"/> instead of
+    /// <see cref="GfMulClmul"/>.
     /// </summary>
     /// <param name="hSwapped">The byte-reversed hash subkey from <see cref="PrepareH"/>.</param>
+    /// <returns>Array of [H⁸, H⁷, H⁶, H⁵, H⁴, H³, H², H¹] for use with aggregated reduction.</returns>
+    private static Vector128<byte>[] PrepareHPowersPmull(Vector128<byte> hSwapped)
+    {
+        Vector128<byte> h2 = GfMulPmull(hSwapped, hSwapped);
+        Vector128<byte> h3 = GfMulPmull(hSwapped, h2);
+        Vector128<byte> h4 = GfMulPmull(hSwapped, h3);
+        Vector128<byte> h5 = GfMulPmull(hSwapped, h4);
+        Vector128<byte> h6 = GfMulPmull(hSwapped, h5);
+        Vector128<byte> h7 = GfMulPmull(hSwapped, h6);
+        Vector128<byte> h8 = GfMulPmull(hSwapped, h7);
+        return [h8, h7, h6, h5, h4, h3, h2, hSwapped];
+    }
+
+    /// <summary>
+    /// Swaps the two 64-bit lanes of a 128-bit vector (ARM equivalent of the x86
+    /// <c>Sse2.Shuffle(v.AsUInt32(), 0x4E)</c> 64-bit half swap used throughout the
+    /// CLMUL/PMULL Karatsuba folding steps).
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<ulong> SwapQwords(Vector128<ulong> v) =>
+        Vector128.Create(v.GetElement(1), v.GetElement(0));
+
+    /// <summary>
+    /// Computes GHASH for 4 input blocks simultaneously using precomputed H-powers and
+    /// ARM PMULL, with a single modular reduction. Mirrors <see cref="GfMulReduce4"/>
+    /// one-for-one with PMULL in place of CLMUL (see <see cref="GfMulPmull"/> for the
+    /// PCLMULQDQ→PMULL operation mapping).
+    /// </summary>
+    /// <param name="hPowers">Precomputed [H⁸..H¹] from <see cref="PrepareHPowersPmull"/>.</param>
+    /// <param name="x0">First input block (multiplied with H⁴).</param>
+    /// <param name="x1">Second input block (multiplied with H³).</param>
+    /// <param name="x2">Third input block (multiplied with H²).</param>
+    /// <param name="x3">Fourth input block (multiplied with H¹).</param>
+    /// <returns>The reduced GF(2^128) result.</returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    internal static Vector128<byte> GfMulReduce4Pmull(
+        ReadOnlySpan<Vector128<byte>> hPowers,
+        Vector128<byte> x0, Vector128<byte> x1,
+        Vector128<byte> x2, Vector128<byte> x3)
+    {
+        Vector128<ulong> h1 = hPowers[7].AsUInt64();
+        Vector128<ulong> h4 = hPowers[4].AsUInt64();
+        Vector128<ulong> h3 = hPowers[5].AsUInt64();
+        Vector128<ulong> h2 = hPowers[6].AsUInt64();
+        Vector128<ulong> d0 = x0.AsUInt64(); Vector128<ulong> d1 = x1.AsUInt64();
+        Vector128<ulong> d2 = x2.AsUInt64(); Vector128<ulong> d3 = x3.AsUInt64();
+
+        // Low parts
+        Vector128<ulong> lo = ArmAes.PolynomialMultiplyWideningLower(h4.AsInt64().GetLower(), d0.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h3.AsInt64().GetLower(), d1.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h2.AsInt64().GetLower(), d2.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h1.AsInt64().GetLower(), d3.AsInt64().GetLower()).AsUInt64();
+
+        // High parts
+        Vector128<ulong> hi = ArmAes.PolynomialMultiplyWideningUpper(h4.AsInt64(), d0.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h3.AsInt64(), d1.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h2.AsInt64(), d2.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h1.AsInt64(), d3.AsInt64()).AsUInt64();
+
+        // Cross terms using Karatsuba: (a_lo ^ a_hi) * (b_lo ^ b_hi)
+        Vector128<ulong> t0 = SwapQwords(h4) ^ h4;
+        Vector128<ulong> t4 = SwapQwords(d0) ^ d0;
+        Vector128<ulong> mid = ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h3) ^ h3;
+        t4 = SwapQwords(d1) ^ d1;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h2) ^ h2;
+        t4 = SwapQwords(d2) ^ d2;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h1) ^ h1;
+        t4 = SwapQwords(d3) ^ d3;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        // Fold cross terms: mid ^= lo ^ hi
+        mid ^= lo;
+        mid ^= hi;
+
+        return ModReducePmull(lo, mid, hi);
+    }
+
+    /// <summary>
+    /// Performs aggregated 8-block GHASH reduction using ARM PMULL. Mirrors
+    /// <see cref="GfMulReduce8"/> one-for-one with PMULL in place of CLMUL.
+    /// </summary>
+    /// <remarks>
+    /// Computes x0·H⁸ ⊕ x1·H⁷ ⊕ x2·H⁶ ⊕ x3·H⁵ ⊕ x4·H⁴ ⊕ x5·H³ ⊕ x6·H² ⊕ x7·H¹
+    /// with a single polynomial reduction at the end.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    internal static Vector128<byte> GfMulReduce8Pmull(
+        ReadOnlySpan<Vector128<byte>> hPowers,
+        Vector128<byte> x0, Vector128<byte> x1,
+        Vector128<byte> x2, Vector128<byte> x3,
+        Vector128<byte> x4, Vector128<byte> x5,
+        Vector128<byte> x6, Vector128<byte> x7)
+    {
+        Vector128<ulong> h8 = hPowers[0].AsUInt64(); Vector128<ulong> h7 = hPowers[1].AsUInt64();
+        Vector128<ulong> h6 = hPowers[2].AsUInt64(); Vector128<ulong> h5 = hPowers[3].AsUInt64();
+        Vector128<ulong> h4 = hPowers[4].AsUInt64(); Vector128<ulong> h3 = hPowers[5].AsUInt64();
+        Vector128<ulong> h2 = hPowers[6].AsUInt64(); Vector128<ulong> h1 = hPowers[7].AsUInt64();
+        Vector128<ulong> d0 = x0.AsUInt64(); Vector128<ulong> d1 = x1.AsUInt64();
+        Vector128<ulong> d2 = x2.AsUInt64(); Vector128<ulong> d3 = x3.AsUInt64();
+        Vector128<ulong> d4 = x4.AsUInt64(); Vector128<ulong> d5 = x5.AsUInt64();
+        Vector128<ulong> d6 = x6.AsUInt64(); Vector128<ulong> d7 = x7.AsUInt64();
+
+        // Low parts
+        Vector128<ulong> lo = ArmAes.PolynomialMultiplyWideningLower(h8.AsInt64().GetLower(), d0.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h7.AsInt64().GetLower(), d1.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h6.AsInt64().GetLower(), d2.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h5.AsInt64().GetLower(), d3.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h4.AsInt64().GetLower(), d4.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h3.AsInt64().GetLower(), d5.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h2.AsInt64().GetLower(), d6.AsInt64().GetLower()).AsUInt64();
+        lo ^= ArmAes.PolynomialMultiplyWideningLower(h1.AsInt64().GetLower(), d7.AsInt64().GetLower()).AsUInt64();
+
+        // High parts
+        Vector128<ulong> hi = ArmAes.PolynomialMultiplyWideningUpper(h8.AsInt64(), d0.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h7.AsInt64(), d1.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h6.AsInt64(), d2.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h5.AsInt64(), d3.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h4.AsInt64(), d4.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h3.AsInt64(), d5.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h2.AsInt64(), d6.AsInt64()).AsUInt64();
+        hi ^= ArmAes.PolynomialMultiplyWideningUpper(h1.AsInt64(), d7.AsInt64()).AsUInt64();
+
+        // Cross terms using Karatsuba
+        Vector128<ulong> t0 = SwapQwords(h8) ^ h8;
+        Vector128<ulong> t4 = SwapQwords(d0) ^ d0;
+        Vector128<ulong> mid = ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h7) ^ h7;
+        t4 = SwapQwords(d1) ^ d1;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h6) ^ h6;
+        t4 = SwapQwords(d2) ^ d2;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h5) ^ h5;
+        t4 = SwapQwords(d3) ^ d3;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h4) ^ h4;
+        t4 = SwapQwords(d4) ^ d4;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h3) ^ h3;
+        t4 = SwapQwords(d5) ^ d5;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h2) ^ h2;
+        t4 = SwapQwords(d6) ^ d6;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        t0 = SwapQwords(h1) ^ h1;
+        t4 = SwapQwords(d7) ^ d7;
+        mid ^= ArmAes.PolynomialMultiplyWideningLower(t0.AsInt64().GetLower(), t4.AsInt64().GetLower()).AsUInt64();
+
+        // Fold cross terms
+        mid ^= lo;
+        mid ^= hi;
+
+        return ModReducePmull(lo, mid, hi);
+    }
+
+    /// <summary>
+    /// Computes GHASH over AAD and ciphertext using ARM PMULL hardware acceleration,
+    /// aggregating 8 and then 4 blocks per modular reduction where possible.
+    /// </summary>
+    /// <param name="hPowers">Precomputed [H⁸, H⁷, H⁶, H⁵, H⁴, H³, H², H¹] from <see cref="PrepareHPowersPmull"/>.</param>
     /// <param name="aad">Additional authenticated data.</param>
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="output">The 16-byte output buffer for the GHASH result.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     internal static void GHashCompletePmull(
-        Vector128<byte> hSwapped, ReadOnlySpan<byte> aad,
+        ReadOnlySpan<Vector128<byte>> hPowers, ReadOnlySpan<byte> aad,
         ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
         Vector128<byte> y = Vector128<byte>.Zero;
 
-        y = ProcessBlocksPmull(hSwapped, aad, y);
-        y = ProcessBlocksPmull(hSwapped, ciphertext, y);
+        y = ProcessBlocksPmullBatched(hPowers, aad, y);
+        y = ProcessBlocksPmullBatched(hPowers, ciphertext, y);
 
         // Length block: [aadBits || cBits] in big-endian, then byte-reversed
         ulong aadBits = (ulong)aad.Length * 8;
         ulong cBits = (ulong)ciphertext.Length * 8;
         Vector128<byte> lenBlock = Vector128.Create(cBits, aadBits).AsByte();
         y ^= lenBlock;
-        y = GfMulPmull(hSwapped, y);
+        y = GfMulPmull(hPowers[^1], y);
 
         // Byte-reverse back to big-endian for output
         y = Vector128.Shuffle(y, ByteSwapMask);
         y.CopyTo(output);
     }
 
+    /// <summary>
+    /// Processes <paramref name="data"/> through GHASH using ARM PMULL, aggregating
+    /// 8 blocks and then 4 blocks per modular reduction (mirrors the x86 CLMUL
+    /// <see cref="GfMulReduce8"/>/<see cref="GfMulReduce4"/> strategy - see
+    /// <see cref="EncryptPipelined"/> for the identical accumulator-folding pattern),
+    /// falling back to one block at a time for the remainder.
+    /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector128<byte> ProcessBlocksPmull(
-        Vector128<byte> hSwapped, ReadOnlySpan<byte> data, Vector128<byte> y)
+    private static Vector128<byte> ProcessBlocksPmullBatched(
+        ReadOnlySpan<Vector128<byte>> hPowers, ReadOnlySpan<byte> data, Vector128<byte> y)
     {
         int offset = 0;
+        Vector128<byte> hSwapped = hPowers[^1];
+
+        while (offset + 8 * BlockSizeBytes <= data.Length)
+        {
+            var g0 = Vector128.Shuffle(Vector128.Create(data.Slice(offset, BlockSizeBytes)), ByteSwapMask) ^ y;
+            var g1 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g2 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g3 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g4 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + 4 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g5 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + 5 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g6 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + 6 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g7 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + 7 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+
+            y = GfMulReduce8Pmull(hPowers, g0, g1, g2, g3, g4, g5, g6, g7);
+            offset += 8 * BlockSizeBytes;
+        }
+
+        while (offset + 4 * BlockSizeBytes <= data.Length)
+        {
+            var g0 = Vector128.Shuffle(Vector128.Create(data.Slice(offset, BlockSizeBytes)), ByteSwapMask) ^ y;
+            var g1 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g2 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g3 = Vector128.Shuffle(Vector128.Create(data.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+
+            y = GfMulReduce4Pmull(hPowers, g0, g1, g2, g3);
+            offset += 4 * BlockSizeBytes;
+        }
 
         while (offset + BlockSizeBytes <= data.Length)
         {
@@ -1275,40 +1484,74 @@ internal struct GcmCore
     }
 
     /// <summary>
-    /// Computes GHASH over AAD and ciphertext using PCLMULQDQ hardware acceleration.
+    /// Computes GHASH over AAD and ciphertext using PCLMULQDQ hardware acceleration,
+    /// aggregating 8 and then 4 blocks per modular reduction where possible.
     /// </summary>
-    /// <param name="hSwapped">The byte-reversed hash subkey from <see cref="PrepareH"/>.</param>
+    /// <param name="hPowers">Precomputed [H⁸, H⁷, H⁶, H⁵, H⁴, H³, H², H¹] from <see cref="PrepareHPowers"/>.</param>
     /// <param name="aad">Additional authenticated data.</param>
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="output">The 16-byte output buffer for the GHASH result.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     internal static void GHashCompletePclmul(
-        Vector128<byte> hSwapped, ReadOnlySpan<byte> aad,
+        ReadOnlySpan<Vector128<byte>> hPowers, ReadOnlySpan<byte> aad,
         ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
         Vector128<byte> y = Vector128<byte>.Zero;
 
-        y = ProcessBlocksClmul(hSwapped, aad, y);
-        y = ProcessBlocksClmul(hSwapped, ciphertext, y);
+        y = ProcessBlocksClmulBatched(hPowers, aad, y);
+        y = ProcessBlocksClmulBatched(hPowers, ciphertext, y);
 
         // Length block: [aadBits || cBits] in big-endian, then byte-reversed
         ulong aadBits = (ulong)aad.Length * 8;
         ulong cBits = (ulong)ciphertext.Length * 8;
         Vector128<byte> lenBlock = Vector128.Create(cBits, aadBits).AsByte();
         y = Sse2.Xor(y, lenBlock);
-        y = GfMulClmul(hSwapped, y);
+        y = GfMulClmul(hPowers[^1], y);
 
         // Byte-reverse back to big-endian for output
         y = Ssse3.Shuffle(y, ByteSwapMask);
         y.CopyTo(output);
     }
 
+    /// <summary>
+    /// Processes <paramref name="data"/> through GHASH using PCLMULQDQ, aggregating
+    /// 8 blocks and then 4 blocks per modular reduction via <see cref="GfMulReduce8"/>/
+    /// <see cref="GfMulReduce4"/> (the same primitives <see cref="EncryptPipelined"/>
+    /// uses), falling back to one block at a time for the remainder.
+    /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector128<byte> ProcessBlocksClmul(
-        Vector128<byte> hSwapped, ReadOnlySpan<byte> data, Vector128<byte> y)
+    private static Vector128<byte> ProcessBlocksClmulBatched(
+        ReadOnlySpan<Vector128<byte>> hPowers, ReadOnlySpan<byte> data, Vector128<byte> y)
     {
         int offset = 0;
+        Vector128<byte> hSwapped = hPowers[^1];
+
+        while (offset + 8 * BlockSizeBytes <= data.Length)
+        {
+            var g0 = Sse2.Xor(Ssse3.Shuffle(Vector128.Create(data.Slice(offset, BlockSizeBytes)), ByteSwapMask), y);
+            var g1 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g2 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g3 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g4 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + 4 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g5 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + 5 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g6 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + 6 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g7 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + 7 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+
+            y = GfMulReduce8(hPowers, g0, g1, g2, g3, g4, g5, g6, g7);
+            offset += 8 * BlockSizeBytes;
+        }
+
+        while (offset + 4 * BlockSizeBytes <= data.Length)
+        {
+            var g0 = Sse2.Xor(Ssse3.Shuffle(Vector128.Create(data.Slice(offset, BlockSizeBytes)), ByteSwapMask), y);
+            var g1 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g2 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + 2 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+            var g3 = Ssse3.Shuffle(Vector128.Create(data.Slice(offset + 3 * BlockSizeBytes, BlockSizeBytes)), ByteSwapMask);
+
+            y = GfMulReduce4(hPowers, g0, g1, g2, g3);
+            offset += 4 * BlockSizeBytes;
+        }
 
         while (offset + BlockSizeBytes <= data.Length)
         {
@@ -1650,8 +1893,8 @@ internal struct GcmCore
         Span<byte> ctrBuf = stackalloc byte[BlockSizeBytes];
         Span<byte> ksBuf = stackalloc byte[BlockSizeBytes];
 
-        // Process AAD with single-block GHASH
-        y = ProcessBlocksClmul(_hClmul, aad, y);
+        // Process AAD (batched where possible)
+        y = ProcessBlocksClmulBatched(hPowers, aad, y);
 
         // Pipelined GCTR+GHASH for plaintext
         var counter = Vector128.Create(icb);
@@ -1821,8 +2064,8 @@ internal struct GcmCore
         Span<byte> ctrBuf = stackalloc byte[BlockSizeBytes];
         Span<byte> ksBuf = stackalloc byte[BlockSizeBytes];
 
-        // Process AAD with single-block GHASH
-        y = ProcessBlocksClmul(_hClmul, aad, y);
+        // Process AAD (batched where possible)
+        y = ProcessBlocksClmulBatched(hPowers, aad, y);
 
         // Pipelined GHASH+GCTR for ciphertext
         var counter = Vector128.Create(icb);
