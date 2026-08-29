@@ -29,6 +29,11 @@ using System.Runtime.InteropServices;
 public sealed partial class SHA1 : HashAlgorithm
 {
     /// <summary>
+    /// The default optimization to use for Blake3 based algorithms.
+    /// </summary>
+    internal const SimdSupport Sha1Default = SimdSupport.All;
+
+    /// <summary>
     /// The hash size in bits.
     /// </summary>
     public const int HashSizeBits = 160;
@@ -56,7 +61,7 @@ public sealed partial class SHA1 : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA1"/> class.
     /// </summary>
-    public SHA1() : this(SimdSupport.All)
+    public SHA1() : this(Sha1Default)
     {
     }
 
