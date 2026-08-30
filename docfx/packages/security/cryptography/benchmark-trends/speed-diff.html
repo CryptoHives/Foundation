@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CryptoHives Cryptography Speed Differences</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; margin: 2rem; max-width: 1200px; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; }
+  .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0 1.5rem; align-items: flex-start; }
+  .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
+  select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
+  #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  #heatmap-container { overflow-x: auto; max-height: 70vh; }
+  table.heatmap { border-collapse: collapse; width: 100%; font-size: 0.78rem; }
+  table.heatmap th, table.heatmap td { border: 1px solid #ddd; padding: 0.25rem 0.5rem; text-align: center; white-space: nowrap; }
+  table.heatmap th.row-label, table.heatmap td.row-label { text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; }
+  table.heatmap thead th { background: #f5f5f5; position: sticky; top: 0; z-index: 2; }
+  table.heatmap thead th.row-label { z-index: 3; }
+  table.heatmap td.empty { color: #ccc; background: #fafafa; }
+  table.heatmap td.ratio { color: #1a1a1a; font-variant-numeric: tabular-nums; }
+  #dist-chart-container { position: relative; height: 420px; margin-top: 1rem; }
+  .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
+  .legend-scale { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: #555; margin: 0.5rem 0 1rem; }
+  .legend-scale .swatch { width: 22px; height: 12px; border: 1px solid #ccc; }
+</style>
+</head>
+<body>
+<h1>CryptoHives Cryptography Speed Differences</h1>
+<p>
+  How far apart competing implementations of the same algorithm typically land, for the
+  benchmark run selected below. Every cell's ratio is that variant's mean time divided by the
+  fastest variant's mean time for the same algorithm family in that run — 1.00 is the winner,
+  2.00 means twice as slow.
+</p>
+
+<div class="controls">
+  <label>Platform
+    <select id="platform"></select>
+  </label>
+  <label id="framework-picker" hidden>Framework
+    <select id="framework"></select>
+  </label>
+  <label>Run
+    <select id="run"></select>
+  </label>
+</div>
+
+<div id="status">Loading database…</div>
+
+<h2>Ratio heatmap</h2>
+<div class="legend-scale">
+  <span>1.0x</span>
+  <span class="swatch" style="background:#15803d"></span>
+  <span class="swatch" style="background:#84a624"></span>
+  <span class="swatch" style="background:#d4a017"></span>
+  <span class="swatch" style="background:#e0641e"></span>
+  <span class="swatch" style="background:#b91c1c"></span>
+  <span>5x+</span>
+</div>
+<div id="heatmap-container"><table class="heatmap" id="heatmap-table">
+<thead><tr id="heatmap-head"></tr></thead><tbody id="heatmap-body"></tbody></table></div>
+
+<h2>Ratio distribution per library</h2>
+<p class="hint" style="margin-top:0;">
+  For each library, the range (min–max) and median of its ratio across every algorithm family it
+  was benchmarked against in this run — one number per family, so a library benchmarked against
+  many families contributes many points and one benchmarked against a single family contributes
+  one. This library's own implementations are included, and mostly cluster near 1.0 by
+  construction: this chart is about the field's spread, not a claim about us specifically.
+</p>
+<div id="dist-chart-container"><canvas id="dist-chart"></canvas></div>
+
+<p class="hint">
+  Data source: <code>benchmark-history.sqlite</code>, generated at build time by
+  <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code> from the run archive on
+  the <code>benchmarks</code> branch. Ratios are computed from mean time, averaged per
+  (family, variant) across every method and data size measured in the selected run — see the
+  <a href="index.html">trends dashboard</a> for per-size detail, and the
+  <a href="matrix.html">library matrix</a> for which library supports which algorithm.
+</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(async function () {
+  const statusEl = document.getElementById("status");
+  const platformSel = document.getElementById("platform");
+  const frameworkSel = document.getElementById("framework");
+  const frameworkPickerEl = document.getElementById("framework-picker");
+  const runSel = document.getElementById("run");
+  const heatmapHeadEl = document.getElementById("heatmap-head");
+  const heatmapBodyEl = document.getElementById("heatmap-body");
+
+  let db;
+  let distChart;
+
+  function isOurs(variant) {
+    return variant === "CryptoHives" || variant.startsWith("CryptoHives-");
+  }
+
+  function oursRank(variant) {
+    if (variant === "CryptoHives") return 0;
+    if (variant === "CryptoHives-Scalar") return 1;
+    return 2;
+  }
+
+  function compareVariants(a, b) {
+    const aOurs = isOurs(a), bOurs = isOurs(b);
+    if (aOurs && !bOurs) return -1;
+    if (!aOurs && bOurs) return 1;
+    if (aOurs && bOurs) return oursRank(a) - oursRank(b) || a.localeCompare(b);
+    return a.localeCompare(b);
+  }
+
+  function compareFamilyNames(a, b) {
+    const split = (s) => {
+      const m = /^(.*?)(\d+)$/.exec(s);
+      return m ? [m[1], Number(m[2])] : [s, NaN];
+    };
+    const [aPrefix, aNumber] = split(a);
+    const [bPrefix, bNumber] = split(b);
+    if (aPrefix !== bPrefix) return aPrefix.localeCompare(bPrefix);
+    if (Number.isNaN(aNumber) || Number.isNaN(bNumber)) return a.localeCompare(b);
+    return aNumber - bNumber;
+  }
+
+  function distinct(column, whereSql, params) {
+    const stmt = db.prepare(`SELECT DISTINCT ${column} FROM benchmark_results ${whereSql || ""} ORDER BY ${column}`);
+    stmt.bind(params || []);
+    const values = [];
+    while (stmt.step()) values.push(stmt.getAsObject()[column]);
+    stmt.free();
+    return values;
+  }
+
+  function populateSelect(selectEl, values, preferredValue) {
+    selectEl.innerHTML = "";
+    for (const v of values) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      selectEl.appendChild(opt);
+    }
+    if (preferredValue !== undefined && values.includes(preferredValue)) {
+      selectEl.value = preferredValue;
+    }
+  }
+
+  function runOptionLabel(run) {
+    const date = (run.run_date || "").slice(0, 10);
+    const sha = run.commit_sha ? run.commit_sha.slice(0, 8) : "?";
+    return `${date} · ${sha}`;
+  }
+
+  function refreshFrameworks() {
+    const frameworks = distinct("framework", "WHERE platform = ?", [platformSel.value]);
+    populateSelect(frameworkSel, frameworks);
+    refreshRuns();
+  }
+
+  function refreshRuns() {
+    const stmt = db.prepare(
+      "SELECT DISTINCT run_id, run_date, commit_sha FROM benchmark_results " +
+      "WHERE platform = ? AND framework = ? ORDER BY run_date DESC"
+    );
+    stmt.bind([platformSel.value, frameworkSel.value]);
+    const runs = [];
+    while (stmt.step()) runs.push(stmt.getAsObject());
+    stmt.free();
+
+    runSel.innerHTML = "";
+    for (const run of runs) {
+      const opt = document.createElement("option");
+      opt.value = run.run_id;
+      opt.textContent = runOptionLabel(run);
+      runSel.appendChild(opt);
+    }
+    if (runs.length) runSel.value = runs[0].run_id;
+    render();
+  }
+
+  // (category, family) -> variant -> avg mean_ns, for the selected run. Averaged across every
+  // method and data size that family was measured with, same grouping as the library matrix's
+  // "fastest" column, so the two pages agree about which variant wins.
+  function loadRunAverages(runId, platform, framework) {
+    const stmt = db.prepare(
+      "SELECT category, family, variant, AVG(mean_ns) AS avg_ns FROM benchmark_results " +
+      "WHERE run_id = ? AND platform = ? AND framework = ? GROUP BY category, family, variant"
+    );
+    stmt.bind([runId, platform, framework]);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    return rows;
+  }
+
+  // Green at 1.0x fading to red at capRatio and beyond. Piecewise-linear through amber so the
+  // middle of the range reads as "notably slower" rather than a muddy blend of the endpoints.
+  const SCALE_STOPS = [
+    [1, [21, 128, 61]],    // #15803d
+    [1.5, [132, 166, 36]], // #84a624
+    [2.5, [212, 160, 23]], // #d4a017
+    [4, [224, 100, 30]],   // #e0641e
+    [5, [185, 28, 28]],    // #b91c1c
+  ];
+
+  function colorForRatio(ratio) {
+    const r = Math.max(1, ratio);
+    for (let i = 0; i < SCALE_STOPS.length - 1; i++) {
+      const [lo, loColor] = SCALE_STOPS[i];
+      const [hi, hiColor] = SCALE_STOPS[i + 1];
+      if (r <= hi || i === SCALE_STOPS.length - 2) {
+        const t = Math.max(0, Math.min(1, (r - lo) / (hi - lo)));
+        const mix = loColor.map((c, idx) => Math.round(c + (hiColor[idx] - c) * t));
+        return `rgb(${mix.join(",")})`;
+      }
+    }
+    return `rgb(${SCALE_STOPS[SCALE_STOPS.length - 1][1].join(",")})`;
+  }
+
+  // Readable text colour against the heat-scale background: light text once the fill gets dark
+  // enough (amber onward), dark text on the pale green/yellow-green cells.
+  function textColorForRatio(ratio) {
+    return ratio >= 2.5 ? "#fff" : "#1a1a1a";
+  }
+
+  function renderHeatmap(rows) {
+    const categories = new Map();
+    for (const { category, family } of rows) {
+      if (!categories.has(category)) categories.set(category, new Set());
+      categories.get(category).add(family);
+    }
+    const variants = Array.from(new Set(rows.map((r) => r.variant))).sort(compareVariants);
+
+    const byFamily = new Map(); // family -> variant -> avg_ns
+    for (const r of rows) {
+      if (!byFamily.has(r.family)) byFamily.set(r.family, new Map());
+      byFamily.get(r.family).set(r.variant, r.avg_ns);
+    }
+
+    heatmapHeadEl.innerHTML = "";
+    const thLabel = document.createElement("th");
+    thLabel.className = "row-label";
+    thLabel.textContent = "Algorithm";
+    heatmapHeadEl.appendChild(thLabel);
+    for (const v of variants) {
+      const th = document.createElement("th");
+      th.textContent = v;
+      heatmapHeadEl.appendChild(th);
+    }
+
+    heatmapBodyEl.innerHTML = "";
+    const ratiosByVariant = new Map(variants.map((v) => [v, []]));
+
+    for (const category of Array.from(categories.keys()).sort()) {
+      const catRow = document.createElement("tr");
+      const catCell = document.createElement("td");
+      catCell.textContent = category;
+      catCell.colSpan = variants.length + 1;
+      catCell.style.background = "#eef2ff";
+      catCell.style.fontWeight = "600";
+      catCell.style.textAlign = "left";
+      catRow.appendChild(catCell);
+      heatmapBodyEl.appendChild(catRow);
+
+      for (const family of Array.from(categories.get(category)).sort(compareFamilyNames)) {
+        const means = byFamily.get(family);
+        const minNs = Math.min(...Array.from(means.values()));
+        const tr = document.createElement("tr");
+        const labelTd = document.createElement("td");
+        labelTd.className = "row-label";
+        labelTd.textContent = family;
+        tr.appendChild(labelTd);
+
+        for (const v of variants) {
+          const td = document.createElement("td");
+          const avgNs = means.get(v);
+          if (avgNs == null) {
+            td.className = "empty";
+            td.textContent = "–";
+          } else {
+            const ratio = avgNs / minNs;
+            ratiosByVariant.get(v).push(ratio);
+            td.className = "ratio";
+            td.style.background = colorForRatio(ratio);
+            td.style.color = textColorForRatio(ratio);
+            td.textContent = ratio.toFixed(2) + "x";
+          }
+          tr.appendChild(td);
+        }
+        heatmapBodyEl.appendChild(tr);
+      }
+    }
+
+    return { variants, ratiosByVariant };
+  }
+
+  function renderDistributionChart(variants, ratiosByVariant) {
+    const stats = variants.map((v) => {
+      const values = (ratiosByVariant.get(v) || []).slice().sort((a, b) => a - b);
+      if (!values.length) return { variant: v, min: null, max: null, median: null, n: 0 };
+      const mid = Math.floor(values.length / 2);
+      const median = values.length % 2 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
+      return { variant: v, min: values[0], max: values[values.length - 1], median, n: values.length };
+    }).filter((s) => s.n > 0);
+
+    if (distChart) distChart.destroy();
+    distChart = new Chart(document.getElementById("dist-chart"), {
+      data: {
+        labels: stats.map((s) => s.variant),
+        datasets: [
+          {
+            type: "bar",
+            label: "Min–max ratio",
+            data: stats.map((s) => [s.min, s.max]),
+            backgroundColor: stats.map((s) => isOurs(s.variant) ? "#ffe6b3" : "#cbd5e1"),
+            borderColor: stats.map((s) => isOurs(s.variant) ? "#FFB643" : "#94a3b8"),
+            borderWidth: 1,
+          },
+          {
+            // A circle rather than a dash: a library benchmarked against only one family has
+            // min == max, which collapses the floating bar to a hairline at that exact height -
+            // a solid dot stays visible there instead of vanishing into the bar's own border.
+            type: "scatter",
+            label: "Median ratio",
+            data: stats.map((s, i) => ({ x: i, y: s.median })),
+            backgroundColor: "#1a1a1a",
+            pointRadius: 5,
+            pointStyle: "circle",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { title: { display: true, text: "Ratio to fastest (x)" }, beginAtZero: false },
+          x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 30 } },
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const s = stats[ctx.dataIndex];
+                return ctx.dataset.type === "bar"
+                  ? `min ${s.min.toFixed(2)}x, max ${s.max.toFixed(2)}x (n=${s.n})`
+                  : `median ${s.median.toFixed(2)}x`;
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  function render() {
+    if (!runSel.value) {
+      statusEl.textContent = "No data for this selection yet.";
+      return;
+    }
+    const rows = loadRunAverages(runSel.value, platformSel.value, frameworkSel.value);
+    if (!rows.length) {
+      heatmapHeadEl.innerHTML = "";
+      heatmapBodyEl.innerHTML = "";
+      statusEl.textContent = "No data for this run.";
+      return;
+    }
+    const { variants, ratiosByVariant } = renderHeatmap(rows);
+    renderDistributionChart(variants, ratiosByVariant);
+    const families = new Set(rows.map((r) => r.family));
+    statusEl.textContent = `${families.size} algorithm(s) × ${variants.length} librar${variants.length === 1 ? "y" : "ies"}, from ` +
+      (runSel.options[runSel.selectedIndex]?.textContent || "the selected run");
+  }
+
+  if (location.protocol === "file:") {
+    statusEl.textContent =
+      "This page was opened directly from disk (file://) — browsers block fetch() of local files " +
+      "regardless of what's in the folder. Serve it over HTTP instead, e.g. from this folder run: " +
+      "python3 -m http.server 8000, then open http://localhost:8000/";
+    return;
+  }
+
+  try {
+    const SQL = await initSqlJs({
+      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`,
+    });
+    const response = await fetch("benchmark-history.sqlite");
+    if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
+    const buffer = await response.arrayBuffer();
+    db = new SQL.Database(new Uint8Array(buffer));
+
+    populateSelect(platformSel, distinct("platform", ""));
+    const hasMultipleFrameworks = distinct("framework", "").length > 1;
+    frameworkPickerEl.hidden = !hasMultipleFrameworks;
+
+    platformSel.onchange = refreshFrameworks;
+    frameworkSel.onchange = refreshRuns;
+    runSel.onchange = render;
+
+    refreshFrameworks();
+  } catch (err) {
+    statusEl.textContent = `Failed to load benchmark-history.sqlite: ${err.message}`;
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>
