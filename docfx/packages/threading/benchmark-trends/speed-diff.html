@@ -36,7 +36,12 @@
   How far apart competing implementations of the same synchronization primitive typically land,
   for the benchmark run selected below. Every cell's ratio is that variant's mean time divided by
   the fastest variant's mean time for the same primitive in that run — 1.00 is the winner, 2.00
-  means twice as slow.
+  means twice as slow. Both numbers come from the scenario closest to normal use - one contending
+  party (not zero, and not a bare uncontended call some benchmark classes also record) with a
+  live, uncancelled token where one was measured - rather than an average across every contention
+  level a "Scaling by contention" chart would show: a "Multiple" benchmark's mean time at high
+  contention is the time for many concurrent operations, not a per-operation cost, so blending it
+  in would let whichever variant scales worst under load dominate the ratio.
 </p>
 
 <div class="controls">
@@ -158,6 +163,10 @@
       return "Pooled";
     }
     if (variant === "RefImpl") return "RefImpl";
+    // Kept as its own column rather than folded into its base library like every other "(...)"
+    // qualifier - see matrix.html's libraryOf for the full rationale (striping trades one lock
+    // per key for a fixed set of hash-bucketed locks, a different concurrency guarantee).
+    if (variant.endsWith("(Striped)")) return variant;
     const m = /^(.*?)\s*\([^)]*\)$/.exec(variant);
     const stripped = m ? m[1] : variant;
     return KNOWN_LIBRARIES.get(stripped) || "System";
@@ -189,6 +198,12 @@
       };
       libraryLegendEl.appendChild(item);
     }
+  }
+
+  // A control character separator, not a plain string join: family/variant names are free text
+  // and could themselves contain almost any other character.
+  function keyOf(family, variant) {
+    return `${family}\x1f${variant}`;
   }
 
   function distinct(column, whereSql, params) {
@@ -246,22 +261,54 @@
     render();
   }
 
-  // family -> variant -> avg mean_ns, for the selected run. Averaged across every method,
-  // contention level and cancellation state that family was measured with, same grouping as the
-  // library matrix's "fastest" column, so the two pages agree about which variant wins.
+  // Prefer this specific one order over exhaustively averaging every method, contention level
+  // and cancellation state a family was measured with - see matrix.html's loadBaselineAverages
+  // for the full rationale (blending in every contention level let whichever variant scaled
+  // worst under load dominate the ratio, which is where the four- and five-digit ratios came
+  // from). Contention level 1 - not 0, and not the parameterless single-call scenario some
+  // benchmark classes also record - represents "exactly one other party is contending", closer to
+  // normal use than an idle lock; cancellation prefers "NotCancelled" (a live token supplied but
+  // not triggered) over "None" for the same reason. Both fall back gracefully per variant, so
+  // every variant that was benchmarked at all still gets a number, just not always from the same
+  // scenario. Contention scaling and cancellation overhead both stay fully visible in the trends
+  // dashboard rather than being silently mixed into this number.
+  //
   // "SyncLock" is excluded outright - see matrix.html's loadSupportMatrix for why it isn't a
   // real async primitive and doesn't map onto this matrix at all.
+  const CANCELLATION_PRIORITY = ["NotCancelled", "None", "Timed", "Cancelled", "NotCancelledTimed"];
+
   function loadRunAverages(runId, platform, framework) {
     const stmt = db.prepare(
-      "SELECT family, variant, AVG(mean_ns) AS avg_ns FROM benchmark_results " +
+      "SELECT family, variant, param_value, cancellation, mean_ns FROM benchmark_results " +
       "WHERE run_id = ? AND platform = ? AND framework = ? AND family != 'SyncLock' " +
-      "GROUP BY family, variant"
+      "AND param_value IS NOT NULL"
     );
     stmt.bind([runId, platform, framework]);
     const rows = [];
     while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
-    return rows;
+
+    const byVariant = new Map(); // "family\u001fvariant" -> rows[]
+    for (const r of rows) {
+      const key = keyOf(r.family, r.variant);
+      if (!byVariant.has(key)) byVariant.set(key, []);
+      byVariant.get(key).push(r);
+    }
+
+    const results = [];
+    for (const variantRows of byVariant.values()) {
+      const paramValues = new Set(variantRows.map((r) => r.param_value));
+      const targetParam = paramValues.has(1) ? 1 : Math.min(...paramValues);
+      const atParam = variantRows.filter((r) => r.param_value === targetParam);
+
+      const available = new Set(atParam.map((r) => r.cancellation));
+      const bestCancellation = CANCELLATION_PRIORITY.find((c) => available.has(c)) || atParam[0].cancellation;
+      const chosen = atParam.filter((r) => r.cancellation === bestCancellation);
+
+      const avg_ns = chosen.reduce((sum, r) => sum + r.mean_ns, 0) / chosen.length;
+      results.push({ family: chosen[0].family, variant: chosen[0].variant, avg_ns });
+    }
+    return results;
   }
 
   const SCALE_STOPS = [
