@@ -103,7 +103,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// </summary>
     /// <param name="kek">The key encryption key (16, 24, or 32 bytes).</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="kek"/> is not 16, 24, or 32 bytes.</exception>
-    public AesKeyWrapPad(ReadOnlySpan<byte> kek) : this(SimdSupport.All, kek)
+    public AesKeyWrapPad(ReadOnlySpan<byte> kek) : this(AesCore.AesDefault, kek)
     {
     }
 

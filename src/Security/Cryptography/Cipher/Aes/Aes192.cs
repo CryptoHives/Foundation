@@ -39,7 +39,7 @@ public sealed class Aes192 : SymmetricCipher
     /// <summary>
     /// Initializes a new instance of the <see cref="Aes192"/> class.
     /// </summary>
-    public Aes192() : this(SimdSupport.All)
+    public Aes192() : this(AesCore.AesDefault)
     {
     }
 

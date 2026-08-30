@@ -38,7 +38,7 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA224"/> class.
     /// </summary>
-    public SHA224() : this(SimdSupport.All)
+    public SHA224() : this(SHA256Core.Sha256Default)
     {
     }
 

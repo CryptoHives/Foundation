@@ -36,7 +36,7 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     /// <param name="nonce">The 12-byte nonce.</param>
     /// <param name="initialCounter">The initial block counter (usually 0 or 1).</param>
     public ChaCha20CipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint initialCounter = 0)
-        : this(SimdSupport.All, key, nonce, initialCounter)
+        : this(ChaCha20.ChaCha20Default, key, nonce, initialCounter)
     {
     }
 

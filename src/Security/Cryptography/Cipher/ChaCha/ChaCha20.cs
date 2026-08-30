@@ -42,6 +42,11 @@ using System.Security.Cryptography;
 public sealed class ChaCha20 : SymmetricCipher
 {
     /// <summary>
+    /// The default optimization to use for Aes based algorithms.
+    /// </summary>
+    internal const SimdSupport ChaCha20Default = SimdSupport.All;
+
+    /// <summary>
     /// Key size in bits for ChaCha20 (256 bits).
     /// </summary>
     public const int KeySizeBits = 256;
@@ -62,7 +67,7 @@ public sealed class ChaCha20 : SymmetricCipher
     /// <summary>
     /// Initializes a new instance of the <see cref="ChaCha20"/> class.
     /// </summary>
-    public ChaCha20() : this(SimdSupport.All)
+    public ChaCha20() : this(ChaCha20Default)
     {
     }
 
