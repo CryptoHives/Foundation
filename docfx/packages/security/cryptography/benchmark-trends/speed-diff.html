@@ -12,6 +12,11 @@
   .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
   select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
   #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem; }
+  .legend-hint { font-size: 0.78rem; color: #888; margin: 0 0 0.4rem; }
+  .legend-item { font-size: 0.8rem; color: #333; border: 1px solid #ccc; border-radius: 12px;
+    padding: 0.15rem 0.65rem; cursor: pointer; user-select: none; background: #f7f7f7; }
+  .legend-item.disabled { opacity: 0.45; text-decoration: line-through; background: #fff; }
   #heatmap-container { overflow-x: auto; max-height: 70vh; }
   table.heatmap { border-collapse: collapse; width: 100%; font-size: 0.78rem; }
   table.heatmap th, table.heatmap td { border: 1px solid #ddd; padding: 0.25rem 0.5rem; text-align: center; white-space: nowrap; }
@@ -20,7 +25,6 @@
   table.heatmap thead th.row-label { z-index: 3; }
   table.heatmap td.empty { color: #ccc; background: #fafafa; }
   table.heatmap td.ratio { color: #1a1a1a; font-variant-numeric: tabular-nums; }
-  #dist-chart-container { position: relative; height: 420px; margin-top: 1rem; }
   .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
   .legend-scale { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: #555; margin: 0.5rem 0 1rem; }
   .legend-scale .swatch { width: 22px; height: 12px; border: 1px solid #ccc; }
@@ -48,6 +52,8 @@
 </div>
 
 <div id="status">Loading database…</div>
+<p id="legend-hint" class="legend-hint" hidden>Click a library to hide or show it. CryptoHives, OS and BouncyCastle stay pinned leftmost and can't be hidden.</p>
+<div id="library-legend" class="legend-row"></div>
 
 <h2>Ratio heatmap</h2>
 <div class="legend-scale">
@@ -62,16 +68,6 @@
 <div id="heatmap-container"><table class="heatmap" id="heatmap-table">
 <thead><tr id="heatmap-head"></tr></thead><tbody id="heatmap-body"></tbody></table></div>
 
-<h2>Ratio distribution per library</h2>
-<p class="hint" style="margin-top:0;">
-  For each library, the range (min–max) and median of its ratio across every algorithm family it
-  was benchmarked against in this run — one number per family, so a library benchmarked against
-  many families contributes many points and one benchmarked against a single family contributes
-  one. This library's own implementations are included, and mostly cluster near 1.0 by
-  construction: this chart is about the field's spread, not a claim about us specifically.
-</p>
-<div id="dist-chart-container"><canvas id="dist-chart"></canvas></div>
-
 <p class="hint">
   Data source: <code>benchmark-history.sqlite</code>, generated at build time by
   <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code> from the run archive on
@@ -82,7 +78,6 @@
 </p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 (async function () {
   const statusEl = document.getElementById("status");
@@ -92,26 +87,57 @@
   const runSel = document.getElementById("run");
   const heatmapHeadEl = document.getElementById("heatmap-head");
   const heatmapBodyEl = document.getElementById("heatmap-body");
+  const libraryLegendEl = document.getElementById("library-legend");
+  const legendHintEl = document.getElementById("legend-hint");
 
   let db;
-  let distChart;
 
-  function isOurs(variant) {
-    return variant === "CryptoHives" || variant.startsWith("CryptoHives-");
+  // Always the leftmost columns, in this order, and never hideable - see matrix.html for the
+  // full rationale. Everything else can be toggled off via the legend below.
+  const PINNED_LIBRARIES = ["CryptoHives", "OS", "BouncyCastle"];
+
+  // Persists across platform/framework/run changes - hiding a library is a display preference,
+  // not scoped to one selection.
+  const hiddenLibraries = new Set();
+
+  // Collapses implementation-detail variants down to the library they belong to - see the same
+  // helper in matrix.html for the full rationale (SIMD paths, the ArmSha1/ArmSha256 probes that
+  // break the "CryptoHives-" naming convention, and why the three BLAKE3 packages must stay
+  // separate). Kept in sync with that page rather than shared, per this dashboard's convention of
+  // self-contained pages with no shared JS module.
+  function libraryOf(variant) {
+    if (variant.includes("CryptoHives") || variant === "ArmSha1" || variant === "ArmSha256") {
+      return "CryptoHives";
+    }
+    return variant;
   }
 
-  function oursRank(variant) {
-    if (variant === "CryptoHives") return 0;
-    if (variant === "CryptoHives-Scalar") return 1;
-    return 2;
-  }
-
+  // Pinned libraries sort first, in PINNED_LIBRARIES order; everything else follows alphabetically.
   function compareVariants(a, b) {
-    const aOurs = isOurs(a), bOurs = isOurs(b);
-    if (aOurs && !bOurs) return -1;
-    if (!aOurs && bOurs) return 1;
-    if (aOurs && bOurs) return oursRank(a) - oursRank(b) || a.localeCompare(b);
+    const aPin = PINNED_LIBRARIES.indexOf(a), bPin = PINNED_LIBRARIES.indexOf(b);
+    if (aPin !== -1 || bPin !== -1) {
+      if (aPin === -1) return 1;
+      if (bPin === -1) return -1;
+      return aPin - bPin;
+    }
     return a.localeCompare(b);
+  }
+
+  function renderLibraryLegend(libraries) {
+    const toggleable = libraries.filter((lib) => !PINNED_LIBRARIES.includes(lib));
+    legendHintEl.hidden = toggleable.length === 0;
+    libraryLegendEl.innerHTML = "";
+    for (const lib of toggleable) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenLibraries.has(lib) ? " disabled" : "");
+      item.textContent = lib;
+      item.onclick = () => {
+        if (hiddenLibraries.has(lib)) hiddenLibraries.delete(lib);
+        else hiddenLibraries.add(lib);
+        render();
+      };
+      libraryLegendEl.appendChild(item);
+    }
   }
 
   function compareFamilyNames(a, b) {
@@ -226,39 +252,56 @@
     return ratio >= 2.5 ? "#fff" : "#1a1a1a";
   }
 
+  // Reduces (family, variant) averages down to (family, library) by keeping each library's best
+  // (minimum) variant - same reduction as the library matrix's "fastest" column, so a family with
+  // several of CryptoHives' own SIMD paths measures CryptoHives by its best offering rather than
+  // diluting it across every path, and third-party variants (already 1:1 with a library) pass
+  // through unchanged. Keeps the winning raw variant per cell for the tooltip.
+  function reduceToLibraries(rows) {
+    const byFamily = new Map(); // family -> library -> { variant, avg_ns }
+    for (const r of rows) {
+      const library = libraryOf(r.variant);
+      if (!byFamily.has(r.family)) byFamily.set(r.family, new Map());
+      const libraries = byFamily.get(r.family);
+      const current = libraries.get(library);
+      if (!current || r.avg_ns < current.avg_ns) libraries.set(library, { variant: r.variant, avg_ns: r.avg_ns });
+    }
+    return byFamily;
+  }
+
   function renderHeatmap(rows) {
     const categories = new Map();
     for (const { category, family } of rows) {
       if (!categories.has(category)) categories.set(category, new Set());
       categories.get(category).add(family);
     }
-    const variants = Array.from(new Set(rows.map((r) => r.variant))).sort(compareVariants);
+    const libraries = Array.from(new Set(rows.map((r) => libraryOf(r.variant)))).sort(compareVariants);
+    // Hiding a library only changes what's drawn - the ratio baseline (minNs below) is always
+    // computed from every library, so toggling a column off and back on never moves the numbers
+    // of the columns that stay visible.
+    const visibleLibraries = libraries.filter((lib) => PINNED_LIBRARIES.includes(lib) || !hiddenLibraries.has(lib));
+    const byFamily = reduceToLibraries(rows);
 
-    const byFamily = new Map(); // family -> variant -> avg_ns
-    for (const r of rows) {
-      if (!byFamily.has(r.family)) byFamily.set(r.family, new Map());
-      byFamily.get(r.family).set(r.variant, r.avg_ns);
-    }
+    renderLibraryLegend(libraries);
 
     heatmapHeadEl.innerHTML = "";
     const thLabel = document.createElement("th");
     thLabel.className = "row-label";
     thLabel.textContent = "Algorithm";
     heatmapHeadEl.appendChild(thLabel);
-    for (const v of variants) {
+    for (const lib of visibleLibraries) {
       const th = document.createElement("th");
-      th.textContent = v;
+      th.textContent = lib;
       heatmapHeadEl.appendChild(th);
     }
 
     heatmapBodyEl.innerHTML = "";
-    const ratiosByVariant = new Map(variants.map((v) => [v, []]));
 
     for (const category of Array.from(categories.keys()).sort()) {
       const catRow = document.createElement("tr");
       const catCell = document.createElement("td");
       catCell.textContent = category;
-      catCell.colSpan = variants.length + 1;
+      catCell.colSpan = visibleLibraries.length + 1;
       catCell.style.background = "#eef2ff";
       catCell.style.fontWeight = "600";
       catCell.style.textAlign = "left";
@@ -267,26 +310,30 @@
 
       for (const family of Array.from(categories.get(category)).sort(compareFamilyNames)) {
         const means = byFamily.get(family);
-        const minNs = Math.min(...Array.from(means.values()));
+        const minNs = Math.min(...Array.from(means.values(), (e) => e.avg_ns));
         const tr = document.createElement("tr");
         const labelTd = document.createElement("td");
         labelTd.className = "row-label";
         labelTd.textContent = family;
         tr.appendChild(labelTd);
 
-        for (const v of variants) {
+        for (const lib of visibleLibraries) {
           const td = document.createElement("td");
-          const avgNs = means.get(v);
-          if (avgNs == null) {
+          const entry = means.get(lib);
+          // Defensive: a mean that rounds to 0ns would make this an Infinityx ratio rather than
+          // a meaningful comparison. Not observed in Cryptography's data, but guarded the same
+          // way as Threading's speed-diff page in case a future ultra-cheap benchmark hits it.
+          if (entry == null || minNs <= 0) {
             td.className = "empty";
-            td.textContent = "–";
+            td.textContent = entry == null ? "–" : "n/a";
+            if (entry) td.title = `${entry.variant} (fastest in this row measured ~0ns; ratio not meaningful)`;
           } else {
-            const ratio = avgNs / minNs;
-            ratiosByVariant.get(v).push(ratio);
+            const ratio = entry.avg_ns / minNs;
             td.className = "ratio";
             td.style.background = colorForRatio(ratio);
             td.style.color = textColorForRatio(ratio);
             td.textContent = ratio.toFixed(2) + "x";
+            td.title = entry.variant;
           }
           tr.appendChild(td);
         }
@@ -294,65 +341,7 @@
       }
     }
 
-    return { variants, ratiosByVariant };
-  }
-
-  function renderDistributionChart(variants, ratiosByVariant) {
-    const stats = variants.map((v) => {
-      const values = (ratiosByVariant.get(v) || []).slice().sort((a, b) => a - b);
-      if (!values.length) return { variant: v, min: null, max: null, median: null, n: 0 };
-      const mid = Math.floor(values.length / 2);
-      const median = values.length % 2 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
-      return { variant: v, min: values[0], max: values[values.length - 1], median, n: values.length };
-    }).filter((s) => s.n > 0);
-
-    if (distChart) distChart.destroy();
-    distChart = new Chart(document.getElementById("dist-chart"), {
-      data: {
-        labels: stats.map((s) => s.variant),
-        datasets: [
-          {
-            type: "bar",
-            label: "Min–max ratio",
-            data: stats.map((s) => [s.min, s.max]),
-            backgroundColor: stats.map((s) => isOurs(s.variant) ? "#ffe6b3" : "#cbd5e1"),
-            borderColor: stats.map((s) => isOurs(s.variant) ? "#FFB643" : "#94a3b8"),
-            borderWidth: 1,
-          },
-          {
-            // A circle rather than a dash: a library benchmarked against only one family has
-            // min == max, which collapses the floating bar to a hairline at that exact height -
-            // a solid dot stays visible there instead of vanishing into the bar's own border.
-            type: "scatter",
-            label: "Median ratio",
-            data: stats.map((s, i) => ({ x: i, y: s.median })),
-            backgroundColor: "#1a1a1a",
-            pointRadius: 5,
-            pointStyle: "circle",
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: { title: { display: true, text: "Ratio to fastest (x)" }, beginAtZero: false },
-          x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 30 } },
-        },
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const s = stats[ctx.dataIndex];
-                return ctx.dataset.type === "bar"
-                  ? `min ${s.min.toFixed(2)}x, max ${s.max.toFixed(2)}x (n=${s.n})`
-                  : `median ${s.median.toFixed(2)}x`;
-              },
-            },
-          },
-        },
-      },
-    });
+    return { libraries: visibleLibraries, totalLibraries: libraries.length };
   }
 
   function render() {
@@ -367,10 +356,9 @@
       statusEl.textContent = "No data for this run.";
       return;
     }
-    const { variants, ratiosByVariant } = renderHeatmap(rows);
-    renderDistributionChart(variants, ratiosByVariant);
+    const { libraries, totalLibraries } = renderHeatmap(rows);
     const families = new Set(rows.map((r) => r.family));
-    statusEl.textContent = `${families.size} algorithm(s) × ${variants.length} librar${variants.length === 1 ? "y" : "ies"}, from ` +
+    statusEl.textContent = `${families.size} algorithm(s) × ${libraries.length} of ${totalLibraries} librar${totalLibraries === 1 ? "y" : "ies"} shown, from ` +
       (runSel.options[runSel.selectedIndex]?.textContent || "the selected run");
   }
 

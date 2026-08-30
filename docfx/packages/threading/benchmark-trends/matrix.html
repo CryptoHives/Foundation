@@ -11,6 +11,11 @@
   .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
   select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
   #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem; }
+  .legend-hint { font-size: 0.78rem; color: #888; margin: 0 0 0.4rem; }
+  .legend-item { font-size: 0.8rem; color: #333; border: 1px solid #ccc; border-radius: 12px;
+    padding: 0.15rem 0.65rem; cursor: pointer; user-select: none; background: #f7f7f7; }
+  .legend-item.disabled { opacity: 0.45; text-decoration: line-through; background: #fff; }
   #matrix-container { overflow-x: auto; max-height: 78vh; }
   table.matrix { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
   table.matrix th, table.matrix td { border: 1px solid #ddd; padding: 0.3rem 0.55rem; text-align: center; white-space: nowrap; }
@@ -46,17 +51,36 @@
 </div>
 
 <div id="status">Loading database…</div>
+<p id="legend-hint" class="legend-hint" hidden>Click a library to hide or show its column. Pooled, Nito.AsyncEx, ProtoPromise, RefImpl and System stay pinned leftmost and can't be hidden.</p>
+<div id="library-legend" class="legend-row"></div>
 <div id="matrix-container"><table class="matrix" id="matrix-table">
 <thead><tr id="matrix-head"></tr></thead><tbody id="matrix-body"></tbody></table></div>
 
 <p class="hint">
   Data source: <code>benchmark-history.sqlite</code>, generated at build time from the run archive
-  on the <code>benchmarks</code> branch. "Fastest" is the arg-min of each variant's mean time
-  averaged across every method, contention level and cancellation state that primitive was
-  measured with in the selected run; it says nothing about variants never run on this platform.
-  See the <a href="index.html">trends dashboard</a> for per-parameter detail and history, and the
-  <a href="speed-diff.html">speed differences</a> page for how far apart implementations
-  typically land.
+  on the <code>benchmarks</code> branch. "Fastest" is the arg-min of each variant's mean time in
+  the scenario closest to normal use - one contending party (not zero, and not a bare uncontended
+  call some benchmark classes also record) with a live, uncancelled token where one was measured
+  - rather than an average across every contention level and cancellation state: a "Multiple"
+  benchmark's mean time at high contention is the time for many concurrent operations, not a
+  per-operation cost, so blending it in would let whichever variant scales worst under load
+  dominate the result. It says nothing about variants never run on this platform, or about how
+  implementations compare under load - see the <a href="index.html">trends dashboard</a>'s
+  "Scaling by contention" view for that, and the <a href="speed-diff.html">speed differences</a>
+  page for how far apart implementations typically land in this same representative scenario. The raw
+  baseline comparison table (Interlocked.*, lock(), SpinLock, SpinOnce) a
+  few benchmark classes measure alongside the real primitives isn't a synchronization primitive
+  itself and is excluded from this matrix.
+</p>
+<p class="hint">
+  <strong>†</strong> marks a "System" cell whose primitive may have no true async wait API
+  (AutoResetEvent, ManualResetEvent, Barrier, ReaderWriterLockSlim) - its benchmark measures a
+  blocking wait rather than an awaited one, so the number is a baseline reference rather than a
+  fair race against the async implementations in the other columns.
+  <strong>‡</strong> marks "ProtoPromise" - it builds on its own Promise/Promise&lt;T&gt; type and
+  its own cancellation token rather than <code>System.Threading.Tasks.ValueTask</code> and
+  <code>CancellationToken</code>, so it is not drop-in compatible with code written against the
+  BCL types the other columns share.
 </p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
@@ -69,18 +93,128 @@
   const runSel = document.getElementById("run");
   const matrixHeadEl = document.getElementById("matrix-head");
   const matrixBodyEl = document.getElementById("matrix-body");
+  const libraryLegendEl = document.getElementById("library-legend");
+  const legendHintEl = document.getElementById("legend-hint");
 
   let db;
 
-  function isPooled(variant) {
-    return variant === "Pooled" || variant.startsWith("Pooled (");
+  // Always the leftmost columns, in this order, and never hideable: this library's own
+  // implementations plus the reference/baseline columns a reader compares nearly every primitive
+  // against. Everything else sorts alphabetically after them and can be toggled off via the
+  // legend below.
+  const PINNED_LIBRARIES = ["Pooled", "Nito.AsyncEx", "ProtoPromise", "RefImpl", "System"];
+
+  // A synchronous (blocking) primitive out-of-contest marker, appended to a "System" cell's
+  // symbol. Several of the .NET types this column groups have no true async wait API at all
+  // (AutoResetEvent, ManualResetEvent, Barrier, ReaderWriterLockSlim) - their benchmark measures
+  // a blocking WaitOne()/Wait() rather than an awaited operation, so the number is a baseline
+  // reference, not a fair race against the async implementations in the other columns.
+  const SYSTEM_CAVEAT_MARK = "†";
+  const SYSTEM_CAVEAT_TEXT = "System may be a synchronous (blocking) .NET primitive rather than " +
+    "a true async one - a baseline reference, not necessarily a fair contest against the async " +
+    "implementations in the other columns.";
+
+  // A compatibility caveat, appended to a "ProtoPromise" cell's symbol. The package builds on its
+  // own Promise/Promise<T> type rather than System.Threading.Tasks.ValueTask, and its own
+  // cancellation token type rather than System.Threading.CancellationToken, so code written
+  // against it does not drop in against the BCL-shaped API the other columns share.
+  const PROTOPROMISE_CAVEAT_MARK = "‡";
+  const PROTOPROMISE_CAVEAT_TEXT = "ProtoPromise builds on its own Promise/Promise<T> type and " +
+    "its own cancellation token rather than System.Threading.Tasks.ValueTask and " +
+    "CancellationToken, so it is not drop-in compatible with code written against the BCL types.";
+
+  const LIBRARY_CAVEATS = new Map([
+    ["System", { mark: SYSTEM_CAVEAT_MARK, text: SYSTEM_CAVEAT_TEXT }],
+    ["ProtoPromise", { mark: PROTOPROMISE_CAVEAT_MARK, text: PROTOPROMISE_CAVEAT_TEXT }],
+  ]);
+
+  // Persists across platform/framework/run changes (nothing here resets it) - hiding a library is
+  // a display preference, not scoped to one selection.
+  const hiddenLibraries = new Set();
+
+  // Raw variant spellings that name a real published library, mapped to one canonical NuGet
+  // package name per library. Two entries exist purely to fold a naming inconsistency into one
+  // column: "Nito" and "Nito.AsyncEx" are the same package spelled two ways across benchmark
+  // files, as are "ProtoPromise" and "Proto.Promises"; "NonKeyed" is AsyncKeyedLock's
+  // AsyncNonKeyedLocker type, benchmarked under the AsyncLock family with no package name in its
+  // label at all, but it ships in the same package as the "AsyncKeyedLock" variant elsewhere.
+  const KNOWN_LIBRARIES = new Map([
+    ["Nito", "Nito.AsyncEx"],
+    ["Nito.AsyncEx", "Nito.AsyncEx"],
+    ["ProtoPromise", "ProtoPromise"],
+    ["Proto.Promises", "ProtoPromise"],
+    ["NeoSmart", "NeoSmart.AsyncLock"],
+    ["VS.Threading", "Microsoft.VisualStudio.Threading"],
+    ["AsyncKeyedLock", "AsyncKeyedLock"],
+    ["NonKeyed", "AsyncKeyedLock"],
+    ["AsyncUtilities", "AsyncUtilities"],
+    ["KeyedSemaphores", "KeyedSemaphores"],
+    ["Dao.IndividualLock", "Dao.IndividualLock"],
+  ]);
+
+  // Collapses implementation-detail variants down to the library they belong to, so the matrix's
+  // columns are "which library" rather than "which internal code path". This library's own
+  // implementations are almost always labelled "Pooled", but many classes append a parenthetical
+  // qualifier for what's actually being measured (e.g. "Pooled (ValueTask)", "Pooled (AsTask)");
+  // one micro-benchmark instead marks our internal spinlock "SpinLock (CryptoHives)" - a
+  // parenthetical that names the library rather than a qualifier of it, so it's matched first.
+  // "RefImpl" (the TaskCompletionSource-based reference implementation used as a baseline
+  // alongside the real libraries) gets its own column rather than folding into either "Pooled" or
+  // "System" - it is neither this library's shipped code nor a .NET-provided mechanism.
+  // A "(Striped)" suffix is kept as its own column rather than folded into its base library like
+  // every other "(...)" qualifier: striping trades one lock per key for a fixed set of
+  // hash-bucketed locks, so two different keys can contend with each other under the striped
+  // variant but never under the keyed one - a different concurrency guarantee, not a
+  // configuration knob on the same data structure.
+  // Everything else that survives to the KNOWN_LIBRARIES lookup (after stripping a trailing
+  // "(...)" qualifier) is a real third-party package; anything still unmatched is a raw .NET/BCL
+  // mechanism used as a baseline comparison (SemaphoreSlim, lock(), SpinLock, Interlocked.*,
+  // AutoResetEvent, ...) rather than a competing library - those collapse into one "System"
+  // column instead of one column per micro-op, which is what the SyncLock family's baseline
+  // comparisons would otherwise produce.
+  function libraryOf(variant) {
+    if (variant.includes("CryptoHives") || variant === "Pooled" || variant.startsWith("Pooled ")) {
+      return "Pooled";
+    }
+    if (variant === "RefImpl") return "RefImpl";
+    if (variant.endsWith("(Striped)")) return variant;
+    const m = /^(.*?)\s*\([^)]*\)$/.exec(variant);
+    const stripped = m ? m[1] : variant;
+    return KNOWN_LIBRARIES.get(stripped) || "System";
   }
 
+  // Pinned libraries sort first, in PINNED_LIBRARIES order; everything else follows alphabetically.
   function compareVariants(a, b) {
-    const aPooled = isPooled(a), bPooled = isPooled(b);
-    if (aPooled && !bPooled) return -1;
-    if (!aPooled && bPooled) return 1;
+    const aPin = PINNED_LIBRARIES.indexOf(a), bPin = PINNED_LIBRARIES.indexOf(b);
+    if (aPin !== -1 || bPin !== -1) {
+      if (aPin === -1) return 1;
+      if (bPin === -1) return -1;
+      return aPin - bPin;
+    }
     return a.localeCompare(b);
+  }
+
+  function renderLibraryLegend(libraries) {
+    const toggleable = libraries.filter((lib) => !PINNED_LIBRARIES.includes(lib));
+    legendHintEl.hidden = toggleable.length === 0;
+    libraryLegendEl.innerHTML = "";
+    for (const lib of toggleable) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenLibraries.has(lib) ? " disabled" : "");
+      item.textContent = lib;
+      item.onclick = () => {
+        if (hiddenLibraries.has(lib)) hiddenLibraries.delete(lib);
+        else hiddenLibraries.add(lib);
+        render();
+      };
+      libraryLegendEl.appendChild(item);
+    }
+  }
+
+  // A control character separator, not a plain string join: family/variant names are free text
+  // and could themselves contain almost any other character.
+  function keyOf(family, variant) {
+    return `${family}\x1f${variant}`;
   }
 
   function distinct(column, whereSql, params) {
@@ -140,30 +274,100 @@
 
   // Every (family, variant) ever recorded, anywhere - not scoped to the selected platform/run,
   // same rationale as the Cryptography matrix: a library benchmarked on only one platform still
-  // supports the primitive.
+  // supports the primitive. "SyncLock" is excluded outright: it isn't a real async primitive,
+  // just the raw baseline comparison table (Interlocked.*, lock(), SpinLock, SpinOnce) that a few
+  // benchmark classes measure alongside the actual primitives, and it doesn't map onto "which
+  // library supports this primitive" at all.
   function loadSupportMatrix() {
-    const stmt = db.prepare("SELECT DISTINCT family, variant FROM benchmark_results");
+    const stmt = db.prepare("SELECT DISTINCT family, variant FROM benchmark_results WHERE family != 'SyncLock'");
     const rows = [];
     while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
     return rows;
   }
 
-  // Arg-min variant per family for the selected run, averaged across every method, contention
-  // level and cancellation state that family was measured with.
-  function loadFastest(runId, platform, framework) {
+  // Prefer this specific one order over exhaustively averaging every method, contention level
+  // and cancellation state a family was measured with. Blending every level together is not a
+  // simplification, it is wrong: a "Multiple" benchmark's mean_ns at Iterations=100 is the time
+  // to push 100 concurrent acquisitions through the primitive, not a per-operation cost, so it
+  // sits 100-1000x above the uncontended number for the same variant - averaging that in let
+  // whichever variant happened to scale worst under load dominate the "typical" figure, which is
+  // where the "2602x", "15860x" ratios came from.
+  //
+  // Contention level 1 - not 0, and not the parameterless single-call scenario some benchmark
+  // classes also record (e.g. a bare "LockAsync" with no [Params] axis at all) - is chosen as the
+  // one scenario this comparison represents: a primitive is essentially never awaited in
+  // isolation in real code, so "exactly one other party is contending for it" is closer to normal
+  // use than either an idle lock or the high-contention levels that "Scaling by contention"
+  // already covers on its own. Cancellation prefers "NotCancelled" (a live token supplied but not
+  // triggered) over "None" (no token at all) for the same reason - most real call sites do pass a
+  // token. Both preferences fall back gracefully per variant: if a variant has no data at exactly
+  // level 1, its lowest recorded level is used instead; if it has no "NotCancelled" row at the
+  // chosen level, whichever cancellation state it does have takes over. So every variant that was
+  // benchmarked at all still gets a baseline number, just not always the same one - this is a
+  // "most representative common case" pick, not a controlled single scenario across the board.
+  //
+  // Contention scaling and cancellation overhead both stay fully visible in the trends
+  // dashboard's Scaling and Cancellation views rather than being silently mixed into this number.
+  const CANCELLATION_PRIORITY = ["NotCancelled", "None", "Timed", "Cancelled", "NotCancelledTimed"];
+
+  function loadBaselineAverages(runId, platform, framework) {
     const stmt = db.prepare(
-      "SELECT family, variant, AVG(mean_ns) AS avg_ns FROM benchmark_results " +
-      "WHERE run_id = ? AND platform = ? AND framework = ? GROUP BY family, variant"
+      "SELECT family, variant, param_value, cancellation, mean_ns FROM benchmark_results " +
+      "WHERE run_id = ? AND platform = ? AND framework = ? AND family != 'SyncLock' " +
+      "AND param_value IS NOT NULL"
     );
     stmt.bind([runId, platform, framework]);
-    const best = new Map();
-    while (stmt.step()) {
-      const row = stmt.getAsObject();
-      const current = best.get(row.family);
-      if (!current || row.avg_ns < current.avg_ns) best.set(row.family, { variant: row.variant, avg_ns: row.avg_ns });
-    }
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
     stmt.free();
+
+    const byVariant = new Map(); // "family\u001fvariant" -> rows[]
+    for (const r of rows) {
+      const key = keyOf(r.family, r.variant);
+      if (!byVariant.has(key)) byVariant.set(key, []);
+      byVariant.get(key).push(r);
+    }
+
+    const results = [];
+    for (const variantRows of byVariant.values()) {
+      const paramValues = new Set(variantRows.map((r) => r.param_value));
+      const targetParam = paramValues.has(1) ? 1 : Math.min(...paramValues);
+      const atParam = variantRows.filter((r) => r.param_value === targetParam);
+
+      const available = new Set(atParam.map((r) => r.cancellation));
+      const bestCancellation = CANCELLATION_PRIORITY.find((c) => available.has(c)) || atParam[0].cancellation;
+      const chosen = atParam.filter((r) => r.cancellation === bestCancellation);
+
+      const avg_ns = chosen.reduce((sum, r) => sum + r.mean_ns, 0) / chosen.length;
+      results.push({ family: chosen[0].family, variant: chosen[0].variant, avg_ns });
+    }
+    return results;
+  }
+
+  // Arg-min library per family for the selected run. Two reductions: first the baseline average
+  // per (family, variant) above, then fold variants sharing a library down to that library's best
+  // (minimum) representative — mirrors the same two-step reduction in the Cryptography matrix.
+  // Keeps the winning raw variant too, so the "fastest" cell can still name which implementation
+  // won.
+  function loadFastest(runId, platform, framework) {
+    const byFamily = new Map(); // family -> library -> { variant, avg_ns }
+    for (const row of loadBaselineAverages(runId, platform, framework)) {
+      const library = libraryOf(row.variant);
+      if (!byFamily.has(row.family)) byFamily.set(row.family, new Map());
+      const libraries = byFamily.get(row.family);
+      const current = libraries.get(library);
+      if (!current || row.avg_ns < current.avg_ns) libraries.set(library, { variant: row.variant, avg_ns: row.avg_ns });
+    }
+
+    const best = new Map(); // family -> { library, variant, avg_ns }
+    for (const [family, libraries] of byFamily) {
+      let winner = null;
+      for (const [library, entry] of libraries) {
+        if (!winner || entry.avg_ns < winner.avg_ns) winner = { library, ...entry };
+      }
+      if (winner) best.set(family, winner);
+    }
     return best;
   }
 
@@ -175,19 +379,24 @@
     }
 
     const families = Array.from(new Set(support.map((r) => r.family))).sort();
-    const variants = Array.from(new Set(support.map((r) => r.variant))).sort(compareVariants);
-    const supportedKeys = new Set(support.map((r) => `${r.family}${r.variant}`));
+    const libraries = Array.from(new Set(support.map((r) => libraryOf(r.variant)))).sort(compareVariants);
+    // Hiding a library only changes what is drawn - "Supported"/"Fastest" are computed over
+    // every library regardless, so toggling a column off and back on never changes an answer.
+    const visibleLibraries = libraries.filter((lib) => PINNED_LIBRARIES.includes(lib) || !hiddenLibraries.has(lib));
+    const supportedKeys = new Set(support.map((r) => `${r.family}${libraryOf(r.variant)}`));
     const fastest = runSel.value ? loadFastest(runSel.value, platformSel.value, frameworkSel.value) : new Map();
+
+    renderLibraryLegend(libraries);
 
     matrixHeadEl.innerHTML = "";
     const thLabel = document.createElement("th");
     thLabel.className = "row-label";
     thLabel.textContent = "Primitive";
     matrixHeadEl.appendChild(thLabel);
-    for (const v of variants) {
+    for (const lib of visibleLibraries) {
       const th = document.createElement("th");
-      th.textContent = v;
-      if (isPooled(v)) th.classList.add("pooled");
+      th.textContent = lib;
+      if (lib === "Pooled") th.classList.add("pooled");
       matrixHeadEl.appendChild(th);
     }
 
@@ -199,18 +408,23 @@
       labelTd.textContent = family;
       tr.appendChild(labelTd);
 
-      const fastestVariant = fastest.get(family)?.variant;
-      for (const v of variants) {
+      const winner = fastest.get(family);
+      for (const lib of visibleLibraries) {
         const td = document.createElement("td");
-        const supported = supportedKeys.has(`${family}${v}`);
+        const supported = supportedKeys.has(`${family}${lib}`);
         if (supported) {
           td.classList.add("supported");
           td.textContent = "✓";
-          if (v === fastestVariant) {
+          if (lib === winner?.library) {
             td.classList.add("fastest");
             td.textContent = "★";
             const runLabel = runSel.options[runSel.selectedIndex]?.textContent;
-            td.title = "Fastest in the selected run" + (runLabel ? ` (${runLabel})` : "");
+            td.title = `Fastest in the selected run${runLabel ? ` (${runLabel})` : ""} — ${winner.variant}`;
+          }
+          const caveat = LIBRARY_CAVEATS.get(lib);
+          if (caveat) {
+            td.textContent += caveat.mark;
+            td.title = td.title ? `${td.title} ${caveat.text}` : caveat.text;
           }
         } else {
           td.classList.add("unsupported");
@@ -221,7 +435,7 @@
       matrixBodyEl.appendChild(tr);
     }
 
-    statusEl.textContent = `${families.length} primitive(s) × ${variants.length} librar${variants.length === 1 ? "y" : "ies"}`;
+    statusEl.textContent = `${families.length} primitive(s) × ${visibleLibraries.length} of ${libraries.length} librar${libraries.length === 1 ? "y" : "ies"} shown`;
   }
 
   if (location.protocol === "file:") {

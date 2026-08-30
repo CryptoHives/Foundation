@@ -11,6 +11,11 @@
   .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
   select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
   #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem; }
+  .legend-hint { font-size: 0.78rem; color: #888; margin: 0 0 0.4rem; }
+  .legend-item { font-size: 0.8rem; color: #333; border: 1px solid #ccc; border-radius: 12px;
+    padding: 0.15rem 0.65rem; cursor: pointer; user-select: none; background: #f7f7f7; }
+  .legend-item.disabled { opacity: 0.45; text-decoration: line-through; background: #fff; }
   #matrix-container { overflow-x: auto; max-height: 78vh; }
   table.matrix { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
   table.matrix th, table.matrix td { border: 1px solid #ddd; padding: 0.3rem 0.55rem; text-align: center; white-space: nowrap; }
@@ -49,6 +54,8 @@
 </div>
 
 <div id="status">Loading database…</div>
+<p id="legend-hint" class="legend-hint" hidden>Click a library to hide or show its column. CryptoHives, OS and BouncyCastle stay pinned leftmost and can't be hidden.</p>
+<div id="library-legend" class="legend-row"></div>
 <div id="matrix-container"><table class="matrix" id="matrix-table">
 <thead><tr id="matrix-head"></tr></thead><tbody id="matrix-body"></tbody></table></div>
 
@@ -73,27 +80,63 @@
   const runSel = document.getElementById("run");
   const matrixHeadEl = document.getElementById("matrix-head");
   const matrixBodyEl = document.getElementById("matrix-body");
+  const libraryLegendEl = document.getElementById("library-legend");
+  const legendHintEl = document.getElementById("legend-hint");
 
   let db;
 
-  function isOurs(variant) {
-    return variant === "CryptoHives" || variant.startsWith("CryptoHives-");
+  // Always the leftmost columns, in this order, and never hideable: the three libraries a reader
+  // compares nearly every algorithm against. Everything else sorts alphabetically after them and
+  // can be toggled off via the legend below — useful since a handful of libraries (the three
+  // BLAKE3 packages, Blake2Fast/Konscious, OpenGost, NaCl.Core) are relevant to only one or two
+  // algorithm families each and otherwise just add width to every row.
+  const PINNED_LIBRARIES = ["CryptoHives", "OS", "BouncyCastle"];
+
+  // Persists across platform/framework/run changes (nothing here resets it) - hiding a library is
+  // a display preference, not scoped to one selection.
+  const hiddenLibraries = new Set();
+
+  // Collapses implementation-detail variants down to the library they belong to, so the matrix's
+  // columns are "which library" rather than "which internal code path". Our own registries name
+  // every SIMD path separately (CryptoHives-Scalar, CryptoHives-AVX2, CryptoHives-AVX512F, ...),
+  // which would otherwise turn one column into five; two ARM crypto-extension probes
+  // (HashAlgorithmRegistry.cs) break the "CryptoHives-" prefix convention entirely and are called
+  // out by name. Every third-party variant is already 1:1 with a real library/package - including
+  // the three distinct BLAKE3 packages below (Managed/Native/Dissimilis), which must stay separate
+  // columns since they are not three builds of one thing.
+  function libraryOf(variant) {
+    if (variant.includes("CryptoHives") || variant === "ArmSha1" || variant === "ArmSha256") {
+      return "CryptoHives";
+    }
+    return variant;
   }
 
-  // Same order as the trends dashboard's colour ramp: plain name, then scalar, then the rest
-  // alphabetically, so "ours" reads left-to-right the same way across every page here.
-  function oursRank(variant) {
-    if (variant === "CryptoHives") return 0;
-    if (variant === "CryptoHives-Scalar") return 1;
-    return 2;
-  }
-
+  // Pinned libraries sort first, in PINNED_LIBRARIES order; everything else follows alphabetically.
   function compareVariants(a, b) {
-    const aOurs = isOurs(a), bOurs = isOurs(b);
-    if (aOurs && !bOurs) return -1;
-    if (!aOurs && bOurs) return 1;
-    if (aOurs && bOurs) return oursRank(a) - oursRank(b) || a.localeCompare(b);
+    const aPin = PINNED_LIBRARIES.indexOf(a), bPin = PINNED_LIBRARIES.indexOf(b);
+    if (aPin !== -1 || bPin !== -1) {
+      if (aPin === -1) return 1;
+      if (bPin === -1) return -1;
+      return aPin - bPin;
+    }
     return a.localeCompare(b);
+  }
+
+  function renderLibraryLegend(libraries) {
+    const toggleable = libraries.filter((lib) => !PINNED_LIBRARIES.includes(lib));
+    legendHintEl.hidden = toggleable.length === 0;
+    libraryLegendEl.innerHTML = "";
+    for (const lib of toggleable) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenLibraries.has(lib) ? " disabled" : "");
+      item.textContent = lib;
+      item.onclick = () => {
+        if (hiddenLibraries.has(lib)) hiddenLibraries.delete(lib);
+        else hiddenLibraries.add(lib);
+        render();
+      };
+      libraryLegendEl.appendChild(item);
+    }
   }
 
   // Orders families the way a reader expects rather than lexicographically, which would sort
@@ -179,22 +222,37 @@
     return rows;
   }
 
-  // Arg-min variant per family for the selected run — averaged across every method and data
-  // size that family was measured with in that run, since "fastest" is asked once per family,
-  // not once per (family, method, size) triple.
+  // Arg-min library per family for the selected run. Two reductions: first average mean_ns per
+  // (family, variant) across every method and data size that family was measured with, then fold
+  // variants sharing a library down to that library's best (minimum) representative — a library's
+  // column should reflect its best offering (e.g. CryptoHives' fastest SIMD path), not an average
+  // dragged down by its scalar fallback. Keeps the winning raw variant too, so the "fastest" cell
+  // can still name exactly which implementation won underneath the collapsed column.
   function loadFastest(runId, platform, framework) {
     const stmt = db.prepare(
       "SELECT family, variant, AVG(mean_ns) AS avg_ns FROM benchmark_results " +
       "WHERE run_id = ? AND platform = ? AND framework = ? GROUP BY family, variant"
     );
     stmt.bind([runId, platform, framework]);
-    const best = new Map(); // family -> { variant, avg_ns }
+    const byFamily = new Map(); // family -> library -> { variant, avg_ns }
     while (stmt.step()) {
       const row = stmt.getAsObject();
-      const current = best.get(row.family);
-      if (!current || row.avg_ns < current.avg_ns) best.set(row.family, { variant: row.variant, avg_ns: row.avg_ns });
+      const library = libraryOf(row.variant);
+      if (!byFamily.has(row.family)) byFamily.set(row.family, new Map());
+      const libraries = byFamily.get(row.family);
+      const current = libraries.get(library);
+      if (!current || row.avg_ns < current.avg_ns) libraries.set(library, { variant: row.variant, avg_ns: row.avg_ns });
     }
     stmt.free();
+
+    const best = new Map(); // family -> { library, variant, avg_ns }
+    for (const [family, libraries] of byFamily) {
+      let winner = null;
+      for (const [library, entry] of libraries) {
+        if (!winner || entry.avg_ns < winner.avg_ns) winner = { library, ...entry };
+      }
+      if (winner) best.set(family, winner);
+    }
     return best;
   }
 
@@ -213,22 +271,26 @@
       familyKey.set(family, category);
     }
 
-    const variantSet = new Set(support.map((r) => r.variant));
-    const variants = Array.from(variantSet).sort(compareVariants);
+    const libraries = Array.from(new Set(support.map((r) => libraryOf(r.variant)))).sort(compareVariants);
+    // Hiding a library only changes what is drawn - "Supported"/"Fastest" are computed over
+    // every library regardless, so toggling a column off and back on never changes an answer.
+    const visibleLibraries = libraries.filter((lib) => PINNED_LIBRARIES.includes(lib) || !hiddenLibraries.has(lib));
 
-    const supportedKeys = new Set(support.map((r) => `${r.family}${r.variant}`));
+    const supportedKeys = new Set(support.map((r) => `${r.family}${libraryOf(r.variant)}`));
 
     const fastest = runSel.value ? loadFastest(runSel.value, platformSel.value, frameworkSel.value) : new Map();
+
+    renderLibraryLegend(libraries);
 
     matrixHeadEl.innerHTML = "";
     const thLabel = document.createElement("th");
     thLabel.className = "row-label";
     thLabel.textContent = "Algorithm";
     matrixHeadEl.appendChild(thLabel);
-    for (const v of variants) {
+    for (const lib of visibleLibraries) {
       const th = document.createElement("th");
-      th.textContent = v;
-      if (isOurs(v)) th.classList.add("ours");
+      th.textContent = lib;
+      if (lib === "CryptoHives") th.classList.add("ours");
       matrixHeadEl.appendChild(th);
     }
 
@@ -239,7 +301,7 @@
       catRow.className = "category-row";
       const catCell = document.createElement("td");
       catCell.textContent = category;
-      catCell.colSpan = variants.length + 1;
+      catCell.colSpan = visibleLibraries.length + 1;
       catRow.appendChild(catCell);
       matrixBodyEl.appendChild(catRow);
 
@@ -252,18 +314,18 @@
         labelTd.textContent = family;
         tr.appendChild(labelTd);
 
-        const fastestVariant = fastest.get(family)?.variant;
-        for (const v of variants) {
+        const winner = fastest.get(family);
+        for (const lib of visibleLibraries) {
           const td = document.createElement("td");
-          const supported = supportedKeys.has(`${family}${v}`);
+          const supported = supportedKeys.has(`${family}${lib}`);
           if (supported) {
             td.classList.add("supported");
             td.textContent = "✓";
-            if (v === fastestVariant) {
+            if (lib === winner?.library) {
               td.classList.add("fastest");
               td.textContent = "★";
               const runLabel = runSel.options[runSel.selectedIndex]?.textContent;
-              td.title = "Fastest in the selected run" + (runLabel ? ` (${runLabel})` : "");
+              td.title = `Fastest in the selected run${runLabel ? ` (${runLabel})` : ""} — ${winner.variant}`;
             }
           } else {
             td.classList.add("unsupported");
@@ -275,7 +337,7 @@
       }
     }
 
-    statusEl.textContent = `${rowCount} algorithm(s) × ${variants.length} librar${variants.length === 1 ? "y" : "ies"}`;
+    statusEl.textContent = `${rowCount} algorithm(s) × ${visibleLibraries.length} of ${libraries.length} librar${libraries.length === 1 ? "y" : "ies"} shown`;
   }
 
   if (location.protocol === "file:") {
