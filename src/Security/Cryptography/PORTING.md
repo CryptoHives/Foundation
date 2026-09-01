@@ -1,4 +1,4 @@
-# CryptoHives.Foundation.Security.Cryptography — Guide for LLM Agents
+﻿# CryptoHives.Foundation.Security.Cryptography — Guide for LLM Agents
 
 Machine-readable usage + porting guide for coding assistants. All APIs below are verified
 against the shipped source. Do not invent members. Human-oriented docs live in `README.md`.
@@ -145,6 +145,9 @@ AEAD types: `AesGcm128/192/256`, `AesCcm128/192/256`, `ChaCha20Poly1305`,
 
 **Cipher hard rules:** never reuse a `(key, nonce)` pair for AEAD; a `false`/throwing
 `Decrypt` means tampering or wrong key — discard the output, never use partial plaintext.
+`Dispose()` zeroizes the retained key on every AEAD type, and the operations then throw
+`ObjectDisposedException` — so scope the instance with `using` and do not cache one past the
+work it was created for.
 
 ---
 
