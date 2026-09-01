@@ -34,19 +34,30 @@ using CryptoHives.Foundation.Memory.Pools;
 | [AllocatedSegment&lt;T&gt;](allocatedsegment.md) | Wraps a GC-managed `T[]`; no pool return | [Details](allocatedsegment.md) |
 | [EmptySegment&lt;T&gt;](emptysegment.md) | Zero-allocation null-object sentinel | [Details](emptysegment.md) |
 
+### Sequence Ownership
+
+| Class | Description | Documentation |
+|-------|-------------|---------------|
+| [ISequenceOwner&lt;T&gt;](isequenceowner.md) | Ownership interface for a `ReadOnlySequence<T>` | [Details](isequenceowner.md) |
+| [SequenceLease&lt;T&gt;](sequencelease.md) | Zero-allocation payload handle carrying its producer | [Details](sequencelease.md) |
+| [SegmentSequence&lt;T&gt;](segmentsequence.md) | Adapts any `ISegmentOwner<T>` into a one-node sequence | [Details](segmentsequence.md) |
+| [EmptySequence&lt;T&gt;](emptysequence.md) | Zero-allocation null-object sentinel | [Details](emptysequence.md) |
+
 ### Object Pool Utilities
 
 | Class | Description | Documentation |
 |-------|-------------|---------------|
 | [ObjectOwner&lt;T&gt;](objectowner.md) | RAII wrapper for pooled objects | [Details](objectowner.md) |
-| [ObjectPools](objectpools.md) | Static helpers for creating object pools | [Details](objectpools.md) |
+| [ObjectPools](objectpools.md) | Ready-made rent helpers for common types | [Details](objectpools.md) |
+| [PoolFactory](poolfactory.md) | Builds pools, including for types this package does not reference | [Details](poolfactory.md) |
+| [ArrayPoolBufferWriterProvider&lt;T&gt;](arraypoolbufferwriterprovider.md) | Immutable writer settings that rent from a shared pool | [Details](arraypoolbufferwriterprovider.md) |
 
 ### Internal Support Classes
 
 | Class | Description |
 |-------|-------------|
 | ArrayPoolBufferSegment&lt;T&gt; | Internal buffer segment for ReadOnlySequence |
-| ArrayPoolBufferSequence&lt;T&gt; | Internal buffer sequence management |
+| ArrayPoolBufferSequence&lt;T&gt; | Internal `ISequenceOwner<T>` over a chain of pooled segments |
 
 ## Quick Examples
 
@@ -83,13 +94,42 @@ ReadOnlySequence<byte> result = writer.GetReadOnlySequence();
 // Pooled chunks are returned once the writer is disposed
 ```
 
+### Handing a payload on, past the scope that built it
+
+```csharp
+static SequenceLease<byte> BuildPayload()
+{
+    var writer = ObjectPools.RentBufferWriter<byte>();   // deliberately not `using`
+    Serialize(writer);
+    return writer.LeaseSequence();                       // 0 bytes; the writer rides along
+}
+
+using SequenceLease<byte> payload = BuildPayload();
+var reader = new Utf8JsonReader(payload.Sequence);       // read in place, no copy
+// disposing the lease returns the writer to its pool, and its buffers to ArrayPool
+```
+
+### Pooled buffer writers
+
+```csharp
+// One profile per use case; every profile draws from the same pool
+static readonly ArrayPoolBufferWriterProvider<byte> JsonWriters = new(maxChunkSize: 1 << 20);
+
+using var writer = JsonWriters.Rent();
+// ... write ...
+// Disposing returns the writer itself to the pool, not just its buffers
+```
+
 ### ObjectOwner
 
 ```csharp
-var pool = ObjectPools.Create<MyClass>();
+// Pool your own type with a factory and a reset delegate
+ObjectPool<MyClass> pool = PoolFactory.CreatePool(
+    create: () => new MyClass(),
+    reset: obj => { obj.Clear(); return true; });
 
 using var owner = new ObjectOwner<MyClass>(pool);
-MyClass obj = owner.Object;
+MyClass obj = owner.PooledObject;
 
 // Use obj...
 
@@ -126,9 +166,11 @@ Renting from `ArrayPool<T>.Shared` instead of allocating avoids resize-copy chur
 ## A Few Things to Watch For
 
 - Always wrap streams and writers in a `using` so pooled buffers actually get returned.
-- A `ReadOnlySequence<byte>` from these types is only valid until the next write or dispose — don't hold onto it past that point.
+- A `ReadOnlySequence<byte>` from `GetReadOnlySequence()` is **borrowed** — valid only until the next write or dispose. When the payload has to leave that scope, use `LeaseSequence()` — it costs nothing and carries the producer along. See [`SequenceLease<T>`](sequencelease.md).
+- `ArrayPoolMemoryStream` cannot hand out a single contiguous array, so `GetBuffer()` throws and `TryGetBuffer()` returns `false`. Reach for the sequence instead.
 - If you know roughly how much you'll write, pass a size hint; it cuts down on reallocations.
 - Keep writer/stream lifetimes short and scoped to the operation that needs them.
+- **Never touch a pooled writer after disposing it.** A returned instance does not throw `ObjectDisposedException`; it silently becomes whatever the next renter is doing — the same contract as `ArrayPool<T>` itself.
 
 ## See Also
 
