@@ -57,7 +57,7 @@ using CryptoHives.Foundation.Memory.Pools;
 | Class | Description |
 |-------|-------------|
 | ArrayPoolBufferSegment&lt;T&gt; | Internal buffer segment for ReadOnlySequence |
-| ArrayPoolBufferSequence&lt;T&gt; | Internal `ISequenceOwner<T>` over a chain of pooled segments |
+| ArrayPoolBufferSequence&lt;T&gt; | Internal `IDisposable` over a chain of pooled segments. Currently unreferenced — [`SequenceLease<T>`](sequencelease.md) covers what it was for. |
 
 ## Quick Examples
 
@@ -163,6 +163,45 @@ Renting from `ArrayPool<T>.Shared` instead of allocating avoids resize-copy chur
 - **ArrayPoolBufferWriter**: exponential chunk growth with configurable limits
 - **ReadOnlySequenceMemoryStream**: zero-copy wrapper with O(n) seeking
 
+## Clearing Sensitive Buffers
+
+A buffer arrives from `ArrayPool<T>` holding whatever the previous tenant left in it and, by default,
+goes back the same way. Any type here that owns pooled memory takes a `clearArray` flag that zeroes
+each buffer on its way back, so the next renter cannot read what you wrote:
+
+```csharp
+using var stream  = new ArrayPoolMemoryStream(clearArray: true);
+using var segment = PooledSegment<byte>.Rent(256, clearArray: true);
+
+// For writers the flag belongs to the profile, not the call site
+static readonly ArrayPoolBufferWriterProvider<byte> Secrets = new(clearArray: true);
+using var writer = Secrets.Rent();
+```
+
+| Type | How to ask |
+|------|-----------|
+| [ArrayPoolMemoryStream](arraypoolmemorystream.md) | `clearArray` on any owning constructor |
+| [PooledSegment&lt;T&gt;](pooledsegment.md) | `Rent(minimumLength, clearArray)` |
+| [ArrayPoolBufferWriter&lt;T&gt;](arraypoolbufferwriter.md) | `clearArray` on the constructor, or on the [provider](arraypoolbufferwriterprovider.md) |
+
+It is opt-in everywhere. Zeroing costs a pass over each buffer, and most callers carry nothing worth
+hiding. Types that do **not** own their buffers — the read-only `ArrayPoolMemoryStream` constructor,
+`AllocatedSegment<T>` — have no such flag, because they never return anything to a pool.
+
+For a pooled writer the flag is applied when the writer is *rented* and read when it is *released*,
+so the outgoing renter's setting is always the one in force. That ordering is what makes the zeroing
+trustworthy, and it is why the settings are not publicly writable.
+
+## Pools and Memory Pressure
+
+The two layers behave differently, which is worth knowing before you size anything:
+
+- **Rented arrays** are released automatically. `ArrayPool<T>.Shared` registers a gen-2 GC callback
+  and trims itself according to memory pressure.
+- **Pooled objects are not.** `DefaultObjectPool<T>` never trims — it drops an instance only when a
+  policy rejects it or the pool is already full, and otherwise holds what it has for the life of the
+  process. Bound it with `maximumRetained` if that matters. See [PoolFactory](poolfactory.md).
+
 ## A Few Things to Watch For
 
 - Always wrap streams and writers in a `using` so pooled buffers actually get returned.
@@ -170,6 +209,7 @@ Renting from `ArrayPool<T>.Shared` instead of allocating avoids resize-copy chur
 - `ArrayPoolMemoryStream` cannot hand out a single contiguous array, so `GetBuffer()` throws and `TryGetBuffer()` returns `false`. Reach for the sequence instead.
 - If you know roughly how much you'll write, pass a size hint; it cuts down on reallocations.
 - Keep writer/stream lifetimes short and scoped to the operation that needs them.
+- Carrying secrets? Pass `clearArray: true`, or the buffer goes back to the pool exactly as you wrote it.
 - **Never touch a pooled writer after disposing it.** A returned instance does not throw `ObjectDisposedException`; it silently becomes whatever the next renter is doing — the same contract as `ArrayPool<T>` itself.
 
 ## See Also
