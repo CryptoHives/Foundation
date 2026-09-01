@@ -25,6 +25,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     private readonly int _count;
     private readonly int _bufferSize;
     private readonly bool _externalBuffersReadOnly;
+    private readonly bool _clearArray;
     private int _bufferIndex;
     private ArraySegment<byte> _currentBuffer;
     private int _currentPosition;
@@ -67,8 +68,13 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     /// <param name="bufferSize">The size of the buffers</param>
     /// <param name="start">The start of the ArraySegment in a buffer</param>
     /// <param name="count">The count of bytes in the ArraySegment that is used in the buffer</param>
+    /// <param name="clearArray">
+    /// Whether each buffer is zeroed as it goes back to the <see cref="ArrayPool{T}"/>, so the next
+    /// renter cannot read what this stream wrote. Set it when the stream carries key material or
+    /// other secrets; the cost is one <c>Array.Clear</c> per buffer at disposal.
+    /// </param>
     /// <exception cref="ArgumentException"></exception>
-    public ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count)
+    public ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count, bool clearArray = false)
     {
         if (bufferSize <= 0) throw new ArgumentException("The bufferSize must be larger than zero", nameof(bufferSize));
         if (bufferListSize <= 0) throw new ArgumentException("The initial bufferListSize must be larger than zero", nameof(bufferListSize));
@@ -82,6 +88,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
         _count = count;
         _endOfLastBuffer = 0;
         _externalBuffersReadOnly = false;
+        _clearArray = clearArray;
 
         SetCurrentBuffer(0);
     }
@@ -91,23 +98,47 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
     /// Creates a writeable stream that creates buffers as necessary using buffer defaults.
     /// </summary>
     public ArrayPoolMemoryStream() :
-        this(DefaultBufferListSize, DefaultBufferSize, 0, DefaultBufferSize)
+        this(DefaultBufferListSize, DefaultBufferSize, 0, DefaultBufferSize, false)
+    { }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
+    /// Creates a writeable stream using buffer defaults, choosing whether buffers are zeroed as they
+    /// return to the <see cref="ArrayPool{T}"/>.
+    /// </summary>
+    /// <param name="clearArray">
+    /// Whether each buffer is zeroed as it goes back to the <see cref="ArrayPool{T}"/>, so the next
+    /// renter cannot read what this stream wrote.
+    /// </param>
+    public ArrayPoolMemoryStream(bool clearArray) :
+        this(DefaultBufferListSize, DefaultBufferSize, 0, DefaultBufferSize, clearArray)
     { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
     /// Creates a writeable stream that creates buffers as necessary using buffer list size defaults.
     /// </summary>
-    public ArrayPoolMemoryStream(int bufferSize) :
-        this(DefaultBufferListSize, bufferSize, 0, bufferSize)
+    /// <param name="bufferSize">The size of the buffers</param>
+    /// <param name="clearArray">
+    /// Whether each buffer is zeroed as it goes back to the <see cref="ArrayPool{T}"/>, so the next
+    /// renter cannot read what this stream wrote.
+    /// </param>
+    public ArrayPoolMemoryStream(int bufferSize, bool clearArray = false) :
+        this(DefaultBufferListSize, bufferSize, 0, bufferSize, clearArray)
     { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolMemoryStream"/> class.
     /// Creates a writeable stream that creates buffers as necessary.
     /// </summary>
-    public ArrayPoolMemoryStream(int bufferListSize, int bufferSize) :
-        this(bufferListSize, bufferSize, 0, bufferSize)
+    /// <param name="bufferListSize">The initial size of the buffer list</param>
+    /// <param name="bufferSize">The size of the buffers</param>
+    /// <param name="clearArray">
+    /// Whether each buffer is zeroed as it goes back to the <see cref="ArrayPool{T}"/>, so the next
+    /// renter cannot read what this stream wrote.
+    /// </param>
+    public ArrayPoolMemoryStream(int bufferListSize, int bufferSize, bool clearArray = false) :
+        this(bufferListSize, bufferSize, 0, bufferSize, clearArray)
     { }
 
     /// <inheritdoc/>
@@ -561,7 +592,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
             byte[]? array = _buffers[ii].Array;
             if (array != null)
             {
-                ArrayPool<byte>.Shared.Return(array);
+                ArrayPool<byte>.Shared.Return(array, _clearArray);
             }
 
             _buffers.RemoveAt(ii);
@@ -782,7 +813,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
                 {
                     if (buffer.Array != null)
                     {
-                        ArrayPool<byte>.Shared.Return(buffer.Array);
+                        ArrayPool<byte>.Shared.Return(buffer.Array, _clearArray);
                     }
                 }
             }

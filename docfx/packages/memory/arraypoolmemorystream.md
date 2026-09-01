@@ -36,10 +36,36 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
 | Constructor | Description |
 |-------------|-------------|
 | `ArrayPoolMemoryStream()` | Creates a writable stream with default buffer size (4096 bytes) |
-| `ArrayPoolMemoryStream(int bufferSize)` | Creates a writable stream with specified buffer size |
-| `ArrayPoolMemoryStream(int bufferListSize, int bufferSize)` | Creates a writable stream with custom buffer list and buffer sizes |
-| `ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count)` | Creates a writable stream with full customization |
+| `ArrayPoolMemoryStream(bool clearArray)` | Creates a writable stream with default sizes that zeroes its buffers on release |
+| `ArrayPoolMemoryStream(int bufferSize, bool clearArray = false)` | Creates a writable stream with specified buffer size |
+| `ArrayPoolMemoryStream(int bufferListSize, int bufferSize, bool clearArray = false)` | Creates a writable stream with custom buffer list and buffer sizes |
+| `ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count, bool clearArray = false)` | Creates a writable stream with full customization |
 | `ArrayPoolMemoryStream(IEnumerable<ArraySegment<byte>> buffers)` | Creates a read-only stream from existing buffer segments |
+
+`clearArray` is optional on every owning constructor and defaults to `false`, so existing code keeps
+compiling and keeps its behaviour. The read-only constructor has no such parameter: it does not own
+the buffers it wraps and never returns them to the pool.
+
+## Sensitive Payloads
+
+A buffer arrives from `ArrayPool<byte>` holding whatever the previous tenant left in it and, by
+default, goes back the same way. If a stream carries key material, credentials or anything else that
+must not outlive it, construct it with `clearArray: true`:
+
+```csharp
+using (var stream = new ArrayPoolMemoryStream(clearArray: true))
+{
+    WriteKeyMaterial(stream);
+    Send(stream.GetReadOnlySequence());
+}   // every buffer is zeroed before it reaches the array pool
+```
+
+The flag is honoured on **both** release paths — disposal, and the buffers a `SetLength` truncation
+drops — so shrinking a stream does not quietly hand a populated array back to the pool.
+
+This mirrors `clearArray` on [`ArrayPoolBufferWriter<T>`](arraypoolbufferwriter.md) and
+`PooledSegment<T>.Rent`. It is opt-in rather than the default because the zeroing is a real cost per
+buffer, and most streams carry nothing worth hiding.
 
 ## Properties
 
@@ -220,6 +246,9 @@ int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationTok
 using var stream = new ArrayPoolMemoryStream(bufferSize: 8192);
 
 // Create stream with custom buffer list capacity
+// Zero each buffer as it returns to the pool
+using var secrets = new ArrayPoolMemoryStream(bufferSize: 8192, clearArray: true);
+
 using var stream2 = new ArrayPoolMemoryStream(
     bufferListSize: 16,  // Initial capacity for buffer list
     bufferSize: 4096     // Size of each buffer
