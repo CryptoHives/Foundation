@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1000 // Do not declare static members on generic types
@@ -7,6 +7,7 @@ namespace CryptoHives.Foundation.Memory.Buffers;
 
 using System;
 using System.Buffers;
+using System.Threading;
 
 /// <summary>
 /// An <see cref="ISequenceOwner{T}"/> that adapts a single <see cref="ISegmentOwner{T}"/> into a
@@ -78,8 +79,8 @@ public sealed class SegmentSequence<T> : ISequenceOwner<T>
     /// <remarks>Disposes the adopted <see cref="ISegmentOwner{T}"/>. Idempotent.</remarks>
     public void Dispose()
     {
-        ISegmentOwner<T>? owner = _owner;
-        _owner = null;
+        // Exactly-once: whichever caller wins the exchange is the one that disposes the adopted owner.
+        ISegmentOwner<T>? owner = Interlocked.Exchange(ref _owner, null);
         owner?.Dispose();
     }
 }
