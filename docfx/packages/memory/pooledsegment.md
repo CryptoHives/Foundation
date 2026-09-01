@@ -37,7 +37,7 @@ by an unintended struct copy.
 ## Factory Method
 
 ```csharp
-public static ISegmentOwner<T> Rent(int minimumLength)
+public static ISegmentOwner<T> Rent(int minimumLength, bool clearArray = false)
 ```
 
 Rents a buffer with at least `minimumLength` elements from `ArrayPool<T>.Shared` and
@@ -46,8 +46,30 @@ returns it wrapped in an `PooledSegment<T>`.
 | Parameter | Description |
 |-----------|-------------|
 | `minimumLength` | The minimum number of elements required |
+| `clearArray` | Whether to zero the buffer as it returns to the pool. Defaults to `false`. |
 
 **Returns** — An owner whose `Segment.Count` equals `minimumLength`.
+
+### Holding secrets
+
+A rented buffer arrives holding whatever the previous tenant left in it, and by default goes back the
+same way. Pass `clearArray: true` for key material or anything else that should not be legible to the
+next renter:
+
+```csharp
+using ISegmentOwner<byte> key = PooledSegment<byte>.Rent(32, clearArray: true);
+
+DeriveKey(key.Segment.AsSpan());
+Sign(payload, key.Segment.AsSpan());
+// the buffer is zeroed on the way back to the pool
+```
+
+Two things it does **not** do. It says nothing about the window in which the data was live, or about
+copies taken elsewhere — it only stops the *next* renter reading it. And it is not free: disposal
+costs a pass over the buffer, proportional to its length.
+
+The whole array is zeroed, not just the current segment window, so narrowing the view with
+`TrySetSegment` cannot leave part of it legible.
 
 ## Properties
 
@@ -107,8 +129,10 @@ segment[3] = 0x04;
 
 - The backing array rented from `ArrayPool<T>.Shared` may be larger than `minimumLength`;
   `Segment.Count` always reflects the requested length.
-- In `DEBUG` builds the array is cleared on return (aids leak detection). Release builds
-  skip the clear for performance.
+- `DEBUG` builds clear every returned array whatever `clearArray` says, turning a use-after-return
+  into obvious zeroes rather than plausible stale data. That is a **diagnostic, not a security
+  control** — never conclude from debug behaviour that a release build wipes anything. The
+  `clearArray` flag itself is honoured in every configuration.
 - Calling `Dispose` more than once is safe; subsequent calls are no-ops.
 - After `Dispose`, `Segment.Array` is `null`.
 

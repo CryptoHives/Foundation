@@ -1,4 +1,4 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+﻿## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
@@ -27,6 +27,9 @@ dotnet add package CryptoHives.Foundation.Memory
 - **Zero-copy handoff** — expose written data as a `ReadOnlySequence<byte>` without copying anything
 - **`IBufferWriter<T>` support** — `ArrayPoolBufferWriter<T>` works directly with `Utf8JsonWriter`, `PipeWriter`, or any other `IBufferWriter` consumer
 - **Read-only sequence streaming** — wrap an existing `ReadOnlySequence<byte>` as a `Stream` without copying
+- **Lifetime-bound payloads** — `SequenceLease<T>` carries a `ReadOnlySequence<T>` together with the producer that owns it, so data can leave the scope that built it without a copy and without an allocation
+- **Poolable buffer writers** — the writer itself is recycled, not just its buffers; `ArrayPoolBufferWriterProvider<T>` keeps many settings profiles on a single shared pool
+- **Opt-in zeroing** — `clearArray` wipes a buffer on its way back to the pool, for callers holding key material
 - **RAII ownership** — `ObjectOwner<T>` returns pooled objects automatically on dispose
 - **Segment ownership primitives** — `ISegmentOwner<T>` unifies three strategies: `PooledSegment<T>` rents from `ArrayPool<T>`, `AllocatedSegment<T>` wraps GC-managed arrays, and `EmptySegment<T>` is a zero-allocation null-object sentinel
 
@@ -72,6 +75,21 @@ await socket.SendAsync(result.First, WebSocketMessageType.Text, true, ct).Config
 // Pooled chunks returned on dispose
 ```
 
+### Handing a Payload Past the Scope That Built It
+
+```csharp
+static SequenceLease<byte> BuildPayload()
+{
+    var writer = ObjectPools.RentBufferWriter<byte>();   // deliberately not `using`
+    Serialize(writer);
+    return writer.LeaseSequence();                       // the writer rides along
+}
+
+using SequenceLease<byte> payload = BuildPayload();
+var reader = new Utf8JsonReader(payload.Sequence);       // read in place, no copy
+// disposing the lease returns the writer to its pool, and its buffers to ArrayPool
+```
+
 ### Read-Only Sequence as Stream
 
 ```csharp
@@ -90,8 +108,11 @@ await DeserializeFromStreamAsync(stream, ct).ConfigureAwait(false);
 using CryptoHives.Foundation.Memory.Pools;
 using Microsoft.Extensions.ObjectPool;
 
-// Any Microsoft.Extensions.ObjectPool pool works; PoolFactory has ready-made ones
-ObjectPool<MyExpensiveObject> pool = ObjectPool.Create<MyExpensiveObject>();
+// Any Microsoft.Extensions.ObjectPool pool works; PoolFactory builds one from a factory
+// and a reset delegate, including for types this package does not reference
+ObjectPool<MyExpensiveObject> pool = PoolFactory.CreatePool(
+    create: () => new MyExpensiveObject(),
+    reset: obj => { obj.Clear(); return true; });
 
 using var owner = new ObjectOwner<MyExpensiveObject>(pool);
 MyExpensiveObject obj = owner.PooledObject;

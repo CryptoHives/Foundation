@@ -28,6 +28,7 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
 - **Fewer large allocations**: Reuses rented buffers to avoid repeated large allocations and LOH churn
 - **No resize-copy on growth**: Appends new rented segments instead of reallocating and copying
 - **Zero-copy multi-segment access**: `GetReadOnlySequence()` exposes internal segments as `ReadOnlySequence<byte>`
+- **Escapes the scope**: `LeaseSequence()` hands the payload on with its own lifetime
 - **Span APIs**: Span-based read/write paths reduce intermediate allocations
 
 ## Constructors
@@ -35,10 +36,36 @@ public sealed class ArrayPoolMemoryStream : MemoryStream
 | Constructor | Description |
 |-------------|-------------|
 | `ArrayPoolMemoryStream()` | Creates a writable stream with default buffer size (4096 bytes) |
-| `ArrayPoolMemoryStream(int bufferSize)` | Creates a writable stream with specified buffer size |
-| `ArrayPoolMemoryStream(int bufferListSize, int bufferSize)` | Creates a writable stream with custom buffer list and buffer sizes |
-| `ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count)` | Creates a writable stream with full customization |
+| `ArrayPoolMemoryStream(bool clearArray)` | Creates a writable stream with default sizes that zeroes its buffers on release |
+| `ArrayPoolMemoryStream(int bufferSize, bool clearArray = false)` | Creates a writable stream with specified buffer size |
+| `ArrayPoolMemoryStream(int bufferListSize, int bufferSize, bool clearArray = false)` | Creates a writable stream with custom buffer list and buffer sizes |
+| `ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count, bool clearArray = false)` | Creates a writable stream with full customization |
 | `ArrayPoolMemoryStream(IEnumerable<ArraySegment<byte>> buffers)` | Creates a read-only stream from existing buffer segments |
+
+`clearArray` is optional on every owning constructor and defaults to `false`, so existing code keeps
+compiling and keeps its behaviour. The read-only constructor has no such parameter: it does not own
+the buffers it wraps and never returns them to the pool.
+
+## Sensitive Payloads
+
+A buffer arrives from `ArrayPool<byte>` holding whatever the previous tenant left in it and, by
+default, goes back the same way. If a stream carries key material, credentials or anything else that
+must not outlive it, construct it with `clearArray: true`:
+
+```csharp
+using (var stream = new ArrayPoolMemoryStream(clearArray: true))
+{
+    WriteKeyMaterial(stream);
+    Send(stream.GetReadOnlySequence());
+}   // every buffer is zeroed before it reaches the array pool
+```
+
+The flag is honoured on **both** release paths — disposal, and the buffers a `SetLength` truncation
+drops — so shrinking a stream does not quietly hand a populated array back to the pool.
+
+This mirrors `clearArray` on [`ArrayPoolBufferWriter<T>`](arraypoolbufferwriter.md) and
+`PooledSegment<T>.Rent`. It is opt-in rather than the default because the zeroing is a real cost per
+buffer, and most streams carry nothing worth hiding.
 
 ## Properties
 
@@ -81,9 +108,53 @@ public ReadOnlySequence<byte> GetReadOnlySequence()
 public bool TryCopyTo(Span<byte> destination, out int bytesWritten)
 ```
 
-Returns a `ReadOnlySequence<byte>` representing all data in the stream. The sequence is valid until the next write operation or disposal. There is no allocation or copy involved in the service call. This is the recommended way to use the streamed data, but it requires extra lifetime management of the stream.
+Returns a `ReadOnlySequence<byte>` representing all data in the stream. The sequence **borrows** the stream's buffers and is valid only until the next write operation or disposal. There is no allocation or copy involved. This is the recommended way to use the streamed data, but it requires extra lifetime management of the stream.
 
 `TryCopyTo` provides a non-throwing copy path for callers that already own a destination buffer. The `bytesWritten` variable reports the copied length on success and `0` when the destination is too small.
+
+### Letting the Payload Leave the Scope
+
+```csharp
+public SequenceLease<byte> LeaseSequence()
+```
+
+Pairs the payload with the stream itself as a single disposable value. Disposing the
+[`SequenceLease<byte>`](sequencelease.md) disposes the stream, which returns its buffers to the array
+pool.
+
+The lease is a struct, so this costs only the segment chain `GetReadOnlySequence()` builds — nothing
+beyond what reading the payload costs anyway.
+
+```csharp
+using SequenceLease<byte> payload = stream.LeaseSequence();
+Send(payload.Sequence);
+```
+
+### Length
+
+```csharp
+public override void SetLength(long value)
+```
+
+Truncating returns the segments that fall away to the pool and keeps the rest, which makes `SetLength(0)` a cheap way to reuse the stream for another payload. Growing appends **zeroed** bytes, since a rented array carries whatever the previous tenant left in it. As with `MemoryStream`, the position is preserved except that one past the new end is pulled back to it.
+
+Throws `NotSupportedException` on a stream over externally owned buffers, and `ArgumentOutOfRangeException` for a negative length or one above `int.MaxValue`.
+
+### Members That Cannot Expose a Single Buffer
+
+Because the payload is spread across several pooled segments, there is no one contiguous array to hand out. These `MemoryStream` members are overridden accordingly:
+
+| Member | Behaviour |
+|--------|-----------|
+| `GetBuffer()` | Throws `NotSupportedException` |
+| `TryGetBuffer(out ArraySegment<byte>)` | Returns `false` |
+| `WriteTo(Stream)` | Writes the whole payload, one segment at a time. Does not move the read cursor. |
+| `Capacity` | Gets the total capacity of the rented segments. The setter throws `NotSupportedException`; capacity grows automatically. |
+
+`GetBuffer` and `TryGetBuffer` refuse rather than special-casing a single-segment stream on purpose: a pooled array handed out here would be returned to the pool when the stream is disposed, trading a wrong answer for a use-after-free. Use `GetReadOnlySequence()` or `LeaseSequence()` instead.
+
+> [!NOTE]
+> The async paths need no such care. `CopyToAsync`, `ReadAsync` and `WriteAsync` are guarded by `MemoryStream`'s own derived-type check and fall back to the virtual synchronous methods, so they read and write the pooled segments correctly.
 
 ### Other Methods
 
@@ -175,6 +246,9 @@ int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationTok
 using var stream = new ArrayPoolMemoryStream(bufferSize: 8192);
 
 // Create stream with custom buffer list capacity
+// Zero each buffer as it returns to the pool
+using var secrets = new ArrayPoolMemoryStream(bufferSize: 8192, clearArray: true);
+
 using var stream2 = new ArrayPoolMemoryStream(
     bufferListSize: 16,  // Initial capacity for buffer list
     bufferSize: 4096     // Size of each buffer
@@ -284,6 +358,7 @@ var sequence = stream.GetReadOnlySequence();
 
 ## See Also
 
+- [ISequenceOwner&lt;T&gt;](isequenceowner.md)
 - [ArrayPoolBufferWriter&lt;T&gt;](arraypoolbufferwriter.md)
 - [ReadOnlySequenceMemoryStream](readonlysequencememorystream.md)
 - [Memory Package Overview](index.md)

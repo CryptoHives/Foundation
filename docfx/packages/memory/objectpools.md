@@ -36,6 +36,36 @@ Gets a pooled `StringBuilder` instance wrapped in an `ObjectOwner<StringBuilder>
 
 **Remarks**: The returned `StringBuilder` is cleared before being returned to the pool. The initial capacity is 128 characters, and instances up to 1024 characters are retained in the pool.
 
+### RentBufferWriter
+
+```csharp
+public static ArrayPoolBufferWriter<T> RentBufferWriter<T>()
+```
+
+Rents an [`ArrayPoolBufferWriter<T>`](arraypoolbufferwriter.md) with default settings from the shared
+pool for its element type.
+
+**Returns**: A writer in its just-constructed state.
+
+**Remarks**: No `ObjectOwner<T>` wrapper is needed here, unlike `GetStringBuilder`, because the writer
+is disposable in its own right — disposing it returns it to the pool. For anything other than the
+default settings, declare an [`ArrayPoolBufferWriterProvider<T>`](arraypoolbufferwriterprovider.md)
+once and rent from it; it draws from this same pool, so configuring a use case costs no extra
+instances.
+
+```csharp
+using var writer = ObjectPools.RentBufferWriter<byte>();
+
+data.CopyTo(writer.GetSpan(data.Length));
+writer.Advance(data.Length);
+
+Consume(writer.GetReadOnlySequence());   // borrowed, valid in this scope
+```
+
+> [!WARNING]
+> Do not use the writer after disposing it. A returned instance does not throw
+> `ObjectDisposedException`; it silently becomes whatever the next renter is doing.
+
 ## Usage Examples
 
 ### Basic StringBuilder Usage
@@ -44,7 +74,7 @@ Gets a pooled `StringBuilder` instance wrapped in an `ObjectOwner<StringBuilder>
 using CryptoHives.Foundation.Memory.Pools;
 
 using var owner = ObjectPools.GetStringBuilder();
-StringBuilder sb = owner.Object;
+StringBuilder sb = owner.PooledObject;
 
 sb.Append("Hello");
 sb.Append(" World");
@@ -59,7 +89,7 @@ string result = sb.ToString();
 public string FormatMessage(string name, string email)
 {
     using var owner = ObjectPools.GetStringBuilder();
-    StringBuilder sb = owner.Object;
+    StringBuilder sb = owner.PooledObject;
     
     sb.Append("Name: ");
     sb.Append(name);
@@ -75,11 +105,17 @@ public string FormatMessage(string name, string email)
 
 The shared `StringBuilder` pool uses the following default settings:
 
-- **Initial Capacity**: 128 characters
-- **Maximum Retained Capacity**: 1024 characters
-- **Pool Size**: Recommended 1024 instances (may vary based on implementation)
+- **Initial capacity of a new builder**: 128 characters
+- **Largest builder still worth keeping**: 1024 characters — one that has grown past this is discarded on return rather than pooled
+- **Builders retained**: up to 1024, a recommendation rather than a hard cap
 
-Instances that exceed the maximum retained capacity are not returned to the pool.
+> [!NOTE]
+> Nothing in these pools is released under memory pressure. `DefaultObjectPool<T>` drops an instance
+> only when its policy rejects one or the pool is already full on return, so a pool that has filled up
+> stays filled for the life of the process. The rented arrays behind
+> [`ArrayPoolBufferWriter<T>`](arraypoolbufferwriter.md) are a separate matter — those come from
+> `ArrayPool<T>.Shared`, which registers a gen-2 GC callback and trims itself according to memory
+> pressure.
 
 ## Thread Safety
 
@@ -92,7 +128,7 @@ Instances that exceed the maximum retained capacity are not returned to the pool
 ```csharp
 // Good: Temporary string construction
 using var owner = ObjectPools.GetStringBuilder();
-StringBuilder sb = owner.Object;
+StringBuilder sb = owner.PooledObject;
 sb.Append("Temporary data");
 return sb.ToString();
 ```
@@ -104,7 +140,7 @@ return sb.ToString();
 for (int i = 0; i < 1000; i++)
 {
     using var owner = ObjectPools.GetStringBuilder();
-    StringBuilder sb = owner.Object;
+    StringBuilder sb = owner.PooledObject;
     
     sb.Append("Item ");
     sb.Append(i);
@@ -118,7 +154,7 @@ for (int i = 0; i < 1000; i++)
 ```csharp
 // Bad: Overhead not worth it
 using var owner = ObjectPools.GetStringBuilder();
-string result = owner.Object.Append("Hello").ToString();
+string result = owner.PooledObject.Append("Hello").ToString();
 
 // Better: Just use string
 string result = "Hello";
@@ -129,7 +165,7 @@ string result = "Hello";
 ```csharp
 // Bad: Holding pooled object too long
 var owner = ObjectPools.GetStringBuilder();
-_cachedBuilder = owner.Object; // Don't store pooled objects!
+_cachedBuilder = owner.PooledObject; // Don't store pooled objects!
 ```
 
 ## Performance Characteristics
@@ -156,7 +192,7 @@ for (int i = 0; i < 1000; i++)
 for (int i = 0; i < 1000; i++)
 {
     using var owner = ObjectPools.GetStringBuilder(); // Reuses instances
-    StringBuilder sb = owner.Object;
+    StringBuilder sb = owner.PooledObject;
     sb.Append("Item ");
     sb.Append(i);
     Process(sb.ToString());
@@ -165,27 +201,36 @@ for (int i = 0; i < 1000; i++)
 
 ## Extension Points
 
-While `ObjectPools` currently only provides `GetStringBuilder()`, the pattern can be extended:
+`ObjectPools` covers a couple of common cases. For anything else, build a pool with
+[`PoolFactory.CreatePool<T>`](poolfactory.md) and pair it with an
+[`ObjectOwner<T>`](objectowner.md):
 
 ```csharp
-// Future extension example
 public static class MyObjectPools
 {
-  public static ObjectOwner<List<T>> GetList<T>() => 
-        new ObjectOwner<List<T>>(SharedListPool<T>.Instance);
-    
-    public static ObjectOwner<Dictionary<TKey, TValue>> GetDictionary<TKey, TValue>() =>
-        new ObjectOwner<Dictionary<TKey, TValue>>(SharedDictionaryPool<TKey, TValue>.Instance);
+    private static readonly ObjectPool<List<int>> _lists = PoolFactory.CreatePool(
+        create: () => new List<int>(),
+        reset:  list => { list.Clear(); return true; });
+
+    public static ObjectOwner<List<int>> GetList() => new(_lists);
 }
+
+using var owner = MyObjectPools.GetList();
+List<int> list = owner.PooledObject;
 ```
+
+`CreatePool` is also how you pool a type this package deliberately does not reference — a
+`Utf8JsonWriter`, for instance. See [PoolFactory](poolfactory.md).
 
 ## See Also
 
 - [ObjectOwner&lt;T&gt;](objectowner.md)
-- [StringBuilder Documentation](https://docs.microsoft.com/en-us/dotnet/api/system.text.stringbuilder)
-- [ObjectPool&lt;T&gt; Documentation](https://docs.microsoft.com/en-us/dotnet/api/microsoft.extensions.objectpool.objectpool-1)
+- [PoolFactory](poolfactory.md)
+- [ArrayPoolBufferWriterProvider&lt;T&gt;](arraypoolbufferwriterprovider.md)
+- [StringBuilder Documentation](https://learn.microsoft.com/dotnet/api/system.text.stringbuilder)
+- [ObjectPool&lt;T&gt; Documentation](https://learn.microsoft.com/dotnet/api/microsoft.extensions.objectpool.objectpool-1)
 - [Memory Package Overview](index.md)
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives
