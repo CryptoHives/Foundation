@@ -639,7 +639,9 @@ internal struct GcmCore
             {
                 if (paddedArray != null)
                 {
-                    ArrayPool<byte>.Shared.Return(paddedArray);
+                    // Cleared on return for uniformity; the padded nonce is public, and is
+                    // transmitted alongside the ciphertext.
+                    ArrayPool<byte>.Shared.Return(paddedArray, clearArray: true);
                 }
             }
         }

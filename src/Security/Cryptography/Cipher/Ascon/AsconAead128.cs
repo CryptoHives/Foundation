@@ -88,8 +88,9 @@ public sealed class AsconAead128 : IAeadCipher
     /// </summary>
     public const int TagSizeBytesConst = TagSizeBits / 8;
 
-    private readonly ulong _k0;
-    private readonly ulong _k1;
+    private ulong _k0;
+    private ulong _k1;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AsconAead128"/> class.
@@ -131,6 +132,8 @@ public sealed class AsconAead128 : IAeadCipher
                         Span<byte> ciphertext, Span<byte> tag,
                         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (nonce.Length != NonceSizeBytesConst)
             throw new ArgumentException($"Nonce must be {NonceSizeBytesConst} bytes.", nameof(nonce));
         if (ciphertext.Length < plaintext.Length)
@@ -163,6 +166,8 @@ public sealed class AsconAead128 : IAeadCipher
                         ReadOnlySpan<byte> tag, Span<byte> plaintext,
                         ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (nonce.Length != NonceSizeBytesConst)
             throw new ArgumentException($"Nonce must be {NonceSizeBytesConst} bytes.", nameof(nonce));
         if (tag.Length != TagSizeBytesConst)
@@ -234,7 +239,12 @@ public sealed class AsconAead128 : IAeadCipher
     /// <inheritdoc/>
     public void Dispose()
     {
-        // Key stored as readonly ulong fields; no sensitive arrays to clear.
+        // The key lives in two ulong fields rather than an array, so there is nothing to
+        // ZeroMemory - but it is still key material, and leaving it readable until the GC
+        // happens to reclaim the object is the one thing every other type here avoids.
+        _k0 = 0;
+        _k1 = 0;
+        _disposed = true;
     }
 
     /// <summary>
