@@ -1,4 +1,4 @@
-﻿# Release notes
+# Release notes
 
 One file per release, named by the **NuGet package version** — which is what you see on nuget.org
 and write in a `csproj`. The git tag carries a fourth version part that NuGet drops
@@ -8,7 +8,7 @@ Newest first.
 
 | Version | Tag | Date | Headline |
 |---|---|---|---|
-| [0.6.101](0.6.101.md) | `0.6.101.TBD` | 2026-09-01 | ML-KEM (FIPS 203), pooled buffer writers and `SequenceLease<T>`, KMAC key leak fix |
+| [0.6.101](0.6.101.md) | `0.6.101.8500` | 2026-09-01 | ML-KEM (FIPS 203), pooled buffer writers and `SequenceLease<T>`, KMAC key leak fix |
 | [0.6.79](0.6.79.md) | `0.6.79.4022` | 2026-08-12 | `AsyncKeyedLock<TKey>`, ARM SHA-1, `AsyncBarrier` deadlock fix |
 | [0.6.51](0.6.51.md) | `0.6.51.25133` | 2026-07-30 | BLAKE3 on AVX-512/AVX2/SSSE3/NEON, `ISegmentOwner<T>`, porting guides |
 | [0.6.21](0.6.21.md) | `0.6.21.58640` | 2026-07-04 | **First stable release.** Timeout support, three concurrency fixes |
