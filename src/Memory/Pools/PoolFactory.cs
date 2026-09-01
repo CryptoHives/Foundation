@@ -21,17 +21,18 @@ using System.Text;
 public static class PoolFactory
 {
     /// <summary>
-    /// The capacity of the StringBuilder objects to keep in the pool.
+    /// The default maximum number of <see cref="StringBuilder"/> instances a pool retains.
     /// </summary>
     public const int DefaultStringBuilderCapacity = 1024;
 
     /// <summary>
-    /// The max capacity of the StringBuilder object pool.
+    /// The default ceiling, in characters, on how large a <see cref="StringBuilder"/> may be and still
+    /// be worth pooling. One that has grown beyond this is discarded on return rather than retained.
     /// </summary>
     public const int DefaultMaxStringBuilderCapacity = 8 * 1024;
 
     /// <summary>
-    /// The initial capacity of the StringBuilder object pool.
+    /// The capacity, in characters, that a freshly created pooled <see cref="StringBuilder"/> starts with.
     /// </summary>
     public const int InitialStringBuilderCapacity = 128;
 
@@ -43,9 +44,22 @@ public static class PoolFactory
     /// <summary>
     /// Creates a pool of <see cref="StringBuilder"/> instances.
     /// </summary>
-    /// <param name="maxCapacity">The maximum number of items to keep in the pool. This defaults to 1024. This value is a recommendation, the pool may keep more objects than this.</param>
-    /// <param name="maxStringBuilderCapacity">The maximum capacity of the string builders to keep in the pool. This defaults to 64K.</param>
+    /// <param name="maxCapacity">
+    /// The maximum number of builders to keep, defaulting to <see cref="DefaultStringBuilderCapacity"/>.
+    /// The value is a recommendation: the pool may hold more than this.
+    /// </param>
+    /// <param name="maxStringBuilderCapacity">
+    /// The ceiling, in characters, on how large a builder may be and still be worth keeping; anything
+    /// larger is discarded on return. Defaults to <see cref="DefaultMaxStringBuilderCapacity"/>.
+    /// </param>
     /// <returns>The pool.</returns>
+    /// <remarks>
+    /// Nothing here is released under memory pressure. <see cref="DefaultObjectPool{T}"/> drops an
+    /// instance only when its policy rejects one or the pool is already full on return, so a pool that
+    /// has filled up stays filled for the life of the process. The rented arrays behind
+    /// <see cref="ArrayPoolBufferWriter{T}"/> are a separate matter: those come from
+    /// <see cref="System.Buffers.ArrayPool{T}"/>, which trims itself on every gen-2 collection.
+    /// </remarks>
     public static ObjectPool<StringBuilder> CreateStringBuilderPool(int maxCapacity = DefaultStringBuilderCapacity, int maxStringBuilderCapacity = DefaultMaxStringBuilderCapacity)
     {
         if (maxCapacity < 1) throw new ArgumentOutOfRangeException(nameof(maxCapacity));

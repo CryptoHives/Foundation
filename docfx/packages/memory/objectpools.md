@@ -105,11 +105,17 @@ public string FormatMessage(string name, string email)
 
 The shared `StringBuilder` pool uses the following default settings:
 
-- **Initial Capacity**: 128 characters
-- **Maximum Retained Capacity**: 1024 characters
-- **Pool Size**: Recommended 1024 instances (may vary based on implementation)
+- **Initial capacity of a new builder**: 128 characters
+- **Largest builder still worth keeping**: 1024 characters — one that has grown past this is discarded on return rather than pooled
+- **Builders retained**: up to 1024, a recommendation rather than a hard cap
 
-Instances that exceed the maximum retained capacity are not returned to the pool.
+> [!NOTE]
+> Nothing in these pools is released under memory pressure. `DefaultObjectPool<T>` drops an instance
+> only when its policy rejects one or the pool is already full on return, so a pool that has filled up
+> stays filled for the life of the process. The rented arrays behind
+> [`ArrayPoolBufferWriter<T>`](arraypoolbufferwriter.md) are a separate matter — those come from
+> `ArrayPool<T>.Shared`, which registers a gen-2 GC callback and trims itself according to memory
+> pressure.
 
 ## Thread Safety
 

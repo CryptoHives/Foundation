@@ -89,9 +89,15 @@ The pool behind [`ObjectPools.GetStringBuilder()`](objectpools.md).
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `DefaultStringBuilderCapacity` | 1024 | Instances kept in the string builder pool |
-| `DefaultMaxStringBuilderCapacity` | 8192 | Largest builder retained rather than discarded |
-| `InitialStringBuilderCapacity` | 128 | Capacity a fresh builder starts with |
+| `DefaultStringBuilderCapacity` | 1024 | Maximum number of builders a pool retains |
+| `DefaultMaxStringBuilderCapacity` | 8192 | Ceiling on how large a builder may be and still be worth pooling |
+| `InitialStringBuilderCapacity` | 128 | Capacity, in characters, that a fresh pooled builder starts with |
+
+> [!NOTE]
+> No pool built here is released under memory pressure. `DefaultObjectPool<T>` drops an instance only
+> when its policy rejects one or the pool is full on return, so a filled pool stays filled for the life
+> of the process. Rented *arrays* are different — `ArrayPool<T>.Shared` trims itself on every gen-2
+> collection.
 
 ## Usage
 
