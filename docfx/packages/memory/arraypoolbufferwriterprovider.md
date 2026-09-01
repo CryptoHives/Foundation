@@ -41,19 +41,23 @@ reconfigured on its way out of the pool.
 ```csharp
 public ArrayPoolBufferWriterProvider(
     bool clearArray = false,
-    int defaultChunkSize = ArrayPoolBufferWriter<T>.DefaultChunkSize,
-    int maxChunkSize = ArrayPoolBufferWriter<T>.MaxChunkSize,
+    int defaultChunkBytes = ArrayPoolBufferWriter<T>.DefaultChunkBytes,
+    int maxChunkBytes = ArrayPoolBufferWriter<T>.MaxChunkBytes,
     ObjectPool<ArrayPoolBufferWriter<T>>? pool = null);
 ```
 
 | Parameter | Description |
 |-----------|-------------|
 | `clearArray` | Whether rented writers zero each buffer as it returns to the array pool |
-| `defaultChunkSize` | The size of the first chunk a rented writer takes |
-| `maxChunkSize` | The ceiling the chunk size ramps up to. A value **at or below** `defaultChunkSize` disables the ramp, pinning every chunk to that size. |
+| `defaultChunkBytes` | Size, in **bytes**, of the first chunk a rented writer takes |
+| `maxChunkBytes` | Ceiling, in **bytes**, that the chunk size ramps up to. A value **at or below** `defaultChunkBytes` disables the ramp, pinning every chunk to that size. |
+
+Both budgets are **bytes, not elements**, so a profile means the same thing whatever `T` is — see
+[the writer's explanation](arraypoolbufferwriter.md) for why that keeps a chunk off the large object
+heap.
 | `pool` | The pool to draw from. Defaults to the shared pool for `T`. |
 
-Throws `ArgumentOutOfRangeException` when `defaultChunkSize` is less than one.
+Throws `ArgumentOutOfRangeException` when `defaultChunkBytes` is less than one.
 
 ## Methods
 
@@ -69,9 +73,9 @@ pool. Dispose it as usual and it returns itself.
 ### One profile per use case
 
 ```csharp
-static readonly ArrayPoolBufferWriterProvider<byte> JsonWriters   = new(maxChunkSize: 1 << 20);
+static readonly ArrayPoolBufferWriterProvider<byte> JsonWriters   = new(maxChunkBytes: 1 << 20);
 static readonly ArrayPoolBufferWriterProvider<byte> SecretWriters = new(clearArray: true);
-static readonly ArrayPoolBufferWriterProvider<byte> SmallMessages = new(defaultChunkSize: 64, maxChunkSize: 512);
+static readonly ArrayPoolBufferWriterProvider<byte> SmallMessages = new(defaultChunkBytes: 64, maxChunkBytes: 512);
 
 using var writer = JsonWriters.Rent();
 ```
@@ -107,8 +111,8 @@ That is also why the settings are not publicly settable: a caller who could flip
 A maximum at or below the default is a valid way to say *never grow*, not a mistake:
 
 ```csharp
-// Every chunk is exactly 512 elements
-static readonly ArrayPoolBufferWriterProvider<byte> Fixed = new(defaultChunkSize: 512, maxChunkSize: 0);
+// Every chunk is exactly 512 bytes' worth of elements
+static readonly ArrayPoolBufferWriterProvider<byte> Fixed = new(defaultChunkBytes: 512, maxChunkBytes: 0);
 ```
 
 ### An isolated pool

@@ -44,28 +44,47 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable, IR
     private ObjectPool<ArrayPoolBufferWriter<T>>? _pool;
 
     /// <summary>
-    /// The default chunk size.
+    /// The default size, in bytes, of the first chunk a writer rents.
     /// </summary>
-    public const int DefaultChunkSize = 256;
+    public const int DefaultChunkBytes = 256;
 
     /// <summary>
-    /// The default maximum chunk size.
+    /// The default ceiling, in bytes, on how large a single chunk may grow.
     /// </summary>
-    public const int MaxChunkSize = 65536;
+    /// <remarks>
+    /// 64 KiB is not arbitrary. An object reaches the large object heap at 85,000 bytes, and
+    /// <see cref="ArrayPool{T}"/> rounds a request up to a bucket of <c>16 × 2ⁿ</c> elements — the
+    /// bucket above 65,536 bytes is 131,072, with nothing in between. So 64 KiB is the largest budget
+    /// whose rented array is guaranteed to stay off the LOH.
+    /// </remarks>
+    public const int MaxChunkBytes = 64 * 1024;
+
+    /// <summary>
+    /// The smallest chunk a writer will rent, in elements. Matches the smallest
+    /// <see cref="ArrayPool{T}"/> bucket, below which a request is rounded up anyway.
+    /// </summary>
+    private const int MinChunkElements = 16;
+
+    /// <summary>
+    /// The size of one <typeparamref name="T"/> in bytes, used to turn the byte budgets above into
+    /// element counts. For a reference type this is the pointer size, which is what a
+    /// <typeparamref name="T"/><c>[]</c> stores per element.
+    /// </summary>
+    private static readonly int ElementSize = Unsafe.SizeOf<T>();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolBufferWriter{T}"/> class.
     /// </summary>
     public ArrayPoolBufferWriter()
-        : this(false, DefaultChunkSize, MaxChunkSize)
+        : this(false, DefaultChunkBytes, MaxChunkBytes)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolBufferWriter{T}"/> class.
     /// </summary>
-    public ArrayPoolBufferWriter(int defaultChunksize, int maxChunkSize)
-        : this(false, defaultChunksize, maxChunkSize)
+    public ArrayPoolBufferWriter(int defaultChunkBytes, int maxChunkBytes)
+        : this(false, defaultChunkBytes, maxChunkBytes)
     {
     }
 
@@ -73,20 +92,26 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable, IR
     /// Initializes a new instance of the <see cref="ArrayPoolBufferWriter{T}"/> class.
     /// </summary>
     /// <param name="clearArray">Whether each buffer is zeroed as it returns to the array pool.</param>
-    /// <param name="defaultChunksize">The size of the first chunk rented.</param>
-    /// <param name="maxChunkSize">
-    /// The ceiling the chunk size ramps up to. A value at or below <paramref name="defaultChunksize"/>
-    /// disables the ramp, pinning every chunk to that size.
+    /// <param name="defaultChunkBytes">The size, in bytes, of the first chunk rented.</param>
+    /// <param name="maxChunkBytes">
+    /// The ceiling, in bytes, the chunk size ramps up to. A value at or below
+    /// <paramref name="defaultChunkBytes"/> disables the ramp, pinning every chunk to that size.
     /// </param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="defaultChunksize"/> is less than one.</exception>
-    public ArrayPoolBufferWriter(bool clearArray, int defaultChunksize, int maxChunkSize)
+    /// <remarks>
+    /// Both budgets are <b>bytes, not elements</b>, so they mean the same thing whatever
+    /// <typeparamref name="T"/> is: the writer divides by the size of one element to decide how many
+    /// fit. That is what keeps a chunk off the large object heap for a wide element type — see
+    /// <see cref="MaxChunkBytes"/>. For <see cref="byte"/> the two units coincide.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="defaultChunkBytes"/> is less than one.</exception>
+    public ArrayPoolBufferWriter(bool clearArray, int defaultChunkBytes, int maxChunkBytes)
     {
         _firstSegment = _nextSegment = null;
         _offset = 0;
         _currentBuffer = _emptyBuffer;
         _disposed = false;
 
-        Configure(clearArray, defaultChunksize, maxChunkSize);
+        Configure(clearArray, defaultChunkBytes, maxChunkBytes);
     }
 
     /// <inheritdoc/>
@@ -146,8 +171,8 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable, IR
     /// Applies a set of settings to this writer and restarts its chunk-size ramp.
     /// </summary>
     /// <param name="clearArray">Whether each buffer is zeroed as it returns to the array pool.</param>
-    /// <param name="defaultChunkSize">The size of the first chunk rented.</param>
-    /// <param name="maxChunkSize">The ceiling the chunk size ramps up to.</param>
+    /// <param name="defaultChunkBytes">The size, in bytes, of the first chunk rented.</param>
+    /// <param name="maxChunkBytes">The ceiling, in bytes, the chunk size ramps up to.</param>
     /// <remarks>
     /// <para>
     /// Internal on purpose, and called only as a writer leaves the pool. That placement is what makes
@@ -162,28 +187,69 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable, IR
     /// differ from the defaults.
     /// </para>
     /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="defaultChunkSize"/> is less than one.</exception>
-    internal void Configure(bool clearArray, int defaultChunkSize, int maxChunkSize)
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="defaultChunkBytes"/> is less than one.</exception>
+    internal void Configure(bool clearArray, int defaultChunkBytes, int maxChunkBytes)
     {
-        // Only the starting size is constrained. A maximum at or below it is meaningful rather than
+        // Only the starting budget is constrained. A maximum at or below it is meaningful rather than
         // wrong: the ramp in CheckAndAllocateBuffer is guarded by _chunkSize < _maxChunkSize, so such
-        // a pairing simply pins every chunk to defaultChunkSize.
-        if (defaultChunkSize < 1)
+        // a pairing simply pins every chunk to the starting size.
+        if (defaultChunkBytes < 1)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(defaultChunkSize), defaultChunkSize, "The chunk size must be at least one element.");
+                nameof(defaultChunkBytes), defaultChunkBytes, "The chunk budget must be at least one byte.");
         }
 
         _clearArray = clearArray;
-        _defaultChunkSize = defaultChunkSize;
-        _maxChunkSize = maxChunkSize;
-        _chunkSize = defaultChunkSize;
+
+        // Budgets are in bytes so they mean the same thing for every T: a wide element type gets
+        // proportionally fewer of them per chunk rather than a proportionally larger array.
+        _defaultChunkSize = Math.Max(MinChunkElements, ElementsWithin(defaultChunkBytes));
+
+        // The maximum is deliberately not floored: zero is how a caller says "never grow", and the
+        // ramp guard in CheckAndAllocateBuffer reads it as such.
+        _maxChunkSize = ElementsWithin(maxChunkBytes);
+        _chunkSize = _defaultChunkSize;
 
         // A stale second Dispose falls through to the teardown path and sets _disposed, even though
         // the instance is by then sitting in the pool. Clearing it as the writer leaves the pool is
         // what stops the next renter inheriting that. An instance that was genuinely disposed cannot
         // reach here: the pool policy's TryReset rejects it and disposes it instead of pooling it.
         _disposed = false;
+    }
+
+    /// <summary>
+    /// Converts a byte budget into the number of elements to rent, rounded down to a power of two.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The rounding is what makes the byte budget a real ceiling. <see cref="ArrayPool{T}"/> serves a
+    /// request from a bucket of <c>16 × 2ⁿ</c> elements, rounding <em>up</em>, so an element count that
+    /// is not itself a power of two lands in the next bucket and the array is larger than asked for.
+    /// For a 12-byte element a 64 KiB budget divides to 5,461 elements, which ArrayPool would satisfy
+    /// from the 8,192 bucket — 98,304 bytes, over the large object heap threshold and precisely the
+    /// outcome the budget exists to prevent.
+    /// </para>
+    /// <para>
+    /// Rounding down also wastes nothing: the span handed out then fills its bucket exactly, where an
+    /// unrounded count leaves the tail of the rented array unused.
+    /// </para>
+    /// </remarks>
+    private static int ElementsWithin(int budgetBytes)
+    {
+        int elements = budgetBytes / ElementSize;
+        if (elements < 2)
+        {
+            return elements;
+        }
+
+        // Largest power of two not exceeding the element count.
+        int rounded = 1;
+        while (rounded <= elements / 2)
+        {
+            rounded <<= 1;
+        }
+
+        return rounded;
     }
 
     /// <summary>

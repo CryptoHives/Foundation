@@ -90,15 +90,7 @@ public readonly struct SequenceLease<T> : ISequenceOwner<T>, IEquatable<Sequence
     /// <inheritdoc/>
     public override int GetHashCode()
     {
-#if NETSTANDARD2_0 || NET462 || NET472 || NET48
-        unchecked
-        {
-            int hash = _owner?.GetHashCode() ?? 0;
-            return (hash * 397) ^ _sequence.Length.GetHashCode();
-        }
-#else
         return HashCode.Combine(_owner, _sequence.Length);
-#endif
     }
 
     /// <summary>

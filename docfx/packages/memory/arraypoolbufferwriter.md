@@ -50,10 +50,10 @@ public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable, IR
 | Constructor | Description |
 |-------------|-------------|
 | `ArrayPoolBufferWriter()` | Creates with default settings (256-element initial chunks, 64K max) |
-| `ArrayPoolBufferWriter(int defaultChunksize, int maxChunkSize)` | Creates with custom chunk sizes |
-| `ArrayPoolBufferWriter(bool clearArray, int defaultChunksize, int maxChunkSize)` | Creates with full customization including array clearing |
+| `ArrayPoolBufferWriter(int defaultChunkBytes, int maxChunkBytes)` | Creates with custom chunk sizes |
+| `ArrayPoolBufferWriter(bool clearArray, int defaultChunkBytes, int maxChunkBytes)` | Creates with full customization including array clearing |
 
-All three throw `ArgumentOutOfRangeException` when `defaultChunksize` is less than one.
+All three throw `ArgumentOutOfRangeException` when `defaultChunkBytes` is less than one.
 
 To rent a pooled writer instead of constructing one, see
 [`ArrayPoolBufferWriterProvider<T>`](arraypoolbufferwriterprovider.md) and
@@ -63,8 +63,36 @@ To rent a pooled writer instead of constructing one, see
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `DefaultChunkSize` | 256 | Default initial chunk size |
-| `MaxChunkSize` | 65536 | Default maximum chunk size |
+| `DefaultChunkBytes` | 256 | Size, in **bytes**, of the first chunk rented |
+| `MaxChunkBytes` | 65,536 | Ceiling, in **bytes**, that a chunk may grow to |
+
+### The budgets are bytes, not elements
+
+A chunk budget expressed in elements means something different for every `T`: 65,536 elements is
+64 KiB of `byte` but 512 KiB of `long`. An object reaches the **large object heap at 85,000 bytes**,
+so an element-count ceiling silently puts every wide element type there.
+
+Budgeting in bytes makes one number mean the same thing everywhere — the writer divides by the size of
+one element to decide how many fit:
+
+| `T` | bytes/element | elements per chunk | chunk size |
+|-----|---------------|--------------------|------------|
+| `byte` | 1 | 65,536 | 64 KiB |
+| `short` | 2 | 32,768 | 64 KiB |
+| `int` | 4 | 16,384 | 64 KiB |
+| `long`, any reference type | 8 | 8,192 | 64 KiB |
+| `Guid` | 16 | 4,096 | 64 KiB |
+
+64 KiB is not an arbitrary ceiling. `ArrayPool<T>` serves a request from a bucket of `16 × 2ⁿ`
+elements, rounding **up**, and the bucket above 65,536 bytes is 131,072 — there is nothing in between.
+So 64 KiB is the largest budget whose rented array is guaranteed to stay off the LOH.
+
+For the same reason the element count is rounded **down** to a power of two, so it matches its bucket
+exactly. Without that, a 12-byte element would divide 64 KiB into 5,461, which ArrayPool would serve
+from the 8,192 bucket — 98,304 bytes, back over the threshold. Rounding down also wastes nothing: the
+span handed out fills its bucket, where an unrounded count leaves the tail of the array unused.
+
+For `byte` the two units coincide, so nothing about that case changed.
 
 ## Methods
 
@@ -187,24 +215,25 @@ ReadOnlySequence<byte> message = writer.GetReadOnlySequence();
 
 ### Chunk Growth Strategy
 
-The writer starts with `defaultChunksize` and doubles the chunk size on each allocation until reaching `maxChunkSize`:
+The writer starts at `defaultChunkBytes` worth of elements and doubles on each allocation until it
+reaches `maxChunkBytes` worth:
 
 ```csharp
-// Start with 1KB, grow to max 16KB
+// Start at 1 KiB per chunk, grow to at most 16 KiB — whatever T is
 using var writer = new ArrayPoolBufferWriter<byte>(
-    defaultChunksize: 1024,
-    maxChunkSize: 16384
+    defaultChunkBytes: 1024,
+    maxChunkBytes: 16384
 );
 ```
 
-A `maxChunkSize` **at or below** `defaultChunksize` is a valid way to say *never grow* rather than a
+A `maxChunkBytes` **at or below** `defaultChunkBytes` is a valid way to say *never grow* rather than a
 mistake — the ramp is skipped entirely and every chunk stays at the default size:
 
 ```csharp
-// Every chunk is exactly 512 elements
+// Every chunk is exactly 512 bytes' worth of elements
 using var writer = new ArrayPoolBufferWriter<byte>(
-    defaultChunksize: 512,
-    maxChunkSize: 0
+    defaultChunkBytes: 512,
+    maxChunkBytes: 0
 );
 ```
 
@@ -215,8 +244,8 @@ For sensitive data, enable array clearing before returning to pool:
 ```csharp
 using var writer = new ArrayPoolBufferWriter<byte>(
     clearArray: true,
-    defaultChunksize: 4096,
-    maxChunkSize: 65536
+    defaultChunkBytes: 4096,
+    maxChunkBytes: 65536
 );
 ```
 
@@ -306,7 +335,7 @@ The buffers are pooled by default; the writer object is not, unless you rent one
 per use case and every one of them draws from the same pool:
 
 ```csharp
-static readonly ArrayPoolBufferWriterProvider<byte> JsonWriters = new(maxChunkSize: 1 << 20);
+static readonly ArrayPoolBufferWriterProvider<byte> JsonWriters = new(maxChunkBytes: 1 << 20);
 
 using var writer = JsonWriters.Rent();
 // ... write ...

@@ -14,7 +14,7 @@ using System.Buffers;
 /// <remarks>
 /// <para>
 /// This is the sequence-shaped counterpart to <see cref="ISegmentOwner{T}"/>, and follows the same
-/// idea as <see cref="System.Buffers.IMemoryOwner{T}"/>: the interface carries the payload, and
+/// idea as <see cref="IMemoryOwner{T}"/>: the interface carries the payload, and
 /// <see cref="IDisposable"/> carries the lifetime. It exists because the borrowed sequences returned
 /// by <see cref="ArrayPoolMemoryStream.GetReadOnlySequence"/> and
 /// <see cref="ArrayPoolBufferWriter{T}.GetReadOnlySequence"/> are only valid while their producer
@@ -48,7 +48,7 @@ using System.Buffers;
 /// <example>
 /// <code>
 /// using SequenceLease&lt;byte&gt; payload = writer.LeaseSequence();  // carries the writer along
-/// byte[] digest = Blake3.HashData(payload.Sequence);               // hashed in place, no copy
+/// byte[] digest = Blake3.HashData(payload.Sequence);                 // hashed in place, no copy
 /// </code>
 /// </example>
 public interface ISequenceOwner<T> : IDisposable

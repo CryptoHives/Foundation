@@ -108,7 +108,7 @@ public class PooledBufferWriterTests
         using ArrayPoolBufferWriter<byte> reused = ObjectPools.RentBufferWriter<byte>();
         int span = reused.GetSpan(1).Length;
 
-        Assert.That(span, Is.LessThanOrEqualTo(ArrayPoolBufferWriter<byte>.DefaultChunkSize),
+        Assert.That(span, Is.LessThanOrEqualTo(ArrayPoolBufferWriter<byte>.DefaultChunkBytes),
             "the growth ramp should be back at its starting size");
     }
 

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Memory.Pools;
@@ -20,7 +20,7 @@ using System;
 /// its own.
 /// </para>
 /// <code>
-///     static readonly ArrayPoolBufferWriterProvider&lt;byte&gt; JsonWriters = new(maxChunkSize: 1 &lt;&lt; 20);
+///     static readonly ArrayPoolBufferWriterProvider&lt;byte&gt; JsonWriters = new(maxChunkBytes: 1 &lt;&lt; 20);
 ///     static readonly ArrayPoolBufferWriterProvider&lt;byte&gt; SecretWriters = new(clearArray: true);
 ///
 ///     using var writer = JsonWriters.Rent();
@@ -33,18 +33,18 @@ using System;
 public sealed class ArrayPoolBufferWriterProvider<T>
 {
     private readonly bool _clearArray;
-    private readonly int _defaultChunkSize;
-    private readonly int _maxChunkSize;
+    private readonly int _defaultChunkBytes;
+    private readonly int _maxChunkBytes;
     private readonly ObjectPool<ArrayPoolBufferWriter<T>> _pool;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayPoolBufferWriterProvider{T}"/> class.
     /// </summary>
     /// <param name="clearArray">Whether rented writers zero each buffer as it returns to the array pool.</param>
-    /// <param name="defaultChunkSize">The size of the first chunk a rented writer takes.</param>
-    /// <param name="maxChunkSize">
-    /// The ceiling the chunk size ramps up to. A value at or below <paramref name="defaultChunkSize"/>
-    /// disables the ramp, pinning every chunk to that size.
+    /// <param name="defaultChunkBytes">The size, in bytes, of the first chunk a rented writer takes.</param>
+    /// <param name="maxChunkBytes">
+    /// The ceiling, in bytes, the chunk size ramps up to. A value at or below
+    /// <paramref name="defaultChunkBytes"/> disables the ramp, pinning every chunk to that size.
     /// </param>
     /// <param name="pool">
     /// The pool to draw from. Defaults to the shared pool for <typeparamref name="T"/>, which is what
@@ -52,22 +52,27 @@ public sealed class ArrayPoolBufferWriterProvider<T>
     /// <see cref="PoolFactory.CreateBufferWriterPool{T}"/> only when a use case genuinely needs to be
     /// isolated from the rest of the application.
     /// </param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="defaultChunkSize"/> is less than one.</exception>
+    /// <remarks>
+    /// The two budgets are <b>bytes, not elements</b>, so a profile means the same thing whatever
+    /// <typeparamref name="T"/> is. See <see cref="ArrayPoolBufferWriter{T}.MaxChunkBytes"/> for why
+    /// the default ceiling is 64 KiB.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="defaultChunkBytes"/> is less than one.</exception>
     public ArrayPoolBufferWriterProvider(
         bool clearArray = false,
-        int defaultChunkSize = ArrayPoolBufferWriter<T>.DefaultChunkSize,
-        int maxChunkSize = ArrayPoolBufferWriter<T>.MaxChunkSize,
+        int defaultChunkBytes = ArrayPoolBufferWriter<T>.DefaultChunkBytes,
+        int maxChunkBytes = ArrayPoolBufferWriter<T>.MaxChunkBytes,
         ObjectPool<ArrayPoolBufferWriter<T>>? pool = null)
     {
-        if (defaultChunkSize < 1)
+        if (defaultChunkBytes < 1)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(defaultChunkSize), defaultChunkSize, "The chunk size must be at least one element.");
+                nameof(defaultChunkBytes), defaultChunkBytes, "The chunk budget must be at least one byte.");
         }
 
         _clearArray = clearArray;
-        _defaultChunkSize = defaultChunkSize;
-        _maxChunkSize = maxChunkSize;
+        _defaultChunkBytes = defaultChunkBytes;
+        _maxChunkBytes = maxChunkBytes;
         _pool = pool ?? PoolFactory.SharedBufferWriterPool<T>();
     }
 
@@ -85,7 +90,7 @@ public sealed class ArrayPoolBufferWriterProvider<T>
 
         // Unconditionally, even for the default settings: the instance still carries whatever the
         // previous renter configured.
-        writer.Configure(_clearArray, _defaultChunkSize, _maxChunkSize);
+        writer.Configure(_clearArray, _defaultChunkBytes, _maxChunkBytes);
         writer.AttachPool(_pool);
         return writer;
     }

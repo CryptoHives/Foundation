@@ -113,7 +113,7 @@ var reader = new Utf8JsonReader(payload.Sequence);       // read in place, no co
 
 ```csharp
 // One profile per use case; every profile draws from the same pool
-static readonly ArrayPoolBufferWriterProvider<byte> JsonWriters = new(maxChunkSize: 1 << 20);
+static readonly ArrayPoolBufferWriterProvider<byte> JsonWriters = new(maxChunkBytes: 1 << 20);
 
 using var writer = JsonWriters.Rent();
 // ... write ...

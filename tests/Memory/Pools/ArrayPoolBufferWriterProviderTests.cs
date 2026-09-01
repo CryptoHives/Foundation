@@ -46,8 +46,8 @@ public class ArrayPoolBufferWriterProviderTests
         // The whole point of configuring at rent: two use cases, one set of instances.
         DrainSharedPool();
 
-        var small = new ArrayPoolBufferWriterProvider<byte>(defaultChunkSize: 64, maxChunkSize: 128);
-        var large = new ArrayPoolBufferWriterProvider<byte>(defaultChunkSize: 4096, maxChunkSize: 8192);
+        var small = new ArrayPoolBufferWriterProvider<byte>(defaultChunkBytes: 64, maxChunkBytes: 128);
+        var large = new ArrayPoolBufferWriterProvider<byte>(defaultChunkBytes: 4096, maxChunkBytes: 8192);
 
         ArrayPoolBufferWriter<byte> first = small.Rent();
         first.Dispose();
@@ -68,8 +68,8 @@ public class ArrayPoolBufferWriterProviderTests
     {
         DrainSharedPool();
 
-        var large = new ArrayPoolBufferWriterProvider<byte>(defaultChunkSize: 8192, maxChunkSize: 16384);
-        var small = new ArrayPoolBufferWriterProvider<byte>(defaultChunkSize: 32, maxChunkSize: 64);
+        var large = new ArrayPoolBufferWriterProvider<byte>(defaultChunkBytes: 8192, maxChunkBytes: 16384);
+        var small = new ArrayPoolBufferWriterProvider<byte>(defaultChunkBytes: 32, maxChunkBytes: 64);
 
         // Ramp the instance up under the large profile, then hand it back.
         ArrayPoolBufferWriter<byte> big = large.Rent();
@@ -92,7 +92,7 @@ public class ArrayPoolBufferWriterProviderTests
     {
         DrainSharedPool();
 
-        var large = new ArrayPoolBufferWriterProvider<byte>(defaultChunkSize: 8192, maxChunkSize: 16384);
+        var large = new ArrayPoolBufferWriterProvider<byte>(defaultChunkBytes: 8192, maxChunkBytes: 16384);
         large.Rent().Dispose();
 
         using ArrayPoolBufferWriter<byte> plain = ObjectPools.RentBufferWriter<byte>();
@@ -120,7 +120,7 @@ public class ArrayPoolBufferWriterProviderTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(providerSpan, Is.EqualTo(objectPoolsSpan));
-            Assert.That(providerSpan, Is.GreaterThanOrEqualTo(ArrayPoolBufferWriter<byte>.DefaultChunkSize));
+            Assert.That(providerSpan, Is.GreaterThanOrEqualTo(ArrayPoolBufferWriter<byte>.DefaultChunkBytes));
         }
     }
 
@@ -176,7 +176,7 @@ public class ArrayPoolBufferWriterProviderTests
     {
         // Zero used to be accepted and left the writer permanently unable to grow, since the ramp is
         // Math.Min(max, chunkSize * 2).
-        Assert.That(() => new ArrayPoolBufferWriterProvider<byte>(defaultChunkSize: chunkSize),
+        Assert.That(() => new ArrayPoolBufferWriterProvider<byte>(defaultChunkBytes: chunkSize),
             Throws.TypeOf<ArgumentOutOfRangeException>());
     }
 
@@ -197,12 +197,12 @@ public class ArrayPoolBufferWriterProviderTests
     [TestCase(512, 256)]
     [TestCase(512, 512)]
     [TestCase(512, 0)]
-    public void AMaximumAtOrBelowTheDefaultPinsTheChunkSize(int defaultChunkSize, int maxChunkSize)
+    public void AMaximumAtOrBelowTheDefaultPinsTheChunkSize(int defaultChunkBytes, int maxChunkBytes)
     {
         DrainSharedPool();
 
         var provider = new ArrayPoolBufferWriterProvider<byte>(
-            defaultChunkSize: defaultChunkSize, maxChunkSize: maxChunkSize);
+            defaultChunkBytes: defaultChunkBytes, maxChunkBytes: maxChunkBytes);
 
         using ArrayPoolBufferWriter<byte> writer = provider.Rent();
 
@@ -210,7 +210,7 @@ public class ArrayPoolBufferWriterProviderTests
         for (int i = 0; i < 8; i++)
         {
             int span = writer.GetSpan(1).Length;
-            Assert.That(span, Is.GreaterThanOrEqualTo(defaultChunkSize).And.LessThan(defaultChunkSize * 2),
+            Assert.That(span, Is.GreaterThanOrEqualTo(defaultChunkBytes).And.LessThan(defaultChunkBytes * 2),
                 $"chunk {i} should not have grown");
             writer.Advance(span);
         }
