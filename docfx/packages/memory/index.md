@@ -57,7 +57,7 @@ using CryptoHives.Foundation.Memory.Pools;
 | Class | Description |
 |-------|-------------|
 | ArrayPoolBufferSegment&lt;T&gt; | Internal buffer segment for ReadOnlySequence |
-| ArrayPoolBufferSequence&lt;T&gt; | Internal `IDisposable` over a chain of pooled segments. Has never had a caller; [`SequenceLease<T>`](sequencelease.md) fills the role. |
+| ArrayPoolBufferSequence&lt;T&gt; | Internal `IDisposable` over a chain of pooled segments. Gated on `EXPERIMENTAL`, so it is **not in shipped packages**; it has never had a caller, and [`SequenceLease<T>`](sequencelease.md) fills the role. |
 
 ## Quick Examples
 
