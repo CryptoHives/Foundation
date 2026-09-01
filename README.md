@@ -1,4 +1,4 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+﻿## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem.
 
@@ -49,11 +49,16 @@ Pooled buffer management for transformation pipelines and high-frequency I/O:
 
 - `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
 - `ReadOnlySequenceMemoryStream` — reads a `ReadOnlySequence<byte>` as a `MemoryStream` without copying
-- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`
+- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`; the writer itself is poolable, and `ArrayPoolBufferWriterProvider<T>` keeps many settings profiles on one shared pool
+- `SequenceLease<T>` — a `readonly struct` carrying a `ReadOnlySequence<T>` plus the producer that owns it, so a payload can leave the scope that built it with no copy and no allocation
+- `PoolFactory` — builds an object pool from a factory and a reset delegate, including for types this package does not reference
 - `ISegmentOwner<T>` — ownership contract for `ArraySegment<T>` with three built-in strategies:
   - `PooledSegment<T>` — rents from `ArrayPool<T>.Shared`, returns on dispose
   - `AllocatedSegment<T>` — wraps a GC-managed `T[]`, no pool lifecycle
   - `EmptySegment<T>` — zero-allocation null-object sentinel
+- `ISequenceOwner<T>` — the same contract for `ReadOnlySequence<T>`, with `SegmentSequence<T>` and `EmptySequence<T>`
+
+Every type that owns pooled memory takes a `clearArray` flag, so buffers holding key material are zeroed on their way back to the pool.
 
 ### 🧵 Concurrency Tools (Threading)
 Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
@@ -72,7 +77,7 @@ A Roslyn analyzer that catches common `ValueTask` usage mistakes ships as a stan
 ⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, pooled `ValueTask` vs. existing `Task`-based alternatives.
 
 ### 🔐 Managed Code Cryptography (Security.Cryptography)
-Fully managed hash, MAC, and cipher implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. 
+Fully managed hash, MAC, cipher and post-quantum KEM implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. 
 No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics kick in 
 automatically — in some cases outperforming the OS-provided implementation.
 
@@ -92,10 +97,13 @@ automatically — in some cases outperforming the OS-provided implementation.
 | Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
 | Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
 | Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256/512), SEED |
+| KEM (post-quantum) | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
 | Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5 (kept for backward compatibility only) |
 
 All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
+
+`MLKem` and `MLKemAlgorithm` deliberately mirror the names and signatures of .NET 10's `System.Security.Cryptography.MLKem`, so moving from the in-box type is a `using` swap — and unlike it, `MLKem.IsSupported` is always `true`, because nothing here depends on Windows CNG or OpenSSL.
 
 **⏱️ Benchmarks**
 

@@ -244,8 +244,10 @@ one large backing array is wasteful. It is a `MemoryStream` subclass backed by p
 The same two rules as the writer apply: `GetReadOnlySequence()` is borrowed and
 `LeaseSequence()` lets the payload leave the scope, and `clearArray: true` on any owning
 constructor zeroes the buffers on release — on truncation by `SetLength` as well as on
-disposal. It cannot hand out one contiguous array, so `GetBuffer()` throws and
-`TryGetBuffer()` returns `false`; reach for the sequence instead.
+disposal. It cannot hand out its internal storage as one contiguous array, so `GetBuffer()` throws and
+`TryGetBuffer()` returns `false`; reach for the sequence instead. `ToArray()` *is* overridden and
+works across segments — it copies rather than exposes, so use it only when an owned `byte[]` is
+genuinely required, not on a hot path.
 
 ### 3.3 `ReadOnlySequenceMemoryStream` — read-only `Stream` over an existing sequence
 
