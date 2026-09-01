@@ -107,8 +107,7 @@ public static class PoolFactory
     {
         return CreatePool(
             static () => new ArrayPoolBufferWriter<T>(),
-            static writer =>
-            {
+            static writer => {
                 if (writer.TryReset())
                 {
                     return true;
