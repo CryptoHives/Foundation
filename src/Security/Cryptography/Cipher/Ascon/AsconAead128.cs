@@ -208,6 +208,8 @@ public sealed class AsconAead128 : IAeadCipher
     public byte[] Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
                           ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         byte[] result = new byte[plaintext.Length + TagSizeBytesConst];
         Span<byte> ct = result.AsSpan(0, plaintext.Length);
         Span<byte> tag = result.AsSpan(plaintext.Length, TagSizeBytesConst);
@@ -221,6 +223,8 @@ public sealed class AsconAead128 : IAeadCipher
     public byte[] Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextWithTag,
                           ReadOnlySpan<byte> associatedData = default)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(GetType().Name);
         if (ciphertextWithTag.Length < TagSizeBytesConst)
             throw new CryptographicException("Ciphertext too short.");
 

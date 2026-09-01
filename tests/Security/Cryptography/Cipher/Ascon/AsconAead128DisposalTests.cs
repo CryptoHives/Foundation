@@ -51,6 +51,29 @@ public class AsconAead128DisposalTests
     }
 
     [Test]
+    public void AllocatingEncryptAfterDisposeThrows()
+    {
+        var aead = new AsconAead128(Key());
+        aead.Dispose();
+
+        Assert.That(() => aead.Encrypt(Nonce(), new byte[16]),
+            Throws.InstanceOf<ObjectDisposedException>());
+    }
+
+    [Test]
+    public void AllocatingDecryptAfterDisposeThrows()
+    {
+        // Guarded explicitly rather than relying on the span overload it delegates to: the
+        // length check runs first, so a short input would otherwise report "ciphertext too
+        // short" on an instance whose real problem is that it is disposed.
+        var aead = new AsconAead128(Key());
+        aead.Dispose();
+
+        Assert.That(() => aead.Decrypt(Nonce(), new byte[4]),
+            Throws.InstanceOf<ObjectDisposedException>());
+    }
+
+    [Test]
     public void DisposeIsIdempotent()
     {
         var aead = new AsconAead128(Key());
