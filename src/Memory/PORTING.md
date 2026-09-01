@@ -49,7 +49,10 @@ sealed class ArrayPoolMemoryStream : MemoryStream {                // pooled; Di
     ArrayPoolMemoryStream(bool clearArray = false, …);             // clearArray on every owning ctor
     ReadOnlySequence<byte> GetReadOnlySequence();                  // borrowed
     SequenceLease<byte>    LeaseSequence();                        // escapes the scope, 0 alloc
-    // GetBuffer() throws and TryGetBuffer() returns false: the payload spans several segments.
+    override byte[] ToArray();                                     // copies across segments; works
+    // GetBuffer() throws and TryGetBuffer() returns false - neither can expose several segments as
+    // one array. ToArray() is overridden and does work; it just copies, so prefer the sequence on
+    // hot paths and reach for ToArray() only when an owned byte[] is genuinely required.
 }
 sealed class ReadOnlySequenceMemoryStream : MemoryStream {         // read-only Stream over an existing sequence
     ReadOnlySequenceMemoryStream(ReadOnlySequence<byte> sequence);
@@ -67,7 +70,10 @@ interface ISegmentOwner<T> : IDisposable {
 
 sealed class PooledSegment<T> : ISegmentOwner<T> {
     // Rents from ArrayPool<T>.Shared; Segment.Count == minimumLength; array may be larger.
-    static ISegmentOwner<T> Rent(int minimumLength);
+    // clearArray: true zeroes the whole backing array as it returns to the pool - use it for
+    // secrets. Debug builds zero every returned buffer regardless, but that is a use-after-return
+    // diagnostic, NOT a security control: do not verify a wipe in Debug and ship Release without it.
+    static ISegmentOwner<T> Rent(int minimumLength, bool clearArray = false);
     // Dispose returns the rented array to the pool and resets Segment to default.
 }
 
@@ -94,6 +100,7 @@ readonly struct ObjectOwner<T> : IDisposable where T : class {
 
 static class ObjectPools {
     static ObjectOwner<StringBuilder> GetStringBuilder();
+    static ArrayPoolBufferWriter<T>   RentBufferWriter<T>();  // writer returns ITSELF on Dispose
 }
 ```
 
