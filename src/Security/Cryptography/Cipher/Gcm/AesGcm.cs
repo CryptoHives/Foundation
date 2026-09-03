@@ -54,7 +54,7 @@ public abstract class AesGcm : IAeadCipher
     /// Initializes a new instance of the <see cref="AesGcm"/> class.
     /// </summary>
     /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
-    protected AesGcm(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
+    protected AesGcm(ReadOnlySpan<byte> key) : this(AesCore.AesDefault, key)
     {
     }
 

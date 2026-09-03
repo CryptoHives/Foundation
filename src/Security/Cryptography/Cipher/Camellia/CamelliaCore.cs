@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -322,55 +323,34 @@ internal static class CamelliaCore
             // FL / FLINV with ke6, ke5
             d1 = FL(d1, subkeys[25]);
             d2 = FLINV(d2, subkeys[24]);
-
-            // Rounds 18–13
-            SixRoundsReverse(ref d1, ref d2, subkeys, 18);
-
-            // FL / FLINV with ke4, ke3
-            d1 = FL(d1, subkeys[17]);
-            d2 = FLINV(d2, subkeys[16]);
-
-            // Rounds 12–7
-            SixRoundsReverse(ref d1, ref d2, subkeys, 10);
-
-            // FL / FLINV with ke2, ke1
-            d1 = FL(d1, subkeys[9]);
-            d2 = FLINV(d2, subkeys[8]);
-
-            // Rounds 6–1
-            SixRoundsReverse(ref d1, ref d2, subkeys, 2);
-
-            // Post-whitening with kw1, kw2
-            d2 ^= subkeys[0];
-            d1 ^= subkeys[1];
         }
         else
         {
             // Pre-whitening with kw3, kw4
             d1 ^= subkeys[24];
             d2 ^= subkeys[25];
-
-            // Rounds 18–13
-            SixRoundsReverse(ref d1, ref d2, subkeys, 18);
-
-            // FL / FLINV with ke4, ke3
-            d1 = FL(d1, subkeys[17]);
-            d2 = FLINV(d2, subkeys[16]);
-
-            // Rounds 12–7
-            SixRoundsReverse(ref d1, ref d2, subkeys, 10);
-
-            // FL / FLINV with ke2, ke1
-            d1 = FL(d1, subkeys[9]);
-            d2 = FLINV(d2, subkeys[8]);
-
-            // Rounds 6–1
-            SixRoundsReverse(ref d1, ref d2, subkeys, 2);
-
-            // Post-whitening with kw1, kw2
-            d2 ^= subkeys[0];
-            d1 ^= subkeys[1];
         }
+
+        // Rounds 18–13
+        SixRoundsReverse(ref d1, ref d2, subkeys, 18);
+
+        // FL / FLINV with ke4, ke3
+        d1 = FL(d1, subkeys[17]);
+        d2 = FLINV(d2, subkeys[16]);
+
+        // Rounds 12–7
+        SixRoundsReverse(ref d1, ref d2, subkeys, 10);
+
+        // FL / FLINV with ke2, ke1
+        d1 = FL(d1, subkeys[9]);
+        d2 = FLINV(d2, subkeys[8]);
+
+        // Rounds 6–1
+        SixRoundsReverse(ref d1, ref d2, subkeys, 2);
+
+        // Post-whitening with kw1, kw2
+        d2 ^= subkeys[0];
+        d1 ^= subkeys[1];
 
         // Output D2 || D1
         r1 = d2;
@@ -448,7 +428,7 @@ internal static class CamelliaCore
         uint k1 = (uint)(k >> 32);
         uint k2 = (uint)k;
 
-        x2 ^= RotateLeft32(x1 & k1, 1);
+        x2 ^= BitOperations.RotateLeft(x1 & k1, 1);
         x1 ^= (x2 | k2);
 
         return ((ulong)x1 << 32) | x2;
@@ -466,15 +446,9 @@ internal static class CamelliaCore
         uint k2 = (uint)k;
 
         y1 ^= (y2 | k2);
-        y2 ^= RotateLeft32(y1 & k1, 1);
+        y2 ^= BitOperations.RotateLeft(y1 & k1, 1);
 
         return ((ulong)y1 << 32) | y2;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateLeft32(uint value, int shift)
-    {
-        return (value << shift) | (value >> (32 - shift));
     }
 
     /// <summary>

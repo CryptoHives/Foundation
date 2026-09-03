@@ -22,7 +22,7 @@ public sealed class AesCcm256 : AesCcm
     /// Initializes a new instance of the <see cref="AesCcm256"/> class.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
-    public AesCcm256(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
+    public AesCcm256(ReadOnlySpan<byte> key) : this(AesCore.AesDefault, key)
     {
     }
 

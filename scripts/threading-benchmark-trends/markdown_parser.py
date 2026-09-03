@@ -29,6 +29,12 @@ Confirmed directly against a real generated report (AsyncLockMultipleBenchmark-r
   into `variant`), so the dashboard can offer a dedicated Cancellation selector.
 """
 
+# `X | None`-style annotations below need this on Python < 3.10 (PEP 604 union syntax was
+# added in 3.10); postponing evaluation makes them plain strings instead of executed
+# `type.__or__` expressions, which is all this module needs since nothing here calls
+# typing.get_type_hints().
+from __future__ import annotations
+
 import re
 import sys
 

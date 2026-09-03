@@ -63,7 +63,9 @@ public class ArrayPoolMemoryStreamTests
             Assert.That(stream.CanWrite, Is.True);
         }
 
-        Assert.Throws<NotSupportedException>(() => stream.SetLength(0));
+        // SetLength is supported now; on an already-empty stream it is a no-op. Truncation and
+        // growth are covered by ArrayPoolMemoryStreamLifetimeTests.
+        Assert.That(() => stream.SetLength(0), Throws.Nothing);
         Assert.Throws<IOException>(() => stream.Seek(-1, SeekOrigin.Begin));
         Assert.Throws<IOException>(() => stream.Seek(0, (SeekOrigin)66));
 
