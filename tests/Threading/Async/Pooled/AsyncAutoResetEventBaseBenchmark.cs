@@ -8,19 +8,15 @@ using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Threading;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
-using NitoAsyncEx = Nito.AsyncEx;
-#endif
-
 /// <summary>
 /// Base class for benchmarking and testing different implementations of AsyncAutoResetEvent.
 /// </summary>
 public abstract class AsyncAutoResetEventBaseBenchmark
 {
     private protected AsyncAutoResetEvent _eventPooled;
+#if !SIGNASSEMBLY
     private protected NitoAsyncEx.AsyncAutoResetEvent _eventNitoAsync;
+#endif
     private protected RefImpl.AsyncAutoResetEvent _eventRefImp;
 #if !NETFRAMEWORK
     private protected Proto.Promises.Threading.AsyncAutoResetEvent _eventProtoPromises;
@@ -37,7 +33,9 @@ public abstract class AsyncAutoResetEventBaseBenchmark
     public virtual void GlobalSetup()
     {
         _eventPooled = new AsyncAutoResetEvent();
+#if !SIGNASSEMBLY
         _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
+#endif
         _eventRefImp = new RefImpl.AsyncAutoResetEvent();
 #if !NETFRAMEWORK
         _eventProtoPromises = new Proto.Promises.Threading.AsyncAutoResetEvent();
