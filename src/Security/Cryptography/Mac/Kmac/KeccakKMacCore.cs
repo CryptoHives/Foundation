@@ -231,7 +231,9 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         {
             if (pooledBuffer is not null)
             {
-                ArrayPool<byte>.Shared.Return(pooledBuffer);
+                // Cleared on return for uniformity; this buffer holds only the public
+                // function-name and customization strings.
+                ArrayPool<byte>.Shared.Return(pooledBuffer, clearArray: true);
             }
         }
     }
@@ -273,7 +275,8 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         {
             if (pooledBuffer is not null)
             {
-                ArrayPool<byte>.Shared.Return(pooledBuffer);
+                // Cleared on return: this buffer held encode_string(K), the raw MAC key.
+                ArrayPool<byte>.Shared.Return(pooledBuffer, clearArray: true);
             }
         }
     }
