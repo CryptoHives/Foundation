@@ -40,6 +40,11 @@ using System.Runtime.InteropServices;
 internal static class AesCore
 {
     /// <summary>
+    /// The default optimization to use for Aes based algorithms.
+    /// </summary>
+    public const SimdSupport AesDefault = SimdSupport.All;
+
+    /// <summary>
     /// AES block size in bytes (always 16 for standard AES).
     /// </summary>
     public const int BlockSizeBytes = 16;

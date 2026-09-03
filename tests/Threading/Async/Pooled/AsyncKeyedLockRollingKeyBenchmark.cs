@@ -277,6 +277,7 @@ public class AsyncKeyedLockRollingKeyBenchmark : AsyncKeyedLockBaseBenchmark
     }
 #endif
 
+#if !SIGNASSEMBLY
     [Test]
     public Task LockUnlockDaoRollingKeyTestAsync()
     {
@@ -334,6 +335,7 @@ public class AsyncKeyedLockRollingKeyBenchmark : AsyncKeyedLockBaseBenchmark
             }
         }
     }
+#endif
 
     [Test]
     public Task LockUnlockRefImplRollingKeyTestAsync()

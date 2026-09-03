@@ -50,6 +50,11 @@ public enum Blake3Mode
 public sealed class Blake3 : HashAlgorithm, IExtendableOutput
 {
     /// <summary>
+    /// The default optimization to use for Blake3 based algorithms.
+    /// </summary>
+    internal const SimdSupport Blake3Default = SimdSupport.All;
+
+    /// <summary>
     /// The default hash size in bits.
     /// </summary>
     public const int DefaultHashSizeBits = Blake3State.DefaultHashSizeBits;
@@ -82,7 +87,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake3"/> class with default output size (32 bytes).
     /// </summary>
-    public Blake3() : this(SimdSupport.All, DefaultHashSizeBytes)
+    public Blake3() : this(Blake3Default, DefaultHashSizeBytes)
     {
     }
 
@@ -90,7 +95,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// Initializes a new instance of the <see cref="Blake3"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    public Blake3(int outputBytes) : this(SimdSupport.All, outputBytes)
+    public Blake3(int outputBytes) : this(Blake3Default, outputBytes)
     {
     }
 
@@ -115,7 +120,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// </summary>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    private Blake3(ReadOnlySpan<byte> key, int outputBytes) : this(SimdSupport.All, key, outputBytes)
+    private Blake3(ReadOnlySpan<byte> key, int outputBytes) : this(Blake3Default, key, outputBytes)
     {
     }
 
@@ -363,7 +368,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <returns>A new BLAKE3 instance configured for key derivation.</returns>
     public static Blake3 CreateDeriveKey(ReadOnlySpan<byte> contextUtf8, int outputBytes)
-        => new(SimdSupport.All, contextUtf8, outputBytes, deriveKey: true);
+        => new(Blake3Default, contextUtf8, outputBytes, deriveKey: true);
 
     /// <summary>
     /// Creates a new instance of the <see cref="Blake3"/> class in derive-key mode with
