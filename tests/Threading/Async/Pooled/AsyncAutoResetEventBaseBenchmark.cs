@@ -3,16 +3,10 @@
 
 namespace Threading.Tests.Async.Pooled;
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System.Threading;
-
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
-using NitoAsyncEx = Nito.AsyncEx;
-#endif
 
 /// <summary>
 /// Base class for benchmarking and testing different implementations of AsyncAutoResetEvent.
@@ -20,7 +14,9 @@ using NitoAsyncEx = Nito.AsyncEx;
 public abstract class AsyncAutoResetEventBaseBenchmark
 {
     private protected AsyncAutoResetEvent _eventPooled;
-    private protected NitoAsyncEx.AsyncAutoResetEvent _eventNitoAsync;
+#if !SIGNASSEMBLY
+    private protected Nito.AsyncEx.AsyncAutoResetEvent _eventNitoAsync;
+#endif
     private protected RefImpl.AsyncAutoResetEvent _eventRefImp;
 #if !NETFRAMEWORK
     private protected Proto.Promises.Threading.AsyncAutoResetEvent _eventProtoPromises;
@@ -37,7 +33,9 @@ public abstract class AsyncAutoResetEventBaseBenchmark
     public virtual void GlobalSetup()
     {
         _eventPooled = new AsyncAutoResetEvent();
-        _eventNitoAsync = new NitoAsyncEx.AsyncAutoResetEvent();
+#if !SIGNASSEMBLY
+        _eventNitoAsync = new Nito.AsyncEx.AsyncAutoResetEvent();
+#endif
         _eventRefImp = new RefImpl.AsyncAutoResetEvent();
 #if !NETFRAMEWORK
         _eventProtoPromises = new Proto.Promises.Threading.AsyncAutoResetEvent();

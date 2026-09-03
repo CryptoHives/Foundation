@@ -118,6 +118,7 @@ public class AsyncKeyedLockSingleKeyBenchmark : AsyncKeyedLockBaseBenchmark
     }
 #endif
 
+#if !SIGNASSEMBLY
     /// <summary>
     /// Benchmark for the third-party Dao.IndividualLock library (single uncontended key).
     /// </summary>
@@ -145,6 +146,7 @@ public class AsyncKeyedLockSingleKeyBenchmark : AsyncKeyedLockBaseBenchmark
             unchecked { _counter++; }
         }
     }
+#endif
 
     /// <summary>
     /// Benchmark for the "AsyncDuplicateLock" reference implementation (single uncontended key).

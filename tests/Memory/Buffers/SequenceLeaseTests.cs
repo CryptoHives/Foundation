@@ -106,7 +106,7 @@ public class SequenceLeaseTests
         byte[] data = Payload(3_000);
 
         SequenceLease<byte> payload;
-        var stream = new ArrayPoolMemoryStream(4, 64);
+        using var stream = new ArrayPoolMemoryStream(4, 64);
         stream.Write(data, 0, data.Length);
         payload = stream.LeaseSequence();
 
@@ -207,15 +207,12 @@ public class SequenceLeaseTests
         // Boxing is the documented cost of going polymorphic; the contract still has to hold.
         byte[] data = Payload(1_000);
 
-        ISequenceOwner<byte> owner = BuildPayload(data);
-        using (owner)
+        using SequenceLease<byte> owner = BuildPayload(data);
+        using (Assert.EnterMultipleScope())
         {
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(owner.Length, Is.EqualTo(data.Length));
-                Assert.That(owner.IsEmpty, Is.False);
-                Assert.That(owner.Sequence.ToArray(), Is.EqualTo(data));
-            }
+            Assert.That(owner.Length, Is.EqualTo(data.Length));
+            Assert.That(owner.IsEmpty, Is.False);
+            Assert.That(owner.Sequence.ToArray(), Is.EqualTo(data));
         }
     }
 
