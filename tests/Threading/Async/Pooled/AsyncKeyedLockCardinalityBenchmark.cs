@@ -212,6 +212,7 @@ public class AsyncKeyedLockCardinalityBenchmark : AsyncKeyedLockBaseBenchmark
     }
 #endif
 
+#if !SIGNASSEMBLY
     [Test]
     public Task LockUnlockDaoCardinalityTestAsync()
     {
@@ -265,6 +266,7 @@ public class AsyncKeyedLockCardinalityBenchmark : AsyncKeyedLockBaseBenchmark
             }
         }
     }
+#endif
 
     [Test]
     public Task LockUnlockRefImplCardinalityTestAsync()

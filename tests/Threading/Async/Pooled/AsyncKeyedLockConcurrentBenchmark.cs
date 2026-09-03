@@ -348,6 +348,7 @@ public class AsyncKeyedLockConcurrentBenchmark : AsyncKeyedLockBaseBenchmark
     }
 #endif
 
+#if !SIGNASSEMBLY
     [Test]
     public Task LockUnlockDaoConcurrentTestAsync()
     {
@@ -415,6 +416,7 @@ public class AsyncKeyedLockConcurrentBenchmark : AsyncKeyedLockBaseBenchmark
 
         await Task.WhenAll(_tasks!).ConfigureAwait(false);
     }
+#endif
 
     [Test]
     public Task LockUnlockRefImplConcurrentTestAsync()

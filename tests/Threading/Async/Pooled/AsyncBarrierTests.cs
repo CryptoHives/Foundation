@@ -449,9 +449,7 @@ public class AsyncBarrierTests
     public async Task PostPhaseActionIsCalledOnPhaseCompletion()
     {
         int phaseCompletions = 0;
-        var barrier = new AsyncBarrier(2, b => {
-            Interlocked.Increment(ref phaseCompletions);
-        });
+        var barrier = new AsyncBarrier(2, b => Interlocked.Increment(ref phaseCompletions));
 
         await Task.WhenAll(
             barrier.SignalAndWaitAsync().AsTask(),
@@ -472,10 +470,8 @@ public class AsyncBarrierTests
     public async Task PostPhaseActionReceivesCorrectPhaseNumber()
     {
         var observedPhases = new System.Collections.Generic.List<long>();
-        var barrier = new AsyncBarrier(1, b => {
-            // Note: CurrentPhase is incremented AFTER post-phase action
-            observedPhases.Add(b.CurrentPhase);
-        });
+        // Note: CurrentPhase is incremented AFTER post-phase action
+        var barrier = new AsyncBarrier(1, b => observedPhases.Add(b.CurrentPhase));
 
         await barrier.SignalAndWaitAsync().ConfigureAwait(false);
         await barrier.SignalAndWaitAsync().ConfigureAwait(false);
@@ -489,9 +485,7 @@ public class AsyncBarrierTests
     [Test]
     public Task PostPhaseActionExceptionThrowsBarrierPostPhaseException()
     {
-        var barrier = new AsyncBarrier(1, b => {
-            throw new InvalidOperationException("Post-phase error");
-        });
+        var barrier = new AsyncBarrier(1, b => throw new InvalidOperationException("Post-phase error"));
 
         BarrierPostPhaseException? ex = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
             await barrier.SignalAndWaitAsync().ConfigureAwait(false));
@@ -571,9 +565,7 @@ public class AsyncBarrierTests
     [Test]
     public Task PostPhaseActionExceptionOnRemoveParticipantsThrowsBarrierPostPhaseException()
     {
-        var barrier = new AsyncBarrier(2, b => {
-            throw new InvalidOperationException("Remove participant error");
-        });
+        var barrier = new AsyncBarrier(2, b => throw new InvalidOperationException("Remove participant error"));
 
         // One participant signals
         ValueTask valueTask = barrier.SignalAndWaitAsync();
@@ -594,9 +586,7 @@ public class AsyncBarrierTests
     public Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
     {
         using var pool = new TestObjectPool<bool>();
-        var barrier = new AsyncBarrier(3, b => {
-            throw new InvalidOperationException("Remove error");
-        }, pool: pool);
+        var barrier = new AsyncBarrier(3, b => throw new InvalidOperationException("Remove error"), pool: pool);
 
         // Two participants signal
         ValueTask waiter1 = barrier.SignalAndWaitAsync();
@@ -715,9 +705,7 @@ public class AsyncBarrierTests
     {
         Exception? fromSignal = null;
 
-        var barrier = new AsyncBarrier(1, b => {
-            fromSignal = Assert.CatchAsync(async () => await b.SignalAndWaitAsync().ConfigureAwait(false));
-        });
+        var barrier = new AsyncBarrier(1, b => fromSignal = Assert.CatchAsync(async () => await b.SignalAndWaitAsync().ConfigureAwait(false)));
 
         await barrier.SignalAndWaitAsync().ConfigureAwait(false);
 
