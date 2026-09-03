@@ -68,6 +68,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
         _eventPooled.Set();
     }
 
+#if !SIGNASSEMBLY
     /// <summary>
     /// Benchmark for Nito.AsyncEx async auto-reset event Set operation.
     /// </summary>
@@ -82,6 +83,7 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     {
         _eventNitoAsync.Set();
     }
+#endif
 
     /// <summary>
     /// Benchmark for reference implementation async auto-reset event Set operation (baseline).

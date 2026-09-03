@@ -570,10 +570,10 @@ public class AsyncLockTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(first.Equals(second), Is.True);
-            Assert.That(first.Equals((object)second), Is.True);
-            Assert.That(first == second, Is.True);
-            Assert.That(first != second, Is.False);
+            Assert.That(first, Is.EqualTo(second));
+            Assert.That(first, Is.EqualTo((object)second));
+            Assert.That(first, Is.EqualTo(second));
+            Assert.That(first, Is.EqualTo(second));
             Assert.That(first.GetHashCode(), Is.EqualTo(second.GetHashCode()));
         }
     }
@@ -591,10 +591,10 @@ public class AsyncLockTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(releaserA.Equals(releaserB), Is.False);
-            Assert.That(releaserA.Equals((object)releaserB), Is.False);
-            Assert.That(releaserA == releaserB, Is.False);
-            Assert.That(releaserA != releaserB, Is.True);
+            Assert.That(releaserA, Is.Not.EqualTo(releaserB));
+            Assert.That(releaserA, Is.Not.EqualTo((object)releaserB));
+            Assert.That(releaserA, Is.Not.EqualTo(releaserB));
+            Assert.That(releaserA, Is.Not.EqualTo(releaserB));
             Assert.That(releaserA.Equals("not a releaser"), Is.False);
         }
     }
@@ -607,7 +607,7 @@ public class AsyncLockTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(first.Equals(second), Is.True);
+            Assert.That(first, Is.EqualTo(second));
             Assert.That(first.GetHashCode(), Is.EqualTo(second.GetHashCode()));
             Assert.That(first.GetHashCode(), Is.Zero);
         }

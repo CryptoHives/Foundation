@@ -1,11 +1,13 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#if !SIGNASSEMBLY
 // Isolates the AsyncUtilities assembly behind an alias (see the PackageReference's Aliases
 // attribute in Threading.Tests.csproj) so its types/extension methods are invisible under the
 // default global:: alias everywhere else in this project - only this file, which declares the
 // field, needs to name the type.
 extern alias AsyncUtilitiesLib;
+#endif
 
 namespace Threading.Tests.Async.Pooled;
 
@@ -27,8 +29,10 @@ public abstract class AsyncKeyedLockBaseBenchmark
     private protected KeyedSemaphores.KeyedSemaphoresDictionary<string> _lockKeyedSemaphoresDictionary;
     private protected KeyedSemaphores.KeyedSemaphoresCollection<string> _lockKeyedSemaphoresStriped;
 #endif
+#if !SIGNASSEMBLY
     private protected Dao.IndividualLock.IndividualLocks<string> _lockDao;
     private protected AsyncUtilitiesLib::AsyncUtilities.StripedAsyncLock<string> _lockAsyncUtilitiesStriped;
+#endif
     private protected RefImpl.AsyncKeyedLock<string> _lockRefImpl;
 
     private protected volatile int _counter;
@@ -48,8 +52,10 @@ public abstract class AsyncKeyedLockBaseBenchmark
         _lockKeyedSemaphoresDictionary = new();
         _lockKeyedSemaphoresStriped = new(numberOfSemaphores: 31);
 #endif
+#if !SIGNASSEMBLY
         _lockDao = new(EqualityComparer<string>.Default);
         _lockAsyncUtilitiesStriped = new(stripes: 31);
+#endif
         _lockRefImpl = new();
     }
 }
