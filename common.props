@@ -87,6 +87,9 @@
   <PropertyGroup Condition="Exists('$(StrongNameKeyFile)')">
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>$(StrongNameKeyFile)</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
     <!-- The strong name signing public key -->
     <PublicKey>002400000480000094000000060200000024000052534131000400000100010079ff8565b99f24</PublicKey>
     <PublicKey>$(PublicKey)7c1b8461da6d8abfd37f7a34babee05d2144d3621e239dd97c51784549a7a1e5016a5a32a80cba</PublicKey>
