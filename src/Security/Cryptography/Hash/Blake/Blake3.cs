@@ -6,6 +6,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using CryptoHives.Foundation.Security.Cryptography;
 using System;
 using System.Buffers;
+using System.Diagnostics;
+using System.Text;
 
 /// <summary>
 /// Specifies the mode of operation for BLAKE3.
@@ -48,6 +50,11 @@ public enum Blake3Mode
 public sealed class Blake3 : HashAlgorithm, IExtendableOutput
 {
     /// <summary>
+    /// The default optimization to use for Blake3 based algorithms.
+    /// </summary>
+    internal const SimdSupport Blake3Default = SimdSupport.All;
+
+    /// <summary>
     /// The default hash size in bits.
     /// </summary>
     public const int DefaultHashSizeBits = Blake3State.DefaultHashSizeBits;
@@ -80,7 +87,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake3"/> class with default output size (32 bytes).
     /// </summary>
-    public Blake3() : this(SimdSupport.All, DefaultHashSizeBytes)
+    public Blake3() : this(Blake3Default, DefaultHashSizeBytes)
     {
     }
 
@@ -88,7 +95,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// Initializes a new instance of the <see cref="Blake3"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    public Blake3(int outputBytes) : this(SimdSupport.All, outputBytes)
+    public Blake3(int outputBytes) : this(Blake3Default, outputBytes)
     {
     }
 
@@ -113,7 +120,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// </summary>
     /// <param name="key">The 32-byte key for keyed hashing.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    private Blake3(ReadOnlySpan<byte> key, int outputBytes) : this(SimdSupport.All, key, outputBytes)
+    private Blake3(ReadOnlySpan<byte> key, int outputBytes) : this(Blake3Default, key, outputBytes)
     {
     }
 
@@ -131,6 +138,37 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
         HashSizeValue = outputBytes * 8;
         _mode = Blake3Mode.KeyedHash;
         _core = new Blake3State(simdSupport, outputBytes, key);
+
+        Initialize();
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Blake3"/> class in derive-key mode.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="contextUtf8">The UTF-8 encoded context string.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="deriveKey">Unused; disambiguates this overload from the keyed constructor.</param>
+    private Blake3(SimdSupport simdSupport, ReadOnlySpan<byte> contextUtf8, int outputBytes, bool deriveKey)
+    {
+        Debug.Assert(deriveKey, "this overload exists only to disambiguate the derive-key case");
+
+        if (contextUtf8.IsEmpty) throw new ArgumentException("Context must not be empty.", nameof(contextUtf8));
+        if (outputBytes < 1) throw new ArgumentOutOfRangeException(nameof(outputBytes), "Output size must be positive.");
+
+        HashSizeValue = outputBytes * 8;
+        _mode = Blake3Mode.DeriveKey;
+
+        Span<byte> contextKey = stackalloc byte[KeySizeBytes];
+        try
+        {
+            Blake3State.DeriveContextKey(simdSupport, contextUtf8, contextKey);
+            _core = new Blake3State(simdSupport, outputBytes, contextKey, Blake3State.FlagDeriveKeyMaterial);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(contextKey);
+        }
 
         Initialize();
     }
@@ -267,6 +305,82 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <returns>A new BLAKE3 instance configured for keyed hashing.</returns>
     internal static Blake3 CreateKeyed(SimdSupport simdSupport, ReadOnlySpan<byte> key, int outputBytes) => new(simdSupport, key, outputBytes);
 
+    /// <summary>
+    /// Creates a new instance of the <see cref="Blake3"/> class in derive-key mode.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The context string is domain separation, not a secret and not an input: the BLAKE3 spec
+    /// requires it to be a hard-coded, application-specific, globally unique constant. It must
+    /// never be user input, attacker-controlled, or varied per call -- put the varying material
+    /// in the key material hashed by the returned instance instead. A good context embeds the
+    /// application name, a date and the purpose, e.g. "MyApp 2026-01-01 session key".
+    /// </para>
+    /// <para>
+    /// The returned instance derives from the key material written to it, so callers hash the
+    /// input key material and read out the derived key -- optionally longer than 32 bytes,
+    /// since derive-key mode is a full XOF.
+    /// </para>
+    /// </remarks>
+    /// <param name="context">The context string. Must not be empty.</param>
+    /// <returns>A new BLAKE3 instance configured for key derivation.</returns>
+    public static Blake3 CreateDeriveKey(string context) => CreateDeriveKey(context, DefaultHashSizeBytes);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Blake3"/> class in derive-key mode with a
+    /// specified output size.
+    /// </summary>
+    /// <param name="context">The context string. Must not be empty. See <see cref="CreateDeriveKey(string)"/>.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <returns>A new BLAKE3 instance configured for key derivation.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="context"/> is <see langword="null"/>.</exception>
+    public static Blake3 CreateDeriveKey(string context, int outputBytes)
+    {
+        if (context is null) throw new ArgumentNullException(nameof(context));
+
+        // Encoded to an array rather than the stack because Encoding.UTF8.GetBytes(string,
+        // Span<byte>) does not exist on net462/netstandard2.0. This is a one-off construction
+        // cost, and matches how cSHAKE and KT already encode their customisation strings.
+        byte[] contextUtf8 = Encoding.UTF8.GetBytes(context);
+        if (contextUtf8.Length == 0) throw new ArgumentException("Context must not be empty.", nameof(context));
+
+        return CreateDeriveKey(contextUtf8, outputBytes);
+    }
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Blake3"/> class in derive-key mode from a
+    /// pre-encoded context string.
+    /// </summary>
+    /// <remarks>
+    /// Use this overload when the context is already available as UTF-8 bytes -- a
+    /// <c>u8</c> literal, for instance -- to skip the string encoding entirely.
+    /// </remarks>
+    /// <param name="contextUtf8">The UTF-8 encoded context string. Must not be empty. See <see cref="CreateDeriveKey(string)"/>.</param>
+    /// <returns>A new BLAKE3 instance configured for key derivation.</returns>
+    public static Blake3 CreateDeriveKey(ReadOnlySpan<byte> contextUtf8)
+        => CreateDeriveKey(contextUtf8, DefaultHashSizeBytes);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Blake3"/> class in derive-key mode from a
+    /// pre-encoded context string, with a specified output size.
+    /// </summary>
+    /// <param name="contextUtf8">The UTF-8 encoded context string. Must not be empty. See <see cref="CreateDeriveKey(string)"/>.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <returns>A new BLAKE3 instance configured for key derivation.</returns>
+    public static Blake3 CreateDeriveKey(ReadOnlySpan<byte> contextUtf8, int outputBytes)
+        => new(Blake3Default, contextUtf8, outputBytes, deriveKey: true);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Blake3"/> class in derive-key mode with
+    /// specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="contextUtf8">The UTF-8 encoded context string.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <returns>A new BLAKE3 instance configured for key derivation.</returns>
+    internal static Blake3 CreateDeriveKey(SimdSupport simdSupport, ReadOnlySpan<byte> contextUtf8, int outputBytes)
+        => new(simdSupport, contextUtf8, outputBytes, deriveKey: true);
+
 #if NET8_0_OR_GREATER
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
@@ -279,12 +393,18 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     public override void Initialize()
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
-        _core.Reset(_mode == Blake3Mode.KeyedHash);
+
+        // Anything other than plain Hash carries key words that must survive the reset.
+        // Reset(false) runs InitializeHash(), which overwrites _keyWords with the BLAKE3 IV --
+        // for a derive-key instance that would discard the context key, and since the
+        // constructor calls Initialize() on its last line it would do so before the caller ever
+        // touched the instance.
+        _core.Reset(_mode != Blake3Mode.Hash);
     }
 
     /// <inheritdoc/>
     /// <remarks>
-    /// A keyed (or future derive-key) instance carries caller-supplied secret material in its
+    /// A keyed or derive-key instance carries caller-supplied secret material in its
     /// state, so it must never be recycled into a shared pool for an unrelated caller: this
     /// returns <see langword="false"/> for any non-<see cref="Blake3Mode.Hash"/> mode, which
     /// makes the pool's policy <c>Dispose()</c> the instance instead — zeroing the key —

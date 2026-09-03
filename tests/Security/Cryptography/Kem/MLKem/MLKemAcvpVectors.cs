@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Kem.MLKem;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
@@ -128,21 +129,21 @@ public static class MLKemAcvpVectors
             switch (f[0])
             {
                 case "K":
-                    records.KeyGen.Add([f[1], int.Parse(f[2]), f[3], f[4], f[5], f[6]]);
+                    records.KeyGen.Add([f[1], int.Parse(f[2], CultureInfo.InvariantCulture), f[3], f[4], f[5], f[6]]);
                     break;
                 case "E":
-                    records.Encaps.Add([f[1], int.Parse(f[2]), f[3], f[4], f[5], f[6], f[7]]);
+                    records.Encaps.Add([f[1], int.Parse(f[2], CultureInfo.InvariantCulture), f[3], f[4], f[5], f[6], f[7]]);
                     break;
                 case "D":
-                    records.Decaps.Add([f[1], int.Parse(f[2]), f[3], f[4], f[5], f[6]]);
+                    records.Decaps.Add([f[1], int.Parse(f[2], CultureInfo.InvariantCulture), f[3], f[4], f[5], f[6]]);
                     break;
                 case "X":
                     records.EncapsulationKeyCheck.Add(
-                        [f[1], int.Parse(f[2]), bool.Parse(f[3]), f[4], f[5]]);
+                        [f[1], int.Parse(f[2], CultureInfo.InvariantCulture), bool.Parse(f[3]), f[4], f[5]]);
                     break;
                 case "Y":
                     records.DecapsulationKeyCheck.Add(
-                        [f[1], int.Parse(f[2]), bool.Parse(f[3]), f[4], f[5]]);
+                        [f[1], int.Parse(f[2], CultureInfo.InvariantCulture), bool.Parse(f[3]), f[4], f[5]]);
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown record kind '{f[0]}'.");

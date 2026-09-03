@@ -29,6 +29,11 @@ using System.Buffers;
 public sealed class Blake2s : HashAlgorithm
 {
     /// <summary>
+    /// The default optimization to use for Blake2s based algorithms.
+    /// </summary>
+    internal const SimdSupport Blake2sDefault = SimdSupport.None;
+
+    /// <summary>
     /// The maximum hash size in bits.
     /// </summary>
     public const int MaxHashSizeBits = Blake2sState.MaxHashSizeBits;
@@ -56,7 +61,7 @@ public sealed class Blake2s : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2s"/> class with default output size (32 bytes).
     /// </summary>
-    public Blake2s() : this(SimdSupport.All, MaxHashSizeBytes, null)
+    public Blake2s() : this(Blake2sDefault, MaxHashSizeBytes, null)
     {
     }
 
@@ -64,7 +69,7 @@ public sealed class Blake2s : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2s"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-32).</param>
-    public Blake2s(int outputBytes) : this(SimdSupport.All, outputBytes, null)
+    public Blake2s(int outputBytes) : this(Blake2sDefault, outputBytes, null)
     {
     }
 
@@ -73,7 +78,7 @@ public sealed class Blake2s : HashAlgorithm
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-32).</param>
     /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
-    public Blake2s(int outputBytes, ReadOnlySpan<byte> key) : this(SimdSupport.All, outputBytes, key)
+    public Blake2s(int outputBytes, ReadOnlySpan<byte> key) : this(Blake2sDefault, outputBytes, key)
     {
     }
 

@@ -29,6 +29,17 @@ using System.Buffers;
 public sealed class Blake2b : HashAlgorithm
 {
     /// <summary>
+    /// The default optimization to use for Blake2b based algorithms. Excludes
+    /// <see cref="SimdSupport.Neon"/>: the NEON kernel benchmarks consistently
+    /// ~1.9x-2.1x slower than the scalar fallback across every input size (128B
+    /// through 128KB), so it must not be selected by default even though it is
+    /// compiled in (<c>EXPERIMENTAL</c> is on by default - see <c>common.props</c>).
+    /// It remains reachable via the internal <see cref="Create(SimdSupport, int)"/>
+    /// factory for benchmarking.
+    /// </summary>
+    internal const SimdSupport Blake2bDefault = SimdSupport.All & ~SimdSupport.Neon;
+
+    /// <summary>
     /// The maximum hash size in bits.
     /// </summary>
     public const int MaxHashSizeBits = Blake2bState.MaxHashSizeBits;
@@ -56,7 +67,7 @@ public sealed class Blake2b : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2b"/> class with default output size (64 bytes).
     /// </summary>
-    public Blake2b() : this(SimdSupport.All, MaxHashSizeBytes, null)
+    public Blake2b() : this(Blake2bDefault, MaxHashSizeBytes, null)
     {
     }
 
@@ -64,7 +75,7 @@ public sealed class Blake2b : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2b"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    public Blake2b(int outputBytes) : this(SimdSupport.All, outputBytes, null)
+    public Blake2b(int outputBytes) : this(Blake2bDefault, outputBytes, null)
     {
     }
 
@@ -73,7 +84,7 @@ public sealed class Blake2b : HashAlgorithm
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
     /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
-    public Blake2b(int outputBytes, ReadOnlySpan<byte> key) : this(SimdSupport.All, outputBytes, key)
+    public Blake2b(int outputBytes, ReadOnlySpan<byte> key) : this(Blake2bDefault, outputBytes, key)
     {
     }
 

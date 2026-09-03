@@ -22,6 +22,13 @@ using System;
 /// </remarks>
 public abstract class KeccakCore : HashAlgorithm
 {
+    /// <summary>
+    /// The default optimization to use for Keccak based algorithms.
+    /// Enables the ARM64 scalar path (<see cref="SimdSupport.Arm64"/>) which is automatically
+    /// masked to <see cref="SimdSupport.None"/> on non-ARM64 platforms.
+    /// </summary>
+    internal const SimdSupport KeccakDefault = SimdSupport.Arm64;
+
     // KeccakCoreState is a struct and shall never be readonly
     private protected KeccakCoreState _keccakCore;
     private protected readonly byte[] _buffer;
@@ -29,12 +36,12 @@ public abstract class KeccakCore : HashAlgorithm
     private protected int _bufferLength;
     private protected bool _disposed;
 
-    internal KeccakCore(int rateBytes, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+    internal KeccakCore(int rateBytes, SimdSupport simdSupport = KeccakDefault)
         : this(rateBytes, 0, simdSupport)
     {
     }
 
-    internal KeccakCore(int rateBytes, int startRound, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+    internal KeccakCore(int rateBytes, int startRound, SimdSupport simdSupport = KeccakDefault)
     {
         _keccakCore = new KeccakCoreState(simdSupport, startRound);
         _buffer = new byte[rateBytes];

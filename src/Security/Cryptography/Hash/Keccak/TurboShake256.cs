@@ -67,7 +67,7 @@ public sealed class TurboShake256 : KeccakXofCore
     /// Initializes a new instance of the <see cref="TurboShake256"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    public TurboShake256(int outputBytes) : this(SimdSupport.KeccakDefault, outputBytes)
+    public TurboShake256(int outputBytes) : this(KeccakDefault, outputBytes)
     {
     }
 
@@ -76,7 +76,7 @@ public sealed class TurboShake256 : KeccakXofCore
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="domainSeparator">The domain separation byte (must be in range [0x01, 0x7F]).</param>
-    public TurboShake256(int outputBytes, byte domainSeparator) : this(SimdSupport.KeccakDefault, outputBytes, domainSeparator)
+    public TurboShake256(int outputBytes, byte domainSeparator) : this(KeccakDefault, outputBytes, domainSeparator)
     {
     }
 

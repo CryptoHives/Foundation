@@ -12,6 +12,10 @@
       href: objectowner.md
     - name: ObjectPools
       href: objectpools.md
+    - name: PoolFactory
+      href: poolfactory.md
+    - name: ArrayPoolBufferWriterProvider<T>
+      href: arraypoolbufferwriterprovider.md
 - name: Segment Ownership
   items:
     - name: ISegmentOwner<T>
@@ -22,4 +26,14 @@
       href: allocatedsegment.md
     - name: EmptySegment<T>
       href: emptysegment.md
+- name: Sequence Ownership
+  items:
+    - name: ISequenceOwner<T>
+      href: isequenceowner.md
+    - name: SequenceLease<T>
+      href: sequencelease.md
+    - name: SegmentSequence<T>
+      href: segmentsequence.md
+    - name: EmptySequence<T>
+      href: emptysequence.md
 
