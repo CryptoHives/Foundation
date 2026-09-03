@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
@@ -6,7 +6,7 @@
   <!--
     Referenced by src/*.csproj: real dependencies of the published NuGet packages.
   -->
-  <ItemGroup>
+  <ItemGroup Label="Packages">
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
     <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.11" />
@@ -22,7 +22,7 @@
     Referenced only by tests/*.csproj, never shipped as a dependency of a
     published package.
   -->
-  <ItemGroup>
+  <ItemGroup Label="Tests">
     <PackageVersion Include="AsyncKeyedLock" Version="8.0.2" />
     <PackageVersion Include="AsyncUtilities" Version="1.1.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
@@ -59,7 +59,7 @@
   <!--
     Repo-wide build tooling, pulled in via common.props/version.props <- Directory.Build.props. 
   -->
-  <ItemGroup>
+  <ItemGroup Label="Nuget">
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.91" />
   </ItemGroup>

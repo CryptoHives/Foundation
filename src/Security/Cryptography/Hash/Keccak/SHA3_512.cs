@@ -51,7 +51,7 @@ public sealed class SHA3_512 : KeccakHashCore
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA3_512"/> class.
     /// </summary>
-    public SHA3_512() : this(SimdSupport.KeccakDefault)
+    public SHA3_512() : this(KeccakDefault)
     {
     }
 

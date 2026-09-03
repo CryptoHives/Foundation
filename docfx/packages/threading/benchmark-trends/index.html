@@ -663,10 +663,10 @@
     setInert(logPickerEl, table, "No chart axis to scale in table mode.");
   }
 
-  function renderChartInstance(datasets, scales, tooltipAfterLabel) {
+  function renderChartInstance(datasets, scales, tooltipAfterLabel, chartType = "line") {
     if (chart) chart.destroy();
     chart = new Chart(document.getElementById("chart"), {
-      type: "line",
+      type: chartType,
       data: { datasets },
       options: {
         responsive: true,
@@ -723,6 +723,18 @@
     }
     stmt.free();
 
+    // A line needs at least two distinct x-values to draw anything but an isolated dot per
+    // series; with only one recorded date, every series collapses to a single point and a line
+    // chart just stacks dots on top of each other. A bar per series reads far better there.
+    const distinctDates = new Set();
+    for (const series of seriesByKey.values()) {
+      for (const point of series.points) distinctDates.add(point.x);
+    }
+    if (seriesByKey.size > 0 && distinctDates.size <= 1) {
+      renderTrendBarChart(seriesByKey, metric);
+      return;
+    }
+
     // Color tracks the variant/implementation, not the (variant, contention level) combination
     // — so the same implementation stays the same color at every level, and what changes per
     // level is the dash pattern. That way an implementation's trend is easy to follow by eye.
@@ -765,6 +777,37 @@
     statusEl.textContent = datasets.length
       ? `${visibleCount} of ${datasets.length} series shown, ` +
         `${datasets.filter((d) => !d.hidden).reduce((n, d) => n + d.data.length, 0)} data point(s)`
+      : "No data for this selection yet.";
+  }
+
+  // The single-date fallback for Trend mode: one bar per (variant[, contention level]) series
+  // instead of a line with nothing to connect. Colour still comes from familyColors, so switching
+  // between the two chart shapes (as more history accumulates) never changes what a given
+  // implementation looks like.
+  function renderTrendBarChart(seriesByKey, metric) {
+    const entries = Array.from(seriesByKey.entries()).map(([label, { variant, points }]) => ({
+      label, variant, point: points[0],
+    }));
+
+    renderChartInstance(
+      [{
+        label: metricLabel(metric),
+        data: entries.map((e) => e.point.y),
+        backgroundColor: entries.map((e) => familyColors.get(e.variant)),
+      }],
+      {
+        x: { type: "category", labels: entries.map((e) => e.label), title: { display: true, text: "Implementation" } },
+        y: yAxisScale(metric),
+      },
+      (ctx) => pointFooter(entries[ctx.dataIndex].point),
+      "bar"
+    );
+
+    renderColorLegend([]); // redundant here - each bar's x-axis tick already names it
+    renderDashLegend([]);
+
+    statusEl.textContent = entries.length
+      ? `${entries.length} series shown as bars - only one recorded date for this selection`
       : "No data for this selection yet.";
   }
 
@@ -825,6 +868,19 @@
         if (!cancellations.includes(row.cancellation)) cancellations.push(row.cancellation);
       }
       stmt.free();
+    }
+
+    // A line needs at least two distinct x-values to draw anything but an isolated dot per
+    // series; with no real contention axis (or only one recorded level), every series collapses
+    // to a single point stacked at the same spot. A bar per implementation is legible where a
+    // scatter of same-x dots is not.
+    const distinctX = new Set();
+    for (const points of rowsByKey.values()) {
+      for (const x of points.keys()) distinctX.add(x);
+    }
+    if (rowsByKey.size > 0 && distinctX.size <= 1) {
+      renderScalingBarChart(rowsByKey, runPlatform, runFramework);
+      return;
     }
 
     const DASH_PATTERNS = [[], [6, 3], [2, 2], [8, 3, 2, 3], [1, 3]];
@@ -917,6 +973,73 @@
     statusEl.textContent = datasets.length
       ? `${visibleCount} of ${datasets.length} series shown` + (hasRealParams ? "" : " (single scenario)") +
         ", from " + (chosen ? chosen.textContent.trim() : "the selected run")
+      : "No data for this selection yet.";
+  }
+
+  // The single-x-value fallback for Scaling mode: one grouped bar pair (mean time + allocation)
+  // per (variant[, cancellation state]) instead of a line with nothing to connect. Both metrics
+  // still plot together as they do in the line view - the point of Scaling mode is seeing both
+  // at once.
+  function renderScalingBarChart(rowsByKey, runPlatform, runFramework) {
+    const entries = Array.from(rowsByKey.entries()).map(([key, byX]) => {
+      const [variant, cancellation] = key.split("");
+      return { variant, cancellation, row: Array.from(byX.values())[0] };
+    });
+    const multiCancellation = new Set(entries.map((e) => e.cancellation)).size > 1;
+    const labels = entries.map((e) => multiCancellation
+      ? `${e.variant} · ${cancellationLabel(e.cancellation)}`
+      : e.variant);
+
+    const datasets = [];
+    for (const m of METRICS) {
+      if (entries.every((e) => e.row[m.key] == null)) continue;
+      datasets.push({
+        label: m.text,
+        data: entries.map((e) => e.row[m.key]),
+        yAxisID: m.axis,
+        // Allocation bars are the same per-variant colour at reduced opacity, rather than a
+        // second solid colour - this keeps familyColors meaningful on both bars instead of
+        // introducing a colour that means "allocation" everywhere else it might appear.
+        backgroundColor: entries.map((e) => m.key === "allocated_bytes"
+          ? familyColors.get(e.variant) + "80"
+          : familyColors.get(e.variant)),
+      });
+    }
+
+    const usesAlloc = datasets.some((d) => d.yAxisID === "yAlloc");
+    const scales = {
+      x: { type: "category", labels, title: { display: true, text: "Implementation" } },
+      y: { ...yAxisScale("mean_ns"), position: "left" },
+    };
+    if (usesAlloc) {
+      scales.yAlloc = {
+        type: "linear", position: "right", beginAtZero: true,
+        title: { display: true, text: metricLabel("allocated_bytes") },
+        grid: { drawOnChartArea: false },
+      };
+    }
+
+    renderChartInstance(
+      datasets,
+      scales,
+      (ctx) => {
+        const e = entries[ctx.dataIndex];
+        return pointFooter({
+          commit: e.row.commit_sha,
+          runtime: e.row.runtime_version,
+          pkg: packageLabel(e.variant, e.row.run_id, runPlatform, runFramework),
+        });
+      },
+      "bar"
+    );
+
+    renderColorLegend([]); // redundant here - each bar's x-axis tick already names it
+    renderDashLegend([]);
+    renderMetricLegend(METRICS.filter((m) => datasets.some((d) => d.yAxisID === m.axis))
+                               .map((m) => ({ metric: m.key, text: m.text })));
+
+    statusEl.textContent = entries.length
+      ? `${entries.length} implementation(s) shown as bars - only one point on this axis for the current selection`
       : "No data for this selection yet.";
   }
 

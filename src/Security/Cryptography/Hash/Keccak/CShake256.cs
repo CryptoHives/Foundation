@@ -55,7 +55,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
     /// <param name="functionName">The function name string N (for NIST-defined functions).</param>
     /// <param name="customization">The customization string S.</param>
     public CShake256(int outputBytes = DefaultOutputBits / 8, string? functionName = null, string? customization = null)
-        : this(SimdSupport.KeccakDefault, outputBytes,
+        : this(KeccakDefault, outputBytes,
               functionName == null ? [] : Encoding.UTF8.GetBytes(functionName),
               customization == null ? [] : Encoding.UTF8.GetBytes(customization))
     {
@@ -68,7 +68,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
     /// <param name="functionName">The function name bytes N.</param>
     /// <param name="customization">The customization bytes S.</param>
     public CShake256(int outputBytes, byte[]? functionName, byte[]? customization)
-        : this(SimdSupport.KeccakDefault, outputBytes, functionName, customization)
+        : this(KeccakDefault, outputBytes, functionName, customization)
     {
     }
 
@@ -108,7 +108,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
     /// no customization is required.</param>
     /// <returns>A new CShake256 instance configured with the specified output length, function name, and customization string.</returns>
     public static CShake256 Create(int outputBytes, byte[]? functionName = null, byte[]? customization = null)
-        => new(SimdSupport.KeccakDefault, outputBytes, functionName, customization);
+        => new(KeccakDefault, outputBytes, functionName, customization);
 
     /// <summary>
     /// Creates a new instance of the <see cref="CShake256"/> class with specified parameters.

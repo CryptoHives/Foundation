@@ -100,7 +100,7 @@ internal readonly partial struct ChaChaCore
     /// <summary>
     /// Initializes a new instance of the ChaChaCore class with the specified SIMD support settings.
     /// </summary>
-    public ChaChaCore(SimdSupport simdSupport = SimdSupport.All)
+    public ChaChaCore(SimdSupport simdSupport = ChaCha20.ChaCha20Default)
     {
         _simdSupport = simdSupport & SimdSupport;
     }
