@@ -46,7 +46,7 @@ public sealed class SHA256 : Sha2HashAlgorithm<uint>
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA256"/> class.
     /// </summary>
-    public SHA256() : this(SimdSupport.All)
+    public SHA256() : this(SHA256Core.Sha256Default)
     {
     }
 

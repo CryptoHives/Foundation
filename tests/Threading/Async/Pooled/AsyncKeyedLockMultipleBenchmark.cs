@@ -1,8 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#if !SIGNASSEMBLY
 // See AsyncKeyedLockBaseBenchmark.cs for why AsyncUtilities is behind an alias.
 extern alias AsyncUtilitiesLib;
+#endif
 
 namespace Threading.Tests.Async.Pooled;
 
@@ -126,10 +128,11 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
     // "Exception - KeyedSemaphores is excluded" paragraph in the class remarks for the measurements
     // behind that decision.
 
+#if !SIGNASSEMBLY
     private IDisposable[]? _daoOuter;
     private Task<IDisposable>[]? _daoHandle;
-
     private ValueTask<AsyncUtilitiesLib::AsyncUtilities.StripedAsyncLock<string>.Releaser>[]? _asyncUtilitiesStripedHandle;
+#endif
 
     private RefImpl.AsyncKeyedLock<string>.Releaser[]? _refImplOuter;
     private ValueTask<RefImpl.AsyncKeyedLock<string>.Releaser>[]? _refImplHandle;
@@ -345,6 +348,7 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
         }
     }
 
+#if !SIGNASSEMBLY
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public Task LockUnlockDaoMultipleTestAsync(CancellationType cancellationType)
@@ -445,6 +449,7 @@ public class AsyncKeyedLockMultipleBenchmark : AsyncKeyedLockBaseBenchmark
             }
         }
     }
+#endif
 
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.TimedGroup))]

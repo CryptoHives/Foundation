@@ -68,7 +68,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
     public AesCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
-        : this(SimdSupport.All, key, iv, encrypting, mode, padding)
+        : this(AesCore.AesDefault, key, iv, encrypting, mode, padding)
     {
     }
 

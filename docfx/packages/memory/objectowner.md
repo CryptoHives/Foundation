@@ -68,7 +68,7 @@ var pool = new DefaultObjectPool<StringBuilder>(
 );
 
 using var owner = new ObjectOwner<StringBuilder>(pool);
-StringBuilder sb = owner.Object;
+StringBuilder sb = owner.PooledObject;
 
 sb.Append("Hello");
 sb.Append(" World");
@@ -94,7 +94,7 @@ public class StringBuilderPolicy : IPooledObjectPolicy<StringBuilder>
 var pool = new DefaultObjectPool<StringBuilder>(new StringBuilderPolicy());
 
 using var owner = new ObjectOwner<StringBuilder>(pool);
-StringBuilder sb = owner.Object;
+StringBuilder sb = owner.PooledObject;
 // Use sb...
 ```
 
@@ -108,7 +108,7 @@ public List<int> ProcessData(IEnumerable<int> items)
     );
     
     using var owner = new ObjectOwner<List<int>>(pool);
-    List<int> list = owner.Object;
+    List<int> list = owner.PooledObject;
     
     foreach (int item in items)
     {
@@ -132,7 +132,7 @@ public List<int> ProcessData(IEnumerable<int> items)
 
 ```csharp
 using var owner = new ObjectOwner<StringBuilder>(pool);
-StringBuilder sb = owner.Object;
+StringBuilder sb = owner.PooledObject;
 // Use sb...
 // Automatically returned to pool
 ```
@@ -144,7 +144,7 @@ string result;
 
 using (var owner = new ObjectOwner<StringBuilder>(pool))
 {
-    StringBuilder sb = owner.Object;
+    StringBuilder sb = owner.PooledObject;
     sb.Append("Data");
     result = sb.ToString();
 } // Pool object returned here
@@ -169,14 +169,14 @@ public class BadExample
 public StringBuilder GetStringBuilder()
 {
     using var owner = new ObjectOwner<StringBuilder>(pool);
-    return owner.Object; // Object will be returned to pool!
+    return owner.PooledObject; // Object will be returned to pool!
 }
 
 // Correct: Return the result
 public string GetString()
 {
     using var owner = new ObjectOwner<StringBuilder>(pool);
-    return owner.Object.ToString();
+    return owner.PooledObject.ToString();
 }
 ```
 
@@ -211,7 +211,7 @@ using var owner = new ObjectOwner<StringBuilder>(pool);
 public string FormatData(params object[] values)
 {
     using var owner = new ObjectOwner<StringBuilder>(stringBuilderPool);
-    StringBuilder sb = owner.Object;
+    StringBuilder sb = owner.PooledObject;
     
     foreach (var value in values)
     {
@@ -229,7 +229,7 @@ public string FormatData(params object[] values)
 public int[] FilterPositive(int[] values)
 {
     using var owner = new ObjectOwner<List<int>>(listPool);
-    List<int> list = owner.Object;
+    List<int> list = owner.PooledObject;
     
     foreach (int value in values)
     {
@@ -249,7 +249,7 @@ public int[] FilterPositive(int[] values)
 public byte[] ProcessData(byte[] input)
 {
     using var owner = new ObjectOwner<MemoryStream>(streamPool);
-    MemoryStream stream = owner.Object;
+    MemoryStream stream = owner.PooledObject;
     
     stream.Write(input, 0, input.Length);
 
@@ -286,7 +286,7 @@ finally
 
 // With ObjectOwner (safer, cleaner)
 using var owner = new ObjectOwner<T>(pool);
-T obj = owner.Object;
+T obj = owner.PooledObject;
 // Use obj...
 ```
 

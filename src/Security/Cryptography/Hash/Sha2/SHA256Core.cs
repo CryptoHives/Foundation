@@ -26,6 +26,11 @@ using System.Runtime.InteropServices;
 internal static partial class SHA256Core
 {
     /// <summary>
+    /// The default optimization to use for Blake3 based algorithms.
+    /// </summary>
+    internal const SimdSupport Sha256Default = SimdSupport.All;
+
+    /// <summary>
     /// The number of rounds in the SHA-256 compression function.
     /// </summary>
     public const int Rounds = 64;
