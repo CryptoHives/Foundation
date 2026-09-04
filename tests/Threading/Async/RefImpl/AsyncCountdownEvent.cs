@@ -7,6 +7,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
+#pragma warning disable CA1724 // Type name conflicts with the sibling Async/AsyncCountdownEvent/ test namespace
+
 /// <summary>
 /// An async count down reference implementation based on
 /// https://devblogs.microsoft.com/dotnet/building-async-coordination-primitives-part-3-asynccountdownevent/.
