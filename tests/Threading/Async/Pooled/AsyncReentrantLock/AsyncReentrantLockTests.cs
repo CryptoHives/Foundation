@@ -3,7 +3,7 @@
 
 #pragma warning disable CA1849 // Call async methods when in an async method
 
-namespace Threading.Tests.Async.Pooled;
+namespace Threading.Tests.Async.Pooled.AsyncReentrantLock;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
