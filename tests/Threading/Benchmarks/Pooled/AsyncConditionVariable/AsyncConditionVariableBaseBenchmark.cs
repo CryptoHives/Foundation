@@ -1,15 +1,16 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Threading.Tests.Async.Pooled;
+namespace Threading.Tests.Benchmarks.Pooled.AsyncConditionVariable;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using RefImpl = Threading.Tests.Async.RefImpl;
 using System.Threading;
 
 #if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
+using NitoAsyncEx = Threading.Tests.Async.RefImpl;
 #else
 using NitoAsyncEx = Nito.AsyncEx;
 #endif

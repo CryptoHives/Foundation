@@ -1,13 +1,14 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Threading.Tests.Async.Pooled;
+namespace Threading.Tests.Benchmarks.Pooled.AsyncExchange;
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using RefImpl = Threading.Tests.Async.RefImpl;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

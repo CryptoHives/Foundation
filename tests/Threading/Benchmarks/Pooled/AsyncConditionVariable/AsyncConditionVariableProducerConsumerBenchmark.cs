@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Threading.Tests.Async.Pooled;
+namespace Threading.Tests.Benchmarks.Pooled.AsyncConditionVariable;
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
 

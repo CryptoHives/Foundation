@@ -5,6 +5,8 @@ namespace Threading.Tests.Async.RefImpl;
 
 using System.Threading.Tasks;
 
+#pragma warning disable CA1724 // Type name conflicts with the sibling Async/AsyncExchange/ test namespace
+
 /// <summary>
 /// A two-party rendezvous that lets two tasks swap values.
 /// </summary>

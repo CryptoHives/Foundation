@@ -6,6 +6,8 @@ namespace Threading.Tests.Async.RefImpl;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+#pragma warning disable CA1724 // Type name conflicts with the sibling Async/AsyncConditionVariable/ test namespace
+
 /// <summary>
 /// An async condition variable paired with <see cref="AsyncLock"/>.
 /// </summary>

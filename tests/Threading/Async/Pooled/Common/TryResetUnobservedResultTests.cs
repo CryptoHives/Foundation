@@ -3,7 +3,7 @@
 
 #pragma warning disable CA2012 // ValueTask instances should only be consumed once — deliberately held across the reset
 
-namespace Threading.Tests.Async.Pooled;
+namespace Threading.Tests.Async.Pooled.Common;
 
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
