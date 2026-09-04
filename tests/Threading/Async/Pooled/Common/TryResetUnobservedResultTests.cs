@@ -61,11 +61,26 @@ public class TryResetUnobservedResultTests
         ValueTask<AsyncLock.Releaser> queued = asyncLock.LockAsync(cts.Token);
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);   // removes the waiter, faults it
 
-        releaser.Dispose();                                        // lock free, queue empty
+        await releaser.DisposeAsync().ConfigureAwait(false);
 
         Assert.That(asyncLock.TryReset(), Is.False);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await queued.ConfigureAwait(false));
+        // Awaited directly rather than via Assert.ThrowsAsync(async () => await queued...): that
+        // would capture the ValueTask in a lambda/closure (CHT010) and, more importantly, any
+        // conversion to a Task (e.g. AsTask()) done before this point would attach a continuation
+        // immediately - observing the result as soon as cancellation completes, before the
+        // TryReset() check above ever runs, and defeating the "still unobserved" setup this test
+        // exists to exercise.
+        try
+        {
+            _ = await queued.ConfigureAwait(false);
+            Assert.Fail("Expected the queued acquisition to observe its cancellation.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected: the queued waiter was cancelled while the lock was held.
+        }
+
         Assert.That(asyncLock.TryReset(), Is.True);
     }
 
@@ -80,11 +95,22 @@ public class TryResetUnobservedResultTests
         ValueTask<AsyncReaderWriterLock.Releaser> queued = rwLock.WriterLockAsync(cts.Token);
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        writer.Dispose();
+        await writer.DisposeAsync().ConfigureAwait(false);
 
         Assert.That(rwLock.TryReset(), Is.False);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await queued.ConfigureAwait(false));
+        // See AsyncLockDeclinesWhileACancelledResultIsUnobserved above for why this is a direct
+        // try/catch rather than Assert.ThrowsAsync(async () => await queued...) or an early AsTask().
+        try
+        {
+            _ = await queued.ConfigureAwait(false);
+            Assert.Fail("Expected the queued acquisition to observe its cancellation.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected: the queued writer was cancelled while the lock was held.
+        }
+
         Assert.That(rwLock.TryReset(), Is.True);
     }
 }
