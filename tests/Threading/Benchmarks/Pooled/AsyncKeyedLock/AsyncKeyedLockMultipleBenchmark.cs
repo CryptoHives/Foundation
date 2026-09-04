@@ -16,8 +16,8 @@ namespace Threading.Tests.Benchmarks.Pooled.AsyncKeyedLock;
 using BenchmarkDotNet.Attributes;
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
-using System.Threading.Tasks;
 using System;
+using System.Threading.Tasks;
 using RefImpl = Threading.Tests.Async.RefImpl;
 
 /// <summary>

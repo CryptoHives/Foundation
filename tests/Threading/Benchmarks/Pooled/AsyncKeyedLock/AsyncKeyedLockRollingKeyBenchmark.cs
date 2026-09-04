@@ -5,9 +5,9 @@ namespace Threading.Tests.Benchmarks.Pooled.AsyncKeyedLock;
 
 using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
+using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System;
 using RefImpl = Threading.Tests.Async.RefImpl;
 
 /// <summary>
