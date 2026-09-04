@@ -26,6 +26,7 @@
     <Compile Include="../Common/CancellationType.cs" Link="Async/Pooled/CancellationType.cs" />
     <Compile Include="../Common/Main.cs" />
     <Compile Include="../Common/Common.cs" />
+    <Compile Include="../Common/ShortNameMarkdownExporter.cs" />
   </ItemGroup>
 
   <ItemGroup>
