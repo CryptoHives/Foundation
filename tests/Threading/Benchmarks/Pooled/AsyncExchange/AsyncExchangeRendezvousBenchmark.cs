@@ -5,13 +5,13 @@ namespace Threading.Tests.Benchmarks.Pooled.AsyncExchange;
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
 
-using CryptoHives.Foundation.Threading.Async.Pooled;
 using BenchmarkDotNet.Attributes;
+using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
-using RefImpl = Threading.Tests.Async.RefImpl;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using RefImpl = Threading.Tests.Async.RefImpl;
 
 /// <summary>
 /// Base class for benchmarking and testing different implementations of AsyncExchange.
