@@ -231,6 +231,11 @@ public class KemConfig : ManualConfig
 
             var fileName = $"{typeName}-report.md";
             var safeFileName = Path.GetFileName(fileName);
+            if (Path.IsPathRooted(safeFileName))
+            {
+                throw new InvalidOperationException("Expected a file name without a rooted path.");
+            }
+
             var filePath = Path.Combine(summary.ResultsDirectoryPath, safeFileName);
 
             using var writer = new StreamWriter(filePath);
