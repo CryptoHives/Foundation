@@ -274,6 +274,14 @@ public sealed class AsyncReaderWriterLock : IResettable
                     Debug.Assert(false, "Invalid releaser type.");
                 }
             }
+#if DEBUG
+#pragma warning disable CA1065 // Do not throw exceptions from Dispose methods
+            else
+            {
+                throw new InvalidOperationException("Releaser does not have an associated lock.");
+            }
+#pragma warning restore CA1065
+#endif
         }
 
         /// <inheritdoc/>
@@ -627,6 +635,58 @@ public sealed class AsyncReaderWriterLock : IResettable
         return ReaderLockAsyncImpl(timeout, cancellationToken);
     }
 
+    /// <summary>
+    /// Attempts to acquire a reader lock without waiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="ReaderLockAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask{Releaser}"/> - there is nothing to await in the first place, since this either
+    /// succeeds immediately or doesn't.
+    /// <para>
+    /// Writer priority is honoured exactly as it is on the awaiting path: this declines while a writer is
+    /// queued, even though the lock is only read-held, so a try-reader in a loop cannot starve a writer.
+    /// </para>
+    /// </remarks>
+    /// <param name="releaser">
+    /// The releaser for the acquired reader lock, if this method returns <see langword="true"/>. Dispose it
+    /// to release the lock. Undefined if this method returns <see langword="false"/>.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if a reader lock was acquired immediately; <see langword="false"/> if a writer
+    /// holds or is waiting for the lock, or the reader limit is reached.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryReaderLock(out Releaser releaser)
+    {
+        _spinLock.Enter();
+        try
+        {
+            if (_waitingWriters.Count == 0 && _waitingUpgradedWriters.Count == 0)
+            {
+                int status = Interlocked.CompareExchange(ref _status, (int)LockState.Reader, (int)LockState.Uncontested);
+                if (status is >= ((int)LockState.Uncontested) and < MaxReaderCount or
+                    >= ((int)LockState.UpgradeableReader) and < ((int)LockState.UpgradeableReader + MaxReaderCount))
+                {
+                    if (status > (int)LockState.Uncontested)
+                    {
+                        Interlocked.Increment(ref _status);
+                    }
+
+                    releaser = new Releaser(this, Releaser.ReleaserType.Reader);
+                    return true;
+                }
+            }
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
+        releaser = default;
+        return false;
+    }
+
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private ValueTask<Releaser> ReaderLockAsyncImpl(TimeSpan timeout, CancellationToken cancellationToken)
     {
@@ -887,6 +947,36 @@ public sealed class AsyncReaderWriterLock : IResettable
         }
 
         return WriterLockAsyncImpl(timeout, cancellationToken);
+    }
+
+    /// <summary>
+    /// Attempts to acquire the writer lock without waiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="WriterLockAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask{Releaser}"/> - there is nothing to await in the first place, since this either
+    /// succeeds immediately or doesn't.
+    /// </remarks>
+    /// <param name="releaser">
+    /// The releaser for the acquired writer lock, if this method returns <see langword="true"/>. Dispose it
+    /// to release the lock. Undefined if this method returns <see langword="false"/>.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if the writer lock was acquired immediately; <see langword="false"/> if any
+    /// reader or writer currently holds it.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryWriterLock(out Releaser releaser)
+    {
+        if (Interlocked.CompareExchange(ref _status, (int)LockState.Writer, (int)LockState.Uncontested) == (int)LockState.Uncontested)
+        {
+            releaser = new Releaser(this, Releaser.ReleaserType.Writer);
+            return true;
+        }
+
+        releaser = default;
+        return false;
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
