@@ -50,10 +50,11 @@ public class MLKemAcvpTests
         byte[] dk = new byte[kem.DecapsulationKeySizeBytes];
         kem.GenerateKeyPair(Seed(dHex, zHex), ek, dk);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(ek, Is.EqualTo(FromHex(ekHex)), $"{parameterSet} tcId {tcId}: encapsulation key mismatch.");
             Assert.That(dk, Is.EqualTo(FromHex(dkHex)), $"{parameterSet} tcId {tcId}: decapsulation key mismatch.");
-        });
+        }
     }
 
     /// <summary>
@@ -78,11 +79,12 @@ public class MLKemAcvpTests
 
         using MLKem kem = MLKem.ImportPrivateSeed(Algorithm(parameterSet), seed);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(kem.ExportEncapsulationKey(), Is.EqualTo(FromHex(ekHex)), $"{parameterSet} tcId {tcId}: encapsulation key mismatch.");
             Assert.That(kem.ExportDecapsulationKey(), Is.EqualTo(FromHex(dkHex)), $"{parameterSet} tcId {tcId}: decapsulation key mismatch.");
             Assert.That(kem.ExportPrivateSeed(), Is.EqualTo(seed), $"{parameterSet} tcId {tcId}: private seed did not round-trip.");
-        });
+        }
     }
 
     /// <summary>
@@ -106,10 +108,11 @@ public class MLKemAcvpTests
         byte[] ss = new byte[kem.SharedSecretSizeBytes];
         kem.Encapsulate(FromHex(ekHex), FromHex(mHex), ct, ss);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(ct, Is.EqualTo(FromHex(cHex)), $"{parameterSet} tcId {tcId}: ciphertext mismatch.");
             Assert.That(ss, Is.EqualTo(FromHex(kHex)), $"{parameterSet} tcId {tcId}: shared secret mismatch.");
-        });
+        }
 
         // The same vector must decapsulate back to the same shared secret.
         byte[] ss2 = new byte[kem.SharedSecretSizeBytes];

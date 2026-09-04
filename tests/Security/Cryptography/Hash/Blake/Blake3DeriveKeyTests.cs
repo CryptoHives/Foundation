@@ -222,10 +222,11 @@ public class Blake3DeriveKeyTests
 
         byte[] derived = derive.ComputeHash(keyMaterial);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(derived, Is.Not.EqualTo(plain.ComputeHash(keyMaterial)));
             Assert.That(derived, Is.Not.EqualTo(keyed.ComputeHash(keyMaterial)));
-        });
+        }
     }
 
     /// <summary>
@@ -236,10 +237,11 @@ public class Blake3DeriveKeyTests
     {
         using var blake3 = Blake3.CreateDeriveKey(OfficialContext);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(blake3.Mode, Is.EqualTo(Blake3Mode.DeriveKey));
             Assert.That(blake3.AlgorithmName, Is.EqualTo("BLAKE3-DeriveKey"));
-        });
+        }
     }
 
     /// <summary>
@@ -258,10 +260,11 @@ public class Blake3DeriveKeyTests
 
         using var fresh = Blake3.CreateDeriveKey(OfficialContext);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(second, Is.EqualTo(first));
             Assert.That(first, Is.EqualTo(fresh.ComputeHash(keyMaterial)));
-        });
+        }
     }
 
     /// <summary>
@@ -304,11 +307,12 @@ public class Blake3DeriveKeyTests
     [Test]
     public void InvalidContextThrows()
     {
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.Throws<ArgumentNullException>(() => Blake3.CreateDeriveKey((string)null!));
             Assert.Throws<ArgumentException>(() => Blake3.CreateDeriveKey(string.Empty));
             Assert.Throws<ArgumentException>(() => Blake3.CreateDeriveKey(ReadOnlySpan<byte>.Empty));
-        });
+        }
     }
 
     /// <summary>
@@ -317,10 +321,11 @@ public class Blake3DeriveKeyTests
     [Test]
     public void InvalidOutputSizeThrows()
     {
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.Throws<ArgumentOutOfRangeException>(() => Blake3.CreateDeriveKey(OfficialContext, 0));
             Assert.Throws<ArgumentOutOfRangeException>(() => Blake3.CreateDeriveKey(OfficialContext, -1));
-        });
+        }
     }
 
     /// <summary>
