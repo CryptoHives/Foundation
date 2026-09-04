@@ -1,18 +1,25 @@
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 # SPDX-License-Identifier: MIT
 
-# Dependency Review Action
-# Blocks PRs that introduce dependencies with known vulnerabilities or incompatible licenses
+# Dependency security
+#  - dependency-review (PRs): blocks PRs that INTRODUCE dependencies with known
+#    vulnerabilities or incompatible licenses. Runs only when the dependency graph can
+#    actually change (manifests / lock files).
+#  - vulnerable-deps (weekly): sweeps the whole resolved graph on the default branch, so a
+#    CVE disclosed later against a dependency already on main - including a transitive one -
+#    is caught. The PR-triggered review never re-checks those.
 
 name: Dependency Review
 
-# Only run when the dependency graph can actually change (manifests / lock files).
 on:
   pull_request:
     paths:
     - '**/*.csproj'
     - '**/Directory.Packages.props'
     - '**/packages.lock.json'
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -24,6 +31,8 @@ permissions:
 
 jobs:
   dependency-review:
+    # PR-only: the action diffs base vs. head and has nothing to do on a schedule.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,3 +57,31 @@ jobs:
           allow-dependencies-licenses: pkg:nuget/NUnit.Console, pkg:nuget/OpenGost.Security.Cryptography
           # Comment on PR with findings
           comment-summary-in-pr: always
+
+  vulnerable-deps:
+    # Scheduled / on-demand sweep of the entire resolved dependency graph.
+    if: github.event_name != 'pull_request'
+    name: vulnerable dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      # Restore (not build) is TFM-agnostic for packages, so the net4x/netstandard
+      # projects resolve fine on Linux; only building them would need targeting packs.
+      - name: Restore
+        run: dotnet restore "CryptoHives .NET Foundation.sln"
+
+      - name: List vulnerable packages (direct + transitive)
+        run: |
+          OUT=$(dotnet list "CryptoHives .NET Foundation.sln" package --vulnerable --include-transitive 2>&1 || true)
+          echo "$OUT"
+          if echo "$OUT" | grep -Eq 'Critical|High|Moderate|Low'; then
+            echo "::error::Vulnerable packages detected in the resolved dependency graph"
+            exit 1
+          fi
+          echo "No known-vulnerable packages."
