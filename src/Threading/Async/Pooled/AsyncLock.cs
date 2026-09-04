@@ -108,13 +108,9 @@ public sealed class AsyncLock : IResettable
                 return false;
             }
 
-            if (_localWaiter.TryReset())
-            {
-                _localWaiter.RunContinuationsAsynchronously = true;
-                return true;
-            }
+            _localWaiter.TryReset();
 
-            return false;
+            return true;
         }
         finally
         {
