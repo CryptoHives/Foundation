@@ -6,14 +6,11 @@ namespace Cryptography.Tests.Benchmarks.Mac;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using BenchmarkDotNet.Exporters;
-using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
@@ -26,11 +23,6 @@ using System.Runtime.InteropServices;
 /// </remarks>
 public class MacConfig : ManualConfig
 {
-    /// <summary>
-    /// Shared instance of the short name markdown exporter.
-    /// </summary>
-    private static readonly ShortNameMarkdownExporter ShortExporter = new();
-
     public MacConfig()
     {
         WithOptions(ConfigOptions.DisableLogFile);
@@ -49,7 +41,7 @@ public class MacConfig : ManualConfig
         HideColumns("Method", "TestMacAlgorithm");
 
         // Markdown for docfx, plus full JSON so append_results.py can ingest results without extra flags.
-        AddExporter(ShortExporter);
+        AddExporter(ShortNameMarkdownExporter.Default);
         AddExporter(BenchmarkDotNet.Exporters.Json.JsonExporter.Full);
     }
 
@@ -164,36 +156,6 @@ public class MacConfig : ManualConfig
         {
             var macAlgorithm = benchmark.Parameters["TestMacAlgorithm"] as MacAlgorithmType;
             return macAlgorithm?.Category ?? "Unknown";
-        }
-    }
-
-    /// <summary>
-    /// Custom markdown exporter that uses short file names (class name only, no namespace).
-    /// </summary>
-    private sealed class ShortNameMarkdownExporter : IExporter
-    {
-        private readonly IExporter _inner = MarkdownExporter.GitHub;
-
-        public string Name => "ShortMarkdown";
-
-        public IEnumerable<string> ExportToFiles(Summary summary, ILogger consoleLogger)
-        {
-            var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
-
-            var fileName = $"{typeName}-report.md";
-            var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
-
-            using var writer = new StreamWriter(filePath);
-            using var logger = new StreamLogger(writer);
-            _inner.ExportToLog(summary, logger);
-
-            consoleLogger.WriteLine($"  // * Results exported to: {filePath}");
-            return [filePath];
-        }
-
-        public void ExportToLog(Summary summary, ILogger logger)
-        {
-            _inner.ExportToLog(summary, logger);
         }
     }
 }
