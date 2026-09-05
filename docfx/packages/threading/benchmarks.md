@@ -1,10 +1,10 @@
-﻿## Threading Benchmarks
+## Threading Benchmarks
 
 This page documents how the benchmarks are executed which are included in the Threading library.
 
 ### Overview
 
-BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Threading/Async/Pooled/` and can be executed with the BenchmarkSwitcher entry point at `tests/Common/Main.cs`.
+BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Threading/Benchmarks/Pooled/<Primitive>/`, one folder per primitive, and can be executed with the BenchmarkSwitcher entry point at `tests/Common/Main.cs`.
 
 ### Viewing Benchmark Results
 
@@ -135,7 +135,7 @@ After running benchmarks, see "Recording a benchmark run" above for how to recor
 
 ### Adding a new benchmark
 
-1. Add a new `Benchmark` class under `tests/` following existing patterns in `tests/Threading/Async/Pooled/`.
+1. Add a new `Benchmark` class under `tests/Threading/Benchmarks/Pooled/<Primitive>/`, following existing patterns there.
 2. Include `[Benchmark]` methods and `[GlobalSetup]` where needed.
 3. Add a `[Params]` or `FixtureArgs` entry if parameterized runs are required.
 4. Run locally and inspect generated artifacts in `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
@@ -148,9 +148,12 @@ After running benchmarks, see "Recording a benchmark run" above for how to recor
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Async per-key exclusive lock
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait-until-condition paired with a lock
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 
 ---
 

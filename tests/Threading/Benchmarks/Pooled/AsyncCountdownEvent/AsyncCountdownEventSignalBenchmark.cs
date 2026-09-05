@@ -7,12 +7,6 @@ using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
-using NitoAsyncEx = Nito.AsyncEx;
-#endif
-
 /// <summary>
 /// Benchmarks measuring countdown event signal and wait performance.
 /// </summary>

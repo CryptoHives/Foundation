@@ -735,8 +735,7 @@ public class AsyncBarrierTests
         Task adding = Task.Run(() => phaseSeenByAdd = barrier.AddParticipant());
 
         // The add must not complete while the action is still running.
-        Assert.That(adding.Wait(TimeSpan.FromMilliseconds(500)), Is.False,
-            "AddParticipant did not wait for the post-phase action.");
+        await AsyncAssert.NeverCompletesAsync(adding, 500).ConfigureAwait(false);
 
         releaseAction.Set();
         await completing.ConfigureAwait(false);

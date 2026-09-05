@@ -85,6 +85,7 @@ public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseB
         _eventPooled.Reset();
     }
 
+#if !SIGNASSEMBLY
     /// <summary>
     /// Benchmark for Nito.AsyncEx async manual-reset event Set then Reset operation.
     /// </summary>
@@ -100,6 +101,7 @@ public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseB
         _eventNitoAsync.Set();
         _eventNitoAsync.Reset();
     }
+#endif
 
     /// <summary>
     /// Benchmark for reference implementation async manual-reset event Set then Reset operation (baseline).

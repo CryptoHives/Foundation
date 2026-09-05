@@ -1,4 +1,4 @@
-﻿# ArrayPoolBufferWriter&lt;T&gt; Class
+# ArrayPoolBufferWriter&lt;T&gt; Class
 
 A high-performance implementation of `IBufferWriter<T>` that uses pooled memory segments from `ArrayPool<T>`.
 

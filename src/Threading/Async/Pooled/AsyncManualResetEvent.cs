@@ -122,7 +122,10 @@ public sealed class AsyncManualResetEvent : IResettable
         try
         {
             // If waiters are queued the instance is still in active use; decline the reset.
-            if (_waiters.Count != 0)
+            // A local waiter that is still in use means a waiter has been handed its result but
+            // has not observed it yet: resetting now would bump the version underneath that
+            // ValueTask and make the await throw.
+            if (_waiters.Count != 0 || _localWaiter.InUse)
             {
                 return false;
             }

@@ -9,9 +9,7 @@ using NUnit.Framework;
 using System.Threading;
 using RefImpl = Threading.Tests.Async.RefImpl;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
+#if !SIGNASSEMBLY
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
@@ -21,7 +19,9 @@ using NitoAsyncEx = Nito.AsyncEx;
 public abstract class AsyncSemaphoreBaseBenchmark
 {
     private protected AsyncSemaphore _semaphorePooled;
+#if !SIGNASSEMBLY
     private protected NitoAsyncEx.AsyncSemaphore _semaphoreNitoAsync;
+#endif
     private protected RefImpl.AsyncSemaphore _semaphoreRefImp;
 #if !NETFRAMEWORK
     private protected Proto.Promises.Threading.AsyncSemaphore _semaphoreProtoPromises;
@@ -52,7 +52,9 @@ public abstract class AsyncSemaphoreBaseBenchmark
         int count = SemaphoreInitialCount;
 
         _semaphorePooled = new AsyncSemaphore(count);
+#if !SIGNASSEMBLY
         _semaphoreNitoAsync = new NitoAsyncEx.AsyncSemaphore(count);
+#endif
         _semaphoreRefImp = new RefImpl.AsyncSemaphore(count);
 #if !NETFRAMEWORK
         _semaphoreProtoPromises = new Proto.Promises.Threading.AsyncSemaphore(count);
