@@ -1,4 +1,4 @@
-﻿---
+---
 _layout: landing
 ---
 
@@ -51,6 +51,8 @@ Async synchronization primitives built for low allocation and high throughput.
 - `AsyncAutoResetEvent` and `AsyncManualResetEvent`, complementing the existing `Task`-based equivalents
 - `AsyncBarrier` as an async-aware replacement for the .NET barrier
 - Pooled `AsyncReaderWriterLock`, `AsyncSemaphore`, and `AsyncCountdownEvent`, all with async wait support
+- `AsyncConditionVariable` for "wait until condition" semantics paired with an `AsyncLock`
+- `AsyncExchange<T>` for a two-party value rendezvous
 - Fast-path optimizations for the uncontended case
 - No-allocation design for hot-path code and cancellation tokens (see [Benchmarks](packages/threading/benchmarks.md))
 

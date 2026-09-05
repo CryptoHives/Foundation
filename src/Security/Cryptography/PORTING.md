@@ -1,4 +1,4 @@
-﻿# CryptoHives.Foundation.Security.Cryptography — Guide for LLM Agents
+# CryptoHives.Foundation.Security.Cryptography — Guide for LLM Agents
 
 Machine-readable usage + porting guide for coding assistants. All APIs below are verified
 against the shipped source. Do not invent members. Human-oriented docs live in `README.md`.

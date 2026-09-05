@@ -77,6 +77,8 @@ If the target project uses Central Package Management (`Directory.Packages.props
 | `CountdownEvent` awaited async | `AsyncCountdownEvent` | |
 | `Barrier` awaited async | `AsyncBarrier` | |
 | `ReaderWriterLockSlim` awaited async | `AsyncReaderWriterLock` | |
+| `Monitor.Wait` / `Monitor.Pulse` awaited async | `AsyncConditionVariable` | Pairs with an `AsyncLock`; re-check the predicate in a `while` loop — signals are not stored. |
+| Java's `Exchanger<V>` (no BCL equivalent) | `AsyncExchange<T>` | Two-party rendezvous, not a queue; see `System.Threading.Channels` if buffering is needed instead. |
 | `Dictionary<TKey, SemaphoreSlim>` / a registry of one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other; released keys stay cached, so repeat acquisitions allocate nothing. |
 | `AsyncKeyedLock` (the third-party package), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | Same per-key semantics, without the striping some libraries use. |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify the source did not rely on reentrancy. |

@@ -1,4 +1,4 @@
-﻿# Kupyna (DSTU 7564:2014) Test Vectors
+# Kupyna (DSTU 7564:2014) Test Vectors
 
 ## Overview
 

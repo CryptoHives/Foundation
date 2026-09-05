@@ -1,4 +1,4 @@
-﻿# SM3 Test Vectors
+# SM3 Test Vectors
 
 ## Overview
 

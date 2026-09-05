@@ -25,6 +25,7 @@ using NUnit.Framework;
 /// <item><description><b>Standard:</b> Synchronous System.Threading.AutoResetEvent (OS-level kernel object).</description></item>
 /// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource with interlocked signaled flag.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library using Task-based primitives with internal state management.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncAutoResetEvent"/>.</description></item>
 /// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and managed state.</description></item>
 /// </list>
 /// <para>
@@ -82,6 +83,22 @@ public class AsyncAutoResetEventSetBenchmark : AsyncAutoResetEventBaseBenchmark
     public void NitoAsyncAutoResetEventSet()
     {
         _eventNitoAsync.Set();
+    }
+#endif
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async auto-reset event Set operation.
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance of the third-party DotNext.Threading library's Set() method.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("Set", "DotNext")]
+    public void DotNextAsyncAutoResetEventSet()
+    {
+        _eventDotNext.Set();
     }
 #endif
 

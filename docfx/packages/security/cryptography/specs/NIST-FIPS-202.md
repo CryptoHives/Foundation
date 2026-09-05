@@ -1,4 +1,4 @@
-﻿# NIST FIPS 202 - SHA-3 Standard
+# NIST FIPS 202 - SHA-3 Standard
 
 ## Overview
 

@@ -1,4 +1,4 @@
-﻿## 🛡️ CryptoHives Open Source Initiative 🐝
+## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem.
 
@@ -69,6 +69,8 @@ Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask
 - `AsyncAutoResetEvent` / `AsyncManualResetEvent`
 - `AsyncReaderWriterLock`
 - `AsyncBarrier` / `AsyncCountdownEvent`
+- `AsyncConditionVariable` — pairs with `AsyncLock` for "wait until condition" semantics
+- `AsyncExchange<T>` — two-party value rendezvous
 
 All primitives support `CancellationToken` and `ConfigureAwait(false)` without extra allocations. New in 0.6: timeout support via `TimeProvider` (an `ITimer` is only allocated once there's actual contention).
 
@@ -136,8 +138,8 @@ Measured with BenchmarkDotNet across a range of payload sizes, comparing our man
 │  AllocatedSegment  │   │ IValueTaskSource<T>   │   │                            │
 │  EmptySegment      │   │    backed by          │   │ MAC                        │
 │                    │   │   ObjectPool<T>       │   │  HMAC · KMAC               │
-│                    │   │                       │   │  AES-CMAC · AES-GMAC       │
-│                    │   │                       │   │  Poly1305 · BLAKE2/3       │
+│                    │   │ AsyncConditionVariable│   │  AES-CMAC · AES-GMAC       │
+│                    │   │ AsyncExchange<T>      │   │  Poly1305 · BLAKE2/3       │
 │                    │   │                       │   │                            │
 │                    │   │                       │   │ Cipher                     │
 │                    │   ├───────────────────────┤   │  AES-GCM/CCM (AEAD)        │

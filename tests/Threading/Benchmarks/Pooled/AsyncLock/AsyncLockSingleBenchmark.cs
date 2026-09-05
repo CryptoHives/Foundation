@@ -29,6 +29,8 @@ using System.Threading.Tasks;
 /// <item><description><b>AsyncKeyedLock (NonKeyed):</b> Third-party high-performance async lock library.</description></item>
 /// <item><description><b>NeoSmart:</b> Third-party async lock library with nested-acquisition detection.</description></item>
 /// <item><description><b>VS.Threading:</b> Third-party async library using AsyncSemaphore as a lock.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncExclusiveLock"/> - has no disposable
+/// releaser, unlike every other competitor here.</description></item>
 /// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// <para>
@@ -338,6 +340,33 @@ public class AsyncLockSingleBenchmark : AsyncLockBaseBenchmark
         {
             // simulate work
             unchecked { _counter++; }
+        }
+    }
+#endif
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async exclusive lock (single uncontended acquisition).
+    /// </summary>
+    /// <remarks>
+    /// Unlike every other competitor here, <see cref="DotNext.Threading.AsyncExclusiveLock"/> has no
+    /// disposable releaser - the caller acquires with AcquireAsync() and releases with an explicit
+    /// Release() call in a finally block.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("LockAsync", "DotNext")]
+    public async Task LockUnlockDotNextSingleAsync()
+    {
+        await _lockDotNext.AcquireAsync().ConfigureAwait(false);
+        try
+        {
+            // simulate work
+            unchecked { _counter++; }
+        }
+        finally
+        {
+            _lockDotNext.Release();
         }
     }
 #endif
