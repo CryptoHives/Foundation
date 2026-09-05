@@ -9,7 +9,7 @@ An open, community-driven collection of cryptography and performance libraries f
 [![NuGet](https://img.shields.io/nuget/v/CryptoHives.Foundation.Security.Cryptography.svg)](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography)
 [![Tests](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml/badge.svg)](https://github.com/CryptoHives/Foundation/actions/workflows/buildandtest.yml)
 
-Fully managed, OS-independent implementations of hash, MAC, KDF, cipher, and post-quantum KEM algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
+Fully managed, OS-independent implementations of hash, MAC, KDF, cipher, and post-quantum KEM and signature algorithms for .NET, written directly from NIST/RFC/ISO specifications and checked against official test vectors.
 
 No OS crypto dependency means deterministic results on every platform. Where the hardware supports it, intrinsics are used automatically — AES-NI, PCLMULQDQ/VPCLMULQDQ, SSE2, SSSE3, AVX2 and AVX-512 on x86/x64; ARM AES, ARM SHA-1/SHA-2, PMULL and NEON on Arm64.
 
@@ -55,6 +55,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
 | Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
+| Post-quantum signatures | ML-DSA-44/65/87 (FIPS 204); SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f} (FIPS 205) |
 
 ---
 
@@ -160,6 +161,30 @@ NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
 > (`ImportPkcs8PrivateKey`, `ExportSubjectPublicKeyInfo`, `ImportFromPem`, …). Raw key and
 > seed import/export is complete. See the
 > [KEM roadmap](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html).
+
+### Post-Quantum Signatures (`ML-DSA`)
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
+
+// The API mirrors System.Security.Cryptography.MLDsa from .NET 10,
+// but runs fully managed on every target framework down to net462.
+using var signer = MlDsa.GenerateKey(MlDsaAlgorithm.MlDsa65);
+byte[] publicKey = signer.ExportPublicKey();
+byte[] signature = signer.SignData(message);
+
+// Verifier:
+using var verifier = MlDsa.ImportPublicKey(MlDsaAlgorithm.MlDsa65, publicKey);
+bool valid = verifier.VerifyData(message, signature);
+```
+
+Hedged signing per FIPS 204 with optional context strings and deterministic variant;
+all three parameter sets are verified against the official NIST ACVP test vectors
+(byte-exact signatures) plus BouncyCastle and .NET 10 `MLDsa` interop tests.
+
+SLH-DSA (FIPS 205) completes the NIST PQC trio for conservative, hash-based signing —
+all 12 parameter sets via `SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f)` with the
+same API shape; prefer the `f` (fast) sets unless minimal signature size is critical.
 
 ### cSHAKE — Domain-Separated XOF
 
