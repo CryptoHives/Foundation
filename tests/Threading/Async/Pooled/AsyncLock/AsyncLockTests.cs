@@ -649,4 +649,84 @@ public class AsyncLockTests
 
         await waiterTask.ConfigureAwait(false);
     }
+
+    [Test]
+    public void TryLockOnFreeLockSucceedsAndReleaserWorks()
+    {
+        var mutex = new AsyncLock();
+        AsyncLock.Releaser releaser;
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.TryLock(out releaser), Is.True);
+            Assert.That(mutex.IsTaken, Is.True);
+        }
+
+        releaser.Dispose();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.IsTaken, Is.False);
+            Assert.That(mutex.TryLock(out AsyncLock.Releaser again), Is.True);
+            again.Dispose();
+        }
+    }
+
+    [Test]
+    public void TryLockOnHeldLockFails()
+    {
+        var mutex = new AsyncLock();
+
+        Assert.That(mutex.TryLock(out AsyncLock.Releaser held), Is.True);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.TryLock(out AsyncLock.Releaser failed), Is.False);
+            Assert.That(failed, Is.Default);
+        }
+
+        held.Dispose();
+
+        Assert.That(mutex.TryLock(out AsyncLock.Releaser after), Is.True);
+        after.Dispose();
+    }
+
+    [Test]
+    public void TryLockFailureReleaserIsNotDisposable()
+    {
+        var mutex = new AsyncLock();
+        AsyncLock.Releaser held;
+        AsyncLock.Releaser failed;
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.TryLock(out held), Is.True);
+            Assert.That(mutex.TryLock(out failed), Is.False);
+        }
+
+        // Disposing the out-value of a failed attempt would mean the caller ignored the bool and
+        // thinks it holds the lock. That must be loud, not a NullReferenceException.
+        Assert.Throws<InvalidOperationException>(failed.Dispose);
+
+        held.Dispose();
+        Assert.That(mutex.IsTaken, Is.False);
+    }
+
+    [Test]
+    public async Task TryLockReleaseUnblocksAQueuedWaiterAsync()
+    {
+        var mutex = new AsyncLock();
+
+        Assert.That(mutex.TryLock(out AsyncLock.Releaser held), Is.True);
+
+        ValueTask<AsyncLock.Releaser> queued = mutex.LockAsync();
+        Assert.That(queued.IsCompleted, Is.False);
+
+        await held.DisposeAsync().ConfigureAwait(false);
+
+        using (await queued.ConfigureAwait(false))
+        {
+            Assert.That(mutex.IsTaken, Is.True);
+        }
+    }
 }

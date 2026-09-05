@@ -149,6 +149,29 @@ public sealed class AsyncAutoResetEvent : IResettable
     }
 
     /// <summary>
+    /// Attempts to consume a pending signal without waiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="WaitAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask"/> - there is nothing to await in the first place, since this either succeeds
+    /// immediately or doesn't.
+    /// <para>
+    /// This <b>consumes</b> the signal exactly as a completed <see cref="WaitAsync(CancellationToken)"/>
+    /// would, which is what separates it from <see cref="IsSet"/>: that property only peeks, and two
+    /// callers reading it can both proceed on one signal. Prefer this whenever the answer decides who
+    /// does the work.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> if a signal was pending and has now been consumed by this caller;
+    /// <see langword="false"/> if the event was not set.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryWait()
+        => Interlocked.Exchange(ref _signaled, 0) != 0;
+
+    /// <summary>
     /// Gets or sets whether to force continuations to run asynchronously.
     /// </summary>
     /// <remarks>
