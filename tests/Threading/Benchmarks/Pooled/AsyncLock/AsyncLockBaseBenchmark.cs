@@ -29,6 +29,9 @@ public abstract class AsyncLockBaseBenchmark
 #if !SIGNASSEMBLY
     private protected NitoAsyncEx.AsyncLock _lockNitoAsync;
 #endif
+#if NET10_0_OR_GREATER
+    private protected DotNext.Threading.AsyncExclusiveLock _lockDotNext;
+#endif
     private protected global::AsyncKeyedLock.AsyncNonKeyedLocker _lockNonKeyed;
     private protected RefImpl.AsyncLock _lockRefImp;
     private protected Microsoft.VisualStudio.Threading.AsyncSemaphore _lockVSThreading;
@@ -55,6 +58,9 @@ public abstract class AsyncLockBaseBenchmark
 #if !SIGNASSEMBLY
         _lockNitoAsync = new();
 #endif
+#if NET10_0_OR_GREATER
+        _lockDotNext = new();
+#endif
         _lockNonKeyed = new();
         _lockRefImp = new();
         _lockVSThreading = new(1);
@@ -72,5 +78,8 @@ public abstract class AsyncLockBaseBenchmark
     public void GlobalCleanup()
     {
         _lockVSThreading?.Dispose();
+#if NET10_0_OR_GREATER
+        _lockDotNext?.Dispose();
+#endif
     }
 }

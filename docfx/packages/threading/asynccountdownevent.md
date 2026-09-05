@@ -192,7 +192,7 @@ Resets the countdown to the specified count, or to the initial count if not spec
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncCountdownEvent` against `CountdownEvent`, `Proto.Promises.Threading.AsyncCountdownEvent`, `Nito.AsyncEx.AsyncCountdownEvent` and reference implementations.
+The following benchmarks compare `AsyncCountdownEvent` against `CountdownEvent`, `Proto.Promises.Threading.AsyncCountdownEvent`, `Nito.AsyncEx.AsyncCountdownEvent`, `DotNext.Threading.AsyncCountdownEvent` (net10.0 only, has no bare `Signal()` overload so each participant decrements by one explicitly via `Signal(1)`), and reference implementations.
 
 ### Signal Operation Benchmark
 

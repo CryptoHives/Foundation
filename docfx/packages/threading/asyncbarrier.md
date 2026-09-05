@@ -244,7 +244,7 @@ If the post-phase action throws an exception:
 
 ## Benchmark Results
 
-The following benchmarks compares the pooled `AsyncBarrier` against the .NET `System.Threading.Barrier` and a reference implementations from Stephen Toub's blog.
+The following benchmarks compares the pooled `AsyncBarrier` against the .NET `System.Threading.Barrier`, `DotNext.Threading.AsyncBarrier` (net10.0 only), and a reference implementations from Stephen Toub's blog.
 
 ### Signal and Wait Benchmark
 

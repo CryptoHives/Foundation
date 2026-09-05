@@ -25,6 +25,8 @@ using System.Threading.Tasks;
 /// <item><description><b>ReaderWriterLockSlim:</b> .NET built-in synchronous reader-writer lock.</description></item>
 /// <item><description><b>Pooled (baseline):</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based reader-writer lock.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncReaderWriterLock"/> - has no
+/// disposable releaser, unlike every other competitor here.</description></item>
 /// <item><description><b>VS.Threading:</b> Third-party async library with custom Task-based reader-writer lock.</description></item>
 /// <item><description><b>Proto.Promises:</b> Third-party async library with Promises-based reader-writer lock.</description></item>
 /// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
@@ -84,6 +86,31 @@ public class AsyncReaderWriterLockWriterBenchmark : AsyncReaderWriterLockBaseBen
         using (await _rwLockNitoAsync.WriterLockAsync().ConfigureAwait(false))
         {
             unchecked { _counter++; }
+        }
+    }
+#endif
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async reader-writer lock (writer).
+    /// </summary>
+    /// <remarks>
+    /// Unlike every other competitor here, DotNext's reader-writer lock has no disposable releaser -
+    /// the caller acquires with EnterWriteLockAsync() and releases with an explicit Release() call.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("WriterLock", "DotNext")]
+    public async Task WriterLockDotNextAsync()
+    {
+        await _rwLockDotNext.EnterWriteLockAsync().ConfigureAwait(false);
+        try
+        {
+            unchecked { _counter++; }
+        }
+        finally
+        {
+            _rwLockDotNext.Release();
         }
     }
 #endif

@@ -225,7 +225,7 @@ finally
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncManualResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncManualResetEvent` and reference `TaskCompletionSource`-based implementations.
+The following benchmarks compare `AsyncManualResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncManualResetEvent`, `DotNext.Threading.AsyncManualResetEvent` (net10.0 only), and reference `TaskCompletionSource`-based implementations.
 
 ### Set/Reset Cycle Benchmark
 

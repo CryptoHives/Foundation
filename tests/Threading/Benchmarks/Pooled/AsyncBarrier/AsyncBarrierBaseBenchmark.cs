@@ -15,6 +15,9 @@ using RefImpl = Threading.Tests.Async.RefImpl;
 public abstract class AsyncBarrierBaseBenchmark
 {
     private protected AsyncBarrier _barrierPooled;
+#if NET10_0_OR_GREATER
+    private protected DotNext.Threading.AsyncBarrier _barrierDotNext;
+#endif
     private protected RefImpl.AsyncBarrier _barrierRefImp;
     private protected Barrier _barrierStandard;
 
@@ -29,6 +32,9 @@ public abstract class AsyncBarrierBaseBenchmark
     public virtual void GlobalSetup()
     {
         _barrierPooled = new AsyncBarrier(ParticipantCount);
+#if NET10_0_OR_GREATER
+        _barrierDotNext = new DotNext.Threading.AsyncBarrier(ParticipantCount);
+#endif
         _barrierRefImp = new RefImpl.AsyncBarrier(ParticipantCount);
         _barrierStandard = new Barrier(ParticipantCount);
     }
@@ -41,5 +47,8 @@ public abstract class AsyncBarrierBaseBenchmark
     public virtual void GlobalCleanup()
     {
         _barrierStandard?.Dispose();
+#if NET10_0_OR_GREATER
+        _barrierDotNext?.Dispose();
+#endif
     }
 }

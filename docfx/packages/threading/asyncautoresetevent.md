@@ -231,6 +231,7 @@ The benchmarks compare various `AsyncAutoResetEvent` implementations:
 - ProtoPromiseAsyncAutoResetEvent: The implementation from the Proto.Promises.Threading library which uses custom awaiter and cancelation tokens
 - RefImplAsyncAutoResetEvent: The reference `TaskCompletionSource`-based implementation from Stephen Toub's blog, which does not support cancellation tokens
 - NitoAsyncAutoResetEvent: The implementation from Nito.AsyncEx library
+- DotNextAsyncAutoResetEvent (net10.0 only): The implementation from the DotNext.Threading library
 - AutoResetEvent: The .NET built-in `AutoResetEvent` which lacks the async API
 
 ### Set Operation Benchmark
