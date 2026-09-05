@@ -11,9 +11,7 @@ using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
+#if !SIGNASSEMBLY
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
@@ -238,6 +236,7 @@ public class AsyncSemaphoreMultipleBenchmark : AsyncSemaphoreBaseBenchmark
         }
     }
 
+#if !SIGNASSEMBLY
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneGroup))]
     public Task WaitReleaseNitoMultipleTestAsync(CancellationType cancellationType)
@@ -284,6 +283,7 @@ public class AsyncSemaphoreMultipleBenchmark : AsyncSemaphoreBaseBenchmark
             _semaphoreNitoAsync.Release();
         }
     }
+#endif
 
     [Test]
     [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]

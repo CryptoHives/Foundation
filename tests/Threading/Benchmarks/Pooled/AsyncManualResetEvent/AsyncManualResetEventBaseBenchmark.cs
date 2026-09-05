@@ -9,9 +9,7 @@ using NUnit.Framework;
 using System.Threading;
 using RefImpl = Threading.Tests.Async.RefImpl;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
+#if !SIGNASSEMBLY
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
@@ -21,7 +19,9 @@ using NitoAsyncEx = Nito.AsyncEx;
 public abstract class AsyncManualResetEventBaseBenchmark
 {
     private protected AsyncManualResetEvent _eventPooled;
+#if !SIGNASSEMBLY
     private protected NitoAsyncEx.AsyncManualResetEvent _eventNitoAsync;
+#endif
     private protected RefImpl.AsyncManualResetEvent _eventRefImp;
 #if !NETFRAMEWORK
     private protected Proto.Promises.Threading.AsyncManualResetEvent _eventProtoPromises;
@@ -39,7 +39,9 @@ public abstract class AsyncManualResetEventBaseBenchmark
     public virtual void GlobalSetup()
     {
         _eventPooled = new AsyncManualResetEvent();
+#if !SIGNASSEMBLY
         _eventNitoAsync = new NitoAsyncEx.AsyncManualResetEvent();
+#endif
         _eventRefImp = new RefImpl.AsyncManualResetEvent();
 #if !NETFRAMEWORK
         _eventProtoPromises = new Proto.Promises.Threading.AsyncManualResetEvent();

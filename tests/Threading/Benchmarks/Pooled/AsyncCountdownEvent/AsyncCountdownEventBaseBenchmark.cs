@@ -9,9 +9,7 @@ using NUnit.Framework;
 using System.Threading;
 using RefImpl = Threading.Tests.Async.RefImpl;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
+#if !SIGNASSEMBLY
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
@@ -21,7 +19,9 @@ using NitoAsyncEx = Nito.AsyncEx;
 public abstract class AsyncCountdownEventBaseBenchmark
 {
     private protected AsyncCountdownEvent _countdownPooled;
+#if !SIGNASSEMBLY
     private protected NitoAsyncEx.AsyncCountdownEvent _countdownNitoAsync;
+#endif
     private protected RefImpl.AsyncCountdownEvent _countdownRefImp;
 #if !NETFRAMEWORK
     private protected Proto.Promises.Threading.AsyncCountdownEvent _countdownProtoPromises;
@@ -41,7 +41,9 @@ public abstract class AsyncCountdownEventBaseBenchmark
     public virtual void GlobalSetup()
     {
         _countdownPooled = new AsyncCountdownEvent(ParticipantCount);
+#if !SIGNASSEMBLY
         _countdownNitoAsync = new NitoAsyncEx.AsyncCountdownEvent(ParticipantCount);
+#endif
         _countdownRefImp = new RefImpl.AsyncCountdownEvent(ParticipantCount);
 #if !NETFRAMEWORK
         _countdownProtoPromises = new Proto.Promises.Threading.AsyncCountdownEvent(ParticipantCount);
