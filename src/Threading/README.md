@@ -1,4 +1,4 @@
-﻿## 🛡️ CryptoHives Open Source Initiative 🐝
+## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
@@ -193,6 +193,40 @@ public async Task FetchAsync(CancellationToken ct)
 }
 ```
 
+### Fan-Out/Fan-In — `AsyncCountdownEvent`
+
+```csharp
+private readonly AsyncCountdownEvent _countdown = new(initialCount: 3);
+
+// Each worker signals when its share of the work is done
+public void WorkerCompleted() => _countdown.Signal();
+
+// Coordinator waits until every worker has signalled
+public async Task WaitForWorkersAsync(CancellationToken ct)
+{
+    await _countdown.WaitAsync(ct).ConfigureAwait(false);
+    // All 3 workers completed
+}
+```
+
+### Multi-Phase Synchronization — `AsyncBarrier`
+
+```csharp
+private readonly AsyncBarrier _barrier = new(participantCount: 3,
+    postPhaseAction: b => Console.WriteLine($"Phase {b.CurrentPhase} completed by all participants"));
+
+public async Task ParticipantWorkAsync(int participantId, CancellationToken ct)
+{
+    await DoPhase1WorkAsync(participantId).ConfigureAwait(false);
+
+    // Blocks until every participant has arrived; the post-phase action then
+    // runs once before all participants are released together
+    await _barrier.SignalAndWaitAsync(ct).ConfigureAwait(false);
+
+    await DoPhase2WorkAsync(participantId).ConfigureAwait(false);
+}
+```
+
 ### Read-Write Separation — `AsyncReaderWriterLock`
 
 ```csharp
@@ -209,6 +243,82 @@ public async Task WriteAsync(Data data, CancellationToken ct)
     using (await _rwLock.WriterLockAsync(ct).ConfigureAwait(false))
         _cache.Set(data);
 }
+```
+
+### Wait-Until-Condition — `AsyncConditionVariable`
+
+Pairs with an `AsyncLock`: a wait atomically releases the lock, suspends, and re-acquires it before
+returning — on every return path, including cancellation. Any number of callers can wait for a
+shared resource to reach a specific state; the condition is arbitrary state protected by the lock:
+
+```csharp
+private readonly AsyncLock _lock = new();
+private readonly AsyncConditionVariable _ready = new();
+private ConnectionState _state = ConnectionState.Disconnected;
+
+// The reconnect loop is the only writer of _state.
+private async Task ReconnectLoopAsync(CancellationToken ct)
+{
+    while (!ct.IsCancellationRequested)
+    {
+        try
+        {
+            await ConnectAsync(ct).ConfigureAwait(false);
+
+            using (await _lock.LockAsync(ct).ConfigureAwait(false))
+            {
+                _state = ConnectionState.Ready;
+                _ready.SignalAll();   // every caller waiting for readiness wakes up
+            }
+
+            await RunUntilDisconnectedAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            using (await _lock.LockAsync(CancellationToken.None).ConfigureAwait(false))
+                _state = ConnectionState.Disconnected;
+        }
+    }
+}
+
+// Any caller can wait for the connection to become ready before using it.
+public async Task<T> SendAsync<T>(Func<Task<T>> operation, CancellationToken ct)
+{
+    using (await _lock.LockAsync(ct).ConfigureAwait(false))
+    {
+        while (_state != ConnectionState.Ready)
+            await _ready.WaitAsync(_lock, ct).ConfigureAwait(false);
+    }
+
+    return await operation().ConfigureAwait(false);   // outside the lock
+}
+```
+
+### Two-Party Rendezvous — `AsyncExchange<T>`
+
+Two peer workers, doing the same job, meeting at the rendezvous every round to swap their current
+item for the other's — neither is a producer or a consumer, and nothing is ever buffered between
+rounds. This is the async counterpart of Java's `Exchanger<V>`, which the BCL has no equivalent of.
+
+```csharp
+private readonly AsyncExchange<Item> _rendezvous = new();
+
+public async Task RunPeerAsync(CancellationToken ct)
+{
+    Item mine = ComputeNextItem();
+
+    while (!ct.IsCancellationRequested)
+    {
+        Item theirs = await _rendezvous.ExchangeAsync(mine, ct).ConfigureAwait(false);
+
+        CrossCheck(mine, theirs);
+        mine = ComputeNextItem();
+    }
+}
+
+// Both peers run the exact same method - there is no asymmetric role to assign.
+_ = Task.Run(() => RunPeerAsync(ct));
+_ = Task.Run(() => RunPeerAsync(ct));
 ```
 
 ### Custom Pool

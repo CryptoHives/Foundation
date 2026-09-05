@@ -49,6 +49,10 @@
     <PackageReference Include="AsyncUtilities" Aliases="AsyncUtilitiesLib" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="DotNext.Threading" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' != 'true'">
     <ProjectReference Include="../../src/Threading/Threading.csproj" />
     <!-- Reference the analyzer project to run CHT* diagnostics during build -->

@@ -1,4 +1,4 @@
-﻿# AES Cipher Test Vectors
+# AES Cipher Test Vectors
 
 ## Source
 

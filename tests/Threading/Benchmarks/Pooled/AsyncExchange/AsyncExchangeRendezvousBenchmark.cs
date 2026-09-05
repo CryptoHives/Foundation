@@ -12,18 +12,26 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using RefImpl = Threading.Tests.Async.RefImpl;
+#if NET10_0_OR_GREATER
+using DotNext.Threading;
+#endif
 
 /// <summary>
 /// Base class for benchmarking and testing different implementations of AsyncExchange.
 /// </summary>
 /// <remarks>
-/// The BCL has no two-party exchanger, so the comparison is against a TaskCompletionSource-based
-/// reference implementation of the same rendezvous rather than against another library.
+/// The BCL has no two-party exchanger, so the primary comparison is against a
+/// TaskCompletionSource-based reference implementation of the same rendezvous. On .NET 10.0+,
+/// <see cref="DotNext.Threading.AsyncExchanger{T}"/> is added too - the only third-party library
+/// found with a genuine equivalent; its NuGet package targets net10.0 only, hence the guard.
 /// </remarks>
 public abstract class AsyncExchangeBaseBenchmark
 {
     private protected AsyncExchange<int> _exchangePooled;
     private protected RefImpl.AsyncExchange<int> _exchangeRefImp;
+#if NET10_0_OR_GREATER
+    private protected AsyncExchanger<int> _exchangeDotNext;
+#endif
     private protected CancellationTokenSource _cancellationTokenSource;
     private protected CancellationToken _cancellationToken;
 
@@ -42,6 +50,9 @@ public abstract class AsyncExchangeBaseBenchmark
     {
         _exchangePooled = new AsyncExchange<int>();
         _exchangeRefImp = new RefImpl.AsyncExchange<int>();
+#if NET10_0_OR_GREATER
+        _exchangeDotNext = new AsyncExchanger<int>();
+#endif
         _cancellationTokenSource = new CancellationTokenSource();
         _cancellationToken = _cancellationTokenSource.Token;
     }
@@ -55,6 +66,9 @@ public abstract class AsyncExchangeBaseBenchmark
     {
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
+#if NET10_0_OR_GREATER
+        _exchangeDotNext?.Dispose();
+#endif
     }
 }
 
@@ -75,6 +89,8 @@ public abstract class AsyncExchangeBaseBenchmark
 /// <list type="bullet">
 /// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource,
 /// which allocates a source and a task per suspended party.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> <see cref="DotNext.Threading.AsyncExchanger{T}"/>
+/// - the only third-party library found with a genuine equivalent of this primitive.</description></item>
 /// <item><description><b>Pooled:</b> This library. The first party uses the instance-local value task
 /// source, so a rendezvous with no concurrent second slot allocates nothing.</description></item>
 /// <item><description><b>Pooled (cancellable):</b> The same with a cancellation token that never
@@ -120,6 +136,26 @@ public class AsyncExchangeRendezvousBenchmark : AsyncExchangeBaseBenchmark
             await second.ConfigureAwait(false);
         }
     }
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Third-party comparison: <see cref="DotNext.Threading.AsyncExchanger{T}"/>.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("Rendezvous", "DotNext")]
+    public async Task DotNextRendezvousAsync()
+    {
+        for (int i = 0; i < Iterations; i++)
+        {
+            ValueTask<int> first = _exchangeDotNext.ExchangeAsync(i);
+            ValueTask<int> second = _exchangeDotNext.ExchangeAsync(i + 1);
+
+            await first.ConfigureAwait(false);
+            await second.ConfigureAwait(false);
+        }
+    }
+#endif
 
     /// <summary>
     /// This library's pooled exchange.

@@ -24,6 +24,7 @@ public sealed class AsyncExchange<T> : IResettable
 - **The arriving party never suspends**: it takes the waiting party's value and returns a completed `ValueTask<T>`
 - **Cancellation support**: full `CancellationToken` support; allocation-free registration on .NET 6.0+
 - **Timeout support**: direct `ExchangeAsync(T, TimeSpan)` overload, including `TimeSpan.Zero` as a try-exchange
+- **Synchronous try-exchange**: `TryExchange(T, out T)` answers "is a counterpart already waiting?" without an `async` call, an exception, or a `ValueTask<T>` allocation on a miss
 - **Thread-safe**: all operations are thread-safe
 
 ## Constructor
@@ -99,6 +100,21 @@ The same, bounded by `timeout`.
 | `TimeSpan.Zero` with no counterpart | No (immediate exception) |
 | Finite positive timeout, no counterpart | Yes — one instance, disposed on await |
 
+### TryExchange
+
+```csharp
+public bool TryExchange(T value, out T result)
+```
+
+Attempts to exchange `value` immediately, without waiting.
+
+**Behavior**:
+
+- If a counterpart is already waiting, both complete immediately: `result` is set to the counterpart's value and this returns `true`
+- Otherwise this returns `false` immediately. `result` is undefined. The slot is never occupied by a failed attempt.
+
+Synchronous and non-throwing by design: unlike `ExchangeAsync(value, TimeSpan.Zero)`, a miss here never allocates an exception or a faulted `ValueTask<T>` — there is nothing to await in the first place. Prefer this over the zero-timeout overload whenever the caller doesn't otherwise need a `ValueTask<T>` to hand off.
+
 ### TryReset
 
 ```csharp
@@ -120,41 +136,40 @@ With more than two concurrent parties the pairs are arbitrary — the exchange g
 
 ## Usage Example
 
+Two peer workers, doing the same job, meeting at the rendezvous every round to swap their
+current item for the other's. Neither is a producer or a consumer — both compute, both hand
+over, both receive, every round, and nothing is ever buffered between rounds: each call pairs
+with exactly whichever counterpart happens to be at the rendezvous at that moment.
+
 ```csharp
-private readonly AsyncExchange<byte[]> _bufferSwap = new();
+private readonly AsyncExchange<Item> _rendezvous = new();
 
-// Filler: hands a full buffer over and gets an empty one back.
-public async Task FillAsync(CancellationToken ct)
+public async Task RunPeerAsync(CancellationToken ct)
 {
-    byte[] buffer = new byte[4096];
+    Item mine = ComputeNextItem();
+
     while (!ct.IsCancellationRequested)
     {
-        Fill(buffer);
-        buffer = await _bufferSwap.ExchangeAsync(buffer, ct);
+        Item theirs = await _rendezvous.ExchangeAsync(mine, ct).ConfigureAwait(false);
+
+        CrossCheck(mine, theirs);
+        mine = ComputeNextItem();
     }
 }
 
-// Drainer: hands an empty buffer over and gets a full one back.
-public async Task DrainAsync(CancellationToken ct)
-{
-    byte[] buffer = new byte[4096];
-    while (!ct.IsCancellationRequested)
-    {
-        buffer = await _bufferSwap.ExchangeAsync(buffer, ct);
-        Drain(buffer);
-    }
-}
+// Both peers run the exact same method - there is no asymmetric role to assign.
+_ = Task.Run(() => RunPeerAsync(ct));
+_ = Task.Run(() => RunPeerAsync(ct));
 ```
 
 A try-exchange, for a party that must not block:
 
 ```csharp
-try
+if (_rendezvous.TryExchange(mine, out Item theirs))
 {
-    T theirs = await _exchange.ExchangeAsync(mine, TimeSpan.Zero);
     // paired with a counterpart that was already waiting
 }
-catch (TimeoutException)
+else
 {
     // nobody was waiting; carry on with our own value
 }
@@ -176,13 +191,26 @@ T theirs = await pending;
 
 An unpaired party waits forever otherwise, and its pooled waiter is never returned.
 
-### ✓ DO: Use `TimeSpan.Zero` for an opportunistic exchange
+### ✓ DO: Use `TryExchange` (or `TimeSpan.Zero`) for an opportunistic exchange
 
-It never occupies the slot, so a rejected try-exchange leaves nothing behind for a later party to pair with.
+Neither ever occupies the slot, so a rejected try-exchange leaves nothing behind for a later party to pair with. Prefer `TryExchange` — it answers the same question synchronously and without an exception; reach for `ExchangeAsync(value, TimeSpan.Zero)` only where the call site already needs a `ValueTask<T>` to compose with.
 
-### ✗ DON'T: Use it as a queue
+### ✗ DON'T: Mistake it for a bounded(1) channel
 
-The exchange is a rendezvous of exactly two parties with no buffering. Use `System.Threading.Channels` when values need to be buffered.
+`AsyncExchange<T>` and a `Channel.CreateBounded<T>(1)` both hold at most one thing "in flight," but the contract is different, not just the capacity:
+
+| | `AsyncExchange<T>.ExchangeAsync` | Bounded(1) channel |
+|---|---|---|
+| Roles | Every caller is both giver and receiver, in one call | Separate `Writer`/`Reader`; a write knows nothing about who reads it |
+| First arrival | Always suspends — it has nothing to hand back yet | A write into an empty buffer completes immediately; nothing needs to be reading |
+| Unpaired party | Cancelled/timed-out party leaves the slot empty; nothing is left for the next comer | A buffered item persists until *some* reader eventually drains it, however much later |
+| `TryExchange` / `TimeSpan.Zero` | Try-exchange: pairs only with a party already waiting, never occupies the slot otherwise | Answers "is there buffer room?", a different question entirely |
+| Party count | Exactly two per pairing | Many writers, many readers, fully decoupled |
+
+Building the exchange's swap out of channels would take two of them — one per direction — plus extra
+bookkeeping to make "my write landed" and "I got theirs back" atomic, and you would still lose the
+try-exchange and nothing-left-behind guarantees above. Reach for `System.Threading.Channels` instead
+when what you actually need is buffering or decoupled producers/consumers, not a two-party handshake.
 
 ## See Also
 

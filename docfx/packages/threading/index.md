@@ -1,4 +1,4 @@
-﻿# CryptoHives.Foundation.Threading Package
+# CryptoHives.Foundation.Threading Package
 
 ## Overview
 
@@ -388,6 +388,8 @@ public async Task<bool> TryAcquireWithRetryAsync(TimeSpan timeout, int maxRetrie
 - **AsyncKeyedLock**: O(1) acquire per key when uncontended; one administrative lock guards the key registry
 - **AsyncAutoResetEvent**: O(1) Set/Wait, FIFO queue for single waiter release
 - **AsyncManualResetEvent**: O(n) Set broadcast to all n waiters, O(1) Reset
+- **AsyncConditionVariable**: O(1) Signal/Wait; releases and re-acquires the paired `AsyncLock` on every return path
+- **AsyncExchange&lt;T&gt;**: O(1) — the arriving party never suspends and returns a synchronously-completed `ValueTask<T>`
 
 ## Best Practices
 

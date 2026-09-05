@@ -155,33 +155,52 @@ using (await _lock.LockAsync(ct))
 
 ## Usage Example
 
+Waiting for a shared resource to reach a specific state. This is deliberately *not* a queue: the
+condition is an arbitrary state protected by the lock, not "an item is available" — something a
+`Channel<T>` has no way to express. `SendAsync` re-checks the predicate in a `while` loop before
+every wait and does the actual work only after releasing the lock; nothing is ever processed while
+`_lock` is held.
+
 ```csharp
 private readonly AsyncLock _lock = new();
-private readonly AsyncConditionVariable _notEmpty = new();
-private readonly Queue<WorkItem> _queue = new();
+private readonly AsyncConditionVariable _ready = new();
+private ConnectionState _state = ConnectionState.Disconnected;
 
-public async Task ProduceAsync(WorkItem item, CancellationToken ct)
+// The reconnect loop is the only writer of _state.
+private async Task ReconnectLoopAsync(CancellationToken ct)
 {
-    using (await _lock.LockAsync(ct))
+    while (!ct.IsCancellationRequested)
     {
-        _queue.Enqueue(item);
-        _notEmpty.Signal();
+        try
+        {
+            await ConnectAsync(ct).ConfigureAwait(false);
+
+            using (await _lock.LockAsync(ct).ConfigureAwait(false))
+            {
+                _state = ConnectionState.Ready;
+                _ready.SignalAll();   // every caller waiting for readiness wakes up
+            }
+
+            await RunUntilDisconnectedAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            using (await _lock.LockAsync(CancellationToken.None).ConfigureAwait(false))
+                _state = ConnectionState.Disconnected;
+        }
     }
 }
 
-public async Task<WorkItem> ConsumeAsync(CancellationToken ct)
+// Any caller can wait for the connection to become ready before using it.
+public async Task<T> SendAsync<T>(Func<Task<T>> operation, CancellationToken ct)
 {
-    using (await _lock.LockAsync(ct))
+    using (await _lock.LockAsync(ct).ConfigureAwait(false))
     {
-        // ALWAYS a while loop: signals are not stored, and a waiter may
-        // wake up to find another consumer took the item first.
-        while (_queue.Count == 0)
-        {
-            await _notEmpty.WaitAsync(_lock, ct);
-        }
-
-        return _queue.Dequeue();
+        while (_state != ConnectionState.Ready)
+            await _ready.WaitAsync(_lock, ct).ConfigureAwait(false);
     }
+
+    return await operation().ConfigureAwait(false);   // outside the lock
 }
 ```
 

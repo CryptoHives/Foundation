@@ -48,7 +48,9 @@ using System.Threading.Tasks.Sources;
 /// <see cref="ExchangeAsync(T, TimeSpan, CancellationToken)"/>. A timeout of
 /// <see cref="TimeSpan.Zero"/> turns the call into a try-exchange: it pairs with a counterpart
 /// that is already waiting and throws <see cref="TimeoutException"/> otherwise, without ever
-/// occupying the slot.
+/// occupying the slot. <see cref="TryExchange(T, out T)"/> answers the same question
+/// synchronously, without the exception or the <see cref="ValueTask{T}"/> allocation a failed
+/// zero-timeout attempt would otherwise need.
 /// </para>
 /// <para>
 /// This implementation uses <see cref="ValueTask{TResult}"/> for waiters and provides
@@ -203,7 +205,8 @@ public sealed class AsyncExchange<T> : IResettable
     /// <param name="timeout">
     /// The maximum time to wait for a counterpart. Use <see cref="Timeout.InfiniteTimeSpan"/> to
     /// wait indefinitely, or <see cref="TimeSpan.Zero"/> to pair only with a counterpart that is
-    /// already waiting.
+    /// already waiting - <see cref="TryExchange(T, out T)"/> does the same synchronously, without
+    /// throwing on a miss.
     /// </param>
     /// <param name="cancellationToken">Token to cancel the wait.</param>
     /// <returns>
@@ -224,6 +227,67 @@ public sealed class AsyncExchange<T> : IResettable
         if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
 
         return ExchangeAsyncImpl(value, timeout, cancellationToken);
+    }
+
+    /// <summary>
+    /// Attempts to exchange <paramref name="value"/> immediately, without waiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="ExchangeAsync(T, TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask{T}"/> - there is nothing to await in the first place, since this either
+    /// pairs immediately or doesn't. A failed attempt never occupies the slot, exactly like the
+    /// zero-timeout try-exchange.
+    /// </remarks>
+    /// <param name="value">The value to offer to the counterpart.</param>
+    /// <param name="result">
+    /// The counterpart's value, if this method returns <see langword="true"/>. Undefined if this
+    /// method returns <see langword="false"/>.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if a counterpart was already waiting and the exchange completed;
+    /// <see langword="false"/> if nobody was waiting.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryExchange(T value, out T result)
+    {
+        ManualResetValueTaskSource<T>? toComplete;
+        T theirValue;
+
+        _spinLock.Enter();
+        try
+        {
+            if (_pendingWaiter is null)
+            {
+                toComplete = null;
+                theirValue = default!;
+            }
+            else
+            {
+                // A counterpart is waiting - take their value and hand them ours, exactly like
+                // the pairing branch of ExchangeAsyncImpl.
+                toComplete = _pendingWaiter;
+                theirValue = _pendingValue;
+                _pendingWaiter = null;
+                _pendingValue = default!;
+            }
+        }
+        finally
+        {
+            _spinLock.Exit();
+        }
+
+        if (toComplete is null)
+        {
+            result = default!;
+            return false;
+        }
+
+        // SetResult runs outside the lock - it may synchronously invoke the waiting party's
+        // continuation when RunContinuationAsynchronously is false.
+        toComplete.SetResult(value);
+        result = theirValue;
+        return true;
     }
 
     /// <remarks>

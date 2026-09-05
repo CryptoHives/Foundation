@@ -545,6 +545,96 @@ public class AsyncExchangeTests
     }
 
     // -------------------------------------------------------------------------
+    // TryExchange
+    // -------------------------------------------------------------------------
+
+    [Test]
+    public void TryExchangeFailsWhenNoCounterpartIsWaitingWithoutOccupyingTheSlot()
+    {
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+
+        Assert.That(ex.TryExchange(1, out _), Is.False);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex.HasWaiter, Is.False, "a failed TryExchange must never occupy the slot");
+            Assert.That(ex.InternalWaiterInUse, Is.False);
+        }
+
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(3000)]
+    public async Task TryExchangeSucceedsWhenACounterpartIsWaiting()
+    {
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+
+        var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waiter = Task.Run(async () => {
+            ready.SetResult(true);
+            return await ex.ExchangeAsync(1).ConfigureAwait(false);
+        });
+
+        await ready.Task.ConfigureAwait(false);
+        while (!ex.HasWaiter) { await Task.Delay(5).ConfigureAwait(false); }
+
+        Assert.That(ex.TryExchange(2, out int fromWaiter), Is.True);
+        Assert.That(fromWaiter, Is.EqualTo(1));
+
+        Assert.That(await waiter.ConfigureAwait(false), Is.EqualTo(2));
+        Assert.That(ex.HasWaiter, Is.False);
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test]
+    public void TryExchangeLeavesNothingBehindForALaterParty()
+    {
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+
+        // A failed attempt does not become a new pending waiter for a later caller to pair with.
+        Assert.That(ex.TryExchange(1, out _), Is.False);
+        Assert.That(ex.TryExchange(2, out _), Is.False);
+
+        Assert.That(ex.HasWaiter, Is.False);
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    [Test, CancelAfter(10000)]
+    public async Task TryExchangeRepeatedlyPairsWithASequentialWaiter()
+    {
+        // One ExchangeAsync waiter alive at a time, so it is the only possible counterpart for
+        // the polling TryExchange loop below - unlike a free-for-all with many concurrent
+        // ExchangeAsync callers, which can (and will) pair off entirely among themselves and
+        // starve every TryExchange poller.
+        using var pool = new TestObjectPool<int>();
+        var ex = new AsyncExchange<int>(pool: pool);
+        const int rounds = 200;
+
+        for (int i = 0; i < rounds; i++)
+        {
+            int a = i;
+            int b = i + 1000;
+
+            var waiter = Task.Run(async () => await ex.ExchangeAsync(a).ConfigureAwait(false));
+
+            int fromWaiter;
+            while (!ex.TryExchange(b, out fromWaiter))
+            {
+                await Task.Delay(1).ConfigureAwait(false);
+            }
+
+            Assert.That(fromWaiter, Is.EqualTo(a));
+            Assert.That(await waiter.ConfigureAwait(false), Is.EqualTo(b));
+        }
+
+        Assert.That(ex.HasWaiter, Is.False);
+        Assert.That(pool.ActiveCount, Is.Zero);
+    }
+
+    // -------------------------------------------------------------------------
     // IResettable
     // -------------------------------------------------------------------------
 
