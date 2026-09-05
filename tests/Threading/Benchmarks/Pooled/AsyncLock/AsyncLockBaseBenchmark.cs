@@ -9,9 +9,7 @@ using NUnit.Framework;
 using System.Threading;
 using RefImpl = Threading.Tests.Async.RefImpl;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
+#if !SIGNASSEMBLY
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
@@ -28,7 +26,12 @@ public abstract class AsyncLockBaseBenchmark
     private protected SemaphoreSlim _semaphoreSlim;
     private protected SpinLock _spinLock;
     private protected CryptoHives.Foundation.Threading.Internal.SpinLock _spinLockCryptoHives;
+#if !SIGNASSEMBLY
     private protected NitoAsyncEx.AsyncLock _lockNitoAsync;
+#endif
+#if NET10_0_OR_GREATER
+    private protected DotNext.Threading.AsyncExclusiveLock _lockDotNext;
+#endif
     private protected global::AsyncKeyedLock.AsyncNonKeyedLocker _lockNonKeyed;
     private protected RefImpl.AsyncLock _lockRefImp;
     private protected Microsoft.VisualStudio.Threading.AsyncSemaphore _lockVSThreading;
@@ -52,7 +55,12 @@ public abstract class AsyncLockBaseBenchmark
         _semaphoreSlim = new(1, 1);
         _spinLock = new(enableThreadOwnerTracking: false);
         _spinLockCryptoHives = new();
+#if !SIGNASSEMBLY
         _lockNitoAsync = new();
+#endif
+#if NET10_0_OR_GREATER
+        _lockDotNext = new();
+#endif
         _lockNonKeyed = new();
         _lockRefImp = new();
         _lockVSThreading = new(1);
@@ -70,5 +78,8 @@ public abstract class AsyncLockBaseBenchmark
     public void GlobalCleanup()
     {
         _lockVSThreading?.Dispose();
+#if NET10_0_OR_GREATER
+        _lockDotNext?.Dispose();
+#endif
     }
 }

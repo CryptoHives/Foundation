@@ -9,9 +9,7 @@ using NUnit.Framework;
 using System.Threading;
 using RefImpl = Threading.Tests.Async.RefImpl;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
+#if !SIGNASSEMBLY
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
@@ -21,7 +19,12 @@ using NitoAsyncEx = Nito.AsyncEx;
 public abstract class AsyncManualResetEventBaseBenchmark
 {
     private protected AsyncManualResetEvent _eventPooled;
+#if !SIGNASSEMBLY
     private protected NitoAsyncEx.AsyncManualResetEvent _eventNitoAsync;
+#endif
+#if NET10_0_OR_GREATER
+    private protected DotNext.Threading.AsyncManualResetEvent _eventDotNext;
+#endif
     private protected RefImpl.AsyncManualResetEvent _eventRefImp;
 #if !NETFRAMEWORK
     private protected Proto.Promises.Threading.AsyncManualResetEvent _eventProtoPromises;
@@ -39,7 +42,12 @@ public abstract class AsyncManualResetEventBaseBenchmark
     public virtual void GlobalSetup()
     {
         _eventPooled = new AsyncManualResetEvent();
+#if !SIGNASSEMBLY
         _eventNitoAsync = new NitoAsyncEx.AsyncManualResetEvent();
+#endif
+#if NET10_0_OR_GREATER
+        _eventDotNext = new DotNext.Threading.AsyncManualResetEvent(false);
+#endif
         _eventRefImp = new RefImpl.AsyncManualResetEvent();
 #if !NETFRAMEWORK
         _eventProtoPromises = new Proto.Promises.Threading.AsyncManualResetEvent();
@@ -61,5 +69,8 @@ public abstract class AsyncManualResetEventBaseBenchmark
         _cancellationTokenSource?.Dispose();
         _eventStandard?.Dispose();
         _eventSlim?.Dispose();
+#if NET10_0_OR_GREATER
+        _eventDotNext?.Dispose();
+#endif
     }
 }

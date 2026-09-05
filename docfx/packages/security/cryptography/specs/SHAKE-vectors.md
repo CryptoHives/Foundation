@@ -1,4 +1,4 @@
-﻿# SHAKE Test Vectors
+# SHAKE Test Vectors
 
 ## Source
 

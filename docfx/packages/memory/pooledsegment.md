@@ -1,4 +1,4 @@
-﻿# PooledSegment&lt;T&gt; Class
+# PooledSegment&lt;T&gt; Class
 
 An [`ISegmentOwner<T>`](isegmentowner.md) that rents a buffer from `ArrayPool<T>.Shared`
 and returns it automatically on dispose.

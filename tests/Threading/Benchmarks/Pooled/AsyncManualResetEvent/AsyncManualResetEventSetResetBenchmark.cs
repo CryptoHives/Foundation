@@ -25,6 +25,7 @@ using NUnit.Framework;
 /// <item><description><b>Standard:</b> Synchronous System.Threading.ManualResetEvent (OS-level kernel object).</description></item>
 /// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource with interlocked signaled flag.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library using Task-based primitives with internal state management.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncManualResetEvent"/>.</description></item>
 /// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and managed state.</description></item>
 /// </list>
 /// <para>
@@ -85,6 +86,7 @@ public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseB
         _eventPooled.Reset();
     }
 
+#if !SIGNASSEMBLY
     /// <summary>
     /// Benchmark for Nito.AsyncEx async manual-reset event Set then Reset operation.
     /// </summary>
@@ -100,6 +102,24 @@ public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseB
         _eventNitoAsync.Set();
         _eventNitoAsync.Reset();
     }
+#endif
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async manual-reset event Set then Reset operation.
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance of the third-party DotNext.Threading library's Set() method.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetReset", "DotNext")]
+    public void DotNextAsyncManualResetEventSetReset()
+    {
+        _eventDotNext.Set();
+        _eventDotNext.Reset();
+    }
+#endif
 
     /// <summary>
     /// Benchmark for reference implementation async manual-reset event Set then Reset operation (baseline).

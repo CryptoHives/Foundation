@@ -121,10 +121,13 @@ Allocation-free async synchronization primitives backed by pooled `IValueTaskSou
 
 **Async primitives (`src/Threading/Async/Pooled/`):**
 - `AsyncLock` — async exclusive lock (not reentrant), `using (await _lock.LockAsync())` pattern
+- `AsyncKeyedLock<TKey>` — per-key exclusive lock; distinct keys never block each other
 - `AsyncReaderWriterLock`
 - `AsyncSemaphore`
 - `AsyncAutoResetEvent`, `AsyncManualResetEvent`
 - `AsyncBarrier`, `AsyncCountdownEvent`
+- `AsyncConditionVariable` — "wait until condition" paired with an `AsyncLock`; signals are not stored
+- `AsyncExchange<T>` — two-party rendezvous (async counterpart of Java's `Exchanger<V>`)
 
 **ValueTask source infrastructure (`src/Threading/Pools/`):**
 - `ManualResetValueTaskSource<T>` — intrusive doubly-linked list node and `IValueTaskSource<T>` base
@@ -168,7 +171,7 @@ Diagnostics:
 - Test framework: **NUnit 4**
 - Each test project has `OutputType=Exe` and links `tests/Common/Main.cs` (NUnit entry point)
 - Cryptography tests use **BouncyCastle**, **NaCl.Core**, **HashifyNET**, and other reference implementations for cross-validation
-- Threading tests benchmark against **AsyncKeyedLock**, **Nito.AsyncEx**, **NeoSmart.AsyncLock**, **ProtoPromise**, **KeyedSemaphores**, **Dao.IndividualLock**, **AsyncUtilities**, and **Microsoft.VisualStudio.Threading**
+- Threading tests benchmark against **AsyncKeyedLock**, **Nito.AsyncEx**, **NeoSmart.AsyncLock**, **ProtoPromise**, **KeyedSemaphores**, **Dao.IndividualLock**, **AsyncUtilities**, **Microsoft.VisualStudio.Threading**, and (net10.0 only) **DotNext.Threading**
 - Benchmark runs are recorded on the orphan `benchmarks` branch as `<package>/<code-commit>/<platform>/<framework>/`, keyed by the commit measured rather than the commit recording it; the trends database under `docfx/**/benchmark-trends/` is generated from it at build time and is not committed. Each run's `run.json` also records the resolved version of every third-party library it measured against. Record with `update-benchmark-docs.ps1 -DestDir <archive worktree>`, rebuild locally with `build-trends-database.ps1`
 - `tests/Directory.Build.props` imports the root props and adds shared `GlobalSuppressions.cs`
 - Some test-only packages (e.g., `Konscious.Security.Cryptography.Blake2`, `Blake3`) are excluded when strong-name signing is active because they are not signed

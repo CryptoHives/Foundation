@@ -1,4 +1,4 @@
-﻿# ObjectOwner&lt;T&gt; Struct
+# ObjectOwner&lt;T&gt; Struct
 
 A RAII (Resource Acquisition Is Initialization) wrapper for objects obtained from `ObjectPool<T>`.
 
