@@ -1,4 +1,4 @@
-﻿# Cryptography Benchmarks
+# Cryptography Benchmarks
 
 BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` are published through the
 interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small

@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 /// <item><description><b>Standard:</b> Synchronous System.Threading.AutoResetEvent (blocking wait).</description></item>
 /// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library using Task-based primitives.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncAutoResetEvent"/>.</description></item>
 /// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource.</description></item>
 /// </list>
 /// <para>
@@ -99,6 +100,23 @@ public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBe
     {
         _eventNitoAsync.Set();
         await _eventNitoAsync.WaitAsync(_cancellationToken).ConfigureAwait(false);
+    }
+#endif
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async auto-reset event Set-then-Wait.
+    /// </summary>
+    /// <remarks>
+    /// Measures the fast-path async completion for the DotNext.Threading library.
+    /// </remarks>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SetThenWait", "DotNext")]
+    public async Task DotNextAsyncAutoResetEventSetThenWaitAsync()
+    {
+        _eventDotNext.Set();
+        await _eventDotNext.WaitAsync(_cancellationToken).ConfigureAwait(false);
     }
 #endif
 

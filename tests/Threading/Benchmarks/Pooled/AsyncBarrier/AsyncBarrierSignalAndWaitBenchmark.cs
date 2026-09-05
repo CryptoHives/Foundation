@@ -26,6 +26,7 @@ using System.Threading.Tasks;
 /// <list type="bullet">
 /// <item><description><b>Barrier:</b> .NET built-in synchronous barrier.</description></item>
 /// <item><description><b>Pooled (baseline):</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncBarrier"/>.</description></item>
 /// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// </remarks>
@@ -39,6 +40,9 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
 {
     private Task[] _tasks;
     private ValueTask[] _valueTasks;
+#if NET10_0_OR_GREATER
+    private ValueTask[] _valueTasksDotNext;
+#endif
 
     public static readonly object[] FixtureArgs = {
         new object[] { 1 },
@@ -59,6 +63,9 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
     {
         _tasks = new Task[ParticipantCount];
         _valueTasks = new ValueTask[ParticipantCount];
+#if NET10_0_OR_GREATER
+        _valueTasksDotNext = new ValueTask[ParticipantCount];
+#endif
         base.GlobalSetup();
     }
 
@@ -97,6 +104,26 @@ public class AsyncBarrierSignalAndWaitBenchmark : AsyncBarrierBaseBenchmark
             await _valueTasks[i].ConfigureAwait(false);
         }
     }
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async barrier.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "DotNext")]
+    public async Task SignalAndWaitDotNextAsync()
+    {
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            _valueTasksDotNext[i] = _barrierDotNext.SignalAndWaitAsync();
+        }
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            await _valueTasksDotNext[i].ConfigureAwait(false);
+        }
+    }
+#endif
 
     /// <summary>
     /// Benchmark for reference implementation async barrier.

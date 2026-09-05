@@ -18,6 +18,9 @@ public abstract class AsyncAutoResetEventBaseBenchmark
 #if !SIGNASSEMBLY
     private protected Nito.AsyncEx.AsyncAutoResetEvent _eventNitoAsync;
 #endif
+#if NET10_0_OR_GREATER
+    private protected DotNext.Threading.AsyncAutoResetEvent _eventDotNext;
+#endif
     private protected RefImpl.AsyncAutoResetEvent _eventRefImp;
 #if !NETFRAMEWORK
     private protected Proto.Promises.Threading.AsyncAutoResetEvent _eventProtoPromises;
@@ -36,6 +39,9 @@ public abstract class AsyncAutoResetEventBaseBenchmark
         _eventPooled = new AsyncAutoResetEvent();
 #if !SIGNASSEMBLY
         _eventNitoAsync = new Nito.AsyncEx.AsyncAutoResetEvent();
+#endif
+#if NET10_0_OR_GREATER
+        _eventDotNext = new DotNext.Threading.AsyncAutoResetEvent(false);
 #endif
         _eventRefImp = new RefImpl.AsyncAutoResetEvent();
 #if !NETFRAMEWORK
@@ -56,6 +62,9 @@ public abstract class AsyncAutoResetEventBaseBenchmark
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
         _eventStandard?.Dispose();
+#if NET10_0_OR_GREATER
+        _eventDotNext?.Dispose();
+#endif
     }
 }
 

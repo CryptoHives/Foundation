@@ -34,6 +34,7 @@ using System.Threading.Tasks;
 /// <item><description><b>Pooled (AsTask):</b> Same pooled implementation converted to Task via AsTask() (incurs allocation overhead).</description></item>
 /// <item><description><b>Pooled (ContSync):</b> Pooled implementation with synchronous continuation execution (RunContinuationAsynchronously=false).</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based primitives and internal FIFO queue.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncManualResetEvent"/>.</description></item>
 /// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource with FIFO waiter queue.</description></item>
 /// </list>
 /// <para>
@@ -68,6 +69,9 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
 {
     private Task?[] _task;
     private ValueTask[] _valueTask;
+#if NET10_0_OR_GREATER
+    private ValueTask[] _valueTaskDotNext;
+#endif
 #if !NETFRAMEWORK
     private Proto.Promises.Promise[]? _promise;
 #endif
@@ -86,6 +90,9 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
     {
         _task = Array.Empty<Task>();
         _valueTask = Array.Empty<ValueTask>();
+#if NET10_0_OR_GREATER
+        _valueTaskDotNext = Array.Empty<ValueTask>();
+#endif
     }
 
     public AsyncManualResetEventWaitThenSetBenchmark(int iterations) : this()
@@ -102,6 +109,9 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
 
         _task = new Task[Iterations];
         _valueTask = new ValueTask[Iterations];
+#if NET10_0_OR_GREATER
+        _valueTaskDotNext = new ValueTask[Iterations];
+#endif
 #if !NETFRAMEWORK
         _promise = new Proto.Promises.Promise[Iterations];
 #endif
@@ -395,6 +405,40 @@ public class AsyncManualResetEventWaitThenSetBenchmark : AsyncManualResetEventBa
         for (int i = 0; i < Iterations; i++)
         {
             await _task[i]!.ConfigureAwait(false);
+        }
+    }
+#endif
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async manual-reset event with batched queued async waiters.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Measures the performance of the third-party DotNext.Threading library under batched load.
+    /// </para>
+    /// <para>
+    /// <b>Pattern:</b> Queue all waiters as ValueTask → Signal once → Await all completions.
+    /// </para>
+    /// </remarks>
+    [Benchmark]
+    [BenchmarkCategory("WaitThenSet", "DotNext")]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task DotNextAsyncManualResetEventWaitThenSetAsync(CancellationType cancellationType)
+    {
+        _eventDotNext.Reset();
+
+        for (int i = 0; i < Iterations; i++)
+        {
+            _valueTaskDotNext[i] = _eventDotNext.WaitAsync(cancellationType.CancellationToken);
+        }
+
+        _eventDotNext.Set();
+
+        for (int i = 0; i < Iterations; i++)
+        {
+            await _valueTaskDotNext[i].ConfigureAwait(false);
         }
     }
 #endif

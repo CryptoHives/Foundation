@@ -251,7 +251,7 @@ This upgrades the currently held upgradeable reader to an exclusive writer lock.
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLockSlim`, `Nito.AsyncEx.AsyncReaderWriterLock`, `Proto.Promises.Threading.AsyncReaderWriterLock`, `Microsoft.VisualStudio.Threading.AsyncReaderWriterLock`, and a reference implementation. Not all implementations support every lock mode; the set of compared implementations varies per benchmark.
+The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLockSlim`, `Nito.AsyncEx.AsyncReaderWriterLock`, `Proto.Promises.Threading.AsyncReaderWriterLock`, `Microsoft.VisualStudio.Threading.AsyncReaderWriterLock`, `DotNext.Threading.AsyncReaderWriterLock` (net10.0 only, reader and writer locks only - it has no per-acquisition releaser, and no distinct upgradeable-reader mode), and a reference implementation. Not all implementations support every lock mode; the set of compared implementations varies per benchmark.
 
 ### Reader Lock Benchmark
 
@@ -340,6 +340,8 @@ catch (TimeoutException)
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

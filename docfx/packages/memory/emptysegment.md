@@ -1,4 +1,4 @@
-﻿# EmptySegment&lt;T&gt; Class
+# EmptySegment&lt;T&gt; Class
 
 An [`ISegmentOwner<T>`](isegmentowner.md) that represents an empty, zero-allocation segment
 backed by `Array.Empty<T>()`. Useful as a null-object sentinel that avoids `null` checks.
