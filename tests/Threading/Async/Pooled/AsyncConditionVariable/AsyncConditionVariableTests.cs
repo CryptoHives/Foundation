@@ -55,18 +55,14 @@ public class AsyncConditionVariableTests
         // Signal when nobody is waiting — must not store state
         cv.Signal();
 
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
         var waiter = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                tcs.SetResult(true);       // signal that we are about to wait
                 await cv.WaitAsync(mutex).ConfigureAwait(false);
             }
         });
 
-        await tcs.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false); // give the waiter time to block
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
 
         // Waiter should still be blocked — the prior signal was lost
         Assert.That(waiter.IsCompleted, Is.False);
@@ -85,17 +81,14 @@ public class AsyncConditionVariableTests
 
         cv.SignalAll();
 
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var waiter = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                tcs.SetResult(true);
                 await cv.WaitAsync(mutex).ConfigureAwait(false);
             }
         });
 
-        await tcs.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
 
         Assert.That(waiter.IsCompleted, Is.False);
 
@@ -115,20 +108,16 @@ public class AsyncConditionVariableTests
         var cv = new AsyncConditionVariable(pool: pool);
         bool signaled = false;
 
-        var waitReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
         var waiter = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                waitReady.SetResult(true);
                 await cv.WaitAsync(mutex).ConfigureAwait(false);
                 Assert.That(signaled, Is.True);
                 Assert.That(mutex.IsTaken, Is.True);
             }
         });
 
-        await waitReady.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
         Assert.That(waiter.IsCompleted, Is.False);
 
         using (await mutex.LockAsync().ConfigureAwait(false))
@@ -148,20 +137,16 @@ public class AsyncConditionVariableTests
         var cv = new AsyncConditionVariable(pool: pool);
         bool lockHeldAfterWait = false;
 
-        var waitReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
         var waiter = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                waitReady.SetResult(true);
                 await cv.WaitAsync(mutex).ConfigureAwait(false);
                 // Verify we hold the lock by checking that a second LockAsync call blocks
                 lockHeldAfterWait = mutex.IsTaken;
             }
         });
 
-        await waitReady.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
 
         cv.Signal();
         await waiter.ConfigureAwait(false);
@@ -201,7 +186,10 @@ public class AsyncConditionVariableTests
         }
 
         cv.Signal();
-        await Task.Delay(100).ConfigureAwait(false);
+        while (Volatile.Read(ref wokenCount) < 1)
+        {
+            await Task.Delay(5).ConfigureAwait(false);
+        }
 
         Assert.That(Volatile.Read(ref wokenCount), Is.EqualTo(1));
 
@@ -238,7 +226,7 @@ public class AsyncConditionVariableTests
 
         while (cv.WaiterCount < 5)
         {
-            await Task.Delay(10).ConfigureAwait(false);
+            await Task.Delay(5).ConfigureAwait(false);
         }
 
         cv.SignalAll();
@@ -283,12 +271,9 @@ public class AsyncConditionVariableTests
 
         using var cts = new CancellationTokenSource();
 
-        var waitReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
         var waiter = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                waitReady.SetResult(true);
                 try
                 {
                     await cv.WaitAsync(mutex, cts.Token).ConfigureAwait(false);
@@ -301,8 +286,7 @@ public class AsyncConditionVariableTests
             }
         });
 
-        await waitReady.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
@@ -320,18 +304,14 @@ public class AsyncConditionVariableTests
 
         using var cts = new CancellationTokenSource();
 
-        var waitReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
         var waiter = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                waitReady.SetResult(true);
                 await cv.WaitAsync(mutex, cts.Token).ConfigureAwait(false);
             }
         });
 
-        await waitReady.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
         Assert.That(cv.WaiterCount, Is.EqualTo(1));
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -352,12 +332,10 @@ public class AsyncConditionVariableTests
         for (int i = 0; i < 50; i++)
         {
             using var cts = new CancellationTokenSource();
-            var waitReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var waiter = Task.Run(async () => {
                 using (await mutex.LockAsync().ConfigureAwait(false))
                 {
-                    waitReady.SetResult(true);
                     try
                     {
                         await cv.WaitAsync(mutex, cts.Token).ConfigureAwait(false);
@@ -366,7 +344,7 @@ public class AsyncConditionVariableTests
                 }
             });
 
-            await waitReady.Task.ConfigureAwait(false);
+            while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
 
             // Race: cancel and signal simultaneously
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -441,8 +419,6 @@ public class AsyncConditionVariableTests
         var cv = new AsyncConditionVariable(pool: pool);
 
         Assert.That(cv.WaiterCount, Is.Zero);
-
-        var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         async Task MakeWaiter()
         {
@@ -559,18 +535,14 @@ public class AsyncConditionVariableTests
         var mutex = new AsyncLock();
         var cv = new AsyncConditionVariable(runContinuationAsynchronously: runAsync, pool: pool);
 
-        var waitReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
         var waiter = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                waitReady.SetResult(true);
                 await cv.WaitAsync(mutex).ConfigureAwait(false);
             }
         });
 
-        await waitReady.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
 
         cv.Signal();
         await waiter.ConfigureAwait(false);
@@ -782,18 +754,14 @@ public class AsyncConditionVariableTests
         var mutex = new AsyncLock();
         var cv = new AsyncConditionVariable(pool: pool);
 
-        var ready = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
         var waiter = Task.Run(async () => {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                ready.SetResult(true);
                 await cv.WaitAsync(mutex, TimeSpan.FromSeconds(30)).ConfigureAwait(false);
                 return mutex.IsTaken;
             }
         });
 
-        await ready.Task.ConfigureAwait(false);
         while (cv.WaiterCount < 1) { await Task.Delay(5).ConfigureAwait(false); }
 
         cv.Signal();

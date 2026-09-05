@@ -69,7 +69,7 @@ public class AsyncExchangeTests
         });
 
         await ready.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (!ex.HasWaiter) { await Task.Delay(5).ConfigureAwait(false); }
 
         Assert.That(ex.TryReset(), Is.False);
 
@@ -114,9 +114,8 @@ public class AsyncExchangeTests
         });
 
         await ready.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        await AsyncAssert.NeverCompletesAsync(partyA, 50).ConfigureAwait(false);
 
-        Assert.That(partyA.IsCompleted, Is.False);
         Assert.That(ex.HasWaiter, Is.True);
 
         int fromA = await ex.ExchangeAsync(2).ConfigureAwait(false);
@@ -146,7 +145,7 @@ public class AsyncExchangeTests
         });
 
         await ready.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (!ex.HasWaiter) { await Task.Delay(5).ConfigureAwait(false); }
 
         // Second caller returns synchronously — ValueTask is already completed
         ValueTask<int> vt = ex.ExchangeAsync(20);
@@ -228,7 +227,7 @@ public class AsyncExchangeTests
         });
 
         await ready.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (!ex.HasWaiter) { await Task.Delay(5).ConfigureAwait(false); }
 
         Assert.That(ex.HasWaiter, Is.True);
 
@@ -316,7 +315,7 @@ public class AsyncExchangeTests
         });
 
         await ready.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (!ex.HasWaiter) { await Task.Delay(5).ConfigureAwait(false); }
 
         Assert.That(ex.HasWaiter, Is.True);
 
@@ -347,7 +346,7 @@ public class AsyncExchangeTests
         });
 
         await ready.Task.ConfigureAwait(false);
-        await Task.Delay(50).ConfigureAwait(false);
+        while (!ex.HasWaiter) { await Task.Delay(5).ConfigureAwait(false); }
 
         int result = await ex.ExchangeAsync(2).ConfigureAwait(false);
 
