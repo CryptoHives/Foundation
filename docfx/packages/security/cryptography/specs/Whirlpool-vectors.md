@@ -1,4 +1,4 @@
-﻿# Whirlpool Test Vectors
+# Whirlpool Test Vectors
 
 ## Overview
 

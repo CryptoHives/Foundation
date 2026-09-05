@@ -102,8 +102,10 @@ public sealed class AsyncLock : IResettable
         try
         {
             // If the lock is held or waiters are queued the instance is still in active use;
-            // decline the reset.
-            if (_taken != 0 || _waiters.Count != 0)
+            // decline the reset. A local waiter that is still in use means a waiter has been
+            // handed its result but has not observed it yet: resetting now would bump the
+            // version underneath that ValueTask and make the await throw.
+            if (_taken != 0 || _waiters.Count != 0 || _localWaiter.InUse)
             {
                 return false;
             }

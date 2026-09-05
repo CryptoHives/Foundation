@@ -79,6 +79,8 @@ $packageConfigurations = @{
             @{ Source = "AsyncReaderWriterLockUpgradeableReaderBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradeablereader.md" }
             @{ Source = "AsyncReaderWriterLockUpgradedWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-upgradedwriter.md" }
             @{ Source = "AsyncReaderWriterLockWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-writer.md" }
+            @{ Source = "AsyncConditionVariableProducerConsumerBenchmark-report.md"; Target = "asyncconditionvariable-producerconsumer.md" }
+            @{ Source = "AsyncExchangeRendezvousBenchmark-report.md"; Target = "asyncexchange-rendezvous.md" }
         )
     }
 

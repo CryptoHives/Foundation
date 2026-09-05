@@ -1,4 +1,4 @@
-﻿# NIST FIPS 197 - Advanced Encryption Standard (AES)
+# NIST FIPS 197 - Advanced Encryption Standard (AES)
 
 ## Overview
 

@@ -225,9 +225,9 @@ public class SequenceLeaseTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(lease == copy, Is.True);
+            Assert.That(lease, Is.EqualTo(copy));
             Assert.That(lease != empty, Is.True);
-            Assert.That(lease.Equals((object)copy), Is.True);
+            Assert.That(lease, Is.EqualTo((object)copy));
         }
     }
 }
