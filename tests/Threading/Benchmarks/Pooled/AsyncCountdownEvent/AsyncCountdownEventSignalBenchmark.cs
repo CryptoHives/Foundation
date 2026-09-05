@@ -7,12 +7,6 @@ using BenchmarkDotNet.Attributes;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
-using NitoAsyncEx = Nito.AsyncEx;
-#endif
-
 /// <summary>
 /// Benchmarks measuring countdown event signal and wait performance.
 /// </summary>
@@ -31,6 +25,8 @@ using NitoAsyncEx = Nito.AsyncEx;
 /// <item><description><b>CountdownEvent:</b> .NET built-in synchronous countdown event.</description></item>
 /// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based countdown.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncCountdownEvent"/> - has no
+/// bare <c>Signal()</c> overload, so each call decrements by one explicitly via <c>Signal(1)</c>.</description></item>
 /// <item><description><b>RefImpl (baseline):</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// </remarks>
@@ -118,6 +114,30 @@ public class AsyncCountdownEventSignalBenchmark : AsyncCountdownEventBaseBenchma
         for (int i = 0; i < ParticipantCount; i++)
         {
             _countdownNitoAsync.Signal();
+        }
+        await task.ConfigureAwait(false);
+    }
+#endif
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async countdown event.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DotNext.Threading.AsyncCountdownEvent"/> has no bare <c>Signal()</c> overload -
+    /// only <c>Signal(long)</c> - so each participant decrements the count by one explicitly.
+    /// </remarks>
+    [Test]
+    [Repeat(10)]
+    [Benchmark]
+    [BenchmarkCategory("SignalAndWait", "DotNext")]
+    public async Task SignalAndWaitDotNextAsync()
+    {
+        _countdownDotNext.Reset();
+        ValueTask task = _countdownDotNext.WaitAsync(_cancellationToken);
+        for (int i = 0; i < ParticipantCount; i++)
+        {
+            _countdownDotNext.Signal(1);
         }
         await task.ConfigureAwait(false);
     }

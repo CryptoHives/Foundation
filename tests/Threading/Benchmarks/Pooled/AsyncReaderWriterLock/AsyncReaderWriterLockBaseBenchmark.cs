@@ -11,9 +11,7 @@ using NUnit.Framework;
 using System.Threading;
 using RefImpl = Threading.Tests.Async.RefImpl;
 
-#if SIGNASSEMBLY
-using NitoAsyncEx = RefImpl;
-#else
+#if !SIGNASSEMBLY
 using NitoAsyncEx = Nito.AsyncEx;
 #endif
 
@@ -23,7 +21,12 @@ using NitoAsyncEx = Nito.AsyncEx;
 public abstract class AsyncReaderWriterLockBaseBenchmark
 {
     private protected AsyncReaderWriterLock _rwLockPooled;
+#if !SIGNASSEMBLY
     private protected NitoAsyncEx.AsyncReaderWriterLock _rwLockNitoAsync;
+#endif
+#if NET10_0_OR_GREATER
+    private protected DotNext.Threading.AsyncReaderWriterLock _rwLockDotNext;
+#endif
     private protected RefImpl.AsyncReaderWriterLock _rwLockRefImp;
     private protected Microsoft.VisualStudio.Threading.AsyncReaderWriterLock _rwLockVSThreading;
 #if !NETFRAMEWORK
@@ -39,7 +42,12 @@ public abstract class AsyncReaderWriterLockBaseBenchmark
     public virtual void GlobalSetup()
     {
         _rwLockPooled = new AsyncReaderWriterLock();
+#if !SIGNASSEMBLY
         _rwLockNitoAsync = new NitoAsyncEx.AsyncReaderWriterLock();
+#endif
+#if NET10_0_OR_GREATER
+        _rwLockDotNext = new DotNext.Threading.AsyncReaderWriterLock();
+#endif
         _rwLockRefImp = new RefImpl.AsyncReaderWriterLock();
         _rwLockVSThreading = new Microsoft.VisualStudio.Threading.AsyncReaderWriterLock();
 #if !NETFRAMEWORK
@@ -57,5 +65,8 @@ public abstract class AsyncReaderWriterLockBaseBenchmark
     {
         _rwLockSlim?.Dispose();
         _rwLockVSThreading?.Dispose();
+#if NET10_0_OR_GREATER
+        _rwLockDotNext?.Dispose();
+#endif
     }
 }

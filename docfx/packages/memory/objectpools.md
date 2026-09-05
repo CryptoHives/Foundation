@@ -1,4 +1,4 @@
-﻿# ObjectPools Class
+# ObjectPools Class
 
 Static helper class for obtaining pooled objects with automatic return to pool.
 

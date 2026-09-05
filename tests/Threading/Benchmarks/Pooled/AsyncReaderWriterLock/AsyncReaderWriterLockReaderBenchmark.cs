@@ -27,6 +27,8 @@ using Threading.Tests.Async.RefImpl;
 /// <item><description><b>ReaderWriterLockSlim:</b> .NET built-in synchronous reader-writer lock.</description></item>
 /// <item><description><b>Pooled:</b> Allocation-free async implementation using pooled IValueTaskSource.</description></item>
 /// <item><description><b>Nito.AsyncEx:</b> Third-party async library with Task-based reader-writer lock.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncReaderWriterLock"/> - has no
+/// per-acquisition releaser; a shared <c>Release()</c> call decrements an internal reader count instead.</description></item>
 /// <item><description><b>Proto.Promises:</b> Third-party async library with Promises-based reader-writer lock.</description></item>
 /// <item><description><b>VS.Threading:</b> Third-party async library with custom Task-based reader-writer lock.</description></item>
 /// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
@@ -169,6 +171,49 @@ public class AsyncReaderWriterLockReaderBenchmark : AsyncReaderWriterLockBaseBen
         for (int i = 0; i < Iterations; i++)
         {
             _rwLockNitoHandle![i].Dispose();
+        }
+    }
+#endif
+
+#if NET10_0_OR_GREATER
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task ReaderLockDotNextTestAsync(CancellationType cancellationType)
+    {
+        base.GlobalSetup();
+        return ReaderLockDotNextAsync(cancellationType);
+    }
+
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async reader-writer lock (reader).
+    /// </summary>
+    /// <remarks>
+    /// Unlike every other competitor here, DotNext's reader-writer lock has no per-acquisition
+    /// releaser - EnterReadLockAsync() increments an internal reader count and a matching Release()
+    /// call decrements it, so acquisitions and releases are paired by count rather than by handle.
+    /// </remarks>
+    [Benchmark]
+    [BenchmarkCategory("ReaderLock", "DotNext")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task ReaderLockDotNextAsync(CancellationType cancellationType)
+    {
+        await _rwLockDotNext.EnterReadLockAsync(cancellationType.CancellationToken).ConfigureAwait(false);
+        try
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                await _rwLockDotNext.EnterReadLockAsync(cancellationType.CancellationToken).ConfigureAwait(false);
+                unchecked { _counter++; }
+            }
+
+            for (int i = 0; i < Iterations; i++)
+            {
+                _rwLockDotNext.Release();
+            }
+        }
+        finally
+        {
+            _rwLockDotNext.Release();
         }
     }
 #endif

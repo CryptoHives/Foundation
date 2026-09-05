@@ -38,6 +38,8 @@ using RefImpl = Threading.Tests.Async.RefImpl;
 /// <item><description><b>NeoSmart:</b> Third-party async lock library with nested-acquisition detection.</description></item>
 /// <item><description><b>Proto.Promises:</b> Threading library implementing AsyncLock for locking via promises.</description></item>
 /// <item><description><b>AsyncKeyedLock (NonKeyed):</b> Third-party high-performance async lock library.</description></item>
+/// <item><description><b>DotNext (.NET 10.0+ only):</b> Third-party <see cref="DotNext.Threading.AsyncExclusiveLock"/> - has no disposable
+/// releaser, so each queued acquisition is paired with an explicit Release() call.</description></item>
 /// <item><description><b>RefImpl:</b> Reference implementation using TaskCompletionSource and Task.</description></item>
 /// </list>
 /// <para>
@@ -57,6 +59,9 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     private ValueTask<AsyncLock.Releaser>[]? _lockHandle;
 #if !SIGNASSEMBLY
     private Nito.AsyncEx.AwaitableDisposable<IDisposable>[]? _lockNitoHandle;
+#endif
+#if NET10_0_OR_GREATER
+    private ValueTask[]? _lockDotNextHandle;
 #endif
     private ValueTask<global::AsyncKeyedLock.AsyncNonKeyedLockReleaser>[]? _lockNonKeyedHandle;
     private Task<Microsoft.VisualStudio.Threading.AsyncSemaphore.Releaser>[]? _lockVSThreadingHandle;
@@ -259,6 +264,56 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
         foreach (Nito.AsyncEx.AwaitableDisposable<IDisposable> handle in _lockNitoHandle!)
         {
             using (await handle.ConfigureAwait(false)) { }
+        }
+    }
+#endif
+
+#if NET10_0_OR_GREATER
+    [Test]
+    [TestCaseSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public Task LockUnlockDotNextMultipleTestAsync(CancellationType cancellationType)
+    {
+        DotNextGlobalSetup();
+        return LockUnlockDotNextMultipleAsync(cancellationType);
+    }
+
+    [GlobalSetup(Target = nameof(LockUnlockDotNextMultipleAsync))]
+    public void DotNextGlobalSetup()
+    {
+        base.GlobalSetup();
+        _lockDotNextHandle = new ValueTask[Iterations];
+    }
+
+    /// <summary>
+    /// Benchmark for the DotNext.Threading async exclusive lock with multiple queued waiters.
+    /// </summary>
+    /// <remarks>
+    /// Measures the performance of the third-party DotNext.Threading library under contention.
+    /// <see cref="DotNext.Threading.AsyncExclusiveLock"/> has no disposable releaser, so each
+    /// acquisition - the initial one and every queued one - is paired with an explicit Release() call.
+    /// </remarks>
+    [Benchmark]
+    [BenchmarkCategory("Multiple", "DotNext")]
+    [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
+    public async Task LockUnlockDotNextMultipleAsync(CancellationType cancellationType)
+    {
+        await _lockDotNext.AcquireAsync(cancellationType.CancellationToken).ConfigureAwait(false);
+        try
+        {
+            for (int i = 0; i < Iterations; i++)
+            {
+                _lockDotNextHandle![i] = _lockDotNext.AcquireAsync(cancellationType.CancellationToken);
+            }
+        }
+        finally
+        {
+            _lockDotNext.Release();
+        }
+
+        foreach (ValueTask handle in _lockDotNextHandle!)
+        {
+            await handle.ConfigureAwait(false);
+            _lockDotNext.Release();
         }
     }
 #endif

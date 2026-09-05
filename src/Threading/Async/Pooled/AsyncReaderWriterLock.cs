@@ -414,11 +414,18 @@ public sealed class AsyncReaderWriterLock : IResettable
         {
             // If the lock is actively held or any waiters are queued the instance is still
             // in active use; decline the reset.
+            // A local waiter that is still in use means a waiter has been handed its result but
+            // has not observed it yet: resetting now would bump the version underneath that
+            // ValueTask and make the await throw.
             if (_status != (int)LockState.Uncontested ||
                 _waitingWriters.Count != 0 ||
                 _waitingReaders.Count != 0 ||
                 _waitingUpgradeableReaders.Count != 0 ||
-                _waitingUpgradedWriters.Count != 0)
+                _waitingUpgradedWriters.Count != 0 ||
+                _localWriterWaiter.InUse ||
+                _localReaderWaiter.InUse ||
+                _localUpgradeableReaderWaiter.InUse ||
+                _localUpgradedWriterWaiter.InUse)
             {
                 return false;
             }
