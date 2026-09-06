@@ -175,7 +175,7 @@ public class AesKeyWrapBenchmark
     /// <summary>
     /// Creates a key wrapper under a deterministic 256-bit key encryption key.
     /// </summary>
-    private static object CreateKeyWrap()
+    private static AesKeyWrapPad CreateKeyWrap()
     {
         var random = new Random(RandomSeed);
         byte[] kek = new byte[32];

@@ -1,4 +1,4 @@
-﻿# MD5 Test Vectors (RFC 1321)
+# MD5 Test Vectors (RFC 1321)
 
 ## ⚠️ Security Warning
 

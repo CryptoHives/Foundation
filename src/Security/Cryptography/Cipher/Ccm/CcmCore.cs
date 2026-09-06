@@ -60,7 +60,7 @@ internal unsafe struct CcmCore
     /// </summary>
     private const int MaxRoundKeyWords = 60;
 
-    private unsafe fixed uint _roundKeys[MaxRoundKeyWords];
+    private fixed uint _roundKeys[MaxRoundKeyWords];
     private readonly int _rounds;
 #if NET8_0_OR_GREATER
     private readonly bool _useAesNi;

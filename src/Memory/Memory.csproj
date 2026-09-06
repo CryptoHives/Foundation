@@ -71,6 +71,9 @@
     <None Update="README.md" Visible="true" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Memory.Tests" Key="$(PublicKey)" />
+  </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />
 

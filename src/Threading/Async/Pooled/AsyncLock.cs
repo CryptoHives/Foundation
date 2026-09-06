@@ -102,14 +102,16 @@ public sealed class AsyncLock : IResettable
         try
         {
             // If the lock is held or waiters are queued the instance is still in active use;
-            // decline the reset.
-            if (_taken != 0 || _waiters.Count != 0)
+            // decline the reset. A local waiter that is still in use means a waiter has been
+            // handed its result but has not observed it yet: resetting now would bump the
+            // version underneath that ValueTask and make the await throw.
+            if (_taken != 0 || _waiters.Count != 0 || _localWaiter.InUse)
             {
                 return false;
             }
 
             _localWaiter.TryReset();
-            _localWaiter.RunContinuationsAsynchronously = true;
+
             return true;
         }
         finally
@@ -133,13 +135,21 @@ public sealed class AsyncLock : IResettable
         /// <inheritdoc/>
         public void Dispose()
         {
+#if DEBUG
+#pragma warning disable CA1065 // Do not throw exceptions from Dispose, but this is a programming error that should be caught in debug builds.
+            if (_owner == null) throw new InvalidOperationException("The releaser does not represent an acquired lock. A failed TryLock hands back a default releaser, which must not be disposed - check the return value first.");
+#pragma warning restore CA1065
             _owner.ReleaseLock();
+#else
+            // Silently ignore a default releaser
+            _owner?.ReleaseLock();
+#endif
         }
 
         /// <inheritdoc/>
         public ValueTask DisposeAsync()
         {
-            _owner.ReleaseLock();
+            Dispose();
             return default;
         }
 
@@ -247,6 +257,37 @@ public sealed class AsyncLock : IResettable
         }
 
         return LockAsyncImpl(timeout, cancellationToken);
+    }
+
+    /// <summary>
+    /// Attempts to acquire the lock without waiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="LockAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask{Releaser}"/> - there is nothing to await in the first place, since this either
+    /// succeeds immediately or doesn't. Use it on paths that shed work rather than queue it, where
+    /// contention is an expected outcome instead of an exceptional one.
+    /// </remarks>
+    /// <param name="releaser">
+    /// The releaser for the acquired lock, if this method returns <see langword="true"/>. Dispose it to
+    /// release the lock. Undefined if this method returns <see langword="false"/>.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if the lock was acquired immediately; <see langword="false"/> if it is
+    /// currently held or awaited by someone else.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryLock(out Releaser releaser)
+    {
+        if (Interlocked.Exchange(ref _taken, 1) == 0)
+        {
+            releaser = new Releaser(this);
+            return true;
+        }
+
+        releaser = default;
+        return false;
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]

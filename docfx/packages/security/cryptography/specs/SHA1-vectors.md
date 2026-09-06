@@ -1,4 +1,4 @@
-﻿# SHA-1 Test Vectors
+# SHA-1 Test Vectors
 
 > **WARNING**: SHA-1 is cryptographically broken and should NOT be used for security-sensitive applications.
 > These test vectors are provided only for legacy compatibility and verification of existing data.

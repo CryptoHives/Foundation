@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+#pragma warning disable CA1724 // Type name conflicts with the sibling Async/AsyncAutoResetEvent/ test namespace
+
 /// <summary>
 /// An async version of <see cref="AutoResetEvent"/> based on
 /// https://devblogs.microsoft.com/pfxteam/building-async-coordination-primitives-part-2-asyncautoresetevent/.

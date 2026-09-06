@@ -1,4 +1,4 @@
-﻿# LSH (KS X 3262) Test Vectors
+# LSH (KS X 3262) Test Vectors
 
 ## Overview
 

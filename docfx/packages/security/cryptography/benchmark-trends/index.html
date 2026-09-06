@@ -641,10 +641,10 @@
              "This scaling chart spans every parameter set - that is its X axis.");
   }
 
-  function renderChartInstance(datasets, scales, tooltipAfterLabel) {
+  function renderChartInstance(datasets, scales, tooltipAfterLabel, chartType = "line") {
     if (chart) chart.destroy();
     chart = new Chart(document.getElementById("chart"), {
-      type: "line",
+      type: chartType,
       data: { datasets },
       options: {
         responsive: true,
@@ -697,6 +697,18 @@
     }
     stmt.free();
 
+    // A line needs at least two distinct x-values to draw anything but an isolated dot per
+    // series; with only one recorded date, every series collapses to a single point and a line
+    // chart just stacks dots on top of each other. A bar per series reads far better there.
+    const distinctDates = new Set();
+    for (const series of seriesByKey.values()) {
+      for (const point of series.points) distinctDates.add(point.x);
+    }
+    if (seriesByKey.size > 0 && distinctDates.size <= 1) {
+      renderTrendBarChart(seriesByKey, metric);
+      return;
+    }
+
     // Color tracks the variant/implementation, not the (variant, size) combination — so the
     // same algorithm stays the same color across every size, and what changes per size is the
     // dash pattern. That way a variant's trend is easy to follow by eye, and differences in how
@@ -739,6 +751,44 @@
     statusEl.textContent = datasets.length
       ? `${visibleCount} of ${datasets.length} series shown, ` +
         `${datasets.filter((d) => !d.hidden).reduce((n, d) => n + d.data.length, 0)} data point(s)`
+      : "No data for this selection yet.";
+  }
+
+  // The single-date fallback for Trend mode: one bar per (variant[, size]) series instead of a
+  // line with nothing to connect. Colour still tracks the variant, same ramp as the line view, so
+  // switching between the two chart shapes (as more history accumulates) never changes what a
+  // given implementation looks like.
+  function renderTrendBarChart(seriesByKey, metric) {
+    const variantOrder = [];
+    for (const { variant } of seriesByKey.values()) {
+      if (!variantOrder.includes(variant)) variantOrder.push(variant);
+    }
+    const colorForVariant = colorsForVariants(variantOrder);
+
+    const entries = Array.from(seriesByKey.entries()).map(([label, { variant, points }]) => ({
+      label, variant, point: points[0],
+    }));
+
+    renderChartInstance(
+      [{
+        label: metricLabel(metric),
+        data: entries.map((e) => e.point.y),
+        backgroundColor: entries.map((e) => colorForVariant.get(e.variant)),
+      }],
+      {
+        x: { type: "category", labels: entries.map((e) => e.label), title: { display: true, text: "Implementation" } },
+        y: yAxisScale(metric),
+      },
+      (ctx) => pointFooter(entries[ctx.dataIndex].point),
+      "bar"
+    );
+
+    renderColorLegend([]); // redundant here - each bar's x-axis tick already names it
+    renderDashLegend([]);
+    renderMetricLegend([]);
+
+    statusEl.textContent = entries.length
+      ? `${entries.length} series shown as bars - only one recorded date for this selection`
       : "No data for this selection yet.";
   }
 
@@ -821,6 +871,19 @@
       stmt.free();
     }
 
+    // A line needs at least two distinct x-values to draw anything but an isolated dot per
+    // series; with only one data size (or, in the family-axis case, only one family), every
+    // series collapses to a single point stacked on the same spot. A bar per implementation is
+    // legible where a scatter of same-x dots is not.
+    const distinctX = new Set();
+    for (const points of rowsByVariant.values()) {
+      for (const x of points.keys()) distinctX.add(x);
+    }
+    if (rowsByVariant.size > 0 && distinctX.size <= 1) {
+      renderScalingBarChart(rowsByVariant);
+      return;
+    }
+
     // A category axis plots against the label itself, so the point order has to come from the
     // ranked family list rather than from subtracting two strings.
     const familyOrder = byFamily ? Array.from(familiesSeen).sort(compareFamilyNames) : [];
@@ -891,6 +954,61 @@
     statusEl.textContent = datasets.length
       ? `${visibleCount} of ${datasets.length} series shown, from ` +
         (chosen ? chosen.textContent.trim() : "the selected run")
+      : "No data for this selection yet.";
+  }
+
+  // The single-x-value fallback for Scaling mode: one grouped bar pair (mean time + allocation)
+  // per implementation instead of a line with nothing to connect. Both metrics still plot
+  // together as they do in the line view - the point of Scaling mode is seeing both at once.
+  function renderScalingBarChart(rowsByVariant) {
+    const variantOrder = Array.from(rowsByVariant.keys());
+    const colorForVariant = colorsForVariants(variantOrder);
+    const points = variantOrder.map((variant) => ({
+      variant, ...Array.from(rowsByVariant.get(variant).values())[0],
+    }));
+
+    const datasets = [];
+    for (const m of METRICS) {
+      if (points.every((p) => p[m.key] == null)) continue;
+      datasets.push({
+        label: m.text,
+        data: points.map((p) => p[m.key]),
+        yAxisID: m.axis,
+        // Allocation bars are the same per-variant colour at reduced opacity, rather than a
+        // second solid colour - this keeps the amber "ours" cue meaningful on both bars instead
+        // of introducing a colour that means "allocation" everywhere else it might appear.
+        backgroundColor: points.map((p) => m.key === "allocated_bytes"
+          ? colorForVariant.get(p.variant) + "80"
+          : colorForVariant.get(p.variant)),
+      });
+    }
+
+    const usesAlloc = datasets.some((d) => d.yAxisID === "yAlloc");
+    const scales = {
+      x: { type: "category", labels: points.map((p) => p.variant), title: { display: true, text: "Implementation" } },
+      y: { ...yAxisScale("mean_ns"), position: "left" },
+    };
+    if (usesAlloc) {
+      scales.yAlloc = {
+        type: "linear", position: "right", beginAtZero: true,
+        title: { display: true, text: metricLabel("allocated_bytes") },
+        grid: { drawOnChartArea: false },
+      };
+    }
+
+    renderChartInstance(
+      datasets,
+      scales,
+      (ctx) => `${points[ctx.dataIndex].family ? points[ctx.dataIndex].family + " · " : ""}${pointFooter(points[ctx.dataIndex])}`,
+      "bar"
+    );
+
+    renderColorLegend([]); // redundant here - each bar's x-axis tick already names it
+    renderDashLegend([]);
+    renderMetricLegend(METRICS.map((m) => ({ metric: m.key, text: m.text })));
+
+    statusEl.textContent = points.length
+      ? `${points.length} implementation(s) shown as bars - only one point on this axis for the current selection`
       : "No data for this selection yet.";
   }
 

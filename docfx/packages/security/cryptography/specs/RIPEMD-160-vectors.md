@@ -1,4 +1,4 @@
-﻿# RIPEMD-160 Test Vectors
+# RIPEMD-160 Test Vectors
 
 ## Overview
 

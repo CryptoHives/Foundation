@@ -227,6 +227,8 @@ The critical section should be short. Holding a key across a network call serial
 - [AsyncLock](asynclock.md) - Non-keyed async mutual exclusion lock
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

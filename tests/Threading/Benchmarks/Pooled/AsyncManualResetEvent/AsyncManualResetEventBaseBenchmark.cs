@@ -1,0 +1,76 @@
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT
+
+namespace Threading.Tests.Benchmarks.Pooled.AsyncManualResetEvent;
+
+using BenchmarkDotNet.Attributes;
+using CryptoHives.Foundation.Threading.Async.Pooled;
+using NUnit.Framework;
+using System.Threading;
+using RefImpl = Threading.Tests.Async.RefImpl;
+
+#if !SIGNASSEMBLY
+using NitoAsyncEx = Nito.AsyncEx;
+#endif
+
+/// <summary>
+/// Base class for benchmarking and testing different implementations of AsyncManualResetEvent.
+/// </summary>
+public abstract class AsyncManualResetEventBaseBenchmark
+{
+    private protected AsyncManualResetEvent _eventPooled;
+#if !SIGNASSEMBLY
+    private protected NitoAsyncEx.AsyncManualResetEvent _eventNitoAsync;
+#endif
+#if NET10_0_OR_GREATER
+    private protected DotNext.Threading.AsyncManualResetEvent _eventDotNext;
+#endif
+    private protected RefImpl.AsyncManualResetEvent _eventRefImp;
+#if !NETFRAMEWORK
+    private protected Proto.Promises.Threading.AsyncManualResetEvent _eventProtoPromises;
+#endif
+    private protected ManualResetEvent _eventStandard;
+    private protected ManualResetEventSlim _eventSlim;
+    private protected CancellationTokenSource _cancellationTokenSource;
+    private protected CancellationToken _cancellationToken;
+
+    /// <summary>
+    /// Global Setup for benchmarks and tests.
+    /// </summary>
+    [OneTimeSetUp]
+    [GlobalSetup]
+    public virtual void GlobalSetup()
+    {
+        _eventPooled = new AsyncManualResetEvent();
+#if !SIGNASSEMBLY
+        _eventNitoAsync = new NitoAsyncEx.AsyncManualResetEvent();
+#endif
+#if NET10_0_OR_GREATER
+        _eventDotNext = new DotNext.Threading.AsyncManualResetEvent(false);
+#endif
+        _eventRefImp = new RefImpl.AsyncManualResetEvent();
+#if !NETFRAMEWORK
+        _eventProtoPromises = new Proto.Promises.Threading.AsyncManualResetEvent();
+#endif
+        _eventStandard = new ManualResetEvent(false);
+        _eventSlim = new ManualResetEventSlim(false);
+        _cancellationTokenSource = new CancellationTokenSource();
+        _cancellationToken = _cancellationTokenSource.Token;
+    }
+
+    /// <summary>
+    /// Global cleanup for benchmarks and tests.
+    /// </summary>
+    [OneTimeTearDown]
+    [GlobalCleanup]
+    public virtual void GlobalCleanup()
+    {
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
+        _eventStandard?.Dispose();
+        _eventSlim?.Dispose();
+#if NET10_0_OR_GREATER
+        _eventDotNext?.Dispose();
+#endif
+    }
+}

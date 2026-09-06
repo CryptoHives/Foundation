@@ -8,6 +8,7 @@ Newest first.
 
 | Version | Tag | Date | Headline |
 |---|---|---|---|
+| [0.6.101](0.6.101.md) | `0.6.101.8500` | 2026-09-01 | ML-KEM (FIPS 203), pooled buffer writers and `SequenceLease<T>`, KMAC key leak fix |
 | [0.6.79](0.6.79.md) | `0.6.79.4022` | 2026-08-12 | `AsyncKeyedLock<TKey>`, ARM SHA-1, `AsyncBarrier` deadlock fix |
 | [0.6.51](0.6.51.md) | `0.6.51.25133` | 2026-07-30 | BLAKE3 on AVX-512/AVX2/SSSE3/NEON, `ISegmentOwner<T>`, porting guides |
 | [0.6.21](0.6.21.md) | `0.6.21.58640` | 2026-07-04 | **First stable release.** Timeout support, three concurrency fixes |
@@ -54,3 +55,7 @@ cancellation paths.
 (BLAKE3 across four instruction sets), to measurement (benchmark runs move into a trends database
 with interactive dashboards), and to keeping the documentation honest about what the code actually
 does.
+
+0.6.101 opens the post-quantum chapter with ML-KEM, and turns the Memory package's attention from
+pooling *buffers* to pooling the objects that own them — and to letting a payload outlive the scope
+that produced it without paying for a copy.

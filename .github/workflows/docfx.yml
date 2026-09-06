@@ -22,9 +22,12 @@ on:
   push:
     branches:
       - main
+      - benchmarks
     paths:
       - 'docfx/**'
       - 'src/**'
+      - 'cryptography/**'
+      - 'threading/**'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:

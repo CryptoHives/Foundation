@@ -1,4 +1,4 @@
-﻿# NIST FIPS 180-4 - Secure Hash Standard (SHS)
+# NIST FIPS 180-4 - Secure Hash Standard (SHS)
 
 ## Overview
 

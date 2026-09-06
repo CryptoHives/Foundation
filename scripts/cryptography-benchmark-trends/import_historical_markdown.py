@@ -29,6 +29,11 @@ Design notes:
   each historical benchmark refresh shows up as a distinct point in the trends dashboard.
 """
 
+# `int | None`-style annotations below need this on Python < 3.10 (PEP 604 union syntax was
+# added in 3.10); postponing evaluation makes them plain strings instead of executed `int.__or__`
+# expressions, which is all this module needs since nothing here calls typing.get_type_hints().
+from __future__ import annotations
+
 import json
 import os
 import re

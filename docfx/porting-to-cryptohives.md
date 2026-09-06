@@ -71,12 +71,14 @@ If the target project uses Central Package Management (`Directory.Packages.props
 |---|---|---|
 | `private readonly object _gate = new();` + `lock (_gate) { … }` guarding **async** work | `AsyncLock` + `using (await _lock.LockAsync())` | Only when you need to `await` inside the critical section. Pure-sync `lock` blocks that never await should stay as `lock`. |
 | `SemaphoreSlim(1, 1)` used as a mutex | `AsyncLock` | Analyzer flags this as **CHT009**. |
-| `SemaphoreSlim(n, …)` used for concurrency limiting | `AsyncSemaphore(n)` | |
-| `ManualResetEventSlim` / TCS-based manual gate awaited async | `AsyncManualResetEvent` | |
-| `AutoResetEvent` semantics, async | `AsyncAutoResetEvent` | |
-| `CountdownEvent` awaited async | `AsyncCountdownEvent` | |
+| `SemaphoreSlim(n, …)` used for concurrency limiting | `AsyncSemaphore(n)` | `sem.Wait(0)` / `WaitAsync(0)` → `TryWait()`. |
+| `ManualResetEventSlim` / TCS-based manual gate awaited async | `AsyncManualResetEvent` | `mre.IsSet` / `Wait(0)` → `IsSet` or the equivalent `TryWait()` (non-consuming). |
+| `AutoResetEvent` semantics, async | `AsyncAutoResetEvent` | `are.WaitOne(0)` → `TryWait()`, which **consumes** the signal (unlike `IsSet`, which only peeks). |
+| `CountdownEvent` awaited async | `AsyncCountdownEvent` | `cde.Wait(0)` → `IsSet` or the equivalent `TryWait()` (non-consuming). |
 | `Barrier` awaited async | `AsyncBarrier` | |
-| `ReaderWriterLockSlim` awaited async | `AsyncReaderWriterLock` | |
+| `ReaderWriterLockSlim` awaited async | `AsyncReaderWriterLock` | `TryEnterReadLock(0)` / `TryEnterUpgradeableReadLock(0)` / `TryEnterWriteLock(0)` → `TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock` (all `out Releaser`); the upgrade probe is `Releaser.TryUpgradeToWriterLock`. |
+| `Monitor.Wait` / `Monitor.Pulse` awaited async | `AsyncConditionVariable` | Pairs with an `AsyncLock`; re-check the predicate in a `while` loop — signals are not stored. |
+| Java's `Exchanger<V>` (no BCL equivalent) | `AsyncExchange<T>` | Two-party rendezvous, not a queue; see `System.Threading.Channels` if buffering is needed instead. |
 | `Dictionary<TKey, SemaphoreSlim>` / a registry of one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other; released keys stay cached, so repeat acquisitions allocate nothing. |
 | `AsyncKeyedLock` (the third-party package), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | Same per-key semantics, without the striping some libraries use. |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify the source did not rely on reentrancy. |
@@ -102,6 +104,9 @@ Signatures actually present:
   - `timeout` throws `TimeoutException` if it elapses; `TimeSpan.Zero` throws immediately if
     the lock is held; `Timeout.InfiniteTimeSpan` waits forever.
 - `bool IsTaken { get; }`
+- `bool TryLock(out Releaser releaser)` — acquires only if the lock is free right now; never
+  waits, never allocates, never throws. Replaces `Monitor.TryEnter` / `SemaphoreSlim.Wait(0)`.
+  On `false` the `out` releaser is `default` — **do not dispose it** (throws in `DEBUG`).
 
 Rules:
 - **`AsyncLock` is NOT recursive.** If the original lock was taken re-entrantly (same call
@@ -136,10 +141,14 @@ Signatures actually present:
   (throws `TimeoutException` / `OperationCanceledException`)
 - `void Release()` / `void Release(int releaseCount)`
 - `int CurrentCount { get; }`
+- `bool TryWait()` — takes a permit only if one is available right now; synchronous, never
+  allocates, never throws. On `true` you still owe exactly one `Release()`. This **is** the
+  direct replacement for `SemaphoreSlim.Wait(0)` / `WaitAsync(0)`.
 
 Note: there is **no** `SemaphoreSlim`-style bool-returning `WaitAsync(timeout)`. The BCL
 pattern `if (await sem.WaitAsync(timeout)) { … }` must be rewritten to try/catch on
-`TimeoutException`, or use a `CancellationToken`.
+`TimeoutException`, or use a `CancellationToken`. For a pure zero-timeout probe
+(`WaitAsync(0)`), use `TryWait()` instead.
 
 ### 2.4 `AsyncKeyedLock<TKey>` — exact usage
 
@@ -217,11 +226,22 @@ Critical rules:
 - It is `IDisposable` and rents from `ArrayPool<T>.Shared`. **Always `using`** it so pooled
   arrays are returned. Never let one escape its scope.
 - The `ReadOnlySequence<T>` from `GetReadOnlySequence()` is **only valid until the next
-  write or `Dispose()`**. Fully consume/copy it before disposing. Do not return it to a
-  caller that outlives the `using`.
-- For sensitive data, construct with `new ArrayPoolBufferWriter<byte>(clearArray: true,
-  defaultChunksize, maxChunkSize)` so buffers are zeroed on return.
-- Chunk sizing: default 256, grows (doubling) to max 65536; override via the ctor.
+  write or `Dispose()`**. Fully consume/copy it before disposing. When the payload has to
+  outlive the `using`, do not copy it — return `writer.LeaseSequence()` instead. The lease
+  is a `readonly struct` carrying the sequence and the writer that owns it, so the caller
+  disposes one thing and costs nothing over borrowing.
+- For sensitive data, pass `clearArray: true` so buffers are zeroed on return —
+  `new ArrayPoolBufferWriter<byte>(clearArray: true, defaultChunkBytes, maxChunkBytes)`, or
+  better, declare it once on a provider (below) rather than at each call site.
+- Chunk sizing is in **bytes, not elements**: default 256, doubling to a 65,536 ceiling.
+  The writer divides by `sizeof(T)` to decide how many elements fit, which is what keeps a
+  chunk off the large object heap whatever `T` is.
+- The writer itself is poolable. `ObjectPools.RentBufferWriter<byte>()` gives a writer that
+  returns *itself* on dispose, not just its buffers; an
+  `ArrayPoolBufferWriterProvider<byte>` holds one immutable settings profile and rents from
+  the shared pool, so many profiles cost no extra instances.
+- **Never touch a writer after disposing it.** A pooled instance does not throw
+  `ObjectDisposedException` — it silently becomes whatever the next renter is doing.
 
 ### 3.2 `ArrayPoolMemoryStream` — pooled `MemoryStream`
 
@@ -229,6 +249,14 @@ Replace `new MemoryStream()` used as a scratch/accumulation buffer where the all
 one large backing array is wasteful. It is a `MemoryStream` subclass backed by pooled
 `ArrayPool<byte>` segments, so it is a drop-in for APIs typed as `MemoryStream`/`Stream`.
 `using` it (it returns segments on `Dispose`).
+
+The same two rules as the writer apply: `GetReadOnlySequence()` is borrowed and
+`LeaseSequence()` lets the payload leave the scope, and `clearArray: true` on any owning
+constructor zeroes the buffers on release — on truncation by `SetLength` as well as on
+disposal. It cannot hand out its internal storage as one contiguous array, so `GetBuffer()` throws and
+`TryGetBuffer()` returns `false`; reach for the sequence instead. `ToArray()` *is* overridden and
+works across segments — it copies rather than exposes, so use it only when an owned `byte[]` is
+genuinely required, not on a hot path.
 
 ### 3.3 `ReadOnlySequenceMemoryStream` — read-only `Stream` over an existing sequence
 
@@ -248,9 +276,14 @@ StringBuilder sb = owner.PooledObject;
 // … use sb …
 ```
 
-For your own pools:
+For your own pools — `PoolFactory` builds one from a factory and a reset delegate, including
+for types this package does not reference:
 ```csharp
-using var owner = new ObjectOwner<MyType>(myObjectPool);
+ObjectPool<MyType> pool = PoolFactory.CreatePool(
+    create: () => new MyType(),
+    reset: obj => { obj.Clear(); return true; });
+
+using var owner = new ObjectOwner<MyType>(pool);
 MyType obj = owner.PooledObject;
 ```
 
@@ -260,6 +293,11 @@ Critical rules:
   can double-return. Do not copy it around.
 - Whatever you got from `PooledObject` must not be used after the `using` scope ends (it has
   been returned to the pool).
+- A `reset` delegate returning `false` makes the pool **drop** the instance, not dispose it.
+  If `T` holds unmanaged or pooled resources, dispose them in `reset` before returning `false`.
+- Object pools are **not** trimmed under memory pressure — `DefaultObjectPool<T>` holds what
+  it has for the life of the process. Bound it with `maximumRetained`. Rented *arrays* are
+  different: `ArrayPool<T>.Shared` trims itself on a gen-2 GC callback.
 
 ### 3.5 `ISegmentOwner<T>` — segment ownership primitives
 
@@ -329,8 +367,10 @@ void Process(ISegmentOwner<byte> owner)
   no-op by design; treat it as an immutable sentinel value, not as a resource to manage.
 - **Indexer `this[int i]` is offset-aware.** `owner[i]` accesses `Segment.Array[i + Segment.Offset]`.
   After `TrySetSegment(offset, length)`, index 0 is element `offset` in the original array.
-- For sensitive data, prefer `PooledSegment<T>` (which clears the array on return in DEBUG
-  builds) or ensure you zero the span manually before disposing.
+- For sensitive data, rent with `PooledSegment<T>.Rent(length, clearArray: true)`, which
+  zeroes the whole backing array as it returns to the pool. Debug builds zero every returned
+  buffer regardless, but that is a use-after-return diagnostic, **not** a security control —
+  do not verify a wipe in Debug and ship a Release build that never asked for one.
 
 ---
 

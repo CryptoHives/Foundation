@@ -1,4 +1,4 @@
-﻿# CryptoHives.Foundation.Threading Package
+# CryptoHives.Foundation.Threading Package
 
 ## Overview
 
@@ -53,6 +53,8 @@ using CryptoHives.Foundation.Threading.Pools;
 | [AsyncSemaphore](asyncsemaphore.md) | Pooled async semaphore with configurable permit count | [Details](asyncsemaphore.md) |
 | [AsyncCountdownEvent](asynccountdownevent.md) | Pooled async countdown event (signals when count reaches zero) | [Details](asynccountdownevent.md) |
 | [AsyncBarrier](asyncbarrier.md) | Pooled async barrier (synchronizes multiple participants) | [Details](asyncbarrier.md) |
+| [AsyncConditionVariable](asyncconditionvariable.md) | Pooled async condition variable (wait until a condition guarded by an `AsyncLock` holds) | [Details](asyncconditionvariable.md) |
+| [AsyncExchange&lt;T&gt;](asyncexchange.md) | Pooled two-party rendezvous that swaps a value between two tasks | [Details](asyncexchange.md) |
 | [AsyncReaderWriterLock](asyncreaderwriterlock.md) | Pooled async reader-writer lock (multiple readers or single writer) | [Details](asyncreaderwriterlock.md) |
 
 ### Pooling Support Classes
@@ -306,6 +308,8 @@ Every wait and every acquisition takes an optional timeout, as an overload that 
 | `AsyncManualResetEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
 | `AsyncCountdownEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
 | `AsyncBarrier` | `SignalAndWaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncConditionVariable` | `WaitAsync(AsyncLock, TimeSpan, CancellationToken)` |
+| `AsyncExchange<T>` | `ExchangeAsync(T, TimeSpan, CancellationToken)` |
 | `AsyncReaderWriterLock` | `ReaderLockAsync` / `UpgradeableReaderLockAsync` / `WriterLockAsync(TimeSpan, CancellationToken)`, and `UpgradeToWriterLockAsync(TimeSpan, CancellationToken)` on an upgradeable releaser |
 
 The semantics are the same across every primitive:
@@ -378,12 +382,75 @@ public async Task<bool> TryAcquireWithRetryAsync(TimeSpan timeout, int maxRetrie
 }
 ```
 
+## Non-Blocking Attempts (`Try*`)
+
+Where a zero timeout answers "can I have it right now?" by *throwing* `TimeoutException` on a miss, the
+`Try*` methods answer the same question by *returning* `false`. They are synchronous, never allocate an
+exception or a faulted `ValueTask`, and there is nothing to await — the call either succeeds immediately
+or it doesn't. Reach for them on paths that shed work rather than queue it, where contention is an
+expected outcome instead of an exceptional one.
+
+| Primitive | Non-blocking attempt | Consumes on success? |
+|-----------|----------------------|----------------------|
+| `AsyncLock` | `bool TryLock(out Releaser)` | Yes — dispose the releaser to release |
+| `AsyncKeyedLock<TKey>` | `bool TryLock(TKey, out Releaser)` | Yes — dispose the releaser to release |
+| `AsyncSemaphore` | `bool TryWait()` | Yes — call `Release()` exactly once on success |
+| `AsyncAutoResetEvent` | `bool TryWait()` | Yes — consumes the pending signal, exactly as a completed `WaitAsync()` would |
+| `AsyncManualResetEvent` | `bool TryWait()` | No — non-consuming, identical to reading `IsSet` |
+| `AsyncCountdownEvent` | `bool TryWait()` | No — non-consuming, identical to reading `IsSet` |
+| `AsyncReaderWriterLock` | `bool TryReaderLock(out Releaser)`, `bool TryUpgradeableReaderLock(out Releaser)`, `bool TryWriterLock(out Releaser)` | Yes — dispose the releaser to release |
+| `AsyncReaderWriterLock.Releaser` | `bool TryUpgradeToWriterLock(out Releaser)` on an upgradeable releaser | Yes — dispose the returned releaser to demote back |
+| `AsyncExchange<T>` | `bool TryExchange(T, out T)` | Pairs only with a party already waiting; never occupies the slot otherwise |
+
+Semantics worth calling out:
+
+- **`AsyncAutoResetEvent.TryWait()` consumes the signal.** That is what separates it from `IsSet`, which
+  only peeks and lets two callers both proceed on one signal. Prefer `TryWait()` whenever the answer
+  decides who does the work.
+- **`AsyncManualResetEvent.TryWait()` / `AsyncCountdownEvent.TryWait()` do not consume anything** — a
+  manual-reset event and a countdown hold their state until explicitly reset. These are exact aliases of
+  `IsSet`, provided for naming symmetry.
+- **`AsyncReaderWriterLock` honours writer priority on the try path too.** `TryReaderLock` and
+  `TryUpgradeableReaderLock` decline while a writer is queued, even though the lock is only read-held, so
+  a caller polling in a loop cannot starve a writer. `TryUpgradeableReaderLock` also declines while
+  another upgradeable reader holds the lock (only one is allowed at a time).
+- **A failed `Try*` hands back `default`.** For the releaser-returning overloads that means a releaser
+  with no associated lock — do not dispose it. In `DEBUG` builds disposing a default `AsyncLock.Releaser`
+  or `AsyncReaderWriterLock.Releaser` throws `InvalidOperationException` to catch the mistake; release
+  builds ignore it.
+
+```csharp
+// Opportunistic cache refresh — skip entirely if another writer is active
+if (_rwLock.TryWriterLock(out var releaser))
+{
+    using (releaser)
+    {
+        RebuildCache();
+    }
+}
+
+// Rate limiter that reports "busy" instead of throwing or awaiting
+public bool TryHandle(Request request)
+{
+    if (!_permits.TryWait())
+    {
+        return false; // shed load
+    }
+
+    try { Process(request); }
+    finally { _permits.Release(); }
+    return true;
+}
+```
+
 ## Performance Characteristics by Primitive
 
 - **AsyncLock**: O(1) acquire when uncontended, FIFO queue for waiters
 - **AsyncKeyedLock**: O(1) acquire per key when uncontended; one administrative lock guards the key registry
 - **AsyncAutoResetEvent**: O(1) Set/Wait, FIFO queue for single waiter release
 - **AsyncManualResetEvent**: O(n) Set broadcast to all n waiters, O(1) Reset
+- **AsyncConditionVariable**: O(1) Signal/Wait; releases and re-acquires the paired `AsyncLock` on every return path
+- **AsyncExchange&lt;T&gt;**: O(1) — the arriving party never suspends and returns a synchronously-completed `ValueTask<T>`
 
 ## Best Practices
 
@@ -505,6 +572,8 @@ var evt = new AsyncAutoResetEvent(
 - [AsyncCountdownEvent](asynccountdownevent.md)
 - [AsyncBarrier](asyncbarrier.md)
 - [AsyncSemaphore](asyncsemaphore.md)
+- [AsyncConditionVariable](asyncconditionvariable.md)
+- [AsyncExchange](asyncexchange.md)
 - [Benchmarks](benchmarks.md)
 
 ---

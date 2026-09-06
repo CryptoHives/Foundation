@@ -1,4 +1,4 @@
-﻿# Streebog (GOST R 34.11-2012) Test Vectors
+# Streebog (GOST R 34.11-2012) Test Vectors
 
 ## Overview
 

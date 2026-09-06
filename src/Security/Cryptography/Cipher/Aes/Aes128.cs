@@ -46,7 +46,7 @@ public sealed class Aes128 : SymmetricCipher
     /// <summary>
     /// Initializes a new instance of the <see cref="Aes128"/> class.
     /// </summary>
-    public Aes128() : this(SimdSupport.All)
+    public Aes128() : this(AesCore.AesDefault)
     {
     }
 

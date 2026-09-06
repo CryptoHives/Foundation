@@ -1,10 +1,10 @@
-﻿## Threading Benchmarks
+## Threading Benchmarks
 
 This page documents how the benchmarks are executed which are included in the Threading library.
 
 ### Overview
 
-BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Threading/Async/Pooled/` and can be executed with the BenchmarkSwitcher entry point at `tests/Common/Main.cs`.
+BenchmarkDotNet is used for microbenchmarks. Benchmarks live under `tests/Threading/Benchmarks/Pooled/<Primitive>/`, one folder per primitive, and can be executed with the BenchmarkSwitcher entry point at `tests/Common/Main.cs`.
 
 ### Viewing Benchmark Results
 
@@ -13,6 +13,26 @@ Published results live in the interactive benchmark trends dashboard below rathe
 <iframe src="benchmark-trends/index.html" style="width:100%; height:900px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading benchmark trends dashboard"></iframe>
 
 [Open the dashboard in its own page →](benchmark-trends/index.html)
+
+### Library Matrix
+
+Which library implements which primitive, and which one measured fastest in a given run — the
+trends dashboard above answers "how does this one primitive compare over time"; this answers
+"across everything we benchmark, who supports what, and who wins."
+
+<iframe src="benchmark-trends/matrix.html" style="width:100%; height:700px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading library matrix"></iframe>
+
+[Open the matrix in its own page →](benchmark-trends/matrix.html)
+
+### Speed Differences
+
+How far apart competing implementations of the same primitive typically land: a heatmap of each
+library's ratio to the fastest implementation per primitive, and a chart summarizing the spread
+of that ratio across every primitive a library was benchmarked against.
+
+<iframe src="benchmark-trends/speed-diff.html" style="width:100%; height:1100px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading speed differences"></iframe>
+
+[Open the speed differences page in its own page →](benchmark-trends/speed-diff.html)
 
 ### Recording a benchmark run
 
@@ -115,7 +135,7 @@ After running benchmarks, see "Recording a benchmark run" above for how to recor
 
 ### Adding a new benchmark
 
-1. Add a new `Benchmark` class under `tests/` following existing patterns in `tests/Threading/Async/Pooled/`.
+1. Add a new `Benchmark` class under `tests/Threading/Benchmarks/Pooled/<Primitive>/`, following existing patterns there.
 2. Include `[Benchmark]` methods and `[GlobalSetup]` where needed.
 3. Add a `[Params]` or `FixtureArgs` entry if parameterized runs are required.
 4. Run locally and inspect generated artifacts in `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
@@ -128,9 +148,12 @@ After running benchmarks, see "Recording a benchmark run" above for how to recor
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Async per-key exclusive lock
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait-until-condition paired with a lock
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 
 ---
 

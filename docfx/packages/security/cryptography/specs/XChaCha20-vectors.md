@@ -1,4 +1,4 @@
-﻿# XChaCha20-Poly1305 Test Vectors
+# XChaCha20-Poly1305 Test Vectors
 
 ## Source
 

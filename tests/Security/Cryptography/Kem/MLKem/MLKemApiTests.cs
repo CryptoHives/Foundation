@@ -174,7 +174,8 @@ public class MLKemApiTests
     [Test]
     public void AlgorithmDescriptors_ReportFips203Sizes()
     {
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(MLKemAlgorithm.MLKem512.EncapsulationKeySizeInBytes, Is.EqualTo(800));
             Assert.That(MLKemAlgorithm.MLKem512.DecapsulationKeySizeInBytes, Is.EqualTo(1632));
             Assert.That(MLKemAlgorithm.MLKem512.CiphertextSizeInBytes, Is.EqualTo(768));
@@ -188,7 +189,7 @@ public class MLKemApiTests
             Assert.That(MLKemAlgorithm.MLKem768.PrivateSeedSizeInBytes, Is.EqualTo(64));
             Assert.That(MLKemAlgorithm.MLKem768.Name, Is.EqualTo("ML-KEM-768"));
             Assert.That(MLKemAlgorithm.MLKem768.ToString(), Is.EqualTo("ML-KEM-768"));
-        });
+        }
     }
 
     [Test]
@@ -207,11 +208,12 @@ public class MLKemApiTests
         // Skipping the consistency test must not change the key it produces, and expanding
         // the same seed twice must be bit-identical — the test message is derived from the
         // seed, so no randomness enters key expansion at all.
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(withoutCheck.ExportEncapsulationKey(), Is.EqualTo(withCheck.ExportEncapsulationKey()));
             Assert.That(withoutCheck.ExportDecapsulationKey(), Is.EqualTo(withCheck.ExportDecapsulationKey()));
             Assert.That(withoutCheck.ExportPrivateSeed(), Is.EqualTo(seed));
-        });
+        }
 
         // And the key still works with the check disabled.
         byte[] ct = new byte[algorithm.CiphertextSizeInBytes];
@@ -245,10 +247,11 @@ public class MLKemApiTests
 
         sender.Encapsulate(out byte[] ciphertext, out byte[] senderSecret);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(ciphertext, Has.Length.EqualTo(algorithm.CiphertextSizeInBytes));
             Assert.That(senderSecret, Has.Length.EqualTo(algorithm.SharedSecretSizeInBytes));
-        });
+        }
 
         Assert.That(receiver.Decapsulate(ciphertext), Is.EqualTo(senderSecret),
             "The byte[] overloads must agree with each other.");
@@ -272,25 +275,27 @@ public class MLKemApiTests
         using var fromDk = MLKem.ImportDecapsulationKey(algorithm, dk);
         using var fromEk = MLKem.ImportEncapsulationKey(algorithm, ek);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(fromSeed.ExportDecapsulationKey(), Is.EqualTo(dk));
             Assert.That(fromDk.ExportEncapsulationKey(), Is.EqualTo(ek));
             Assert.That(fromEk.ExportEncapsulationKey(), Is.EqualTo(ek));
-        });
+        }
     }
 
     [Test]
     [TestCaseSource(nameof(Algorithms))]
     public void ByteArrayImporters_NullSource_Throws(MLKemAlgorithm algorithm)
     {
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(() => MLKem.ImportPrivateSeed(algorithm, (byte[])null!),
                 Throws.InstanceOf<ArgumentNullException>());
             Assert.That(() => MLKem.ImportDecapsulationKey(algorithm, (byte[])null!),
                 Throws.InstanceOf<ArgumentNullException>());
             Assert.That(() => MLKem.ImportEncapsulationKey(algorithm, (byte[])null!),
                 Throws.InstanceOf<ArgumentNullException>());
-        });
+        }
     }
 
     [Test]
@@ -299,11 +304,12 @@ public class MLKemApiTests
     {
         using var kem = MLKem.GenerateKey(algorithm);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(() => kem.Decapsulate((byte[])null!), Throws.InstanceOf<ArgumentNullException>());
             Assert.That(() => kem.Decapsulate(new byte[algorithm.CiphertextSizeInBytes + 1]),
                 Throws.InstanceOf<ArgumentException>());
-        });
+        }
     }
 
     [Test]
@@ -332,7 +338,8 @@ public class MLKemApiTests
         MLKemAlgorithm? nothing = null;
         object foreignType = "ML-KEM-768";
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(mlKem768 == MLKemAlgorithm.MLKem768, Is.True);
             Assert.That(mlKem768 != mlKem512, Is.True);
             Assert.That(mlKem768.Equals(MLKemAlgorithm.MLKem768), Is.True);
@@ -345,13 +352,14 @@ public class MLKemApiTests
             Assert.That(nothing == mlKem512, Is.False);
             Assert.That(mlKem512 == nothing, Is.False);
             Assert.That(nothing == null, Is.True);
-        });
+        }
 
         // The behavioural point of GetHashCode: the singletons work as dictionary keys.
         var seen = new System.Collections.Generic.HashSet<MLKemAlgorithm>(Algorithms);
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(seen, Has.Count.EqualTo(3), "The three parameter sets must be distinct.");
             Assert.That(seen.Contains(MLKemAlgorithm.MLKem768), Is.True);
-        });
+        }
     }
 }

@@ -45,65 +45,6 @@ All packages are published under the `CryptoHives.Foundation` prefix and namespa
 [![codecov](https://codecov.io/github/CryptoHives/Foundation/graph/badge.svg?token=02RZ43EVOB)](https://codecov.io/github/CryptoHives/Foundation)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FCryptoHives%2FFoundation?ref=badge_shield)
 
-### 🧠 Buffer Pools (Memory)
-Pooled buffer management for transformation pipelines and high-frequency I/O:
-
-- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
-- `ReadOnlySequenceMemoryStream` — reads a `ReadOnlySequence<byte>` as a `MemoryStream` without copying
-- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`
-- `ISegmentOwner<T>` — ownership contract for `ArraySegment<T>` with three built-in strategies:
-  - `PooledSegment<T>` — rents from `ArrayPool<T>.Shared`, returns on dispose
-  - `AllocatedSegment<T>` — wraps a GC-managed `T[]`, no pool lifecycle
-  - `EmptySegment<T>` — zero-allocation null-object sentinel
-
-### 🧵 Concurrency Tools (Threading)
-Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
-
-- `AsyncLock` — mutual exclusion
-- `AsyncKeyedLock<TKey>` — per-key mutual exclusion
-- `AsyncSemaphore` — counting semaphore
-- `AsyncAutoResetEvent` / `AsyncManualResetEvent`
-- `AsyncReaderWriterLock`
-- `AsyncBarrier` / `AsyncCountdownEvent`
-
-All primitives support `CancellationToken` and `ConfigureAwait(false)` without extra allocations. New in 0.6: timeout support via `TimeProvider` (an `ITimer` is only allocated once there's actual contention).
-
-A Roslyn analyzer that catches common `ValueTask` usage mistakes ships as a standalone package.
-
-⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, pooled `ValueTask` vs. existing `Task`-based alternatives.
-
-### 🔐 Managed Code Cryptography (Security.Cryptography)
-Fully managed hash, MAC, and cipher implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. 
-No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics kick in 
-automatically — in some cases outperforming the OS-provided implementation.
-
-**Algorithms:**
-
-| Family | Algorithms |
-|--------|-----------|
-| SHA-2 | SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256 |
-| SHA-3 | SHA3-224, SHA3-256, SHA3-384, SHA3-512 |
-| Keccak | Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible) |
-| SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
-| ParallelHash (SP 800-185) | ParallelHash128, ParallelHash256 |
-| TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
-| BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
-| Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
-| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
-| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
-| Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
-| Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256/512), SEED |
-| Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
-| Legacy | SHA-1, MD5 (kept for backward compatibility only) |
-| Asymmetric | RSA (PKCS#1/PSS/OAEP), ECDSA, ECDH, Ed25519, Ed448, X25519, X448 |
-| X.509 PKI | Certificate builder, CSR (PKCS#10), CRL, chain validation, profiles |
-
-All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
-
-**⏱️ Benchmarks**
-
-Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions. Results are published through an [interactive trends dashboard](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks.html) — pick platform, algorithm family, and method, and every implementation plots as its own line.
-
 ---
 
 ## 🏗️ Architecture Overview
@@ -131,8 +72,8 @@ Measured with BenchmarkDotNet across a range of payload sizes, comparing our man
 │  AllocatedSegment  │   │ IValueTaskSource<T>   │   │                            │
 │  EmptySegment      │   │    backed by          │   │ MAC                        │
 │                    │   │   ObjectPool<T>       │   │  HMAC · KMAC               │
-│                    │   │                       │   │  AES-CMAC · AES-GMAC       │
-│                    │   │                       │   │  Poly1305 · BLAKE2/3       │
+│                    │   │ AsyncConditionVariable│   │  AES-CMAC · AES-GMAC       │
+│                    │   │ AsyncExchange<T>      │   │  Poly1305 · BLAKE2/3       │
 │                    │   │                       │   │                            │
 │                    │   │                       │   │ Cipher                     │
 │                    │   ├───────────────────────┤   │  AES-GCM/CCM (AEAD)        │
@@ -169,6 +110,76 @@ Keccak class hierarchy (Security.Cryptography):
 
   IncrementalParallelHash  (streaming wrapper, buffers input until Squeeze)
 ```
+
+---
+
+### 🧠 Buffer Pools (Memory)
+Pooled buffer management for transformation pipelines and high-frequency I/O:
+
+- `ArrayPoolMemoryStream` — drop-in `MemoryStream` replacement backed by `ArrayPool<byte>`, with `ReadOnlySequence` handoff support
+- `ReadOnlySequenceMemoryStream` — reads a `ReadOnlySequence<byte>` as a `MemoryStream` without copying
+- `ArrayPoolBufferWriter<T>` — `IBufferWriter<T>` over pooled arrays, e.g. for `Utf8JsonWriter`; the writer itself is poolable, and `ArrayPoolBufferWriterProvider<T>` keeps many settings profiles on one shared pool
+- `SequenceLease<T>` — a `readonly struct` carrying a `ReadOnlySequence<T>` plus the producer that owns it, so a payload can leave the scope that built it with no copy and no allocation
+- `PoolFactory` — builds an object pool from a factory and a reset delegate, including for types this package does not reference
+- `ISegmentOwner<T>` — ownership contract for `ArraySegment<T>` with three built-in strategies:
+  - `PooledSegment<T>` — rents from `ArrayPool<T>.Shared`, returns on dispose
+  - `AllocatedSegment<T>` — wraps a GC-managed `T[]`, no pool lifecycle
+  - `EmptySegment<T>` — zero-allocation null-object sentinel
+- `ISequenceOwner<T>` — the same contract for `ReadOnlySequence<T>`, with `SegmentSequence<T>` and `EmptySequence<T>`
+
+Every type that owns pooled memory takes a `clearArray` flag, so buffers holding key material are zeroed on their way back to the pool.
+
+### 🧵 Concurrency Tools (Threading)
+Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask<T>`, designed to keep `Task` / `TaskCompletionSource<T>` allocations off the hot path.
+
+- `AsyncLock` — mutual exclusion
+- `AsyncKeyedLock<TKey>` — per-key mutual exclusion
+- `AsyncSemaphore` — counting semaphore
+- `AsyncAutoResetEvent` / `AsyncManualResetEvent`
+- `AsyncReaderWriterLock`
+- `AsyncBarrier` / `AsyncCountdownEvent`
+- `AsyncConditionVariable` — pairs with `AsyncLock` for "wait until condition" semantics
+- `AsyncExchange<T>` — two-party value rendezvous
+
+All primitives support `CancellationToken` and `ConfigureAwait(false)` without extra allocations, timeout support via `TimeProvider` (an `ITimer` is only allocated once there's actual contention). 
+New in 0.7: synchronous non-blocking attempts — `TryLock` / `TryWait` / `TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock` / `Releaser.TryUpgradeToWriterLock` — that return `false` on a miss instead of throwing.
+
+A Roslyn analyzer that catches common `ValueTask` usage mistakes ships as a standalone package.
+
+⏱️ [Async primitive benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) — contested and uncontested scenarios, pooled `ValueTask` vs. existing `Task`-based alternatives.
+
+### 🔐 Managed Code Cryptography (Security.Cryptography)
+Fully managed hash, MAC, cipher and post-quantum KEM implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. 
+No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics kick in 
+automatically — in some cases outperforming the OS-provided implementation.
+
+**Algorithms:**
+
+| Family | Algorithms |
+|--------|-----------|
+| SHA-2 | SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256 |
+| SHA-3 | SHA3-224, SHA3-256, SHA3-384, SHA3-512 |
+| Keccak | Keccak-256, Keccak-384, Keccak-512 (Ethereum compatible) |
+| SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
+| ParallelHash (SP 800-185) | ParallelHash128, ParallelHash256 |
+| TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
+| BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
+| Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
+| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
+| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
+| Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
+| Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256/512), SEED |
+| KEM (post-quantum) | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
+| Regional | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
+| Legacy | SHA-1, MD5 (kept for backward compatibility only) |
+
+All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
+
+`MLKem` and `MLKemAlgorithm` deliberately mirror the names and signatures of .NET 10's `System.Security.Cryptography.MLKem`, so moving from the in-box type is a `using` swap — and unlike it, `MLKem.IsSupported` is always `true`, because nothing here depends on Windows CNG or OpenSSL.
+
+**⏱️ Benchmarks**
+
+Measured with BenchmarkDotNet across a range of payload sizes, comparing our managed implementations against reference libraries and the OS-provided versions. Results are published through an [interactive trends dashboard](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks.html) — pick platform, algorithm family, and method, and every implementation plots as its own line.
 
 ---
 
@@ -253,6 +264,18 @@ public async Task DoWorkAsync(CancellationToken ct)
 {
     using await _lock.LockAsync(ct).ConfigureAwait(false);
     // critical section
+}
+
+// Non-blocking attempt — no exception, no ValueTask on a miss
+public void DoWorkIfIdle()
+{
+    if (_lock.TryLock(out var releaser))
+    {
+        using (releaser)
+        {
+            // critical section
+        }
+    }
 }
 ```
 

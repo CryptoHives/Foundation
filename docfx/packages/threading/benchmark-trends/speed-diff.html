@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CryptoHives Threading Speed Differences</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: -apple-system, Segoe UI, sans-serif; margin: 2rem; max-width: 1200px; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; }
+  .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0 1.5rem; align-items: flex-start; }
+  .controls > label { display: flex; flex-direction: column; font-size: 0.85rem; color: #444; }
+  select { margin-top: 0.25rem; padding: 0.3rem; min-width: 180px; }
+  #status { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem; }
+  .legend-hint { font-size: 0.78rem; color: #888; margin: 0 0 0.4rem; }
+  .legend-item { font-size: 0.8rem; color: #333; border: 1px solid #ccc; border-radius: 12px;
+    padding: 0.15rem 0.65rem; cursor: pointer; user-select: none; background: #f7f7f7; }
+  .legend-item.disabled { opacity: 0.45; text-decoration: line-through; background: #fff; }
+  #heatmap-container { overflow-x: auto; max-height: 70vh; }
+  table.heatmap { border-collapse: collapse; width: 100%; font-size: 0.78rem; }
+  table.heatmap th, table.heatmap td { border: 1px solid #ddd; padding: 0.25rem 0.5rem; text-align: center; white-space: nowrap; }
+  table.heatmap th.row-label, table.heatmap td.row-label { text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; }
+  table.heatmap thead th { background: #f5f5f5; position: sticky; top: 0; z-index: 2; }
+  table.heatmap thead th.row-label { z-index: 3; }
+  table.heatmap td.empty { color: #ccc; background: #fafafa; }
+  table.heatmap td.ratio { color: #1a1a1a; font-variant-numeric: tabular-nums; }
+  .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
+  .legend-scale { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: #555; margin: 0.5rem 0 1rem; }
+  .legend-scale .swatch { width: 22px; height: 12px; border: 1px solid #ccc; }
+</style>
+</head>
+<body>
+<h1>CryptoHives Threading Speed Differences</h1>
+<p>
+  How far apart competing implementations of the same synchronization primitive typically land,
+  for the benchmark run selected below. Every cell's ratio is that variant's mean time divided by
+  the fastest variant's mean time for the same primitive in that run — 1.00 is the winner, 2.00
+  means twice as slow. Both numbers come from the scenario closest to normal use - one contending
+  party (not zero, and not a bare uncontended call some benchmark classes also record) with a
+  live, uncancelled token where one was measured - rather than an average across every contention
+  level a "Scaling by contention" chart would show: a "Multiple" benchmark's mean time at high
+  contention is the time for many concurrent operations, not a per-operation cost, so blending it
+  in would let whichever variant scales worst under load dominate the ratio.
+</p>
+
+<div class="controls">
+  <label>Platform
+    <select id="platform"></select>
+  </label>
+  <label id="framework-picker" hidden>Framework
+    <select id="framework"></select>
+  </label>
+  <label>Run
+    <select id="run"></select>
+  </label>
+</div>
+
+<div id="status">Loading database…</div>
+<p id="legend-hint" class="legend-hint" hidden>Click a library to hide or show it. Pooled, Nito.AsyncEx, ProtoPromise, RefImpl and System stay pinned leftmost and can't be hidden.</p>
+<div id="library-legend" class="legend-row"></div>
+
+<h2>Ratio heatmap</h2>
+<div class="legend-scale">
+  <span>1.0x</span>
+  <span class="swatch" style="background:#15803d"></span>
+  <span class="swatch" style="background:#84a624"></span>
+  <span class="swatch" style="background:#d4a017"></span>
+  <span class="swatch" style="background:#e0641e"></span>
+  <span class="swatch" style="background:#b91c1c"></span>
+  <span>5x+</span>
+</div>
+<div id="heatmap-container"><table class="heatmap" id="heatmap-table">
+<thead><tr id="heatmap-head"></tr></thead><tbody id="heatmap-body"></tbody></table></div>
+
+<p class="hint">
+  Data source: <code>benchmark-history.sqlite</code>, generated at build time from the run
+  archive on the <code>benchmarks</code> branch. Ratios are computed from mean time, averaged per
+  (family, variant) across every method, contention level and cancellation state measured in the
+  selected run — see the <a href="index.html">trends dashboard</a> for per-parameter detail, and
+  the <a href="matrix.html">library matrix</a> for which library supports which primitive. The raw
+  baseline comparison table (Interlocked.*, lock(), SpinLock, SpinOnce) a few benchmark classes
+  measure alongside the real primitives isn't a synchronization primitive itself and is excluded
+  here.
+</p>
+<p class="hint">
+  <strong>†</strong> marks a "System" cell whose primitive may have no true async wait API
+  (AutoResetEvent, ManualResetEvent, Barrier, ReaderWriterLockSlim) - its benchmark measures a
+  blocking wait rather than an awaited one, so the ratio is a baseline reference rather than a
+  fair race against the async implementations in the other columns.
+  <strong>‡</strong> marks "ProtoPromise" - it builds on its own Promise/Promise&lt;T&gt; type and
+  its own cancellation token rather than <code>System.Threading.Tasks.ValueTask</code> and
+  <code>CancellationToken</code>, so it is not drop-in compatible with code written against the
+  BCL types the other columns share.
+</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script>
+(async function () {
+  const statusEl = document.getElementById("status");
+  const platformSel = document.getElementById("platform");
+  const frameworkSel = document.getElementById("framework");
+  const frameworkPickerEl = document.getElementById("framework-picker");
+  const runSel = document.getElementById("run");
+  const heatmapHeadEl = document.getElementById("heatmap-head");
+  const heatmapBodyEl = document.getElementById("heatmap-body");
+  const libraryLegendEl = document.getElementById("library-legend");
+  const legendHintEl = document.getElementById("legend-hint");
+
+  let db;
+
+  // Always the leftmost columns, in this order, and never hideable - see matrix.html for the
+  // full rationale. Everything else can be toggled off via the legend below.
+  const PINNED_LIBRARIES = ["Pooled", "Nito.AsyncEx", "ProtoPromise", "RefImpl", "System"];
+
+  // A synchronous (blocking) primitive out-of-contest marker, appended to a "System" cell's
+  // ratio - see the same constant in matrix.html for the full rationale.
+  const SYSTEM_CAVEAT_MARK = "†";
+  const SYSTEM_CAVEAT_TEXT = "System may be a synchronous (blocking) .NET primitive rather than " +
+    "a true async one - a baseline reference, not necessarily a fair contest against the async " +
+    "implementations in the other columns.";
+
+  // A compatibility caveat, appended to a "ProtoPromise" cell's ratio - see the same constant in
+  // matrix.html for the full rationale.
+  const PROTOPROMISE_CAVEAT_MARK = "‡";
+  const PROTOPROMISE_CAVEAT_TEXT = "ProtoPromise builds on its own Promise/Promise<T> type and " +
+    "its own cancellation token rather than System.Threading.Tasks.ValueTask and " +
+    "CancellationToken, so it is not drop-in compatible with code written against the BCL types.";
+
+  const LIBRARY_CAVEATS = new Map([
+    ["System", { mark: SYSTEM_CAVEAT_MARK, text: SYSTEM_CAVEAT_TEXT }],
+    ["ProtoPromise", { mark: PROTOPROMISE_CAVEAT_MARK, text: PROTOPROMISE_CAVEAT_TEXT }],
+  ]);
+
+  // Persists across platform/framework/run changes - hiding a library is a display preference,
+  // not scoped to one selection.
+  const hiddenLibraries = new Set();
+
+  // Raw variant spellings that name a real published library, mapped to one canonical NuGet
+  // package name - see the same map in matrix.html for the full rationale (folding "Nito" /
+  // "Nito.AsyncEx" and "ProtoPromise" / "Proto.Promises" naming inconsistencies, and routing
+  // "NonKeyed" - AsyncKeyedLock's AsyncNonKeyedLocker, benchmarked under a different family with
+  // no package name in its label - to the same column as its package's other variant).
+  const KNOWN_LIBRARIES = new Map([
+    ["Nito", "Nito.AsyncEx"],
+    ["Nito.AsyncEx", "Nito.AsyncEx"],
+    ["ProtoPromise", "ProtoPromise"],
+    ["Proto.Promises", "ProtoPromise"],
+    ["NeoSmart", "NeoSmart.AsyncLock"],
+    ["VS.Threading", "Microsoft.VisualStudio.Threading"],
+    ["AsyncKeyedLock", "AsyncKeyedLock"],
+    ["NonKeyed", "AsyncKeyedLock"],
+    ["AsyncUtilities", "AsyncUtilities"],
+    ["KeyedSemaphores", "KeyedSemaphores"],
+    ["Dao.IndividualLock", "Dao.IndividualLock"],
+  ]);
+
+  // Collapses implementation-detail variants down to the library they belong to - see the same
+  // helper in matrix.html for the full rationale. Kept in sync with that page rather than shared,
+  // per this dashboard's convention of self-contained pages with no shared JS module.
+  function libraryOf(variant) {
+    if (variant.includes("CryptoHives") || variant === "Pooled" || variant.startsWith("Pooled ")) {
+      return "Pooled";
+    }
+    if (variant === "RefImpl") return "RefImpl";
+    // Kept as its own column rather than folded into its base library like every other "(...)"
+    // qualifier - see matrix.html's libraryOf for the full rationale (striping trades one lock
+    // per key for a fixed set of hash-bucketed locks, a different concurrency guarantee).
+    if (variant.endsWith("(Striped)")) return variant;
+    const m = /^(.*?)\s*\([^)]*\)$/.exec(variant);
+    const stripped = m ? m[1] : variant;
+    return KNOWN_LIBRARIES.get(stripped) || "System";
+  }
+
+  // Pinned libraries sort first, in PINNED_LIBRARIES order; everything else follows alphabetically.
+  function compareVariants(a, b) {
+    const aPin = PINNED_LIBRARIES.indexOf(a), bPin = PINNED_LIBRARIES.indexOf(b);
+    if (aPin !== -1 || bPin !== -1) {
+      if (aPin === -1) return 1;
+      if (bPin === -1) return -1;
+      return aPin - bPin;
+    }
+    return a.localeCompare(b);
+  }
+
+  function renderLibraryLegend(libraries) {
+    const toggleable = libraries.filter((lib) => !PINNED_LIBRARIES.includes(lib));
+    legendHintEl.hidden = toggleable.length === 0;
+    libraryLegendEl.innerHTML = "";
+    for (const lib of toggleable) {
+      const item = document.createElement("span");
+      item.className = "legend-item" + (hiddenLibraries.has(lib) ? " disabled" : "");
+      item.textContent = lib;
+      item.onclick = () => {
+        if (hiddenLibraries.has(lib)) hiddenLibraries.delete(lib);
+        else hiddenLibraries.add(lib);
+        render();
+      };
+      libraryLegendEl.appendChild(item);
+    }
+  }
+
+  // A control character separator, not a plain string join: family/variant names are free text
+  // and could themselves contain almost any other character.
+  function keyOf(family, variant) {
+    return `${family}\x1f${variant}`;
+  }
+
+  function distinct(column, whereSql, params) {
+    const stmt = db.prepare(`SELECT DISTINCT ${column} FROM benchmark_results ${whereSql || ""} ORDER BY ${column}`);
+    stmt.bind(params || []);
+    const values = [];
+    while (stmt.step()) values.push(stmt.getAsObject()[column]);
+    stmt.free();
+    return values;
+  }
+
+  function populateSelect(selectEl, values, preferredValue) {
+    selectEl.innerHTML = "";
+    for (const v of values) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      selectEl.appendChild(opt);
+    }
+    if (preferredValue !== undefined && values.includes(preferredValue)) {
+      selectEl.value = preferredValue;
+    }
+  }
+
+  function runOptionLabel(run) {
+    const date = (run.run_date || "").slice(0, 10);
+    const sha = run.commit_sha ? run.commit_sha.slice(0, 8) : "?";
+    return `${date} · ${sha}`;
+  }
+
+  function refreshFrameworks() {
+    const frameworks = distinct("framework", "WHERE platform = ?", [platformSel.value]);
+    populateSelect(frameworkSel, frameworks);
+    refreshRuns();
+  }
+
+  function refreshRuns() {
+    const stmt = db.prepare(
+      "SELECT DISTINCT run_id, run_date, commit_sha FROM benchmark_results " +
+      "WHERE platform = ? AND framework = ? ORDER BY run_date DESC"
+    );
+    stmt.bind([platformSel.value, frameworkSel.value]);
+    const runs = [];
+    while (stmt.step()) runs.push(stmt.getAsObject());
+    stmt.free();
+
+    runSel.innerHTML = "";
+    for (const run of runs) {
+      const opt = document.createElement("option");
+      opt.value = run.run_id;
+      opt.textContent = runOptionLabel(run);
+      runSel.appendChild(opt);
+    }
+    if (runs.length) runSel.value = runs[0].run_id;
+    render();
+  }
+
+  // Prefer this specific one order over exhaustively averaging every method, contention level
+  // and cancellation state a family was measured with - see matrix.html's loadBaselineAverages
+  // for the full rationale (blending in every contention level let whichever variant scaled
+  // worst under load dominate the ratio, which is where the four- and five-digit ratios came
+  // from). Contention level 1 - not 0, and not the parameterless single-call scenario some
+  // benchmark classes also record - represents "exactly one other party is contending", closer to
+  // normal use than an idle lock; cancellation prefers "NotCancelled" (a live token supplied but
+  // not triggered) over "None" for the same reason. Both fall back gracefully per variant, so
+  // every variant that was benchmarked at all still gets a number, just not always from the same
+  // scenario. Contention scaling and cancellation overhead both stay fully visible in the trends
+  // dashboard rather than being silently mixed into this number.
+  //
+  // "SyncLock" is excluded outright - see matrix.html's loadSupportMatrix for why it isn't a
+  // real async primitive and doesn't map onto this matrix at all.
+  const CANCELLATION_PRIORITY = ["NotCancelled", "None", "Timed", "Cancelled", "NotCancelledTimed"];
+
+  function loadRunAverages(runId, platform, framework) {
+    const stmt = db.prepare(
+      "SELECT family, variant, param_value, cancellation, mean_ns FROM benchmark_results " +
+      "WHERE run_id = ? AND platform = ? AND framework = ? AND family != 'SyncLock' " +
+      "AND param_value IS NOT NULL"
+    );
+    stmt.bind([runId, platform, framework]);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+
+    const byVariant = new Map(); // "family\u001fvariant" -> rows[]
+    for (const r of rows) {
+      const key = keyOf(r.family, r.variant);
+      if (!byVariant.has(key)) byVariant.set(key, []);
+      byVariant.get(key).push(r);
+    }
+
+    const results = [];
+    for (const variantRows of byVariant.values()) {
+      const paramValues = new Set(variantRows.map((r) => r.param_value));
+      const targetParam = paramValues.has(1) ? 1 : Math.min(...paramValues);
+      const atParam = variantRows.filter((r) => r.param_value === targetParam);
+
+      const available = new Set(atParam.map((r) => r.cancellation));
+      const bestCancellation = CANCELLATION_PRIORITY.find((c) => available.has(c)) || atParam[0].cancellation;
+      const chosen = atParam.filter((r) => r.cancellation === bestCancellation);
+
+      const avg_ns = chosen.reduce((sum, r) => sum + r.mean_ns, 0) / chosen.length;
+      results.push({ family: chosen[0].family, variant: chosen[0].variant, avg_ns });
+    }
+    return results;
+  }
+
+  const SCALE_STOPS = [
+    [1, [21, 128, 61]],
+    [1.5, [132, 166, 36]],
+    [2.5, [212, 160, 23]],
+    [4, [224, 100, 30]],
+    [5, [185, 28, 28]],
+  ];
+
+  function colorForRatio(ratio) {
+    const r = Math.max(1, ratio);
+    for (let i = 0; i < SCALE_STOPS.length - 1; i++) {
+      const [lo, loColor] = SCALE_STOPS[i];
+      const [hi, hiColor] = SCALE_STOPS[i + 1];
+      if (r <= hi || i === SCALE_STOPS.length - 2) {
+        const t = Math.max(0, Math.min(1, (r - lo) / (hi - lo)));
+        const mix = loColor.map((c, idx) => Math.round(c + (hiColor[idx] - c) * t));
+        return `rgb(${mix.join(",")})`;
+      }
+    }
+    return `rgb(${SCALE_STOPS[SCALE_STOPS.length - 1][1].join(",")})`;
+  }
+
+  function textColorForRatio(ratio) {
+    return ratio >= 2.5 ? "#fff" : "#1a1a1a";
+  }
+
+  // Reduces (family, variant) averages down to (family, library) by keeping each library's best
+  // (minimum) variant - mirrors the same reduction in the Cryptography speed-diff page. Keeps the
+  // winning raw variant per cell for the tooltip.
+  function reduceToLibraries(rows) {
+    const byFamily = new Map(); // family -> library -> { variant, avg_ns }
+    for (const r of rows) {
+      const library = libraryOf(r.variant);
+      if (!byFamily.has(r.family)) byFamily.set(r.family, new Map());
+      const libraries = byFamily.get(r.family);
+      const current = libraries.get(library);
+      if (!current || r.avg_ns < current.avg_ns) libraries.set(library, { variant: r.variant, avg_ns: r.avg_ns });
+    }
+    return byFamily;
+  }
+
+  function renderHeatmap(rows) {
+    const families = Array.from(new Set(rows.map((r) => r.family))).sort();
+    const libraries = Array.from(new Set(rows.map((r) => libraryOf(r.variant)))).sort(compareVariants);
+    // Hiding a library only changes what's drawn - the ratio baseline (minNs below) is always
+    // computed from every library, so toggling a column off and back on never moves the numbers
+    // of the columns that stay visible.
+    const visibleLibraries = libraries.filter((lib) => PINNED_LIBRARIES.includes(lib) || !hiddenLibraries.has(lib));
+    const byFamily = reduceToLibraries(rows);
+
+    renderLibraryLegend(libraries);
+
+    heatmapHeadEl.innerHTML = "";
+    const thLabel = document.createElement("th");
+    thLabel.className = "row-label";
+    thLabel.textContent = "Primitive";
+    heatmapHeadEl.appendChild(thLabel);
+    for (const lib of visibleLibraries) {
+      const th = document.createElement("th");
+      th.textContent = lib;
+      heatmapHeadEl.appendChild(th);
+    }
+
+    heatmapBodyEl.innerHTML = "";
+
+    for (const family of families) {
+      const means = byFamily.get(family);
+      const minNs = Math.min(...Array.from(means.values(), (e) => e.avg_ns));
+      const tr = document.createElement("tr");
+      const labelTd = document.createElement("td");
+      labelTd.className = "row-label";
+      labelTd.textContent = family;
+      tr.appendChild(labelTd);
+
+      for (const lib of visibleLibraries) {
+        const td = document.createElement("td");
+        const entry = means.get(lib);
+        // Defensive: a mean that rounds to 0ns would make this an Infinityx ratio rather than a
+        // meaningful comparison - not observed since SyncLock's interlocked-op baselines were
+        // excluded, but guarded in case a future ultra-cheap benchmark hits it.
+        if (entry == null || minNs <= 0) {
+          td.className = "empty";
+          td.textContent = entry == null ? "–" : "n/a";
+          if (entry) td.title = `${entry.variant} (fastest in this row measured ~0ns; ratio not meaningful)`;
+        } else {
+          const ratio = entry.avg_ns / minNs;
+          td.className = "ratio";
+          td.style.background = colorForRatio(ratio);
+          td.style.color = textColorForRatio(ratio);
+          td.textContent = ratio.toFixed(2) + "x";
+          td.title = entry.variant;
+          const caveat = LIBRARY_CAVEATS.get(lib);
+          if (caveat) {
+            td.textContent += caveat.mark;
+            td.title = `${td.title} — ${caveat.text}`;
+          }
+        }
+        tr.appendChild(td);
+      }
+      heatmapBodyEl.appendChild(tr);
+    }
+
+    return { libraries: visibleLibraries, totalLibraries: libraries.length };
+  }
+
+  function render() {
+    if (!runSel.value) {
+      statusEl.textContent = "No data for this selection yet.";
+      return;
+    }
+    const rows = loadRunAverages(runSel.value, platformSel.value, frameworkSel.value);
+    if (!rows.length) {
+      heatmapHeadEl.innerHTML = "";
+      heatmapBodyEl.innerHTML = "";
+      statusEl.textContent = "No data for this run.";
+      return;
+    }
+    const { libraries, totalLibraries } = renderHeatmap(rows);
+    const families = new Set(rows.map((r) => r.family));
+    statusEl.textContent = `${families.size} primitive(s) × ${libraries.length} of ${totalLibraries} librar${totalLibraries === 1 ? "y" : "ies"} shown, from ` +
+      (runSel.options[runSel.selectedIndex]?.textContent || "the selected run");
+  }
+
+  if (location.protocol === "file:") {
+    statusEl.textContent =
+      "This page was opened directly from disk (file://) — browsers block fetch() of local files " +
+      "regardless of what's in the folder. Serve it over HTTP instead, e.g. from this folder run: " +
+      "python3 -m http.server 8000, then open http://localhost:8000/";
+    return;
+  }
+
+  try {
+    const SQL = await initSqlJs({
+      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`,
+    });
+    const response = await fetch("benchmark-history.sqlite");
+    if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
+    const buffer = await response.arrayBuffer();
+    db = new SQL.Database(new Uint8Array(buffer));
+
+    populateSelect(platformSel, distinct("platform", ""));
+    const hasMultipleFrameworks = distinct("framework", "").length > 1;
+    frameworkPickerEl.hidden = !hasMultipleFrameworks;
+
+    platformSel.onchange = refreshFrameworks;
+    frameworkSel.onchange = refreshRuns;
+    runSel.onchange = render;
+
+    refreshFrameworks();
+  } catch (err) {
+    statusEl.textContent = `Failed to load benchmark-history.sqlite: ${err.message}`;
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿# AllocatedSegment&lt;T&gt; Class
+# AllocatedSegment&lt;T&gt; Class
 
 An [`ISegmentOwner<T>`](isegmentowner.md) that wraps a GC-managed `T[]` in an
 `ArraySegment<T>`. The underlying array is collected by the garbage collector;

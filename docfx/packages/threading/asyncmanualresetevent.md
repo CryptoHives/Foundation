@@ -48,7 +48,7 @@ public AsyncManualResetEvent(
 public bool IsSet { get; }
 ```
 
-Gets whether this event is currently in the signaled state.
+Gets whether this event is currently in the signaled state. A manual-reset event does not consume its signal, so the state stays set until `Reset()` is called.
 
 ### RunContinuationAsynchronously
 
@@ -163,6 +163,20 @@ Signals the event, releasing **all** waiting threads. The event remains in the s
 - All future `WaitAsync()` calls complete immediately until `Reset()` is called.
 - When `RunContinuationAsynchronously` is `false`, continuations may run synchronously on the signaling thread.
 
+### TryWait
+
+```csharp
+public bool TryWait()
+```
+
+Attempts to complete a wait without awaiting.
+
+**Returns**: `true` if the event is set; `false` otherwise.
+
+A manual-reset event does **not** consume its signal, so `TryWait()` never changes state and is exactly equivalent to reading [`IsSet`](#isset). It exists for naming symmetry with the other primitives in this package (`AsyncLock.TryLock`, `AsyncSemaphore.TryWait`, `AsyncAutoResetEvent.TryWait`, …). Like those, it is synchronous and never allocates.
+
+When only one caller should act on the signal, reach for [`AsyncAutoResetEvent`](asyncautoresetevent.md) instead — its `TryWait()` hands the signal to a single caller.
+
 ### Reset
 
 ```csharp
@@ -225,7 +239,7 @@ finally
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncManualResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncManualResetEvent` and reference `TaskCompletionSource`-based implementations.
+The following benchmarks compare `AsyncManualResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncManualResetEvent`, `DotNext.Threading.AsyncManualResetEvent` (net10.0 only), and reference `TaskCompletionSource`-based implementations.
 
 ### Set/Reset Cycle Benchmark
 
@@ -378,6 +392,8 @@ catch (TimeoutException)
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

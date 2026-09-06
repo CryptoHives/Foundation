@@ -26,6 +26,8 @@ Use these when an `await` must happen inside a critical section, or to remove
 | `CountdownEvent` (async) | `AsyncCountdownEvent` | |
 | `Barrier` (async) | `AsyncBarrier` | |
 | `ReaderWriterLockSlim` (async) | `AsyncReaderWriterLock` | |
+| `Monitor.Wait` / `Monitor.Pulse` (async) | `AsyncConditionVariable` | Pairs with an `AsyncLock`. Signals are not stored — re-check the predicate in a loop. |
+| Java's `Exchanger<V>` (no BCL equivalent) | `AsyncExchange<T>` | Two-party rendezvous, no buffering. `TryExchange` for a non-blocking attempt. |
 | `Dictionary<TKey, SemaphoreSlim>` / one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other. Not reentrant. |
 | `AsyncKeyedLock` (third-party), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify no reentrancy. |
@@ -72,6 +74,25 @@ new AsyncAutoResetEvent(initialState: false);    // Set() releases ONE waiter, a
 //   .Set(); .Reset(); ValueTask WaitAsync(CancellationToken); ValueTask WaitAsync(TimeSpan, CancellationToken);
 
 // AsyncReaderWriterLock — using (await rw.ReaderLockAsync(ct)) / (await rw.WriterLockAsync(ct))
+
+// AsyncConditionVariable — must pair with an AsyncLock the caller already holds.
+sealed class AsyncConditionVariable {
+    AsyncConditionVariable(bool runContinuationAsynchronously = true, …);
+    ValueTask WaitAsync(AsyncLock asyncLock, CancellationToken cancellationToken = default);
+    ValueTask WaitAsync(AsyncLock asyncLock, TimeSpan timeout, CancellationToken cancellationToken = default);
+    void Signal();      // wakes one waiter; lost if none is waiting
+    void SignalAll();   // wakes every waiter; lost if none is waiting
+    int WaiterCount { get; }
+}
+
+// AsyncExchange<T> — two-party rendezvous (async counterpart of Java's Exchanger<V>).
+sealed class AsyncExchange<T> {
+    AsyncExchange(bool runContinuationAsynchronously = true, …);
+    ValueTask<T> ExchangeAsync(T value, CancellationToken cancellationToken = default);
+    ValueTask<T> ExchangeAsync(T value, TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryExchange(T value, out T result);   // never waits, never allocates
+    bool HasWaiter { get; }
+}
 ```
 
 `timeout` overloads throw `TimeoutException` when the time elapses (`TimeSpan.Zero` throws

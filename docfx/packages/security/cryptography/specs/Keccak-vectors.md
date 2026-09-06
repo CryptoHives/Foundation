@@ -1,4 +1,4 @@
-﻿# Keccak Test Vectors
+# Keccak Test Vectors
 
 ## Overview
 

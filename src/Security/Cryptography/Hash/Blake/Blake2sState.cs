@@ -103,7 +103,7 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
     {
         _outputBytes = outputBytes;
         _simdSupport = SimdSupport.None;
-#if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER && EXPERIMENTAL
         _simdSupport = simdSupport & SimdSupport;
 #endif
 
@@ -231,12 +231,11 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
             {
                 _bytesCompressed += (ulong)blockSize;
 
-#if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER && EXPERIMENTAL
                 if ((_simdSupport & SimdSupport.Ssse3) != 0)
                 {
                     CompressSsse3(block, state, _bytesCompressed, isFinal);
                 }
-#if EXPERIMENTAL
                 else if ((_simdSupport & SimdSupport.Avx2) != 0)
                 {
                     CompressAvx2(block, state, _bytesCompressed, isFinal);
@@ -249,7 +248,6 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
                 {
                     CompressNeon(block, state, _bytesCompressed, isFinal);
                 }
-#endif
                 else
 #endif
                 {

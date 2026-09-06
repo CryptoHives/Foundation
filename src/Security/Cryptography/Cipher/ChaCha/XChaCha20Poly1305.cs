@@ -75,7 +75,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
     /// Initializes a new instance of the <see cref="XChaCha20Poly1305"/> class.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
-    public XChaCha20Poly1305(byte[] key) : this(SimdSupport.All, key)
+    public XChaCha20Poly1305(byte[] key) : this(ChaCha20.ChaCha20Default, key)
     {
     }
 

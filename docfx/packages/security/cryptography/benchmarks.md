@@ -1,4 +1,4 @@
-﻿# Cryptography Benchmarks
+# Cryptography Benchmarks
 
 BenchmarkDotNet measurements for `CryptoHives.Foundation.Security.Cryptography` are published through the
 interactive benchmark trends dashboard below rather than static per-platform pages. The dashboard loads a small
@@ -11,6 +11,26 @@ machine can appear side by side, not just a fixed set of CI hosts.
 <iframe src="benchmark-trends/index.html" style="width:100%; height:900px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Cryptography benchmark trends dashboard"></iframe>
 
 [Open the dashboard in its own page →](benchmark-trends/index.html)
+
+## Library Matrix
+
+Which library implements which algorithm, and which one measured fastest in a given run — the
+trends dashboard above answers "how does this one algorithm compare over time"; this answers
+"across everything we benchmark, who supports what, and who wins."
+
+<iframe src="benchmark-trends/matrix.html" style="width:100%; height:700px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Cryptography library matrix"></iframe>
+
+[Open the matrix in its own page →](benchmark-trends/matrix.html)
+
+## Speed Differences
+
+How far apart competing implementations of the same algorithm typically land: a heatmap of each
+library's ratio to the fastest implementation per algorithm, and a chart summarizing the spread
+of that ratio across every algorithm a library was benchmarked against.
+
+<iframe src="benchmark-trends/speed-diff.html" style="width:100%; height:1100px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Cryptography speed differences"></iframe>
+
+[Open the speed differences page in its own page →](benchmark-trends/speed-diff.html)
 
 ## Memory Footprint
 

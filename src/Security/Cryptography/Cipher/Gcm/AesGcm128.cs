@@ -19,7 +19,7 @@ public sealed class AesGcm128 : AesGcm
     /// Initializes a new instance of the <see cref="AesGcm128"/> class.
     /// </summary>
     /// <param name="key">The 16-byte AES key.</param>
-    public AesGcm128(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
+    public AesGcm128(ReadOnlySpan<byte> key) : this(AesCore.AesDefault, key)
     {
     }
 

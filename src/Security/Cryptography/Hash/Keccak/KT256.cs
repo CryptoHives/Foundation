@@ -98,7 +98,8 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">The customization bytes for domain separation.</param>
-    public KT256(int outputBytes, ReadOnlySpan<byte> customization) : this(SimdSupport.KeccakDefault, outputBytes, customization)
+    public KT256(int outputBytes, ReadOnlySpan<byte> customization) :
+        this(KeccakCore.KeccakDefault, outputBytes, customization)
     {
     }
 

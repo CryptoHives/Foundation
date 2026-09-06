@@ -1,4 +1,4 @@
-﻿# SHA-2 Test Vectors
+# SHA-2 Test Vectors
 
 ## Source
 

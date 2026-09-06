@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#if EXPERIMENTAL
+
 namespace CryptoHives.Foundation.Memory.Buffers;
 
 using System;
@@ -9,6 +11,18 @@ using System.Buffers;
 /// <summary>
 /// A class to hold a sequence of ArrayPool buffers in a <see cref="ReadOnlySequence{T}"/> until disposed.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Gated on <c>EXPERIMENTAL</c>, which is on for development and CI builds and off for packaging, so
+/// this type is compiled locally but kept out of shipped assemblies. It has never had a caller: it
+/// arrived with the first Memory commit anticipating a detach-style API that was never built, and
+/// <see cref="SequenceLease{T}"/> now fills that role for no allocation at all.
+/// </para>
+/// <para>
+/// Kept rather than deleted because the chain-walking disposal here is the reference for how a
+/// multi-segment payload is released. Delete it once nothing needs that.
+/// </para>
+/// </remarks>
 internal sealed class ArrayPoolBufferSequence<T> : IDisposable
 {
     private ArrayPoolBufferSegment<T>? _firstSegment;
@@ -48,3 +62,4 @@ internal sealed class ArrayPoolBufferSequence<T> : IDisposable
     }
 }
 
+#endif

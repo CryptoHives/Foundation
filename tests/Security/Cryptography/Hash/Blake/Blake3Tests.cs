@@ -128,6 +128,104 @@ public class Blake3Tests
     }
 
     /// <summary>
+    /// Cross-validates the SSSE3 chunk-parallel batching path against the scalar
+    /// reference across sizes chosen to land on and around 4-chunk (4096-byte)
+    /// batch boundaries, plus the 3-chunk partial-batch threshold.
+    /// </summary>
+    /// <remarks>
+    /// The SSSE3 tier shares <c>CompressChunksPartial4Avx2</c> with the AVX2 tier's
+    /// partial batches, but drives it as its primary path and commits every batch
+    /// per chunk (no aligned-subtree shortcut), so the commit bookkeeping here is
+    /// not covered by <see cref="Avx2BatchingMatchesScalarReference"/>.
+    /// </remarks>
+    /// <param name="inputLength">The length of the input.</param>
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(1024)]      // exactly 1 chunk: below every batched path
+    [TestCase(1025)]
+    [TestCase(2048)]
+    [TestCase(3071)]      // just under the 3-chunk partial-batch threshold
+    [TestCase(3072)]      // exactly 3 chunks: partial batch, nothing committable
+    [TestCase(3073)]      // smallest partial batch with a committable chunk
+    [TestCase(4095)]
+    [TestCase(4096)]      // exactly 1 batch
+    [TestCase(4097)]      // 1 batch + 1 byte
+    [TestCase(5120)]
+    [TestCase(7168)]
+    [TestCase(8191)]
+    [TestCase(8192)]      // exactly 2 batches
+    [TestCase(8193)]
+    [TestCase(10000)]
+    [TestCase(12288)]     // exactly 3 batches
+    [TestCase(16384)]     // exactly 4 batches
+    [TestCase(16385)]
+    [TestCase(65536)]     // crosses the 64-chunk subtree-group size the other tiers use
+    [TestCase(65537)]
+    [TestCase(100000)]
+    [TestCase(131072)]
+    [TestCase(131072 + 37)]
+    [TestCase(262144)]
+    [TestCase(1000000)]
+    public void Ssse3BatchingMatchesScalarReference(int inputLength)
+    {
+        if ((Blake3.SimdSupport & CH.SimdSupport.Ssse3) == 0)
+        {
+            Assert.Ignore("SSSE3 not supported on this platform.");
+        }
+
+        byte[] input = GenerateTestInput(inputLength);
+
+        using var scalar = Blake3.Create(
+            CH.SimdSupport.None, 32);
+        using var ssse3 = Blake3.Create(
+            CH.SimdSupport.Ssse3, 32);
+
+        byte[] expected = scalar.ComputeHash(input);
+        byte[] actual = ssse3.ComputeHash(input);
+
+        Assert.That(actual, Is.EqualTo(expected), $"SSSE3 batching mismatch at {inputLength} bytes");
+    }
+
+    /// <summary>
+    /// Same as <see cref="Ssse3BatchingMatchesScalarReference"/> but exercises the
+    /// streaming <c>Append</c> path with writes that straddle chunk and batch
+    /// boundaries, so the batched path has to compose with buffered state.
+    /// </summary>
+    /// <param name="inputLength">The length of the input.</param>
+    /// <param name="writeSize">The size of each streaming write.</param>
+    [TestCase(16385, 97)]
+    [TestCase(12288, 1024)]
+    [TestCase(100000, 4001)]
+    [TestCase(65536, 3072)]
+    public void Ssse3BatchingMatchesScalarReferenceStreaming(int inputLength, int writeSize)
+    {
+        if ((Blake3.SimdSupport & CH.SimdSupport.Ssse3) == 0)
+        {
+            Assert.Ignore("SSSE3 not supported on this platform.");
+        }
+
+        byte[] input = GenerateTestInput(inputLength);
+
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+        using var ssse3 = Blake3.Create(CH.SimdSupport.Ssse3, 32);
+
+        for (int offset = 0; offset < inputLength; offset += writeSize)
+        {
+            int count = Math.Min(writeSize, inputLength - offset);
+            scalar.Absorb(input.AsSpan(offset, count));
+            ssse3.Absorb(input.AsSpan(offset, count));
+        }
+
+        byte[] expected = new byte[32];
+        byte[] actual = new byte[32];
+        scalar.Squeeze(expected);
+        ssse3.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected),
+            $"SSSE3 streaming mismatch at {inputLength} bytes, writes of {writeSize}");
+    }
+
+    /// <summary>
     /// Cross-validates the AVX2 chunk-parallel batching path (<c>CompressChunksPartialAvx2</c>)
     /// against the scalar reference implementation across sizes chosen to land on and
     /// around 8-chunk (8192-byte) batch boundaries, since none of the official test

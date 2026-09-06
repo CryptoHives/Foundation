@@ -1,4 +1,4 @@
-﻿# BLAKE2 Test Vectors
+# BLAKE2 Test Vectors
 
 ## Source
 
