@@ -115,6 +115,39 @@ catch (TimeoutException)
 }
 ```
 
+### TryLock
+
+```csharp
+public bool TryLock(out Releaser releaser)
+```
+
+Attempts to acquire the lock without waiting.
+
+**Parameters**:
+- `releaser` — The releaser for the acquired lock, if the method returns `true`. Dispose it to release the lock. `default` (no associated lock) if the method returns `false`.
+
+**Returns**: `true` if the lock was acquired immediately; `false` if it is currently held or awaited by someone else.
+
+Synchronous and non-throwing by design: unlike `LockAsync(TimeSpan.Zero)`, a failed attempt never allocates an exception or a faulted `ValueTask<Releaser>` — there is nothing to await in the first place. Use it on paths that shed work rather than queue it, where contention is an expected outcome instead of an exceptional one.
+
+> **Do not dispose the releaser from a failed `TryLock`.** It is `default(Releaser)` and represents no acquired lock. In `DEBUG` builds, disposing it throws `InvalidOperationException` to surface the mistake; release builds silently ignore it. Always check the return value first.
+
+**Example**:
+
+```csharp
+public void RefreshIfIdle()
+{
+    if (_lock.TryLock(out var releaser))
+    {
+        using (releaser)
+        {
+            RefreshCache();
+        }
+    }
+    // Held by someone else — skip; the refresh happens on their release
+}
+```
+
 ### Allocation Behavior
 
 Immediate acquisitions are completely allocation-free using atomic operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<Releaser>` instances are reused to minimize allocation pressure across repeated lock operations.
@@ -270,6 +303,21 @@ catch (TimeoutException)
     HandleTimeout();
 }
 ```
+
+### DO: Use `TryLock` when a missed acquisition is acceptable
+
+```csharp
+// Opportunistic work that can be skipped when the lock is busy
+if (_lock.TryLock(out var releaser))
+{
+    using (releaser)
+    {
+        DoOptionalWork();
+    }
+}
+```
+
+`TryLock` never waits and never allocates. Prefer it over `LockAsync(TimeSpan.Zero)` whenever the call site does not otherwise need a `ValueTask<Releaser>` — the zero-timeout overload signals a miss by throwing `TimeoutException`, which allocates.
 
 ### DON'T: Create new locks repeatedly
 

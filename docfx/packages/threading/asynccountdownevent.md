@@ -141,6 +141,18 @@ catch (TimeoutException)
 
 Immediate acquisitions are completely allocation-free using atomic operations. When the countdown is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated lock operations.
 
+### TryWait
+
+```csharp
+public bool TryWait()
+```
+
+Attempts to complete a wait without awaiting.
+
+**Returns**: `true` if the count has reached zero; `false` otherwise.
+
+The countdown is not consumed by a wait, so `TryWait()` never changes state and is exactly equivalent to reading [`IsSet`](#properties). It is synchronous, never allocates, and exists for naming symmetry with the other primitives in this package.
+
 ### Signal
 
 ```csharp

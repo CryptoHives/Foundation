@@ -41,6 +41,21 @@ public class AsyncCountdownEventTests
     }
 
     [Test]
+    public void TryWaitReflectsZeroCountWithoutConsuming()
+    {
+        var countdown = new AsyncCountdownEvent(2);
+        Assert.That(countdown.TryWait(), Is.False);
+
+        countdown.Signal();
+        Assert.That(countdown.TryWait(), Is.False);
+
+        countdown.Signal();
+        Assert.That(countdown.TryWait(), Is.True);
+        Assert.That(countdown.TryWait(), Is.True);
+        Assert.That(countdown.IsSet, Is.True);
+    }
+
+    [Test]
     public void SignalDecrementsCount()
     {
         var countdown = new AsyncCountdownEvent(3);
