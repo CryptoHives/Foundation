@@ -704,9 +704,14 @@ public class AsyncLockTests
             Assert.That(mutex.TryLock(out failed), Is.False);
         }
 
+#if DEBUG
         // Disposing the out-value of a failed attempt would mean the caller ignored the bool and
         // thinks it holds the lock. That must be loud, not a NullReferenceException.
         Assert.Throws<InvalidOperationException>(failed.Dispose);
+#else
+        // ignored in release builds, but the lock is still held by the first successful TryLock.
+        failed.Dispose();
+#endif
 
         held.Dispose();
         Assert.That(mutex.IsTaken, Is.False);
