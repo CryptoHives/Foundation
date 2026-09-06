@@ -120,6 +120,27 @@ public sealed class AsyncCountdownEvent
     }
 
     /// <summary>
+    /// Attempts to complete a wait without awaiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="WaitAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask"/> - there is nothing to await in the first place, since this either succeeds
+    /// immediately or doesn't.
+    /// <para>
+    /// The countdown is not consumed by a wait, so this never changes state and is exactly equivalent to
+    /// reading <see cref="IsSet"/>. It exists for naming symmetry with the other primitives in this package.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> if the count has reached zero; <see langword="false"/> otherwise. Every caller
+    /// that observes <see langword="true"/> may proceed - the countdown is not consumed.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryWait()
+        => Volatile.Read(ref _currentCount) == 0;
+
+    /// <summary>
     /// Gets or sets whether to force continuations to run asynchronously.
     /// </summary>
     public bool RunContinuationAsynchronously

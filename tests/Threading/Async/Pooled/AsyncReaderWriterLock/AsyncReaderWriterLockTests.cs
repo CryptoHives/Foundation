@@ -2265,5 +2265,161 @@ public class AsyncReaderWriterLockTests
             Assert.That(rwLock.IsWriteLockHeld);
         }
     }
-}
 
+    [Test]
+    public void TryReaderLockSucceedsForConcurrentReaders()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser first), Is.True);
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser second), Is.True);
+
+        Assert.That(rwLock.IsReadLockHeld, Is.True);
+
+        first.Dispose();
+        second.Dispose();
+
+        Assert.That(rwLock.IsReadLockHeld, Is.False);
+    }
+
+    [Test]
+    public void TryWriterLockFailsWhileAReaderHoldsTheLock()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser reader), Is.True);
+        Assert.That(rwLock.TryWriterLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+
+        reader.Dispose();
+
+        Assert.That(rwLock.TryWriterLock(out AsyncReaderWriterLock.Releaser writer), Is.True);
+        writer.Dispose();
+    }
+
+    [Test]
+    public void TryReaderLockFailsWhileAWriterHoldsTheLock()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryWriterLock(out AsyncReaderWriterLock.Releaser writer), Is.True);
+        Assert.That(rwLock.IsWriteLockHeld, Is.True);
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+
+        writer.Dispose();
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser reader), Is.True);
+        reader.Dispose();
+    }
+
+    [Test]
+    public void TryReaderLockDeclinesWhileAWriterIsQueued()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser reader), Is.True);
+
+        // Queue a writer behind the reader, then confirm a new try-reader does not jump the queue.
+        // Without this, a caller polling TryReaderLock in a loop could starve the writer forever.
+        ValueTask<AsyncReaderWriterLock.Releaser> queuedWriter = rwLock.WriterLockAsync();
+        Assert.That(queuedWriter.IsCompleted, Is.False);
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+
+        reader.Dispose();
+
+        AsyncReaderWriterLock.Releaser granted = queuedWriter.AsTask().GetAwaiter().GetResult();
+        granted.Dispose();
+    }
+
+    [Test]
+    public void TryUpgradeableReaderLockSucceedsAlongsidePlainReaders()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser reader), Is.True);
+        Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser upgradeable), Is.True);
+        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.True);
+
+        reader.Dispose();
+        upgradeable.Dispose();
+
+        Assert.That(rwLock.IsReadLockHeld, Is.False);
+        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+    }
+
+    [Test]
+    public void TryUpgradeableReaderLockFailsWhileAnotherUpgradeableReaderHoldsIt()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser first), Is.True);
+        Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+
+        first.Dispose();
+
+        Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser second), Is.True);
+        second.Dispose();
+    }
+
+    [Test]
+    public void TryUpgradeableReaderLockDeclinesWhileAWriterIsQueued()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser reader), Is.True);
+
+        ValueTask<AsyncReaderWriterLock.Releaser> queuedWriter = rwLock.WriterLockAsync();
+        Assert.That(queuedWriter.IsCompleted, Is.False);
+
+        Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+
+        reader.Dispose();
+
+        AsyncReaderWriterLock.Releaser granted = queuedWriter.AsTask().GetAwaiter().GetResult();
+        granted.Dispose();
+    }
+
+    [Test]
+    public void TryUpgradeToWriterLockSucceedsWhenNoOtherReaderHoldsTheLock()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser upgradeable), Is.True);
+        Assert.That(upgradeable.TryUpgradeToWriterLock(out AsyncReaderWriterLock.Releaser upgraded), Is.True);
+        Assert.That(rwLock.IsWriteLockHeld, Is.True);
+
+        upgraded.Dispose();
+        upgradeable.Dispose();
+
+        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+        Assert.That(rwLock.IsWriteLockHeld, Is.False);
+    }
+
+    [Test]
+    public void TryUpgradeToWriterLockFailsWhileAnotherReaderHoldsTheLock()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser upgradeable), Is.True);
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser reader), Is.True);
+
+        Assert.That(upgradeable.TryUpgradeToWriterLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+
+        reader.Dispose();
+
+        Assert.That(upgradeable.TryUpgradeToWriterLock(out AsyncReaderWriterLock.Releaser upgraded), Is.True);
+        upgraded.Dispose();
+        upgradeable.Dispose();
+    }
+
+    [Test]
+    public void TryUpgradeToWriterLockThrowsForNonUpgradeableReleaser()
+    {
+        var rwLock = new AsyncReaderWriterLock();
+
+        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser reader), Is.True);
+        Assert.Throws<InvalidOperationException>(() => reader.TryUpgradeToWriterLock(out AsyncReaderWriterLock.Releaser _));
+        reader.Dispose();
+    }
+}
