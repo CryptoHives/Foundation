@@ -819,5 +819,53 @@ public class AsyncAutoResetEventTests
             await ev.WaitAsync().ConfigureAwait(false);
         }
     }
-}
 
+    [Test]
+    public void TryWaitConsumesAPendingSignal()
+    {
+        var ev = new AsyncAutoResetEvent(initialState: true);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.TryWait(), Is.True);
+            Assert.That(ev.IsSet, Is.False, "TryWait must consume the signal, not merely observe it.");
+        }
+
+        // Auto-reset: exactly one caller gets each signal.
+        Assert.That(ev.TryWait(), Is.False);
+    }
+
+    [Test]
+    public void TryWaitFailsWhenNotSet()
+    {
+        var ev = new AsyncAutoResetEvent();
+
+        Assert.That(ev.TryWait(), Is.False);
+
+        ev.Set();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ev.TryWait(), Is.True);
+            Assert.That(ev.TryWait(), Is.False);
+        }
+    }
+
+    [Test]
+    public void TryWaitGivesOneSignalToExactlyOneOfManyCallers()
+    {
+        var ev = new AsyncAutoResetEvent();
+        ev.Set();
+
+        int winners = 0;
+        for (int i = 0; i < 50; i++)
+        {
+            if (ev.TryWait())
+            {
+                winners++;
+            }
+        }
+
+        Assert.That(winners, Is.EqualTo(1));
+    }
+}
