@@ -57,6 +57,7 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 - **`CancellationToken` support** — full cancellation across all primitives, allocation-free on modern .NET
 - **`ConfigureAwait` support** — works naturally with `.ConfigureAwait(false)` in library code
 - **Timeouts** — every lock acquisition method accepts a timeout; a timed-out wait throws `TimeoutException`, a cancelled one throws `OperationCanceledException`
+- **Non-blocking attempts** — `AsyncLock.TryLock`, `AsyncKeyedLock.TryLock`, `AsyncSemaphore.TryWait`, `AsyncAutoResetEvent.TryWait`, `AsyncManualResetEvent.TryWait`, `AsyncCountdownEvent.TryWait`, `AsyncReaderWriterLock.TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock` / `Releaser.TryUpgradeToWriterLock`, and `AsyncExchange<T>.TryExchange` all probe synchronously without allocating an exception or a `ValueTask`
 - **Configurable continuations** — control whether continuations run synchronously or asynchronously
 - **Custom pools** — supply your own `IGetPooledManualResetValueTaskSource<T>` (or `ObjectPool<T>`) for fine-grained control
 - **Drop-in replacement** — swap the namespace, keep the same `using`-based patterns
@@ -320,6 +321,38 @@ public async Task RunPeerAsync(CancellationToken ct)
 _ = Task.Run(() => RunPeerAsync(ct));
 _ = Task.Run(() => RunPeerAsync(ct));
 ```
+
+### Non-Blocking Attempts — `Try*`
+
+Every acquiring primitive exposes a synchronous `Try*` probe that returns `false` instead of throwing
+`TimeoutException` on a miss — no exception, no faulted `ValueTask`, nothing to await. Use them on paths
+that shed work rather than queue it.
+
+```csharp
+// Opportunistic cache rebuild — skipped entirely if the lock is busy
+if (_rwLock.TryWriterLock(out var releaser))
+{
+    using (releaser)
+    {
+        RebuildCache();
+    }
+}
+
+// Rate limiter that reports "busy" instead of awaiting
+if (_permits.TryWait())
+{
+    try { Handle(request); }
+    finally { _permits.Release(); }
+}
+else
+{
+    Reject(request);
+}
+```
+
+`AsyncAutoResetEvent.TryWait()` **consumes** the signal (like a completed `WaitAsync()`), whereas
+`AsyncManualResetEvent.TryWait()` and `AsyncCountdownEvent.TryWait()` are non-consuming aliases of `IsSet`.
+A failed releaser-returning `Try*` hands back `default` — never dispose it.
 
 ### Custom Pool
 

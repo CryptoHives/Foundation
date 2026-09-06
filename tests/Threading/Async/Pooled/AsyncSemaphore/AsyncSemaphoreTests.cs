@@ -361,4 +361,69 @@ public class AsyncSemaphoreTests
             cts.Dispose();
         }
     }
+
+    [Test]
+    public void TryWaitTakesAPermitWhenOneIsAvailable()
+    {
+        var semaphore = new AsyncSemaphore(2);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.TryWait(), Is.True);
+            Assert.That(semaphore.CurrentCount, Is.EqualTo(1));
+            Assert.That(semaphore.TryWait(), Is.True);
+            Assert.That(semaphore.CurrentCount, Is.Zero);
+        }
+    }
+
+    [Test]
+    public void TryWaitFailsWithoutThrowingWhenExhausted()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+        Assert.That(semaphore.TryWait(), Is.True);
+
+        // The whole point of TryWait: exhaustion is a return value, not a TimeoutException.
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(semaphore.TryWait(), Is.False);
+            Assert.That(semaphore.CurrentCount, Is.Zero);
+        }
+
+        semaphore.Release();
+
+        Assert.That(semaphore.TryWait(), Is.True);
+    }
+
+    [Test]
+    public void TryWaitDoesNotConsumeAPermitWhenItFails()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+        Assert.That(semaphore.TryWait(), Is.True);
+        for (int i = 0; i < 100; i++)
+        {
+            Assert.That(semaphore.TryWait(), Is.False);
+        }
+
+        semaphore.Release();
+
+        // A failed attempt that had decremented would leave the count wrong here.
+        Assert.That(semaphore.CurrentCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task TryWaitReleasesAQueuedWaiterWhenTheTakenPermitIsReturnedAsync()
+    {
+        var semaphore = new AsyncSemaphore(1);
+
+        Assert.That(semaphore.TryWait(), Is.True);
+
+        ValueTask waiter = semaphore.WaitAsync();
+        Assert.That(waiter.IsCompleted, Is.False);
+
+        semaphore.Release();
+
+        await waiter.ConfigureAwait(false);
+    }
 }

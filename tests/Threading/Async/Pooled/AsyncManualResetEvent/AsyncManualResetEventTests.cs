@@ -36,6 +36,23 @@ public class AsyncManualResetEventTests
     }
 
     [Test]
+    public void TryWaitDoesNotConsumeTheSignal()
+    {
+        var mre = new AsyncManualResetEvent(set: false);
+        Assert.That(mre.TryWait(), Is.False);
+
+        mre.Set();
+
+        // Non-consuming: repeated calls keep returning true.
+        Assert.That(mre.TryWait(), Is.True);
+        Assert.That(mre.TryWait(), Is.True);
+        Assert.That(mre.IsSet, Is.True);
+
+        mre.Reset();
+        Assert.That(mre.TryWait(), Is.False);
+    }
+
+    [Test]
     public void RunContinuationAsynchronouslyPropertyWorks()
     {
         var mre = new AsyncManualResetEvent();

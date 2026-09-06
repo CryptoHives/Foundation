@@ -150,6 +150,29 @@ public sealed class AsyncManualResetEvent : IResettable
     }
 
     /// <summary>
+    /// Attempts to complete a wait without awaiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="WaitAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask"/> - there is nothing to await in the first place, since this either succeeds
+    /// immediately or doesn't.
+    /// <para>
+    /// A manual-reset event does <b>not</b> consume its signal, so this never changes state and is exactly
+    /// equivalent to reading <see cref="IsSet"/>. It exists for naming symmetry with the other primitives in
+    /// this package; when only one thing acts on the signal, prefer <see cref="AsyncAutoResetEvent"/> whose
+    /// <see cref="AsyncAutoResetEvent.TryWait"/> hands the signal to a single caller.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> if the event is set; <see langword="false"/> otherwise. Every caller that
+    /// observes <see langword="true"/> may proceed - the signal is not consumed.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryWait()
+        => _signaled;
+
+    /// <summary>
     /// Gets or sets whether to force continuations to run asynchronously.
     /// </summary>
     /// <remarks>
