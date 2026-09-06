@@ -122,6 +122,38 @@ public sealed class AsyncSemaphore
     }
 
     /// <summary>
+    /// Attempts to acquire a permit without waiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="WaitAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask"/> - there is nothing to await in the first place, since this either succeeds
+    /// immediately or doesn't. Use it wherever exhaustion is an expected outcome rather than an
+    /// exceptional one - a rate limiter, or a bounded queue that reports "busy" instead of throwing.
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> if a permit was acquired, in which case the caller must
+    /// <see cref="Release()"/> it exactly once; <see langword="false"/> if no permit was available.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryWait()
+    {
+        while (true)
+        {
+            int observed = Volatile.Read(ref _currentCount);
+            if (observed <= 0)
+            {
+                return false;
+            }
+
+            if (Interlocked.CompareExchange(ref _currentCount, observed - 1, observed) == observed)
+            {
+                return true;
+            }
+        }
+    }
+
+    /// <summary>
     /// Asynchronously waits to acquire a permit from the semaphore.
     /// </summary>
     /// <remarks>

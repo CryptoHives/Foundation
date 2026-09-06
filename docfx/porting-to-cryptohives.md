@@ -71,12 +71,12 @@ If the target project uses Central Package Management (`Directory.Packages.props
 |---|---|---|
 | `private readonly object _gate = new();` + `lock (_gate) { … }` guarding **async** work | `AsyncLock` + `using (await _lock.LockAsync())` | Only when you need to `await` inside the critical section. Pure-sync `lock` blocks that never await should stay as `lock`. |
 | `SemaphoreSlim(1, 1)` used as a mutex | `AsyncLock` | Analyzer flags this as **CHT009**. |
-| `SemaphoreSlim(n, …)` used for concurrency limiting | `AsyncSemaphore(n)` | |
-| `ManualResetEventSlim` / TCS-based manual gate awaited async | `AsyncManualResetEvent` | |
-| `AutoResetEvent` semantics, async | `AsyncAutoResetEvent` | |
-| `CountdownEvent` awaited async | `AsyncCountdownEvent` | |
+| `SemaphoreSlim(n, …)` used for concurrency limiting | `AsyncSemaphore(n)` | `sem.Wait(0)` / `WaitAsync(0)` → `TryWait()`. |
+| `ManualResetEventSlim` / TCS-based manual gate awaited async | `AsyncManualResetEvent` | `mre.IsSet` / `Wait(0)` → `IsSet` or the equivalent `TryWait()` (non-consuming). |
+| `AutoResetEvent` semantics, async | `AsyncAutoResetEvent` | `are.WaitOne(0)` → `TryWait()`, which **consumes** the signal (unlike `IsSet`, which only peeks). |
+| `CountdownEvent` awaited async | `AsyncCountdownEvent` | `cde.Wait(0)` → `IsSet` or the equivalent `TryWait()` (non-consuming). |
 | `Barrier` awaited async | `AsyncBarrier` | |
-| `ReaderWriterLockSlim` awaited async | `AsyncReaderWriterLock` | |
+| `ReaderWriterLockSlim` awaited async | `AsyncReaderWriterLock` | `TryEnterReadLock(0)` / `TryEnterUpgradeableReadLock(0)` / `TryEnterWriteLock(0)` → `TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock` (all `out Releaser`); the upgrade probe is `Releaser.TryUpgradeToWriterLock`. |
 | `Monitor.Wait` / `Monitor.Pulse` awaited async | `AsyncConditionVariable` | Pairs with an `AsyncLock`; re-check the predicate in a `while` loop — signals are not stored. |
 | Java's `Exchanger<V>` (no BCL equivalent) | `AsyncExchange<T>` | Two-party rendezvous, not a queue; see `System.Threading.Channels` if buffering is needed instead. |
 | `Dictionary<TKey, SemaphoreSlim>` / a registry of one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other; released keys stay cached, so repeat acquisitions allocate nothing. |
@@ -104,6 +104,9 @@ Signatures actually present:
   - `timeout` throws `TimeoutException` if it elapses; `TimeSpan.Zero` throws immediately if
     the lock is held; `Timeout.InfiniteTimeSpan` waits forever.
 - `bool IsTaken { get; }`
+- `bool TryLock(out Releaser releaser)` — acquires only if the lock is free right now; never
+  waits, never allocates, never throws. Replaces `Monitor.TryEnter` / `SemaphoreSlim.Wait(0)`.
+  On `false` the `out` releaser is `default` — **do not dispose it** (throws in `DEBUG`).
 
 Rules:
 - **`AsyncLock` is NOT recursive.** If the original lock was taken re-entrantly (same call
@@ -138,10 +141,14 @@ Signatures actually present:
   (throws `TimeoutException` / `OperationCanceledException`)
 - `void Release()` / `void Release(int releaseCount)`
 - `int CurrentCount { get; }`
+- `bool TryWait()` — takes a permit only if one is available right now; synchronous, never
+  allocates, never throws. On `true` you still owe exactly one `Release()`. This **is** the
+  direct replacement for `SemaphoreSlim.Wait(0)` / `WaitAsync(0)`.
 
 Note: there is **no** `SemaphoreSlim`-style bool-returning `WaitAsync(timeout)`. The BCL
 pattern `if (await sem.WaitAsync(timeout)) { … }` must be rewritten to try/catch on
-`TimeoutException`, or use a `CancellationToken`.
+`TimeoutException`, or use a `CancellationToken`. For a pure zero-timeout probe
+(`WaitAsync(0)`), use `TryWait()` instead.
 
 ### 2.4 `AsyncKeyedLock<TKey>` — exact usage
 

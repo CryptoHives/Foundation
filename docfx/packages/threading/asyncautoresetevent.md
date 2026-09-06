@@ -55,6 +55,8 @@ public bool IsSet { get; }
 
 Gets whether this event is currently in the signaled state. A successful `WaitAsync()` consumes the signal (auto-reset semantics) and returns `false` after a wait consumes the signal.
 
+`IsSet` only **peeks** — two callers reading it can both proceed on a single signal. When the answer decides *who* does the work, use [`TryWait()`](#trywait) instead, which consumes the signal exactly as a completed `WaitAsync()` would.
+
 ### RunContinuationAsynchronously
 
 ```csharp
@@ -153,6 +155,30 @@ await _event.WaitAsync(Timeout.InfiniteTimeSpan);
 ### Allocation Behavior
 
 Immediate waits are completely allocation-free using atomic operations. When the event is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated operations.
+
+### TryWait
+
+```csharp
+public bool TryWait()
+```
+
+Attempts to consume a pending signal without waiting.
+
+**Returns**: `true` if a signal was pending and has now been consumed by this caller; `false` if the event was not set.
+
+Synchronous and non-throwing by design: unlike `WaitAsync(TimeSpan.Zero)`, a failed attempt never allocates an exception or a faulted `ValueTask` — there is nothing to await in the first place.
+
+This **consumes** the signal exactly as a completed `WaitAsync()` would, which is what separates it from `IsSet`: that property only peeks, and two callers reading it can both proceed on one signal. Prefer `TryWait()` whenever the answer decides who does the work.
+
+**Example**:
+
+```csharp
+// Drain any already-signaled work without suspending
+while (_event.TryWait())
+{
+    ProcessOnePendingItem();
+}
+```
 
 ### Set
 
