@@ -1,3 +1,8 @@
+---
+title: Security.Cryptography Package
+_description: CryptoHives.Foundation.Security.Cryptography — fully managed, OS-independent implementations of hashes, MACs, ciphers, AEAD, KDFs and ML-KEM (FIPS 203), drop-in for System.Security.Cryptography, with optional hardware acceleration. Targets net462 through net10.0.
+---
+
 # CryptoHives.Foundation.Security.Cryptography Package
 
 ## Overview

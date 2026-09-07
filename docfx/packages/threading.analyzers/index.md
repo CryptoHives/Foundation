@@ -1,3 +1,8 @@
+---
+title: Threading.Analyzers Package
+_description: CryptoHives.Foundation.Threading.Analyzers — Roslyn analyzers and code fixes (CHT001–CHT012) that catch ValueTask misuse at compile time. Ships separately from the Threading package.
+---
+
 # CryptoHives.Foundation.Threading.Analyzers
 
 ## Overview
@@ -27,7 +32,7 @@ Or add to your project file:
 | [CHT007](CHT007.md) | Info | AsTask() stored before signaling (performance) |
 | [CHT008](CHT008.md) | Warning | ValueTask not awaited or consumed |
 | [CHT009](CHT009.md) | Info | `SemaphoreSlim(1, 1)` used as async lock; replace with `AsyncLock` |
-| [CHT010](CHT010.md) | Error | ValueTask captured in lambda/closure |
+| [CHT010](CHT010.md) | Warning | ValueTask captured in lambda/closure |
 | [CHT011](CHT011.md) | Warning | `async` method only forwards an awaited ValueTask |
 | [CHT012](CHT012.md) | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
 
@@ -170,4 +175,4 @@ dotnet_diagnostic.CHT003.severity = none
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

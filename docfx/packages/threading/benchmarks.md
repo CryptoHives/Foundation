@@ -27,8 +27,7 @@ trends dashboard above answers "how does this one primitive compare over time"; 
 ### Speed Differences
 
 How far apart competing implementations of the same primitive typically land: a heatmap of each
-library's ratio to the fastest implementation per primitive, and a chart summarizing the spread
-of that ratio across every primitive a library was benchmarked against.
+library's ratio to the fastest ranked implementation per primitive.
 
 <iframe src="benchmark-trends/speed-diff.html" style="width:100%; height:1100px; border:1px solid var(--border-color, #ddd); border-radius:6px;" loading="lazy" title="Threading speed differences"></iframe>
 
@@ -82,8 +81,11 @@ The included benchmarks try uncontested and contested scenarios:
 - Run with multiple concurrent waiters to measure contention behavior. The number of waiters is increased to measure memory allocations and execution time.
 - All pooled implementations are tested with cancellable and default CancellationTokens.
 - For the pooled implementations, variations with AsTask() and await are separately benchmarked to capture the overhead.
-- Newer comparison sets include ProtoPromise and Microsoft.VisualStudio.Threading where the corresponding primitive exists and can be exercised fairly on the target framework.
-- Some implementations that are tested against for reference do not support cancellation tokens and hence their benchmark result is out of contest.
+- Newer comparison sets include ProtoPromise, Microsoft.VisualStudio.Threading and DotNext.Threading where the corresponding primitive exists and can be exercised fairly on the target framework.
+- Some implementations are benchmarked for scale but are **not fair contestants** for the "fastest" comparison, and the [library matrix](benchmark-trends/matrix.html) and [speed differences](benchmark-trends/speed-diff.html) views mark them **`n/c` (non-competing)** — shown, but excluded from the `★` / the `1.00x` baseline:
+  - the vendored `RefImpl` reference implementations (`TaskCompletionSource`-based; no cancellation token, no timeout, no pooling — they allocate per call);
+  - DotNext's `AsyncExclusiveLock` and reader-writer lock in the lock families — they have no disposable releaser, so the benchmark body does measurably less work per acquire/release than the `using`-scope competitors;
+  - `System`'s blocking `AutoResetEvent` / `ManualResetEvent` / `Barrier` / `ReaderWriterLockSlim` — their benchmark measures a blocking wait, not an awaited one.
 - Some .NET built-in primitives (e.g. SemaphoreSlim) do not have async wait APIs and hence may not qualify to be tested in a single benchmark function because they would require multiple threads to emulate the tested behavior.
 
 ### Run benchmarks locally
