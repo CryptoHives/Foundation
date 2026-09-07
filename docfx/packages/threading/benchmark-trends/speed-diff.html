@@ -24,6 +24,7 @@
   table.heatmap thead th { background: #f5f5f5; position: sticky; top: 0; z-index: 2; }
   table.heatmap thead th.row-label { z-index: 3; }
   table.heatmap td.empty { color: #ccc; background: #fafafa; }
+  table.heatmap td.noncompeting { color: #6b7280; background: #f3f4f6; }
   table.heatmap td.ratio { color: #1a1a1a; font-variant-numeric: tabular-nums; }
   .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
   .legend-scale { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: #555; margin: 0.5rem 0 1rem; }
@@ -35,8 +36,10 @@
 <p>
   How far apart competing implementations of the same synchronization primitive typically land,
   for the benchmark run selected below. Every cell's ratio is that variant's mean time divided by
-  the fastest variant's mean time for the same primitive in that run — 1.00 is the winner, 2.00
-  means twice as slow. Both numbers come from the scenario closest to normal use - one contending
+  the fastest <em>ranked</em> variant's mean time for the same primitive in that run — 1.00 is the
+  winner, 2.00 means twice as slow. A <strong>n/c</strong> cell (see below) is shown for scale but
+  held out of the ratio: it lacks something the others pay for on every call, so comparing times
+  would be apples to beans. Both numbers come from the scenario closest to normal use - one contending
   party (not zero, and not a bare uncontended call some benchmark classes also record) with a
   live, uncancelled token where one was measured - rather than an average across every contention
   level a "Scaling by contention" chart would show: a "Multiple" benchmark's mean time at high
@@ -84,10 +87,19 @@
   here.
 </p>
 <p class="hint">
-  <strong>†</strong> marks a "System" cell whose primitive may have no true async wait API
-  (AutoResetEvent, ManualResetEvent, Barrier, ReaderWriterLockSlim) - its benchmark measures a
-  blocking wait rather than an awaited one, so the ratio is a baseline reference rather than a
-  fair race against the async implementations in the other columns.
+  <strong>n/c</strong> ("non-competing") marks a cell shown for scale but held out of the ratio -
+  its measured mean is in the tooltip, but it does not get a ratio and does not define the 1.00x
+  baseline: the vendored <code>RefImpl</code> reference implementation (no cancellation, no
+  timeout, no pooling); DotNext's <code>AsyncExclusiveLock</code> and reader-writer lock in the
+  lock rows (no disposable releaser, measured doing less work per operation); and "System" in the
+  AutoResetEvent, ManualResetEvent, Barrier and ReaderWriterLockSlim rows (a blocking wait). Same
+  idea as <em>hors concours</em> / <em>ausser Konkurrenz</em>.
+</p>
+<p class="hint">
+  <strong>†</strong> marks a "System" cell whose primitive may have no true async wait API - its
+  benchmark measures a blocking wait rather than an awaited one, so the ratio is a baseline
+  reference rather than a fair race against the async implementations in the other columns. (Where
+  that is definitely the case, the cell is <strong>n/c</strong> instead.)
   <strong>‡</strong> marks "ProtoPromise" - it builds on its own Promise/Promise&lt;T&gt; type and
   its own cancellation token rather than <code>System.Threading.Tasks.ValueTask</code> and
   <code>CancellationToken</code>, so it is not drop-in compatible with code written against the
@@ -132,6 +144,46 @@
     ["ProtoPromise", { mark: PROTOPROMISE_CAVEAT_MARK, text: PROTOPROMISE_CAVEAT_TEXT }],
   ]);
 
+  // A "non-competing" classification (n/c) - see the identical block in matrix.html for the full
+  // rationale. An implementation benchmarked for reference that is not a fair contestant for the
+  // fastest-in-run comparison, because it is missing something the other implementations in that
+  // row pay for on every call. It is dropped from the per-family minimum that the ratios are
+  // measured against, and its cell shows "n/c" with no ratio - still displayed, with its measured
+  // mean in the tooltip, for scale. Kept in sync with matrix.html by hand.
+  const NON_COMPETING_MARK = "n/c";
+  const NON_COMPETING_PREFIX = "Non-competing — ";
+
+  const NON_COMPETING_LIBRARIES = new Map([
+    ["RefImpl", "vendored TaskCompletionSource reference implementation (Stephen Toub's async " +
+      "coordination primitives; Theodor Zoulias's AsyncDuplicateLock for the keyed lock): no " +
+      "cancellation-token support, no timeout, no pooling - it allocates a source and a task per " +
+      "call. Benchmarked as a scale reference, not as a contestant."],
+  ]);
+
+  const NON_COMPETING_FAMILY_LIBRARY = new Map([
+    [keyOf("AsyncLock", "DotNext.Threading"), "DotNext.Threading.AsyncExclusiveLock has no " +
+      "disposable releaser - it is measured acquiring with AcquireAsync() and releasing with a " +
+      "bare Release(), doing less work per operation than the using-scope releaser competitors " +
+      "in this row."],
+    [keyOf("AsyncRWLock", "DotNext.Threading"), "DotNext's reader-writer lock has no " +
+      "per-acquisition releaser and no upgradeable-reader mode - reader/writer acquire and " +
+      "release are measured doing less work per operation than the using-scope competitors here."],
+    [keyOf("AsyncAutoReset", "System"), "System.Threading.AutoResetEvent is a blocking primitive " +
+      "- its benchmark measures WaitOne(), not an awaited wait."],
+    [keyOf("AsyncManualReset", "System"), "System.Threading.ManualResetEvent(Slim) is a blocking " +
+      "primitive - its benchmark measures a blocking Wait(), not an awaited wait."],
+    [keyOf("AsyncBarrier", "System"), "System.Threading.Barrier is a blocking primitive - its " +
+      "benchmark measures a blocking SignalAndWait(), not an awaited wait."],
+    [keyOf("AsyncRWLock", "System"), "System.Threading.ReaderWriterLockSlim is a blocking " +
+      "primitive - its benchmark measures blocking Enter/Exit, not an awaited acquisition."],
+  ]);
+
+  function nonCompeting(family, library) {
+    return NON_COMPETING_LIBRARIES.get(library)
+        ?? NON_COMPETING_FAMILY_LIBRARY.get(keyOf(family, library))
+        ?? null;
+  }
+
   // Persists across platform/framework/run changes - hiding a library is a display preference,
   // not scoped to one selection.
   const hiddenLibraries = new Set();
@@ -148,6 +200,7 @@
     ["Proto.Promises", "ProtoPromise"],
     ["NeoSmart", "NeoSmart.AsyncLock"],
     ["VS.Threading", "Microsoft.VisualStudio.Threading"],
+    ["DotNext", "DotNext.Threading"],
     ["AsyncKeyedLock", "AsyncKeyedLock"],
     ["NonKeyed", "AsyncKeyedLock"],
     ["AsyncUtilities", "AsyncUtilities"],
@@ -378,7 +431,14 @@
 
     for (const family of families) {
       const means = byFamily.get(family);
-      const minNs = Math.min(...Array.from(means.values(), (e) => e.avg_ns));
+      // The 1.00x baseline is the fastest *ranked* library - non-competing entries (a
+      // releaser-free lock, a blocking primitive, the reference impl) are shown for scale but
+      // never define the baseline. NaN when a family somehow has only non-competing entries;
+      // handled per-cell below.
+      const rankedNs = Array.from(means.entries())
+        .filter(([lib]) => !nonCompeting(family, lib))
+        .map(([, e]) => e.avg_ns);
+      const minNs = rankedNs.length ? Math.min(...rankedNs) : NaN;
       const tr = document.createElement("tr");
       const labelTd = document.createElement("td");
       labelTd.className = "row-label";
@@ -388,13 +448,23 @@
       for (const lib of visibleLibraries) {
         const td = document.createElement("td");
         const entry = means.get(lib);
+        const nc = entry != null ? nonCompeting(family, lib) : null;
         // Defensive: a mean that rounds to 0ns would make this an Infinityx ratio rather than a
         // meaningful comparison - not observed since SyncLock's interlocked-op baselines were
         // excluded, but guarded in case a future ultra-cheap benchmark hits it.
-        if (entry == null || minNs <= 0) {
+        if (entry == null) {
           td.className = "empty";
-          td.textContent = entry == null ? "–" : "n/a";
-          if (entry) td.title = `${entry.variant} (fastest in this row measured ~0ns; ratio not meaningful)`;
+          td.textContent = "–";
+        } else if (nc || Number.isNaN(minNs)) {
+          // Shown for scale, held out of the ratio comparison: no ratio, no heat colour.
+          td.className = "noncompeting";
+          td.textContent = NON_COMPETING_MARK;
+          const reason = nc || "no ranked implementation in this row to compare against";
+          td.title = `${NON_COMPETING_PREFIX}${reason} (mean ${entry.avg_ns.toFixed(1)} ns${entry.variant ? `, ${entry.variant}` : ""})`;
+        } else if (minNs <= 0) {
+          td.className = "empty";
+          td.textContent = "n/a";
+          td.title = `${entry.variant} (fastest in this row measured ~0ns; ratio not meaningful)`;
         } else {
           const ratio = entry.avg_ns / minNs;
           td.className = "ratio";

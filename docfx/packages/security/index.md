@@ -1,3 +1,8 @@
+---
+title: Security Packages
+_description: The CryptoHives.Foundation.Security family — fully managed, OS-independent, specification-based cryptographic implementations for .NET, verified against official test vectors.
+---
+
 # CryptoHives.Foundation.Security Packages
 
 The Security package family provides specification-based cryptographic implementations for .NET.
