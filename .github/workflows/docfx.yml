@@ -2,21 +2,28 @@
 
 name: DocFX Deployment
 
-# Trigger on push to main, but only when documentation or the API-doc sources change.
-# (API reference is generated from src/**; other churn does not affect the site.)
+# Two jobs:
+#   build  - compiles the site. Runs on every PR that touches the docs sources (validation
+#            only, no deploy) and on push to main / workflow_dispatch.
+#   deploy - publishes the build job's artifact to GitHub Pages. Skipped for pull_request.
 #
-# Recording a benchmark run does NOT publish it. The trends databases are generated at build time
-# from the orphan `benchmarks` branch, so a new run only becomes visible once this workflow runs
-# again - but a push to that branch cannot start it. For push events GitHub only runs workflows
-# that exist in the pushed ref, and `benchmarks` carries nothing but README.md and the two run
-# directories; it has no .github/ at all. Listing it here looked right and never once fired.
+# Trigger paths cover everything that can change the rendered site: the docs sources
+# (docfx/**), the API-doc sources (src/**, since the API reference is generated from them),
+# the build/import scripts (scripts/**) and this workflow file itself.
+#
+# Recording a benchmark run does NOT publish it. The trends databases are generated at build
+# time from the orphan `benchmarks` branch, so a new run only becomes visible once this
+# workflow runs again - but a push to that branch cannot start it. For push events GitHub only
+# runs workflows that exist in the pushed ref, and `benchmarks` carries nothing but README.md
+# and the two run directories; it has no .github/ at all. Listing it here looked right and
+# never once fired.
 #
 # So after pushing a recorded run, publish it deliberately:
 #
 #     gh workflow run docfx.yml
 #
-# which is what workflow_dispatch below is for. Any later push to main republishes it too, since
-# the build always reads the archive branch fresh.
+# which is what workflow_dispatch below is for. Any later push to main republishes it too,
+# since the build always reads the archive branch fresh.
 on:
   workflow_dispatch:
   push:
@@ -26,36 +33,36 @@ on:
     paths:
       - 'docfx/**'
       - 'src/**'
-      - 'cryptography/**'
-      - 'threading/**'
+      - 'scripts/**'
+      - '.github/workflows/docfx.yml'
+  pull_request:
+    paths:
+      - 'docfx/**'
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/docfx.yml'
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Only the deploy job needs write access; the build job is read-only.
 permissions:
-  actions: read
   contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
-  publish-docs:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
+    # Repeated pushes to the same PR/branch cancel a stale in-progress build. The deploy job
+    # has its own, separate concurrency group so a PR build never blocks a production deploy.
+    concurrency:
+      group: "docfx-build-${{ github.ref }}"
+      cancel-in-progress: true
     steps:
-    # Explicitly main, never the triggering ref: a push to `benchmarks` would otherwise check out
-    # the orphan data branch, which has no docfx/, src/ or scripts/, and the build would fail
-    # before it started.
+    # For a pull request, build the PR's merge ref so the check actually validates the
+    # proposed change. Otherwise build main explicitly - never the triggering ref, since a
+    # push to `benchmarks` would otherwise check out the orphan data branch, which has no
+    # docfx/, src/ or scripts/, and the build would fail before it started.
     - name: Checkout
       uses: actions/checkout@v7
       with:
-        ref: main
+        ref: ${{ github.event_name == 'pull_request' && github.ref || 'main' }}
 
     # The run archive, into a directory of its own. It lives outside docfx/, so nothing here is
     # picked up as site content.
@@ -134,6 +141,25 @@ jobs:
       uses: actions/upload-pages-artifact@v5
       with:
         path: 'docfx/_site'
+
+  deploy:
+    needs: build
+    # Validation only for pull requests - no deploy.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      actions: read
+    # Allow only one concurrent deployment, skipping runs queued between the run in-progress and
+    # latest queued. Do NOT cancel in-progress runs - production deployments should complete.
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v5
