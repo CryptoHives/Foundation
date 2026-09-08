@@ -8,22 +8,25 @@ NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets f
 - **ML-DSA-sigGen-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigGen-FIPS204
 - **ML-DSA-sigVer-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigVer-FIPS204
 
-The vectors are flattened into `tests/Security/Cryptography/TestData/mldsa-acvp-fips204.txt.gz`,
-a gzipped pipe-delimited file loaded at run time by `MLDsaAcvpVectors`. Every NUnit case is
-named after its parameter set and the `tcId` of the original ACVP vector file, so a failure
-traces straight back to the NIST source.
+The vectors are stored in **NIST's own ACVP JSON schema** in
+`tests/Security/Cryptography/TestData/mldsa-acvp-fips204.json.gz`, and read at run time by
+`MLDsaAcvpVectors` with `System.Text.Json`. The file holds the upstream keyGen, sigGen and sigVer
+documents with their `testGroups` and `tests` arrays exactly as published, behind a small envelope
+recording provenance. Every NUnit case is named after its parameter set and the `tcId` of the
+original ACVP vector file, so a failure traces straight back to the NIST source.
 
-Regenerate the file with `scripts/fetch-mldsa-acvp-vectors.py`. The script zeroes the gzip
-mtime, so regenerating unchanged vectors produces a byte-identical file rather than a spurious
-diff, and the decompressed header records its own provenance. The format is pipe-delimited
-rather than JSON because the test project also targets net48, where `System.Text.Json` would
-need an extra package reference.
+It is a data file rather than C# literals because ACVP messages run to several kilobytes each and
+an ML-DSA-87 signature is 4.6 KB per case — inline they added up to 448 KB of test source that
+dwarfed the tests themselves. It is gzipped because the JSON is ~4.4 MB, compressing to ~2.5 MB.
+Regenerate it with `scripts/fetch-mldsa-acvp-vectors.py`, which zeroes the gzip mtime so
+regenerating unchanged vectors produces a byte-identical file rather than a spurious diff.
 
 Only the **external-interface, pure ML-DSA** groups are kept — the ones the library implements.
 The ACVP files also carry pre-hash (HashML-DSA), internal-interface and external-μ groups;
-skipping them is what keeps the artifact at ~2.1 MB, taking sigGen from 360 cases to 90 and
-sigVer from 180 to 45. Every case that can actually be run is included, so there is no curated
-subset to revisit — adding pre-hash later is a filter change, not a format change.
+skipping them takes sigGen from 360 cases to 90 and sigVer from 180 to 45. Every case that can
+actually be run is included, so there is no curated subset to revisit — and because the stored
+schema is the upstream one, enabling a skipped group later is a one-line change to the script's
+filter rather than a change to the file format.
 
 ---
 
@@ -66,7 +69,7 @@ private key.
 
 ## Sample Vectors
 
-Complete vectors are thousands of hex characters; the samples below show short values in full and truncate keys/signatures (lengths noted). Full data: `tests/Security/Cryptography/TestData/mldsa-acvp-fips204.txt.gz` or the ACVP repository.
+Complete vectors are thousands of hex characters; the samples below show short values in full and truncate keys/signatures (lengths noted). Full data: `tests/Security/Cryptography/TestData/mldsa-acvp-fips204.json.gz` or the ACVP repository.
 
 ### Key Generation (ML-DSA-44, ACVP keyGen tcId 1)
 
@@ -92,9 +95,20 @@ The context string participates via the FIPS 204 message prefix 0x00 ‖ |ctx| �
 
 ## Regenerating / Extending the Vectors
 
-1. Download `internalProjection.json` from the ACVP vector folders listed above (it contains both prompts and expected results, including the `rnd` values for hedged sigGen cases).
-2. Filter to `signatureInterface: external`, `preHash: pure`, `externalMu: false` groups for the standard API surface.
-3. Keep the ACVP `tcId` in the generated comment so vectors remain traceable.
+```bash
+python scripts/fetch-mldsa-acvp-vectors.py
+```
+
+The script downloads `internalProjection.json` from the ACVP folders listed above (it contains both
+prompts and expected results, including the `rnd` values for hedged sigGen cases), keeps the groups
+matching `signatureInterface: external`, `preHash: pure`, `externalMu: false`, and writes the
+gzipped result. Running it against unchanged upstream vectors produces a byte-identical file, so a
+real diff means NIST published new vectors.
+
+Pass `--limit N` to cap the cases per kept group — useful when iterating locally, but the committed
+file is the complete runnable set. To take on HashML-DSA or external-μ later, widen
+`is_pure_external()` in the script and teach `MLDsaAcvpVectors` the extra fields: because the stored
+schema is NIST's own, neither is a file-format change.
 
 ## Usage
 

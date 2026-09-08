@@ -2,24 +2,22 @@
 """Regenerates the ML-DSA ACVP conformance vector file used by MLDsaAcvpTests.
 
 Downloads the three NIST ACVP-Server internal projection files for FIPS 204 and
-flattens the relevant test cases into a gzip-compressed, pipe-delimited text
-file. The format matches scripts/fetch-mlkem-acvp-vectors.py and is deliberately
-not JSON: the test project targets net48, where System.Text.Json is not
-available without an extra package reference, and String.Split needs no
-dependency at all.
+stores them, gzip-compressed, in NIST's own JSON schema. The test groups and
+test cases are kept exactly as published -- the only transformation is dropping
+whole groups the library has no implementation for. Keeping the upstream shape
+means MLDsaAcvpVectors reads real ACVP JSON, and enabling a skipped group later
+is a change to the filter below rather than to a bespoke file format.
 
-Only the *external interface, pure ML-DSA* groups are emitted -- the ones the
-library implements today. The ACVP files also carry pre-hash (HashML-DSA),
-internal-interface and external-mu groups; those are skipped and counted, so
-adding them later is a filter change rather than a format change. That filter,
-not an arbitrary cap, is what keeps the artifact small: it takes sigGen from 360
-cases to 90 and sigVer from 180 to 45, so every case we can actually run is
-included.
+Only the *external interface, pure ML-DSA* groups are kept. The ACVP files also
+carry pre-hash (HashML-DSA), internal-interface and external-mu groups; those are
+skipped and counted. That filter, not an arbitrary cap, is what keeps the file
+small: it takes sigGen from 360 cases to 90 and sigVer from 180 to 45, so every
+case that can actually be run is included.
 
-The output is gzipped because the flattened vectors run to several megabytes of
-hex -- ACVP messages alone are up to ~7 KB each. Compression is deterministic
-(mtime zeroed), so regenerating unchanged vectors produces a byte-identical file
-rather than a spurious diff.
+The output is gzipped because the vectors run to megabytes of hex -- ACVP
+messages alone are up to ~7 KB each. Compression is deterministic (mtime zeroed),
+so regenerating unchanged vectors produces a byte-identical file rather than a
+spurious diff.
 
 Source (public, no authentication):
   https://github.com/usnistgov/ACVP-Server
@@ -27,20 +25,19 @@ Source (public, no authentication):
     gen-val/json-files/ML-DSA-sigGen-FIPS204/internalProjection.json
     gen-val/json-files/ML-DSA-sigVer-FIPS204/internalProjection.json
 
-Record format, one per line, '#' introduces a comment:
+Output shape:
 
-  K|<parameterSet>|<tcId>|<seed>|<pk>|<sk>                                key generation
-  S|<parameterSet>|<tcId>|<deterministic>|<sk>|<message>|<context>|<rnd>|<signature>
-                                                                         signature generation
-  V|<parameterSet>|<tcId>|<pass>|<reason>|<pk>|<message>|<context>|<signature>
-                                                                         signature verification
+  {
+    "generator": { ... provenance ... },
+    "documents": [ <upstream keyGen doc>, <upstream sigGen doc>, <upstream sigVer doc> ]
+  }
 
-'rnd' is empty for deterministic signature generation rows, where FIPS 204 fixes
-it to 32 zero bytes.
+Each document keeps its own ACVP envelope, so the loader dispatches on the
+document's own "mode" field and the envelope above carries no schema of its own.
 
 Usage:
   python scripts/fetch-mldsa-acvp-vectors.py
-  python scripts/fetch-mldsa-acvp-vectors.py --limit 5   # cap sigGen/sigVer per group
+  python scripts/fetch-mldsa-acvp-vectors.py --limit 5   # cap cases per kept group
 """
 import argparse
 import gzip
@@ -51,13 +48,17 @@ import urllib.request
 
 BASE = ("https://raw.githubusercontent.com/usnistgov/ACVP-Server/master/"
         "gen-val/json-files/")
-KEYGEN = BASE + "ML-DSA-keyGen-FIPS204/internalProjection.json"
-SIGGEN = BASE + "ML-DSA-sigGen-FIPS204/internalProjection.json"
-SIGVER = BASE + "ML-DSA-sigVer-FIPS204/internalProjection.json"
+SOURCES = [
+    BASE + "ML-DSA-keyGen-FIPS204/internalProjection.json",
+    BASE + "ML-DSA-sigGen-FIPS204/internalProjection.json",
+    BASE + "ML-DSA-sigVer-FIPS204/internalProjection.json",
+]
 
 OUT = (pathlib.Path(__file__).resolve().parent.parent
        / "tests" / "Security" / "Cryptography" / "TestData"
-       / "mldsa-acvp-fips204.txt.gz")
+       / "mldsa-acvp-fips204.json.gz")
+
+FILTER = "external interface, pure ML-DSA only (no pre-hash, no external mu)"
 
 
 def fetch(url):
@@ -66,17 +67,16 @@ def fetch(url):
         return json.loads(response.read().decode("utf-8"))
 
 
-def clean(value):
-    """ACVP reason strings are free text; keep them delimiter-safe."""
-    return (value or "").replace("|", "/").strip()
-
-
 def is_pure_external(group):
     """True for the external-interface, pure ML-DSA groups the library implements.
 
     The remaining groups are HashML-DSA (preHash), the internal test interface,
     and external-mu signing -- none of which have an implementation to test yet.
+    keyGen groups carry none of these keys and are always kept.
     """
+    if "signatureInterface" not in group:
+        return True
+
     return (group.get("signatureInterface") == "external"
             and group.get("preHash") == "pure"
             and not group.get("externalMu", False))
@@ -85,83 +85,44 @@ def is_pure_external(group):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=0,
-                        help="cap signature cases per test group (0 = no cap)")
+                        help="cap test cases per kept group (0 = no cap)")
     args = parser.parse_args()
 
-    keygen = fetch(KEYGEN)
-    siggen = fetch(SIGGEN)
-    sigver = fetch(SIGVER)
+    documents = []
+    kept = skipped = 0
 
-    limit_note = (f"# sigGen/sigVer capped at {args.limit} cases per group."
-                  if args.limit else
-                  "# Every external-interface pure ML-DSA case is included; no cap applied.")
+    for url in SOURCES:
+        document = fetch(url)
+        groups = []
 
-    lines = [
-        "# ML-DSA (FIPS 204) conformance vectors from the NIST ACVP-Server project.",
-        "# Regenerate with scripts/fetch-mldsa-acvp-vectors.py -- do not hand-edit.",
-        "# Source: https://github.com/usnistgov/ACVP-Server",
-        "#   gen-val/json-files/ML-DSA-keyGen-FIPS204/internalProjection.json",
-        "#   gen-val/json-files/ML-DSA-sigGen-FIPS204/internalProjection.json",
-        "#   gen-val/json-files/ML-DSA-sigVer-FIPS204/internalProjection.json",
-        "#",
-        "# External interface, pure ML-DSA only: pre-hash (HashML-DSA), the internal",
-        "# test interface and external-mu groups are skipped, having no implementation yet.",
-        limit_note,
-        "#",
-        "# K|set|tcId|seed|pk|sk",
-        "# S|set|tcId|deterministic|sk|message|context|rnd|signature",
-        "# V|set|tcId|pass|reason|pk|message|context|signature",
-    ]
+        for group in document["testGroups"]:
+            if not is_pure_external(group):
+                skipped += len(group["tests"])
+                continue
 
-    counts = {}
-    skipped = 0
+            if args.limit:
+                group = dict(group, tests=group["tests"][:args.limit])
 
-    def add(kind, *fields):
-        counts[kind] = counts.get(kind, 0) + 1
-        lines.append("|".join([kind] + [str(f) for f in fields]))
+            kept += len(group["tests"])
+            groups.append(group)
 
-    for group in keygen["testGroups"]:
-        parameter_set = group["parameterSet"]
-        for test in group["tests"]:
-            add("K", parameter_set, test["tcId"],
-                test["seed"], test["pk"], test["sk"])
+        document["testGroups"] = groups
+        documents.append(document)
 
-    for group in siggen["testGroups"]:
-        if not is_pure_external(group):
-            skipped += len(group["tests"])
-            continue
+    payload = {
+        "generator": {
+            "script": "scripts/fetch-mldsa-acvp-vectors.py",
+            "note": "Regenerate with the script above -- do not hand-edit.",
+            "sources": SOURCES,
+            "filter": FILTER,
+            "limit": args.limit or None,
+        },
+        "documents": documents,
+    }
 
-        parameter_set = group["parameterSet"]
-        deterministic = bool(group["deterministic"])
-        tests = group["tests"]
-        if args.limit:
-            tests = tests[:args.limit]
-
-        for test in tests:
-            # Deterministic signing fixes rnd to 32 zero bytes, so ACVP omits it.
-            add("S", parameter_set, test["tcId"],
-                "true" if deterministic else "false",
-                test["sk"], test["message"], test.get("context", ""),
-                test.get("rnd", ""), test["signature"])
-
-    for group in sigver["testGroups"]:
-        if not is_pure_external(group):
-            skipped += len(group["tests"])
-            continue
-
-        parameter_set = group["parameterSet"]
-        tests = group["tests"]
-        if args.limit:
-            tests = tests[:args.limit]
-
-        for test in tests:
-            add("V", parameter_set, test["tcId"],
-                "true" if test["testPassed"] else "false",
-                clean(test.get("reason")),
-                test["pk"], test["message"], test.get("context", ""),
-                test["signature"])
-
-    plain = ("\n".join(lines) + "\n").encode("utf-8")
+    # Compact separators: the file is gzipped and machine-read, so the whitespace
+    # would be pure overhead.
+    plain = json.dumps(payload, separators=(",", ":")).encode("utf-8")
 
     # mtime=0 keeps the output byte-stable across regenerations.
     buffer = io.BytesIO()
@@ -173,9 +134,10 @@ def main():
 
     print("wrote", OUT, OUT.stat().st_size, "bytes",
           f"({len(plain)} uncompressed)")
-    for kind in sorted(counts):
-        print(f"  {kind}: {counts[kind]}")
-    print(f"  skipped (pre-hash / internal / external-mu): {skipped}")
+    for document in documents:
+        cases = sum(len(g["tests"]) for g in document["testGroups"])
+        print(f"  {document['mode']}: {len(document['testGroups'])} groups, {cases} cases")
+    print(f"  kept {kept}, skipped (pre-hash / internal / external-mu) {skipped}")
 
 
 if __name__ == "__main__":

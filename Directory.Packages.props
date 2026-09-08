@@ -56,6 +56,13 @@
     <PackageVersion Include="OpenGost.Security.Cryptography" Version="0.3.0" />
     <PackageVersion Include="ProtoPromise" Version="3.5.1" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
+    <!--
+      In-box from net8.0 onward; a package only on the net48/net472/net462 test legs, where the
+      ACVP vector loaders parse the NIST JSON. Version matches the Microsoft.Bcl.* packages above.
+      It already arrived transitively via BenchmarkDotNet -> Microsoft.Diagnostics.Tracing.TraceEvent;
+      declaring it pins that too, rather than inheriting whatever BenchmarkDotNet happens to want.
+    -->
+    <PackageVersion Include="System.Text.Json" Version="10.0.11" />
   </ItemGroup>
   <!--
     Repo-wide build tooling, pulled in via common.props/version.props <- Directory.Build.props. 
