@@ -1,5 +1,7 @@
 ---
 _layout: landing
+title: Foundation — Cryptography, Threading & Memory Libraries for .NET
+_description: CryptoHives .NET Foundation is a suite of independent NuGet libraries for .NET — OS-independent System.Security.Cryptography implementations, allocation-free ValueTask synchronization primitives, and ArrayPool-based buffer utilities. Targets net462 through net10.0.
 ---
 
 # CryptoHives .NET Foundation
@@ -9,6 +11,12 @@ Welcome to the **CryptoHives .NET Foundation** documentation.
 ## Overview
 
 CryptoHives .NET Foundation is a set of libraries for .NET applications, covering high-performance memory management, async threading primitives, and cryptographic algorithms.
+
+.NET is a solid platform for building secure, high-performance applications, but two gaps keep
+showing up: high-performance patterns rarely get packaged as simple, drop-in libraries, and
+cryptography still leans heavily on whatever the underlying OS happens to provide — with all the
+inconsistency in features and performance that brings. These libraries exist to close both gaps,
+one package at a time. None of this replaces the .NET class library; it complements it.
 
 ## Ecosystem
 
@@ -82,6 +90,67 @@ Specification-based implementations of hash algorithms, MACs, ciphers, key deriv
 - Cross-platform consistency with no dependency on OS crypto APIs
 
 [Explore the Security.Cryptography package →](packages/security/cryptography/index.md)
+
+## Usage Examples
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+// Allocation-free hash
+using var blake3 = Blake3.Create();
+Span<byte> hash = stackalloc byte[32];
+blake3.TryComputeHash(data, hash, out _);
+
+// XOF streaming (variable-length output)
+using var shake = Shake256.Create(64);
+shake.Absorb(data1);
+shake.Absorb(data2);
+Span<byte> output = stackalloc byte[128];
+shake.Squeeze(output);
+```
+
+```csharp
+using CryptoHives.Foundation.Threading.Async.Pooled;
+
+// Allocation-free async lock, even with a cancellation token
+private readonly AsyncLock _lock = new();
+
+public async Task DoWorkAsync(CancellationToken ct)
+{
+    using (await _lock.LockAsync(ct).ConfigureAwait(false))
+    {
+        // critical section
+    }
+}
+
+// Non-blocking attempt — no exception, no ValueTask on a miss
+public void DoWorkIfIdle()
+{
+    if (_lock.TryLock(out var releaser))
+    {
+        using (releaser)
+        {
+            // critical section
+        }
+    }
+}
+```
+
+## How It's Built
+
+- **Specification-first cryptography.** Implementations are written directly from public
+  specifications (NIST, RFC, ISO) rather than ported from other codebases, and every algorithm is
+  checked against the official test vectors from its specification, then cross-validated against
+  independent reference implementations.
+- **No steady-state allocations.** Every package targets high throughput with no per-operation
+  heap allocations, for both transformation pipelines and cryptographic workloads.
+- **SIMD with a scalar fallback.** Where it helps, algorithms use managed hardware intrinsics
+  (AES-NI, PCLMULQDQ, SSE/SSSE3, AVX2, NEON) and fall back to portable scalar code everywhere else,
+  so behaviour stays identical across platforms and runtimes.
+- **Orthogonal by design.** Packages stand on their own — none depends on another, and
+  dependencies outside CryptoHives are kept minimal and limited to widely adopted libraries.
+- **Measured, not asserted.** Performance and memory use are benchmarked against the reference
+  implementations people actually use, and every recorded run is published.
 
 ## Benchmarks
 

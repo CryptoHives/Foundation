@@ -26,6 +26,7 @@
   td.supported { color: #15803d; }
   td.unsupported { color: #ccc; }
   td.fastest { background: #fffcf4; font-weight: 700; color: #92400e; }
+  td.noncompeting { background: #f3f4f6; color: #6b7280; font-weight: 400; }
   .hint { color: #888; font-size: 0.8rem; margin-top: 1rem; }
 </style>
 </head>
@@ -34,8 +35,11 @@
 <p>
   Which library implements which synchronization primitive, and which one measured fastest in a
   given benchmark run. A checkmark means that library has ever been benchmarked against that
-  primitive (in any recorded run, on any platform); the highlighted cell in each row is whichever
-  variant had the lowest mean time in the run selected below.
+  primitive (in any recorded run, on any platform); the highlighted <strong>★</strong> cell in
+  each row is whichever <em>ranked</em> variant had the lowest mean time in the run selected
+  below. A <strong>n/c</strong> ("non-competing") cell is an implementation shown for scale but
+  left out of that comparison, because it lacks something the others in the row pay for on every
+  call - a disposable releaser, a cancellation token, or being async at all.
 </p>
 
 <div class="controls">
@@ -67,16 +71,27 @@
   dominate the result. It says nothing about variants never run on this platform, or about how
   implementations compare under load - see the <a href="index.html">trends dashboard</a>'s
   "Scaling by contention" view for that, and the <a href="speed-diff.html">speed differences</a>
-  page for how far apart implementations typically land in this same representative scenario. The raw
-  baseline comparison table (Interlocked.*, lock(), SpinLock, SpinOnce) a
+  page for how far apart implementations typically land in this same representative scenario. Only
+  <em>ranked</em> variants are eligible for the ★; <strong>n/c</strong> cells (see below) are held
+  out. The raw baseline comparison table (Interlocked.*, lock(), SpinLock, SpinOnce) a
   few benchmark classes measure alongside the real primitives isn't a synchronization primitive
   itself and is excluded from this matrix.
 </p>
 <p class="hint">
-  <strong>†</strong> marks a "System" cell whose primitive may have no true async wait API
-  (AutoResetEvent, ManualResetEvent, Barrier, ReaderWriterLockSlim) - its benchmark measures a
-  blocking wait rather than an awaited one, so the number is a baseline reference rather than a
-  fair race against the async implementations in the other columns.
+  <strong>n/c</strong> ("non-competing") marks a cell that is benchmarked and shown for scale but
+  excluded from the ★: the vendored <code>RefImpl</code> reference implementation (no cancellation,
+  no timeout, no pooling - it allocates per call); DotNext's <code>AsyncExclusiveLock</code> and
+  reader-writer lock in the lock rows (no disposable releaser, so it is measured doing less work
+  per operation); and "System" in the AutoResetEvent, ManualResetEvent, Barrier and
+  ReaderWriterLockSlim rows (a blocking wait, not an awaited one). Hover a cell for the specific
+  reason. It is the same idea as marking an entrant <em>hors concours</em> / <em>ausser
+  Konkurrenz</em>.
+</p>
+<p class="hint">
+  <strong>†</strong> marks a "System" cell whose primitive may have no true async wait API - its
+  benchmark measures a blocking wait rather than an awaited one, so the number is a baseline
+  reference rather than a fair race against the async implementations in the other columns. (Where
+  that is definitely the case, the cell is <strong>n/c</strong> instead.)
   <strong>‡</strong> marks "ProtoPromise" - it builds on its own Promise/Promise&lt;T&gt; type and
   its own cancellation token rather than <code>System.Threading.Tasks.ValueTask</code> and
   <code>CancellationToken</code>, so it is not drop-in compatible with code written against the
@@ -128,6 +143,50 @@
     ["ProtoPromise", { mark: PROTOPROMISE_CAVEAT_MARK, text: PROTOPROMISE_CAVEAT_TEXT }],
   ]);
 
+  // A "non-competing" classification (n/c). Unlike the †/‡ caveats above - which annotate a cell
+  // but leave it ranked - a non-competing (family, library) is an implementation benchmarked for
+  // reference that is not a fair contestant for the "fastest in this run" crown, because it is
+  // missing something the other implementations in that row pay for on every call (a disposable
+  // releaser, a cancellation token, or being async at all). It is dropped from the arg-min that
+  // picks the ★, and its cell shows "n/c" instead - still displayed, with its measured number,
+  // for scale. Kept in sync with the identical block in speed-diff.html by hand, per this
+  // dashboard's convention of self-contained pages with no shared JS module.
+  const NON_COMPETING_MARK = "n/c";
+  const NON_COMPETING_PREFIX = "Non-competing — ";
+
+  // Canonical library name (as returned by libraryOf) -> reason. Applies in every family.
+  const NON_COMPETING_LIBRARIES = new Map([
+    ["RefImpl", "vendored TaskCompletionSource reference implementation (Stephen Toub's async " +
+      "coordination primitives; Theodor Zoulias's AsyncDuplicateLock for the keyed lock): no " +
+      "cancellation-token support, no timeout, no pooling - it allocates a source and a task per " +
+      "call. Benchmarked as a scale reference, not as a contestant."],
+  ]);
+
+  // keyOf(family, canonicalLibrary) -> reason. Applies only in that family.
+  const NON_COMPETING_FAMILY_LIBRARY = new Map([
+    [keyOf("AsyncLock", "DotNext.Threading"), "DotNext.Threading.AsyncExclusiveLock has no " +
+      "disposable releaser - it is measured acquiring with AcquireAsync() and releasing with a " +
+      "bare Release(), doing less work per operation than the using-scope releaser competitors " +
+      "in this row."],
+    [keyOf("AsyncRWLock", "DotNext.Threading"), "DotNext's reader-writer lock has no " +
+      "per-acquisition releaser and no upgradeable-reader mode - reader/writer acquire and " +
+      "release are measured doing less work per operation than the using-scope competitors here."],
+    [keyOf("AsyncAutoReset", "System"), "System.Threading.AutoResetEvent is a blocking primitive " +
+      "- its benchmark measures WaitOne(), not an awaited wait."],
+    [keyOf("AsyncManualReset", "System"), "System.Threading.ManualResetEvent(Slim) is a blocking " +
+      "primitive - its benchmark measures a blocking Wait(), not an awaited wait."],
+    [keyOf("AsyncBarrier", "System"), "System.Threading.Barrier is a blocking primitive - its " +
+      "benchmark measures a blocking SignalAndWait(), not an awaited wait."],
+    [keyOf("AsyncRWLock", "System"), "System.Threading.ReaderWriterLockSlim is a blocking " +
+      "primitive - its benchmark measures blocking Enter/Exit, not an awaited acquisition."],
+  ]);
+
+  function nonCompeting(family, library) {
+    return NON_COMPETING_LIBRARIES.get(library)
+        ?? NON_COMPETING_FAMILY_LIBRARY.get(keyOf(family, library))
+        ?? null;
+  }
+
   // Persists across platform/framework/run changes (nothing here resets it) - hiding a library is
   // a display preference, not scoped to one selection.
   const hiddenLibraries = new Set();
@@ -145,6 +204,7 @@
     ["Proto.Promises", "ProtoPromise"],
     ["NeoSmart", "NeoSmart.AsyncLock"],
     ["VS.Threading", "Microsoft.VisualStudio.Threading"],
+    ["DotNext", "DotNext.Threading"],
     ["AsyncKeyedLock", "AsyncKeyedLock"],
     ["NonKeyed", "AsyncKeyedLock"],
     ["AsyncUtilities", "AsyncUtilities"],
@@ -364,6 +424,7 @@
     for (const [family, libraries] of byFamily) {
       let winner = null;
       for (const [library, entry] of libraries) {
+        if (nonCompeting(family, library)) continue; // shown for scale, never crowned
         if (!winner || entry.avg_ns < winner.avg_ns) winner = { library, ...entry };
       }
       if (winner) best.set(family, winner);
@@ -415,16 +476,25 @@
         if (supported) {
           td.classList.add("supported");
           td.textContent = "✓";
-          if (lib === winner?.library) {
-            td.classList.add("fastest");
-            td.textContent = "★";
-            const runLabel = runSel.options[runSel.selectedIndex]?.textContent;
-            td.title = `Fastest in the selected run${runLabel ? ` (${runLabel})` : ""} — ${winner.variant}`;
-          }
-          const caveat = LIBRARY_CAVEATS.get(lib);
-          if (caveat) {
-            td.textContent += caveat.mark;
-            td.title = td.title ? `${td.title} ${caveat.text}` : caveat.text;
+          const nc = nonCompeting(family, lib);
+          if (nc) {
+            // Shown for scale, excluded from the ★ comparison. The n/c reason subsumes the
+            // generic † "may be blocking" caveat, so LIBRARY_CAVEATS is skipped for this cell.
+            td.classList.add("noncompeting");
+            td.textContent = "✓ " + NON_COMPETING_MARK;
+            td.title = NON_COMPETING_PREFIX + nc;
+          } else {
+            if (lib === winner?.library) {
+              td.classList.add("fastest");
+              td.textContent = "★";
+              const runLabel = runSel.options[runSel.selectedIndex]?.textContent;
+              td.title = `Fastest ranked implementation in the selected run${runLabel ? ` (${runLabel})` : ""} — ${winner.variant}`;
+            }
+            const caveat = LIBRARY_CAVEATS.get(lib);
+            if (caveat) {
+              td.textContent += caveat.mark;
+              td.title = td.title ? `${td.title} ${caveat.text}` : caveat.text;
+            }
           }
         } else {
           td.classList.add("unsupported");
