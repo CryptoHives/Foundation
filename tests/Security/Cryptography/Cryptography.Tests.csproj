@@ -88,6 +88,18 @@
                       LogicalName="Cryptography.Tests.TestData.mlkem-acvp-fips203.txt.gz" />
   </ItemGroup>
 
+  <!--
+    NIST ACVP conformance vectors for ML-DSA (FIPS 204), on the same terms. Larger than the
+    ML-KEM set because ACVP messages run to several KB each and ML-DSA-87 signatures are 4.6 KB;
+    ~3.7 MB of hex gzipped to ~2.1 MB. Only the external-interface pure ML-DSA groups are kept —
+    pre-hash, internal-interface and external-mu have no implementation to test yet.
+    Regenerate with scripts/fetch-mldsa-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mldsa-acvp-fips204.txt.gz"
+                      LogicalName="Cryptography.Tests.TestData.mldsa-acvp-fips204.txt.gz" />
+  </ItemGroup>
+
   <ItemGroup>
     <Folder Include="Properties/" />
   </ItemGroup>
