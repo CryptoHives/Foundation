@@ -8,9 +8,22 @@ NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets f
 - **ML-DSA-sigGen-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigGen-FIPS204
 - **ML-DSA-sigVer-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigVer-FIPS204
 
-The curated vectors are embedded as hex constants in
-`tests/Security/Cryptography/Dsa/MLDsa/MLDsaAcvpTests.cs`; each test case references the
-`tcId` of the original ACVP vector file so it can be traced back to the NIST source.
+The vectors are flattened into `tests/Security/Cryptography/TestData/mldsa-acvp-fips204.txt.gz`,
+a gzipped pipe-delimited file loaded at run time by `MLDsaAcvpVectors`. Every NUnit case is
+named after its parameter set and the `tcId` of the original ACVP vector file, so a failure
+traces straight back to the NIST source.
+
+Regenerate the file with `scripts/fetch-mldsa-acvp-vectors.py`. The script zeroes the gzip
+mtime, so regenerating unchanged vectors produces a byte-identical file rather than a spurious
+diff, and the decompressed header records its own provenance. The format is pipe-delimited
+rather than JSON because the test project also targets net48, where `System.Text.Json` would
+need an extra package reference.
+
+Only the **external-interface, pure ML-DSA** groups are kept — the ones the library implements.
+The ACVP files also carry pre-hash (HashML-DSA), internal-interface and external-μ groups;
+skipping them is what keeps the artifact at ~2.1 MB, taking sigGen from 360 cases to 90 and
+sigVer from 180 to 45. Every case that can actually be run is included, so there is no curated
+subset to revisit — adding pre-hash later is a filter change, not a format change.
 
 ---
 
@@ -18,14 +31,27 @@ The curated vectors are embedded as hex constants in
 
 For **each** of ML-DSA-44, ML-DSA-65, and ML-DSA-87 (external interface, pure ML-DSA — no pre-hash, no external μ):
 
-| Operation | ACVP group | What is verified |
-|-----------|-----------|------------------|
-| Key generation (AFT) | keyGen | Seed ξ → byte-exact pk and sk |
-| Deterministic signing (AFT) | sigGen, deterministic = true | (sk, message, context) → byte-exact signature |
-| Hedged signing (AFT) | sigGen, deterministic = false | (sk, message, context, ACVP-provided rnd) → byte-exact signature, exercised through the internal interface |
-| Verification (AFT) | sigVer | Valid signatures accepted; *modified signature — commitment*, *modified signature — z*, *modified signature — hint*, and *modified message* cases rejected |
+| Operation | ACVP group | Cases | What is verified |
+|-----------|-----------|-------|------------------|
+| Key generation (AFT) | keyGen | 25 | Seed ξ → byte-exact pk and sk |
+| Deterministic signing (AFT) | sigGen, deterministic = true | 15 | (sk, message, context) → byte-exact signature |
+| Hedged signing (AFT) | sigGen, deterministic = false | 15 | (sk, message, context, ACVP-provided rnd) → byte-exact signature, exercised through the internal interface |
+| Verification (AFT) | sigVer | 15 | Valid signatures accepted; *modified signature — commitment*, *modified signature — z*, *modified signature — hint*, and *modified message* cases rejected |
 
 The sigVer *modified hint* cases exercise the strict HintBitPack validation required for strong unforgeability.
+
+### Both API levels
+
+Each operation is exercised twice where the API allows it: once through the stateless `IDsa`
+interface and once through the key-holding `MLDsa` API that mirrors
+`System.Security.Cryptography.MLDsa`. 420 test cases in total.
+
+One asymmetry is deliberate. Reproducing a sigGen vector byte for byte needs either
+deterministic signing (rnd = 0³²) or an injected `rnd`, and `MLDsa` signs hedged-only —
+matching the in-box type, which exposes no deterministic mode either. Byte-exact sigGen
+therefore lives on the `IDsa` path; what the `MLDsa` pass adds is that the key-holding API
+agrees with NIST about which signatures are *valid*, over a key imported from an expanded
+private key.
 
 ## Cross-Validation (Interop)
 
@@ -40,7 +66,7 @@ The sigVer *modified hint* cases exercise the strict HintBitPack validation requ
 
 ## Sample Vectors
 
-Complete vectors are thousands of hex characters; the samples below show short values in full and truncate keys/signatures (lengths noted). Full data: `MLDsaAcvpTests.cs` or the ACVP repository.
+Complete vectors are thousands of hex characters; the samples below show short values in full and truncate keys/signatures (lengths noted). Full data: `tests/Security/Cryptography/TestData/mldsa-acvp-fips204.txt.gz` or the ACVP repository.
 
 ### Key Generation (ML-DSA-44, ACVP keyGen tcId 1)
 

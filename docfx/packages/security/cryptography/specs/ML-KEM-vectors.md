@@ -7,9 +7,15 @@ NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets f
 - **ML-KEM-keyGen-FIPS203** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-KEM-keyGen-FIPS203
 - **ML-KEM-encapDecap-FIPS203** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-KEM-encapDecap-FIPS203
 
-The curated vectors are embedded as hex constants in
-`tests/Security/Cryptography/Kem/MLKem/MLKemAcvpTests.cs`; each test case references the
-`tcId` of the original ACVP vector file so it can be traced back to the NIST source.
+The vectors are flattened into `tests/Security/Cryptography/TestData/mlkem-acvp-fips203.txt.gz`,
+a gzipped pipe-delimited file loaded at run time by `MLKemAcvpVectors`. Every NUnit case is
+named after its parameter set and the `tcId` of the original ACVP vector file, so a failure
+traces straight back to the NIST source.
+
+Regenerate the file with `scripts/fetch-mlkem-acvp-vectors.py`. The script zeroes the gzip
+mtime, so regenerating unchanged vectors produces a byte-identical file rather than a spurious
+diff. The format is pipe-delimited rather than JSON because the test project also targets
+net48, where `System.Text.Json` would need an extra package reference.
 
 ---
 
@@ -38,7 +44,7 @@ In addition to the ACVP known-answer tests, `MLKemTests`/`MLKemInteropTests` cro
 
 ## Sample Vectors
 
-Complete vectors are thousands of hex characters; the samples below show the short values in full and truncate keys/ciphertexts (lengths noted). Full data: `MLKemAcvpTests.cs` or the ACVP repository.
+Complete vectors are thousands of hex characters; the samples below show the short values in full and truncate keys/ciphertexts (lengths noted). Full data: `tests/Security/Cryptography/TestData/mlkem-acvp-fips203.txt.gz` or the ACVP repository.
 
 ### Key Generation (ML-KEM-512, ACVP keyGen tcId 1)
 
