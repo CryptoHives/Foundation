@@ -41,7 +41,7 @@ public class MLDsaApiTests
 
     [Test]
     [TestCaseSource(nameof(Algorithms))]
-    public void ImportPrivateSeed_ReproducesGeneratedKey(MLDsaAlgorithm algorithm)
+    public void ImportMLDsaPrivateSeed_ReproducesGeneratedKey(MLDsaAlgorithm algorithm)
     {
         using var original = MLDsa.GenerateKey(algorithm);
         byte[] seed = original.ExportMLDsaPrivateSeed();
@@ -55,7 +55,7 @@ public class MLDsaApiTests
 
     [Test]
     [TestCaseSource(nameof(Algorithms))]
-    public void ImportSecretKey_CanSign_ButHasNoSeed(MLDsaAlgorithm algorithm)
+    public void ImportMLDsaPrivateKey_CanSign_ButHasNoSeed(MLDsaAlgorithm algorithm)
     {
         using var original = MLDsa.GenerateKey(algorithm);
         byte[] message = new byte[42];
@@ -65,14 +65,14 @@ public class MLDsaApiTests
 
         Assert.That(original.VerifyData(message, signature), Is.True);
         Assert.That(imported.ExportMLDsaPublicKey(), Is.EqualTo(original.ExportMLDsaPublicKey()),
-            "The public key must be reconstructed from the secret key on import.");
+            "The public key must be reconstructed from the private key on import.");
         Assert.That(() => imported.ExportMLDsaPrivateSeed(), Throws.InstanceOf<OS.CryptographicException>(),
-            "A key imported from an expanded secret key has no seed.");
+            "A key imported from an expanded private key has no seed.");
     }
 
     [Test]
     [TestCaseSource(nameof(Algorithms))]
-    public void ImportSecretKey_TamperedHash_Throws(MLDsaAlgorithm algorithm)
+    public void ImportMLDsaPrivateKey_TamperedHash_Throws(MLDsaAlgorithm algorithm)
     {
         using var original = MLDsa.GenerateKey(algorithm);
         byte[] sk = original.ExportMLDsaPrivateKey();
@@ -82,12 +82,12 @@ public class MLDsaApiTests
 
         Assert.That(() => MLDsa.ImportMLDsaPrivateKey(algorithm, sk),
             Throws.InstanceOf<OS.CryptographicException>(),
-            "A secret key whose embedded public key hash does not match must be rejected.");
+            "A private key whose embedded public key hash does not match must be rejected.");
     }
 
     [Test]
     [TestCaseSource(nameof(Algorithms))]
-    public void ImportPublicKey_CanVerifyOnly(MLDsaAlgorithm algorithm)
+    public void ImportMLDsaPublicKey_CanVerifyOnly(MLDsaAlgorithm algorithm)
     {
         using var signer = MLDsa.GenerateKey(algorithm);
         byte[] message = new byte[64];
