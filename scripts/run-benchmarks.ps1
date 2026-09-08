@@ -64,6 +64,8 @@ param(
         "AesCmac", "AesGmac", "Poly1305",
         # Post-quantum KEM (individual)
         "MLKem", "MLKemKeyGen", "MLKemOps", "MLKemInternals",
+        # Post-quantum signatures (individual)
+        "MLDsa", "MLDsaKeyGen", "MLDsaOps",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "KeccakCore", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
@@ -72,7 +74,7 @@ param(
         "AES-GCM", "AES-CCM", "AES-CBC", "ChaCha",
         "RegionalCipher", "SimdArm",
         "Cipher", "AEAD", "HMAC", "MAC",
-        "KEM",
+        "KEM", "DSA",
         "All"
     )]
     [string]$Family,
@@ -274,6 +276,10 @@ $AlgorithmBenchmarkMap = @{
     "MLKemOps"          = "Kem.MLKemBenchmark"
     "MLKemKeyGen"       = "Kem.MLKemKeyGenBenchmark"
     "MLKemInternals"    = "Kem.MLKemInternalsBenchmark"
+    # Post-quantum signatures. Namespace-qualified for the same reason as the KEM entries above.
+    # There is no MLDsaInternals: ML-DSA has no counterpart to MLKemInternalsBenchmark yet.
+    "MLDsaOps"          = "Dsa.MLDsaBenchmark"
+    "MLDsaKeyGen"       = "Dsa.MLDsaKeyGenBenchmark"
     # Group Aliases
     "All"               = "Hash"
 }
@@ -315,12 +321,17 @@ $GroupAliases = @{
     "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
     "MLKem"          = @("MLKemKeyGen", "MLKemOps")
     "KEM"            = @("MLKemKeyGen", "MLKemOps", "MLKemInternals")
+    # 'MLDsa' is the algorithm, 'DSA' the category. Identical today because ML-DSA is the only
+    # signature scheme implemented; kept separate so SLH-DSA joins 'DSA' without silently
+    # changing what '-Family MLDsa' runs.
+    "MLDsa"          = @("MLDsaKeyGen", "MLDsaOps")
+    "DSA"            = @("MLDsaKeyGen", "MLDsaOps")
 }
 
 $GroupAliases["MAC"] = $GroupAliases["HMAC"] + @("AesCmac", "AesGmac", "Poly1305")
 
-# 'All' should run all hash, cipher, and MAC benchmarks (convenience alias)
-$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["ParallelHash"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"] + $GroupAliases["Cipher"] + $GroupAliases["MAC"] + $GroupAliases["KEM"]
+# 'All' should run all hash, cipher, MAC, KEM and signature benchmarks (convenience alias)
+$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["ParallelHash"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"] + $GroupAliases["Cipher"] + $GroupAliases["MAC"] + $GroupAliases["KEM"] + $GroupAliases["DSA"]
 
 # 'Hash' alias groups the common hash families (excluding XOF-specific families)
 $GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["ParallelHash"] + $GroupAliases["KMAC"]
@@ -451,6 +462,12 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  ML-KEM core:   -Family MLKemInternals   (CryptoHives-only diagnostics: pairwise"
     Write-Host "                                           consistency test cost, SampleNtt, packers)"
     Write-Host ""
+    Write-Host "Available post-quantum signature families:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  ML-DSA:        -Family MLDsa            (key generation plus sign/verify)"
+    Write-Host "  ML-DSA keygen: -Family MLDsaKeyGen      (adds the no-pairwise-consistency-test variant)"
+    Write-Host "  ML-DSA ops:    -Family MLDsaOps         (sign, verify, verify of a tampered signature)"
+    Write-Host ""
     Write-Host "Group aliases (run multiple benchmarks, each with its own output):" -ForegroundColor Yellow
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
     Write-Host "  -Family SHA3       runs: SHA3_224, SHA3_256, SHA3_384, SHA3_512"
@@ -486,7 +503,9 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family MAC        runs: All HMAC variants + AesCmac, AesGmac, Poly1305"
     Write-Host "  -Family MLKem      runs: MLKemKeyGen, MLKemOps"
     Write-Host "  -Family KEM        runs: MLKemKeyGen, MLKemOps, MLKemInternals"
-    Write-Host "  -Family All        runs: All Hash, Cipher, MAC, and KEM benchmarks"
+    Write-Host "  -Family MLDsa      runs: MLDsaKeyGen, MLDsaOps"
+    Write-Host "  -Family DSA        runs: MLDsaKeyGen, MLDsaOps"
+    Write-Host "  -Family All        runs: All Hash, Cipher, MAC, KEM and signature benchmarks"
     Write-Host ""
     exit 0
 }

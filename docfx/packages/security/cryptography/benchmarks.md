@@ -206,6 +206,10 @@ private key and the public key; all three are zeroed on `Dispose`.
    # Run all regional cipher benchmarks
    .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher
 
+   # Run the post-quantum families (KEM and DSA are the category-level aliases)
+   .\scripts\run-benchmarks.ps1 -Project Cryptography -Family MLDsa
+   .\scripts\run-benchmarks.ps1 -Project Cryptography -Family KEM
+
    # Direct invocation
    cd tests/Security/Cryptography
    dotnet run -c Release --framework net10.0 -- --filter *SHA256*
@@ -242,7 +246,11 @@ private key and the public key; all three are zeroed on `Dispose`.
    with no entry is silently skipped and never reaches the archive, the database or the dashboard; it
    warns about each unmapped report it finds, but the warning does not stop the run. The archive name
    matters beyond being a label — the trends importer derives the category from its prefix, which is why
-   the KEM reports are recorded as `ml-kem-*.md`. Pushing the branch does not republish the site on
+   the KEM reports are recorded as `ml-kem-*.md` and the signature reports as `ml-dsa-*.md`. A prefix the
+   importer does not recognize falls back to `Hash`, which is the one failure here that produces no
+   warning at all: the rows arrive, just filed under the wrong category. Adding a category means adding
+   the prefix to `classify_category()` in `scripts/cryptography-benchmark-trends/import_historical_markdown.py`.
+   Pushing the branch does not republish the site on
    its own — GitHub only runs workflows that exist in the pushed branch, and the orphan archive branch
    carries no `.github/`. Publish a new run deliberately with `gh workflow run docfx.yml`, or let the
    next push to `main` pick it up.
