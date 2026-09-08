@@ -1,6 +1,24 @@
+---
+title: Memory Package
+_description: CryptoHives.Foundation.Memory — pooled buffers and streams on top of ArrayPool<T> (ArrayPoolMemoryStream, ArrayPoolBufferWriter<T>, ReadOnlySequenceMemoryStream) plus RAII ownership helpers, for net462 through net10.0.
+---
+
 # CryptoHives.Foundation.Memory Package
 
 Buffer management utilities for .NET, built on `ArrayPool<T>` and the modern .NET memory APIs to keep allocations and GC pressure out of high-throughput code.
+
+## Overview
+
+Renting from `ArrayPool<T>.Shared` instead of allocating avoids resize-copy churn and keeps large
+buffers off the Large Object Heap, which matters once throughput is high enough that allocations
+start showing up in GC pauses. `ReadOnlySequence<T>` then lets a producer hand that pooled data to
+a consumer without copying it at all. This package packages those patterns as drop-in
+`MemoryStream` and `IBufferWriter<T>` types, with explicit ownership contracts for the pooled
+memory and an opt-in `clearArray` flag on every type that owns it, for callers holding key
+material. It complements the modern .NET memory APIs rather than replacing them.
+
+**Target frameworks:** `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0`. No
+dependency on any other CryptoHives package.
 
 ## Installation
 
@@ -25,7 +43,7 @@ using CryptoHives.Foundation.Memory.Pools;
 | [ArrayPoolBufferWriter&lt;T&gt;](arraypoolbufferwriter.md) | IBufferWriter implementation with pooled chunks | [Details](arraypoolbufferwriter.md) |
 | [ReadOnlySequenceMemoryStream](readonlysequencememorystream.md) | Stream wrapper for ReadOnlySequence | [Details](readonlysequencememorystream.md) |
 
-### Segment Ownership
+### Segment Array Ownership
 
 | Class | Description | Documentation |
 |-------|-------------|---------------|

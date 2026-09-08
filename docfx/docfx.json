@@ -39,6 +39,26 @@
       }
     ],
     "output": "_site",
+    "sitemap": {
+      "baseUrl": "https://cryptohives.github.io/Foundation/",
+      "priority": 0.5,
+      "changefreq": "monthly",
+      "fileOptions": {
+        "index.md": {
+          "priority": 1.0,
+          "changefreq": "weekly"
+        },
+        "getting-started.md": {
+          "priority": 0.8
+        },
+        "packages/**/index.md": {
+          "priority": 0.8
+        },
+        "api/**": {
+          "priority": 0.3
+        }
+      }
+    },
     "template": [
       "default",
       "modern"
