@@ -123,19 +123,14 @@ jobs:
     - run: dotnet tool update -g docfx
     - run: docfx docfx/docfx.json
 
-    # docfx writes _site/sitemap.xml with a UTF-8 byte-order mark. Google Search
-    # Console rejects a sitemap that has bytes before the `<?xml` declaration with
-    # "Sitemap could not be read", even though the URL loads fine in a browser.
-    # Strip the BOM before the artifact is published.
-    - name: Strip BOM from sitemap.xml
-      run: |
-        f=docfx/_site/sitemap.xml
-        test -f "$f" || { echo "::error::$f not found"; exit 1; }
-        perl -i -0pe 's/^\x{EF}\x{BB}\x{BF}//' "$f"
-        if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' ')" = "efbbbf" ]; then
-          echo "::error::BOM still present in $f"; exit 1
-        fi
-        echo "sitemap.xml starts with: $(head -c 40 "$f")"
+    # Post-process the built site before it is published:
+    #  - strip the UTF-8 BOM docfx writes on sitemap.xml (Search Console rejects it);
+    #  - turn `_noindex: true` pages (the Impressum) into a real robots noindex and
+    #    drop them from the sitemap.
+    # The script throws on any failed assertion, which fails the job.
+    - name: Finalize the built site
+      shell: pwsh
+      run: ./scripts/finalize-docfx-site.ps1 -SiteDir docfx/_site
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v5

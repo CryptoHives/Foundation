@@ -165,15 +165,10 @@ if (-not $NoBuild) {
             exit $exitCode
         }
 
-        # docfx writes sitemap.xml with a UTF-8 BOM. Google Search Console rejects a
-        # sitemap with bytes before `<?xml` ("Sitemap could not be read"), so rewrite
-        # it as BOM-less UTF-8 to match what the deploy workflow publishes.
-        $sitemap = Join-Path $siteOutput "sitemap.xml"
-        if (Test-Path $sitemap) {
-            $xml = [System.IO.File]::ReadAllText($sitemap)
-            [System.IO.File]::WriteAllText($sitemap, $xml, (New-Object System.Text.UTF8Encoding $false))
-            Write-Host "Stripped BOM from sitemap.xml" -ForegroundColor DarkGray
-        }
+        # Post-process the built site: strip the sitemap BOM and enforce noindex on
+        # `_noindex: true` pages (robots meta + sitemap removal). Same script the
+        # deploy workflow runs, so local output matches what gets published.
+        & (Join-Path $scriptPath "finalize-docfx-site.ps1") -SiteDir $siteOutput
 
         Write-Host ""
         Write-Host "========================================"
