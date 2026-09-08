@@ -9,7 +9,7 @@ NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets f
 - **ML-DSA-sigVer-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigVer-FIPS204
 
 The curated vectors are embedded as hex constants in
-`tests/Security/Cryptography/Dsa/MlDsa/MlDsaAcvpTests.cs`; each test case references the
+`tests/Security/Cryptography/Dsa/MLDsa/MLDsaAcvpTests.cs`; each test case references the
 `tcId` of the original ACVP vector file so it can be traced back to the NIST source.
 
 ---
@@ -29,7 +29,7 @@ The sigVer *modified hint* cases exercise the strict HintBitPack validation requ
 
 ## Cross-Validation (Interop)
 
-`MlDsaInteropTests` cross-validates against independent implementations on every target framework:
+`MLDsaInteropTests` cross-validates against independent implementations on every target framework:
 
 | Peer | Tests |
 |------|-------|
@@ -40,7 +40,7 @@ The sigVer *modified hint* cases exercise the strict HintBitPack validation requ
 
 ## Sample Vectors
 
-Complete vectors are thousands of hex characters; the samples below show short values in full and truncate keys/signatures (lengths noted). Full data: `MlDsaAcvpTests.cs` or the ACVP repository.
+Complete vectors are thousands of hex characters; the samples below show short values in full and truncate keys/signatures (lengths noted). Full data: `MLDsaAcvpTests.cs` or the ACVP repository.
 
 ### Key Generation (ML-DSA-44, ACVP keyGen tcId 1)
 

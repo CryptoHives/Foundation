@@ -22,7 +22,7 @@ using OS = System.Security.Cryptography;
 /// All hashing uses SHAKE256 (H) and SHAKE128 (matrix expansion) per FIPS 204 §3.7.
 /// </para>
 /// </remarks>
-internal static class MlDsaCore
+internal static class MLDsaCore
 {
     /// <summary>
     /// ML-DSA.KeyGen_internal (FIPS 204 Algorithm 6): expands the 32-byte seed ξ into a key pair.
@@ -31,7 +31,12 @@ internal static class MlDsaCore
     /// <param name="xi">The 32-byte key generation seed ξ.</param>
     /// <param name="pk">Output: the public key.</param>
     /// <param name="sk">Output: the secret key.</param>
-    public static void KeyGen(MlDsaParams p, ReadOnlySpan<byte> xi, Span<byte> pk, Span<byte> sk)
+    /// <param name="pairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the generated key pair with a sign/verify round trip;
+    /// <see langword="false"/> to skip it.
+    /// </param>
+    public static void KeyGen(MLDsaParams p, ReadOnlySpan<byte> xi, Span<byte> pk, Span<byte> sk,
+                              bool pairwiseConsistencyTest)
     {
         // (ρ, ρ′, K) = H(ξ ‖ k ‖ ℓ, 128)
         Span<byte> expanded = stackalloc byte[128];
@@ -40,7 +45,7 @@ internal static class MlDsaCore
         domain[1] = (byte)p.L;
         using (var shake = Shake256.Create(128))
         {
-            shake.Absorb(xi.Slice(0, MlDsaParams.KeyGenSeedBytes));
+            shake.Absorb(xi.Slice(0, MLDsaParams.KeyGenSeedBytes));
             shake.Absorb(domain);
             shake.Squeeze(expanded);
         }
@@ -94,19 +99,33 @@ internal static class MlDsaCore
         Zero(t0);
         Zero(t);
 
-        PairwiseConsistencyTest(p, pk, sk);
+        if (pairwiseConsistencyTest)
+        {
+            PairwiseConsistencyTest(p, xi, pk, sk);
+        }
     }
 
     /// <summary>
-    /// Verifies a freshly generated key pair by signing and verifying a random message,
+    /// Verifies a freshly generated key pair by signing and verifying one message,
     /// as expected by FIPS 140-3 for signature key generation.
     /// </summary>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
-    private static void PairwiseConsistencyTest(MlDsaParams p, ReadOnlySpan<byte> pk, ReadOnlySpan<byte> sk)
+    private static void PairwiseConsistencyTest(MLDsaParams p, ReadOnlySpan<byte> xi,
+                                                ReadOnlySpan<byte> pk, ReadOnlySpan<byte> sk)
     {
+        // The test message is derived from the seed rather than drawn from the OS RNG.
+        //
+        // Expanding a stored seed ξ is pure FIPS 204 arithmetic and is documented as
+        // deterministic, so it must not depend on an RNG being present, and must not consume
+        // entropy the caller never asked to spend. A predictable message is harmless here:
+        // the signature is produced deterministically (rnd = 0³²), stays local, and never
+        // reaches a wire. The domain prefix keeps it from ever coinciding with a real message
+        // a caller signs with the same key.
         Span<byte> message = stackalloc byte[32];
-        GenerateRandomSeed(message);
-        Span<byte> rnd = stackalloc byte[MlDsaParams.SignSeedBytes];
+        DerivePctMessage(xi, message);
+
+        // rnd = 0³² — the round trip is deterministic, so it cannot fail intermittently.
+        Span<byte> rnd = stackalloc byte[MLDsaParams.SignSeedBytes];
 
         byte[] signature = new byte[p.SignatureBytes];
         Sign(p, sk, ReadOnlySpan<byte>.Empty, message, rnd, signature);
@@ -121,6 +140,24 @@ internal static class MlDsaCore
     }
 
     /// <summary>
+    /// Derives the pairwise consistency test's message deterministically from the key seed.
+    /// </summary>
+    /// <param name="xi">The 32-byte key generation seed ξ.</param>
+    /// <param name="message">Receives the 32-byte message.</param>
+    private static void DerivePctMessage(ReadOnlySpan<byte> xi, Span<byte> message)
+    {
+        using var shake = Shake256.Create(32);
+        shake.Absorb(PctDomain);
+        shake.Absorb(xi);
+        shake.Squeeze(message);
+    }
+
+    /// <summary>
+    /// Domain separation prefix for <see cref="DerivePctMessage"/>.
+    /// </summary>
+    private static ReadOnlySpan<byte> PctDomain => "CryptoHives-ML-DSA-PCT"u8;
+
+    /// <summary>
     /// ML-DSA.Sign_internal (FIPS 204 Algorithm 7).
     /// </summary>
     /// <param name="p">The ML-DSA parameter set.</param>
@@ -129,7 +166,7 @@ internal static class MlDsaCore
     /// <param name="message">The message M.</param>
     /// <param name="rnd">The 32-byte signing randomness (all-zero for deterministic signing).</param>
     /// <param name="signature">Output: the signature.</param>
-    public static void Sign(MlDsaParams p, ReadOnlySpan<byte> sk, ReadOnlySpan<byte> prefix,
+    public static void Sign(MLDsaParams p, ReadOnlySpan<byte> sk, ReadOnlySpan<byte> prefix,
                             ReadOnlySpan<byte> message, ReadOnlySpan<byte> rnd, Span<byte> signature)
     {
         Span<byte> rho = stackalloc byte[32];
@@ -155,7 +192,7 @@ internal static class MlDsaCore
         using (var shake = Shake256.Create(64))
         {
             shake.Absorb(key);
-            shake.Absorb(rnd.Slice(0, MlDsaParams.SignSeedBytes));
+            shake.Absorb(rnd.Slice(0, MLDsaParams.SignSeedBytes));
             shake.Absorb(mu);
             shake.Squeeze(rhoDoublePrime);
         }
@@ -174,7 +211,7 @@ internal static class MlDsaCore
         int[][] w1 = PolyVec.Create(p.K);
         int[][] tmp = PolyVec.Create(p.K);
         int[][] hint = PolyVec.Create(p.K);
-        int[] c = new int[MlDsaParams.N];
+        int[] c = new int[MLDsaParams.N];
         Span<byte> cTilde = stackalloc byte[p.CTildeBytes];
         byte[] w1Encoded = new byte[p.K * 32 * p.W1Bits];
 
@@ -276,7 +313,7 @@ internal static class MlDsaCore
     /// <param name="message">The message M.</param>
     /// <param name="signature">The signature to verify.</param>
     /// <returns>True when the signature is valid.</returns>
-    public static bool Verify(MlDsaParams p, ReadOnlySpan<byte> pk, ReadOnlySpan<byte> prefix,
+    public static bool Verify(MLDsaParams p, ReadOnlySpan<byte> pk, ReadOnlySpan<byte> prefix,
                               ReadOnlySpan<byte> message, ReadOnlySpan<byte> signature)
     {
         Span<byte> cTilde = stackalloc byte[p.CTildeBytes];
@@ -314,7 +351,7 @@ internal static class MlDsaCore
         }
 
         // w′ = NTT⁻¹(Â ∘ NTT(z) − NTT(c) ∘ NTT(t1 · 2^d))
-        int[] c = new int[MlDsaParams.N];
+        int[] c = new int[MLDsaParams.N];
         Sampling.SampleInBall(p, cTilde, c);
         Ntt.Forward(c);
 

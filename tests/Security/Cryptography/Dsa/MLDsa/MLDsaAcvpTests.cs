@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Dsa.MlDsa;
+namespace Cryptography.Tests.Dsa.MLDsa;
 
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using NUnit.Framework;
@@ -21,7 +21,7 @@ using System;
 /// </remarks>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class MlDsaAcvpTests
+public class MLDsaAcvpTests
 {
     private static readonly object[] KeyGenVectors =
     [
@@ -131,14 +131,14 @@ public class MlDsaAcvpTests
     {
         // The hedged variant is exercised through the internal interface so the
         // ACVP-provided randomness can be injected.
-        MlDsaParams p = ParamsFor(parameterSet);
+        MLDsaParams p = ParamsFor(parameterSet);
 
         byte[] context = FromHex(contextHex);
         byte[] prefix = new byte[2 + context.Length];
-        MlDsaCore.BuildExternalPrefix(context, prefix);
+        MLDsaCore.BuildExternalPrefix(context, prefix);
 
         byte[] signature = new byte[p.SignatureBytes];
-        MlDsaCore.Sign(p, FromHex(skHex), prefix, FromHex(messageHex), FromHex(rndHex), signature);
+        MLDsaCore.Sign(p, FromHex(skHex), prefix, FromHex(messageHex), FromHex(rndHex), signature);
 
         Assert.That(signature, Is.EqualTo(FromHex(signatureHex)), $"{parameterSet} tcId {tcId}: signature mismatch.");
     }
@@ -148,7 +148,7 @@ public class MlDsaAcvpTests
     public void SigVer_MatchesAcvpVector(string parameterSet, int tcId, string reason, bool expectedValid,
         string pkHex, string messageHex, string contextHex, string signatureHex)
     {
-        using var verifier = MlDsa.ImportPublicKey(AlgorithmFor(parameterSet), FromHex(pkHex));
+        using var verifier = MLDsa.ImportMLDsaPublicKey(AlgorithmFor(parameterSet), FromHex(pkHex));
 
         bool valid = verifier.VerifyData(FromHex(messageHex), FromHex(signatureHex), FromHex(contextHex));
 
@@ -156,23 +156,23 @@ public class MlDsaAcvpTests
     }
 
     private static IDsa CreateDsa(string parameterSet) => parameterSet switch {
-        "ML-DSA-44" => MlDsa44.Create(),
-        "ML-DSA-65" => MlDsa65.Create(),
-        "ML-DSA-87" => MlDsa87.Create(),
+        "ML-DSA-44" => MLDsa44.Create(),
+        "ML-DSA-65" => MLDsa65.Create(),
+        "ML-DSA-87" => MLDsa87.Create(),
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    private static MlDsaAlgorithm AlgorithmFor(string parameterSet) => parameterSet switch {
-        "ML-DSA-44" => MlDsaAlgorithm.MlDsa44,
-        "ML-DSA-65" => MlDsaAlgorithm.MlDsa65,
-        "ML-DSA-87" => MlDsaAlgorithm.MlDsa87,
+    private static MLDsaAlgorithm AlgorithmFor(string parameterSet) => parameterSet switch {
+        "ML-DSA-44" => MLDsaAlgorithm.MLDsa44,
+        "ML-DSA-65" => MLDsaAlgorithm.MLDsa65,
+        "ML-DSA-87" => MLDsaAlgorithm.MLDsa87,
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    private static MlDsaParams ParamsFor(string parameterSet) => parameterSet switch {
-        "ML-DSA-44" => MlDsaParams.MlDsa44,
-        "ML-DSA-65" => MlDsaParams.MlDsa65,
-        "ML-DSA-87" => MlDsaParams.MlDsa87,
+    private static MLDsaParams ParamsFor(string parameterSet) => parameterSet switch {
+        "ML-DSA-44" => MLDsaParams.MLDsa44,
+        "ML-DSA-65" => MLDsaParams.MLDsa65,
+        "ML-DSA-87" => MLDsaParams.MLDsa87,
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 

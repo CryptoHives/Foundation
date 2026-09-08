@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Dsa.MlDsa;
+namespace Cryptography.Tests.Dsa.MLDsa;
 
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using NUnit.Framework;
@@ -23,13 +23,13 @@ using IDsa = CryptoHives.Foundation.Security.Cryptography.Dsa.IDsa;
 /// </remarks>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class MlDsaInteropTests
+public class MLDsaInteropTests
 {
     private static readonly object[] ParameterSets =
     [
-        new object[] { "ML-DSA-44", new Func<IDsa>(() => MlDsa44.Create()) },
-        new object[] { "ML-DSA-65", new Func<IDsa>(() => MlDsa65.Create()) },
-        new object[] { "ML-DSA-87", new Func<IDsa>(() => MlDsa87.Create()) }
+        new object[] { "ML-DSA-44", new Func<IDsa>(() => MLDsa44.Create()) },
+        new object[] { "ML-DSA-65", new Func<IDsa>(() => MLDsa65.Create()) },
+        new object[] { "ML-DSA-87", new Func<IDsa>(() => MLDsa87.Create()) }
     ];
 
     [Test]

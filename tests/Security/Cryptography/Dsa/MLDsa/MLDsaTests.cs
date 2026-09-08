@@ -1,7 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
-namespace Cryptography.Tests.Dsa.MlDsa;
+namespace Cryptography.Tests.Dsa.MLDsa;
 
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using NUnit.Framework;
@@ -12,13 +12,13 @@ using System;
 /// </summary>
 [TestFixture]
 [Parallelizable(ParallelScope.All)]
-public class MlDsaTests
+public class MLDsaTests
 {
     private static readonly object[] AllParameterSets =
     [
-        new object[] { "ML-DSA-44", new Func<IDsa>(() => MlDsa44.Create()), 1312, 2560, 2420 },
-        new object[] { "ML-DSA-65", new Func<IDsa>(() => MlDsa65.Create()), 1952, 4032, 3309 },
-        new object[] { "ML-DSA-87", new Func<IDsa>(() => MlDsa87.Create()), 2592, 4896, 4627 }
+        new object[] { "ML-DSA-44", new Func<IDsa>(() => MLDsa44.Create()), 1312, 2560, 2420 },
+        new object[] { "ML-DSA-65", new Func<IDsa>(() => MLDsa65.Create()), 1952, 4032, 3309 },
+        new object[] { "ML-DSA-87", new Func<IDsa>(() => MLDsa87.Create()), 2592, 4896, 4627 }
     ];
 
     [Test]
@@ -144,10 +144,10 @@ public class MlDsaTests
     [Test]
     public void InvalidSizes_Throw()
     {
-        using IDsa dsa = MlDsa44.Create();
-        byte[] pk = new byte[MlDsa44.PublicKeySizeBytesConst];
-        byte[] sk = new byte[MlDsa44.SecretKeySizeBytesConst];
-        byte[] sig = new byte[MlDsa44.SignatureSizeBytesConst];
+        using IDsa dsa = MLDsa44.Create();
+        byte[] pk = new byte[MLDsa44.PublicKeySizeBytesConst];
+        byte[] sk = new byte[MLDsa44.SecretKeySizeBytesConst];
+        byte[] sig = new byte[MLDsa44.SignatureSizeBytesConst];
         byte[] msg = new byte[8];
 
         Assert.That(() => dsa.GenerateKeyPair(new byte[16], pk, sk), Throws.InstanceOf<ArgumentException>());
@@ -169,7 +169,7 @@ public class MlDsaTests
         var rng = new Random(42);
         for (int i = 0; i < 256; i++)
         {
-            a[i] = rng.Next(0, MlDsaParams.Q);
+            a[i] = rng.Next(0, MLDsaParams.Q);
         }
 
         one[0] = 1;

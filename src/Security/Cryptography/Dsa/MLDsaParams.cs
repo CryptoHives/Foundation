@@ -6,16 +6,16 @@ namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 /// <summary>
 /// Defines the parameter sets for ML-DSA as specified in FIPS 204 Table 1.
 /// </summary>
-internal sealed class MlDsaParams
+internal sealed class MLDsaParams
 {
     /// <summary>ML-DSA-44 parameter set (NIST security category 2).</summary>
-    public static readonly MlDsaParams MlDsa44 = new(k: 4, l: 4, eta: 2, tau: 39, gamma1Bits: 17, gamma2: (Q - 1) / 88, omega: 80, lambda: 128);
+    public static readonly MLDsaParams MLDsa44 = new(k: 4, l: 4, eta: 2, tau: 39, gamma1Bits: 17, gamma2: (Q - 1) / 88, omega: 80, lambda: 128);
 
     /// <summary>ML-DSA-65 parameter set (NIST security category 3).</summary>
-    public static readonly MlDsaParams MlDsa65 = new(k: 6, l: 5, eta: 4, tau: 49, gamma1Bits: 19, gamma2: (Q - 1) / 32, omega: 55, lambda: 192);
+    public static readonly MLDsaParams MLDsa65 = new(k: 6, l: 5, eta: 4, tau: 49, gamma1Bits: 19, gamma2: (Q - 1) / 32, omega: 55, lambda: 192);
 
     /// <summary>ML-DSA-87 parameter set (NIST security category 5).</summary>
-    public static readonly MlDsaParams MlDsa87 = new(k: 8, l: 7, eta: 2, tau: 60, gamma1Bits: 19, gamma2: (Q - 1) / 32, omega: 75, lambda: 256);
+    public static readonly MLDsaParams MLDsa87 = new(k: 8, l: 7, eta: 2, tau: 60, gamma1Bits: 19, gamma2: (Q - 1) / 32, omega: 75, lambda: 256);
 
     /// <summary>The polynomial degree.</summary>
     public const int N = 256;
@@ -34,6 +34,9 @@ internal sealed class MlDsaParams
 
     /// <summary>The maximum context string length in bytes.</summary>
     public const int MaxContextBytes = 255;
+
+    /// <summary>The message representative size in bytes (μ = 64 bytes), the same for every parameter set.</summary>
+    public const int MuBytes = 64;
 
     /// <summary>The module dimensions of matrix A (k rows).</summary>
     public readonly int K;
@@ -83,7 +86,7 @@ internal sealed class MlDsaParams
     /// <summary>The signature size in bytes: λ/4 + ℓ·32·zBits + ω + k.</summary>
     public readonly int SignatureBytes;
 
-    private MlDsaParams(int k, int l, int eta, int tau, int gamma1Bits, int gamma2, int omega, int lambda)
+    private MLDsaParams(int k, int l, int eta, int tau, int gamma1Bits, int gamma2, int omega, int lambda)
     {
         K = k;
         L = l;

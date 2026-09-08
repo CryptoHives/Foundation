@@ -21,22 +21,22 @@ using System;
 /// <para>
 /// <b>Example usage:</b>
 /// <code>
-/// using var dsa = MlDsa65.Create();
+/// using var dsa = MLDsa65.Create();
 ///
-/// byte[] pk = new byte[MlDsa65.PublicKeySizeBytesConst];
-/// byte[] sk = new byte[MlDsa65.SecretKeySizeBytesConst];
+/// byte[] pk = new byte[MLDsa65.PublicKeySizeBytesConst];
+/// byte[] sk = new byte[MLDsa65.SecretKeySizeBytesConst];
 /// dsa.GenerateKeyPair(pk, sk);
 ///
-/// byte[] signature = new byte[MlDsa65.SignatureSizeBytesConst];
+/// byte[] signature = new byte[MLDsa65.SignatureSizeBytesConst];
 /// dsa.Sign(sk, message, context: default, signature);
 ///
 /// bool valid = dsa.Verify(pk, message, context: default, signature);
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class MlDsa65 : IDsa
+public sealed class MLDsa65 : IDsa
 {
-    private static readonly MlDsaParams Params = MlDsaParams.MlDsa65;
+    private static readonly MLDsaParams Params = MLDsaParams.MLDsa65;
 
     /// <summary>The public key size in bytes (1952 bytes).</summary>
     public const int PublicKeySizeBytesConst = 1952;
@@ -48,18 +48,18 @@ public sealed class MlDsa65 : IDsa
     public const int SignatureSizeBytesConst = 3309;
 
     /// <summary>The key generation seed size in bytes (32 bytes).</summary>
-    public const int KeyGenSeedSizeBytesConst = MlDsaParams.KeyGenSeedBytes;
+    public const int KeyGenSeedSizeBytesConst = MLDsaParams.KeyGenSeedBytes;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MlDsa65"/> class.
+    /// Initializes a new instance of the <see cref="MLDsa65"/> class.
     /// </summary>
-    public MlDsa65() { }
+    public MLDsa65() { }
 
     /// <summary>
     /// Creates a new ML-DSA-65 instance.
     /// </summary>
     /// <returns>A new ML-DSA-65 instance.</returns>
-    public static MlDsa65 Create() => new();
+    public static MLDsa65 Create() => new();
 
     /// <inheritdoc/>
     public string AlgorithmName => "ML-DSA-65";
@@ -75,23 +75,31 @@ public sealed class MlDsa65 : IDsa
 
     /// <inheritdoc/>
     public void GenerateKeyPair(Span<byte> publicKey, Span<byte> secretKey)
-        => MlDsaEngine.GenerateKeyPair(Params, publicKey, secretKey);
+        => GenerateKeyPair(publicKey, secretKey, pairwiseConsistencyTest: true);
+
+    /// <inheritdoc/>
+    public void GenerateKeyPair(Span<byte> publicKey, Span<byte> secretKey, bool pairwiseConsistencyTest)
+        => MLDsaEngine.GenerateKeyPair(Params, publicKey, secretKey, pairwiseConsistencyTest);
 
     /// <inheritdoc/>
     public void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> publicKey, Span<byte> secretKey)
-        => MlDsaEngine.GenerateKeyPair(Params, seed, publicKey, secretKey);
+        => GenerateKeyPair(seed, publicKey, secretKey, pairwiseConsistencyTest: true);
+
+    /// <inheritdoc/>
+    public void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> publicKey, Span<byte> secretKey, bool pairwiseConsistencyTest)
+        => MLDsaEngine.GenerateKeyPair(Params, seed, publicKey, secretKey, pairwiseConsistencyTest);
 
     /// <inheritdoc/>
     public void Sign(ReadOnlySpan<byte> secretKey, ReadOnlySpan<byte> message, ReadOnlySpan<byte> context, Span<byte> signature)
-        => MlDsaEngine.Sign(Params, secretKey, message, context, deterministic: false, signature);
+        => MLDsaEngine.Sign(Params, secretKey, message, context, deterministic: false, signature);
 
     /// <inheritdoc/>
     public void SignDeterministic(ReadOnlySpan<byte> secretKey, ReadOnlySpan<byte> message, ReadOnlySpan<byte> context, Span<byte> signature)
-        => MlDsaEngine.Sign(Params, secretKey, message, context, deterministic: true, signature);
+        => MLDsaEngine.Sign(Params, secretKey, message, context, deterministic: true, signature);
 
     /// <inheritdoc/>
     public bool Verify(ReadOnlySpan<byte> publicKey, ReadOnlySpan<byte> message, ReadOnlySpan<byte> context, ReadOnlySpan<byte> signature)
-        => MlDsaEngine.Verify(Params, publicKey, message, context, signature);
+        => MLDsaEngine.Verify(Params, publicKey, message, context, signature);
 
     /// <inheritdoc/>
     public void Dispose()

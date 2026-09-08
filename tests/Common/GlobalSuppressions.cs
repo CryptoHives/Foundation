@@ -52,3 +52,20 @@ using System.Diagnostics.CodeAnalysis;
     "Performance",
     "CA1822:Mark members as static",
     Justification = "Test methods may be instance methods for framework compatibility.")]
+
+// CA1508: Avoid dead conditional code
+// The algorithm-descriptor equality tests deliberately assert the null-on-both-sides branch
+// of operator ==, which the analyzer folds to a constant. That branch is exactly what the
+// test exists to pin down, so the "dead code" it reports is the assertion's whole point.
+[assembly: SuppressMessage(
+    "Maintainability",
+    "CA1508:Avoid dead conditional code",
+    Justification = "Deliberately asserts the null == null branch of the equality operator.",
+    Scope = "member",
+    Target = "~M:Cryptography.Tests.Kem.MLKem.MLKemApiTests.AlgorithmDescriptors_HaveValueEquality")]
+[assembly: SuppressMessage(
+    "Maintainability",
+    "CA1508:Avoid dead conditional code",
+    Justification = "Deliberately asserts the null == null branch of the equality operator.",
+    Scope = "member",
+    Target = "~M:Cryptography.Tests.Dsa.MLDsa.MLDsaApiTests.AlgorithmDescriptors_HaveValueEquality")]

@@ -19,9 +19,9 @@ using System;
 /// Public key: 1312 bytes, secret key: 2560 bytes, signature: 2420 bytes.
 /// </para>
 /// </remarks>
-public sealed class MlDsa44 : IDsa
+public sealed class MLDsa44 : IDsa
 {
-    private static readonly MlDsaParams Params = MlDsaParams.MlDsa44;
+    private static readonly MLDsaParams Params = MLDsaParams.MLDsa44;
 
     /// <summary>The public key size in bytes (1312 bytes).</summary>
     public const int PublicKeySizeBytesConst = 1312;
@@ -33,18 +33,18 @@ public sealed class MlDsa44 : IDsa
     public const int SignatureSizeBytesConst = 2420;
 
     /// <summary>The key generation seed size in bytes (32 bytes).</summary>
-    public const int KeyGenSeedSizeBytesConst = MlDsaParams.KeyGenSeedBytes;
+    public const int KeyGenSeedSizeBytesConst = MLDsaParams.KeyGenSeedBytes;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MlDsa44"/> class.
+    /// Initializes a new instance of the <see cref="MLDsa44"/> class.
     /// </summary>
-    public MlDsa44() { }
+    public MLDsa44() { }
 
     /// <summary>
     /// Creates a new ML-DSA-44 instance.
     /// </summary>
     /// <returns>A new ML-DSA-44 instance.</returns>
-    public static MlDsa44 Create() => new();
+    public static MLDsa44 Create() => new();
 
     /// <inheritdoc/>
     public string AlgorithmName => "ML-DSA-44";
@@ -60,23 +60,31 @@ public sealed class MlDsa44 : IDsa
 
     /// <inheritdoc/>
     public void GenerateKeyPair(Span<byte> publicKey, Span<byte> secretKey)
-        => MlDsaEngine.GenerateKeyPair(Params, publicKey, secretKey);
+        => GenerateKeyPair(publicKey, secretKey, pairwiseConsistencyTest: true);
+
+    /// <inheritdoc/>
+    public void GenerateKeyPair(Span<byte> publicKey, Span<byte> secretKey, bool pairwiseConsistencyTest)
+        => MLDsaEngine.GenerateKeyPair(Params, publicKey, secretKey, pairwiseConsistencyTest);
 
     /// <inheritdoc/>
     public void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> publicKey, Span<byte> secretKey)
-        => MlDsaEngine.GenerateKeyPair(Params, seed, publicKey, secretKey);
+        => GenerateKeyPair(seed, publicKey, secretKey, pairwiseConsistencyTest: true);
+
+    /// <inheritdoc/>
+    public void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> publicKey, Span<byte> secretKey, bool pairwiseConsistencyTest)
+        => MLDsaEngine.GenerateKeyPair(Params, seed, publicKey, secretKey, pairwiseConsistencyTest);
 
     /// <inheritdoc/>
     public void Sign(ReadOnlySpan<byte> secretKey, ReadOnlySpan<byte> message, ReadOnlySpan<byte> context, Span<byte> signature)
-        => MlDsaEngine.Sign(Params, secretKey, message, context, deterministic: false, signature);
+        => MLDsaEngine.Sign(Params, secretKey, message, context, deterministic: false, signature);
 
     /// <inheritdoc/>
     public void SignDeterministic(ReadOnlySpan<byte> secretKey, ReadOnlySpan<byte> message, ReadOnlySpan<byte> context, Span<byte> signature)
-        => MlDsaEngine.Sign(Params, secretKey, message, context, deterministic: true, signature);
+        => MLDsaEngine.Sign(Params, secretKey, message, context, deterministic: true, signature);
 
     /// <inheritdoc/>
     public bool Verify(ReadOnlySpan<byte> publicKey, ReadOnlySpan<byte> message, ReadOnlySpan<byte> context, ReadOnlySpan<byte> signature)
-        => MlDsaEngine.Verify(Params, publicKey, message, context, signature);
+        => MLDsaEngine.Verify(Params, publicKey, message, context, signature);
 
     /// <inheritdoc/>
     public void Dispose()
