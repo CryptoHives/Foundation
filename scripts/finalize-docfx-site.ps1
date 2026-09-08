@@ -70,6 +70,18 @@ Get-ChildItem -Path $SiteDir -Recurse -Filter *.html | ForEach-Object {
 $ns = [System.Xml.XmlNamespaceManager]::new($doc.NameTable)
 $ns.AddNamespace('sm', 'http://www.sitemaps.org/schemas/sitemap/0.9')
 
+# docfx formats <lastmod> with "yyyy-MM-ddThh:mm:ssK" - lowercase `hh` is the 12-hour
+# clock with no AM/PM marker, so an afternoon build is written as a morning time
+# (17:40 -> 05:40). The date is right and the value is W3C-valid, but the time is
+# misleading. Collapse every <lastmod> to date-only, which is unambiguous and all a
+# search engine uses anyway.
+foreach ($lastmod in $doc.SelectNodes('//sm:url/sm:lastmod', $ns)) {
+    $parsed = [datetime]::MinValue
+    if ([datetime]::TryParse($lastmod.InnerText, [ref]$parsed)) {
+        $lastmod.InnerText = $parsed.ToUniversalTime().ToString('yyyy-MM-dd')
+    }
+}
+
 foreach ($url in $removedUrls) {
     $node = $doc.SelectSingleNode("//sm:url[sm:loc='$url']", $ns)
     if ($null -ne $node) {
