@@ -184,8 +184,7 @@ public class SlhDsaAcvpTests
         Assert.That(valid, Is.EqualTo(expectedValid), $"{parameterSet} tcId {tcId} ({reason}): verification result mismatch.");
     }
 
-    private static SlhDsaParams ParamsFor(string parameterSet) => parameterSet switch
-    {
+    private static SlhDsaParams ParamsFor(string parameterSet) => parameterSet switch {
         "SLH-DSA-SHA2-128s" => SlhDsaParams.Sha2_128s,
         "SLH-DSA-SHAKE-128s" => SlhDsaParams.Shake128s,
         "SLH-DSA-SHA2-128f" => SlhDsaParams.Sha2_128f,
@@ -201,8 +200,7 @@ public class SlhDsaAcvpTests
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    private static SlhDsaAlgorithm AlgorithmFor(string parameterSet) => parameterSet switch
-    {
+    private static SlhDsaAlgorithm AlgorithmFor(string parameterSet) => parameterSet switch {
         "SLH-DSA-SHA2-128s" => SlhDsaAlgorithm.SlhDsaSha2_128s,
         "SLH-DSA-SHAKE-128s" => SlhDsaAlgorithm.SlhDsaShake128s,
         "SLH-DSA-SHA2-128f" => SlhDsaAlgorithm.SlhDsaSha2_128f,

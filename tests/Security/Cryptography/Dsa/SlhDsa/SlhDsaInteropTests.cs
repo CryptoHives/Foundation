@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Dsa.SlhDsa;
@@ -154,8 +154,7 @@ public class SlhDsaInteropTests
 #pragma warning restore SYSLIB5006
 #endif
 
-    private static SlhDsaParameters BcParameters(string name) => name switch
-    {
+    private static SlhDsaParameters BcParameters(string name) => name switch {
         "SLH-DSA-SHA2-128f" => SlhDsaParameters.slh_dsa_sha2_128f,
         "SLH-DSA-SHAKE-128f" => SlhDsaParameters.slh_dsa_shake_128f,
         "SLH-DSA-SHAKE-192f" => SlhDsaParameters.slh_dsa_shake_192f,
