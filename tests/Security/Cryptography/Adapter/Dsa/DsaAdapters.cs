@@ -84,6 +84,99 @@ public interface IDsaRunner : IDisposable
     /// <param name="signature">The signature.</param>
     /// <returns>True when the signature is valid.</returns>
     bool Verify(byte[] message, byte[] signature);
+
+    /// <summary>
+    /// Signs a pre-computed digest using the pre-hash variant (HashML-DSA / HashSLH-DSA).
+    /// </summary>
+    /// <param name="message">The raw message, for implementations that hash it themselves.</param>
+    /// <param name="digest">PH(<paramref name="message"/>), for implementations that take a digest.</param>
+    /// <param name="signature">Receives the signature.</param>
+    /// <remarks>
+    /// Both forms of the input are supplied because the libraries disagree about which they
+    /// take. Ours and the in-box API accept the digest; BouncyCastle's <c>HashMLDsaSigner</c> and
+    /// <c>HashSlhDsaSigner</c> accept the raw message and hash it internally, with no overload
+    /// that takes a digest. Its rows therefore include the message-hashing cost — negligible
+    /// beside a lattice or hash-based signature at the message size used here, but real, and
+    /// unavoidable given its API. See <see cref="DsaPreHash"/> for which pre-hash function each
+    /// parameter set uses and why that is not a free choice.
+    /// </remarks>
+    void SignPreHash(byte[] message, byte[] digest, byte[] signature);
+
+    /// <summary>
+    /// Verifies a pre-hash signature.
+    /// </summary>
+    /// <param name="message">The raw message, for implementations that hash it themselves.</param>
+    /// <param name="digest">PH(<paramref name="message"/>), for implementations that take a digest.</param>
+    /// <param name="signature">The signature.</param>
+    /// <returns>True when the signature is valid.</returns>
+    bool VerifyPreHash(byte[] message, byte[] digest, byte[] signature);
+}
+
+/// <summary>
+/// Picks the pre-hash function each parameter set is benchmarked with, and computes the digest.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The choice is not free. FIPS 204 and 205 allow any of the twelve approved pre-hash functions
+/// with any parameter set, but BouncyCastle binds exactly one to each — <c>ml_dsa_65_with_sha512</c>,
+/// <c>slh_dsa_sha2_128f_with_sha256</c>, <c>slh_dsa_shake_256f_with_shake256</c> and so on —
+/// with no way to vary it. Comparing implementations therefore means using the function
+/// BouncyCastle would use, which is what this maps.
+/// </para>
+/// <para>
+/// The pattern it encodes is the natural one anyway: a pre-hash function matched to the set's
+/// security category, drawn from the same family as the set's own hash instantiation.
+/// </para>
+/// </remarks>
+public static class DsaPreHash
+{
+    /// <summary>
+    /// Returns the ACVP name of the pre-hash function used for a parameter set.
+    /// </summary>
+    /// <param name="family">The parameter set, e.g. <c>SLH-DSA-SHAKE-192f</c>.</param>
+    /// <returns>The ACVP hash algorithm name.</returns>
+    /// <exception cref="ArgumentException">The name is not a known parameter set.</exception>
+    public static string HashNameFor(string family)
+    {
+        if (family.StartsWith("ML-DSA", StringComparison.Ordinal))
+        {
+            return "SHA2-512";
+        }
+
+        if (family.StartsWith("SLH-DSA-SHAKE", StringComparison.Ordinal))
+        {
+            return family.Contains("128") ? "SHAKE-128" : "SHAKE-256";
+        }
+
+        if (family.StartsWith("SLH-DSA-SHA2", StringComparison.Ordinal))
+        {
+            return family.Contains("128") ? "SHA2-256" : "SHA2-512";
+        }
+
+        throw new ArgumentException($"Unknown parameter set: {family}", nameof(family));
+    }
+
+    /// <summary>
+    /// Returns the dotted-decimal OID of the pre-hash function used for a parameter set.
+    /// </summary>
+    /// <param name="family">The parameter set.</param>
+    /// <returns>The OID.</returns>
+    public static string OidFor(string family) => HashNameFor(family) switch {
+        "SHA2-256" => "2.16.840.1.101.3.4.2.1",
+        "SHA2-512" => "2.16.840.1.101.3.4.2.3",
+        "SHAKE-128" => "2.16.840.1.101.3.4.2.11",
+        "SHAKE-256" => "2.16.840.1.101.3.4.2.12",
+        string other => throw new ArgumentException($"No OID for pre-hash function {other}.", nameof(family)),
+    };
+
+    /// <summary>
+    /// Computes PH(message) with the pre-hash function a parameter set is benchmarked with.
+    /// </summary>
+    /// <param name="family">The parameter set.</param>
+    /// <param name="message">The message to hash.</param>
+    /// <returns>The digest.</returns>
+    public static byte[] Digest(string family, byte[] message)
+        => Cryptography.Tests.Dsa.PreHashTestUtil.ComputeDigest(HashNameFor(family), message).Digest;
 }
 
 /// <summary>
@@ -94,6 +187,7 @@ public sealed class MLDsaAdapter : IDsaRunner
 {
     private readonly CH.MLDsaAlgorithm _algorithm;
     private readonly bool _performPairwiseConsistencyTest;
+    private readonly string _preHashOid;
     private CH.MLDsa? _signer;
     private CH.MLDsa? _verifier;
 
@@ -112,6 +206,7 @@ public sealed class MLDsaAdapter : IDsaRunner
     {
         _algorithm = algorithm;
         _performPairwiseConsistencyTest = pairwiseConsistencyTest;
+        _preHashOid = DsaPreHash.OidFor(algorithm.Name);
     }
 
     /// <inheritdoc/>
@@ -152,6 +247,19 @@ public sealed class MLDsaAdapter : IDsaRunner
         => _verifier!.VerifyData(new ReadOnlySpan<byte>(message), new ReadOnlySpan<byte>(signature));
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The spans are explicit for the same reason as on <see cref="Sign"/>, and one more: the
+    /// span overload of <c>SignPreHash</c> takes the destination second, so passing two arrays
+    /// would bind to the <c>byte[]</c> overload whose second parameter is the OID.
+    /// </remarks>
+    public void SignPreHash(byte[] message, byte[] digest, byte[] signature)
+        => _signer!.SignPreHash(new ReadOnlySpan<byte>(digest), new Span<byte>(signature), _preHashOid);
+
+    /// <inheritdoc/>
+    public bool VerifyPreHash(byte[] message, byte[] digest, byte[] signature)
+        => _verifier!.VerifyPreHash(new ReadOnlySpan<byte>(digest), new ReadOnlySpan<byte>(signature), _preHashOid);
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         _signer?.Dispose();
@@ -168,6 +276,10 @@ public sealed class MLDsaStatelessAdapter : IDsaRunner
     private readonly bool _performPairwiseConsistencyTest;
     private readonly byte[] _keyGenPublicKey;
     private readonly byte[] _keyGenPrivateKey;
+    private readonly CH.MLDsaParams _parameters;
+    private readonly string _preHashOid;
+    private readonly byte[] _prefix = new byte[CH.PreHash.MaxPrefixBytes];
+    private readonly byte[] _signSeed = new byte[CH.MLDsaParams.SignSeedBytes];
     private byte[] _publicKey = [];
     private byte[] _privateKey = [];
 
@@ -175,13 +287,16 @@ public sealed class MLDsaStatelessAdapter : IDsaRunner
     /// Initializes a new instance of the <see cref="MLDsaStatelessAdapter"/> class.
     /// </summary>
     /// <param name="dsa">The stateless signature instance.</param>
+    /// <param name="family">The parameter set name, e.g. <c>ML-DSA-65</c>.</param>
     /// <param name="pairwiseConsistencyTest">Whether key generation runs the consistency check.</param>
-    public MLDsaStatelessAdapter(CH.IDsa dsa, bool pairwiseConsistencyTest = true)
+    public MLDsaStatelessAdapter(CH.IDsa dsa, string family, bool pairwiseConsistencyTest = true)
     {
         _dsa = dsa;
         _performPairwiseConsistencyTest = pairwiseConsistencyTest;
         _keyGenPublicKey = new byte[dsa.PublicKeySizeBytes];
         _keyGenPrivateKey = new byte[dsa.SecretKeySizeBytes];
+        _parameters = Cryptography.Tests.Dsa.PreHashTestUtil.MLDsaParamsFor(family);
+        _preHashOid = DsaPreHash.OidFor(family);
     }
 
     /// <inheritdoc/>
@@ -221,6 +336,32 @@ public sealed class MLDsaStatelessAdapter : IDsaRunner
         => _dsa.Verify(_publicKey, message, context: default, signature);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// One level below <see cref="CH.IDsa"/>, deliberately: that interface has no pre-hash
+    /// member, because the pre-hash prefix (0x01 ‖ |ctx| ‖ ctx ‖ OID) is a different prefix from
+    /// the pure one (0x00 ‖ |ctx| ‖ ctx) and <c>IDsa.Sign</c> builds the pure one internally. The
+    /// row still measures what it claims to — the caller-owned-buffer path, with no key object
+    /// allocated per call.
+    /// </remarks>
+    public void SignPreHash(byte[] message, byte[] digest, byte[] signature)
+    {
+        int prefixLength = CH.PreHash.BuildPrefix(default, _preHashOid, _prefix);
+
+        // Fresh randomness per call, so this measures the hedged variant the Sign row above
+        // measures rather than the cheaper deterministic one.
+        CH.MLDsaCore.GenerateRandomSeed(_signSeed);
+        CH.MLDsaCore.Sign(_parameters, _privateKey, _prefix.AsSpan(0, prefixLength), digest,
+                          _signSeed, signature);
+    }
+
+    /// <inheritdoc/>
+    public bool VerifyPreHash(byte[] message, byte[] digest, byte[] signature)
+    {
+        int prefixLength = CH.PreHash.BuildPrefix(default, _preHashOid, _prefix);
+        return CH.MLDsaCore.Verify(_parameters, _publicKey, _prefix.AsSpan(0, prefixLength), digest, signature);
+    }
+
+    /// <inheritdoc/>
     public void Dispose() => _dsa.Dispose();
 }
 
@@ -236,10 +377,13 @@ public sealed class MLDsaStatelessAdapter : IDsaRunner
 public sealed class BouncyCastleDsaAdapter : IDsaRunner
 {
     private readonly MLDsaParameters _parameters;
+    private readonly MLDsaParameters _preHashParameters;
     private readonly SecureRandom _random = new();
     private readonly MLDsaKeyPairGenerator _generator = new();
     private MLDsaSigner? _signer;
     private MLDsaSigner? _verifier;
+    private HashMLDsaSigner? _preHashSigner;
+    private HashMLDsaSigner? _preHashVerifier;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BouncyCastleDsaAdapter"/> class.
@@ -254,10 +398,12 @@ public sealed class BouncyCastleDsaAdapter : IDsaRunner
     /// throwaway signature just to measure its length is a strange thing for a benchmark
     /// harness to do in setup. They are fixed by the parameter set in any case.
     /// </remarks>
-    public BouncyCastleDsaAdapter(MLDsaParameters parameters, int publicKeySizeBytes,
+    public BouncyCastleDsaAdapter(MLDsaParameters parameters, MLDsaParameters preHashParameters,
+                                  int publicKeySizeBytes,
                                   int privateKeySizeBytes, int signatureSizeBytes)
     {
         _parameters = parameters;
+        _preHashParameters = preHashParameters;
         PublicKeySizeBytes = publicKeySizeBytes;
         PrivateKeySizeBytes = privateKeySizeBytes;
         SignatureSizeBytes = signatureSizeBytes;
@@ -281,6 +427,17 @@ public sealed class BouncyCastleDsaAdapter : IDsaRunner
 
         _verifier = new MLDsaSigner(_parameters, deterministic: false);
         _verifier.Init(forSigning: false, MLDsaPublicKeyParameters.FromEncoding(_parameters, publicKey));
+
+        // The pre-hash signers take the parameter set with the hash bound into it, and the key
+        // has to be re-encoded under that set: BouncyCastle treats ml_dsa_65 and
+        // ml_dsa_65_with_sha512 as different parameter objects.
+        _preHashSigner = new HashMLDsaSigner(_preHashParameters, deterministic: false);
+        _preHashSigner.Init(forSigning: true,
+            MLDsaPrivateKeyParameters.FromEncoding(_preHashParameters, privateKey));
+
+        _preHashVerifier = new HashMLDsaSigner(_preHashParameters, deterministic: false);
+        _preHashVerifier.Init(forSigning: false,
+            MLDsaPublicKeyParameters.FromEncoding(_preHashParameters, publicKey));
     }
 
     /// <inheritdoc/>
@@ -302,6 +459,25 @@ public sealed class BouncyCastleDsaAdapter : IDsaRunner
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Takes the raw message, not the digest: <c>HashMLDsaSigner</c> hashes internally and has
+    /// no digest-input overload, so this row carries the message-hashing cost the others do not.
+    /// </remarks>
+    public void SignPreHash(byte[] message, byte[] digest, byte[] signature)
+    {
+        _preHashSigner!.BlockUpdate(message, 0, message.Length);
+        byte[] produced = _preHashSigner.GenerateSignature();
+        produced.CopyTo(signature, 0);
+    }
+
+    /// <inheritdoc/>
+    public bool VerifyPreHash(byte[] message, byte[] digest, byte[] signature)
+    {
+        _preHashVerifier!.BlockUpdate(message, 0, message.Length);
+        return _preHashVerifier.VerifySignature(signature);
+    }
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         // Nothing unmanaged; BouncyCastle types are plain managed objects.
@@ -318,6 +494,7 @@ public sealed class BouncyCastleDsaAdapter : IDsaRunner
 public sealed class OSDsaAdapter : IDsaRunner
 {
     private readonly System.Security.Cryptography.MLDsaAlgorithm _algorithm;
+    private readonly string _preHashOid;
     private System.Security.Cryptography.MLDsa? _signer;
     private System.Security.Cryptography.MLDsa? _verifier;
 
@@ -325,7 +502,11 @@ public sealed class OSDsaAdapter : IDsaRunner
     /// Initializes a new instance of the <see cref="OSDsaAdapter"/> class.
     /// </summary>
     /// <param name="algorithm">The parameter set.</param>
-    public OSDsaAdapter(System.Security.Cryptography.MLDsaAlgorithm algorithm) => _algorithm = algorithm;
+    public OSDsaAdapter(System.Security.Cryptography.MLDsaAlgorithm algorithm)
+    {
+        _algorithm = algorithm;
+        _preHashOid = DsaPreHash.OidFor(algorithm.Name);
+    }
 
     /// <inheritdoc/>
     public int PublicKeySizeBytes => _algorithm.PublicKeySizeInBytes;
@@ -357,6 +538,14 @@ public sealed class OSDsaAdapter : IDsaRunner
     /// <inheritdoc/>
     public bool Verify(byte[] message, byte[] signature)
         => _verifier!.VerifyData(new ReadOnlySpan<byte>(message), new ReadOnlySpan<byte>(signature));
+
+    /// <inheritdoc/>
+    public void SignPreHash(byte[] message, byte[] digest, byte[] signature)
+        => _signer!.SignPreHash(new ReadOnlySpan<byte>(digest), new Span<byte>(signature), _preHashOid);
+
+    /// <inheritdoc/>
+    public bool VerifyPreHash(byte[] message, byte[] digest, byte[] signature)
+        => _verifier!.VerifyPreHash(new ReadOnlySpan<byte>(digest), new ReadOnlySpan<byte>(signature), _preHashOid);
 
     /// <inheritdoc/>
     public void Dispose()

@@ -329,7 +329,6 @@ official sources.
 > cross-checked against BouncyCastle and .NET 10 `System.Security.Cryptography.MLKem`.
 > The `MLKem` key-holding class mirrors the .NET 10 API shape on all target frameworks.
 
-
 ---
 
 ## Digital Signature Algorithms
@@ -341,7 +340,7 @@ official sources.
 | ML-DSA-44 | 2 | ✅ Implemented | `MLDsa44`, `MLDsa` |
 | ML-DSA-65 | 3 | ✅ Implemented | `MLDsa65`, `MLDsa` |
 | ML-DSA-87 | 5 | ✅ Implemented | `MLDsa87`, `MLDsa` |
-| HashML-DSA (pre-hash) | - | ⬜ Not implemented | - |
+| HashML-DSA (pre-hash) | - | ✅ Implemented | `MLDsa.SignPreHash`/`VerifyPreHash` |
 
 > **Note:** Validated against official NIST ACVP vectors (key generation, deterministic
 > and hedged signing with byte-exact signatures, and verification including modified
@@ -361,7 +360,7 @@ official sources.
 | SLH-DSA-{SHA2,SHAKE}-128{s,f} | 1 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
 | SLH-DSA-{SHA2,SHAKE}-192{s,f} | 3 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
 | SLH-DSA-{SHA2,SHAKE}-256{s,f} | 5 | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
-| HashSLH-DSA (pre-hash) | - | ⬜ Not implemented | - |
+| HashSLH-DSA (pre-hash) | - | ✅ Implemented | `SlhDsa.SignPreHash`/`VerifyPreHash` |
 
 > **Note:** Validated against official NIST ACVP vectors (key generation for all 12
 > parameter sets, deterministic and hedged signing with byte-exact signatures, and
