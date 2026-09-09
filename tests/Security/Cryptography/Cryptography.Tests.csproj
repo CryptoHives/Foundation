@@ -122,6 +122,23 @@
                       LogicalName="Cryptography.Tests.TestData.slhdsa-acvp-fips205.json.gz" />
   </ItemGroup>
 
+  <!--
+    NIST ACVP conformance vectors for the pre-hash variants, HashML-DSA (FIPS 204 section 5.4)
+    and HashSLH-DSA (FIPS 205 section 10.2). Separate files rather than extra groups in the two
+    above: the selection rule differs, and merging would rewrite those already-committed
+    multi-megabyte blobs on every regeneration. Both are stratified so that all twelve approved
+    pre-hash functions and every parameter set are covered - 57 cases (~0.88 MB) for ML-DSA and
+    37 (~1.38 MB) for SLH-DSA. The complete sets, 135 and 456 cases, are fetched on demand with
+    the 'prehash-full' profile, which the loaders prefer when present. Regenerate with
+    scripts/fetch-mldsa-acvp-vectors.py and scripts/fetch-slhdsa-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mldsa-prehash-acvp-fips204.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mldsa-prehash-acvp-fips204.json.gz" />
+    <EmbeddedResource Include="TestData/slhdsa-prehash-acvp-fips205.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.slhdsa-prehash-acvp-fips205.json.gz" />
+  </ItemGroup>
+
   <ItemGroup>
     <Folder Include="Properties/" />
   </ItemGroup>

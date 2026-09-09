@@ -186,6 +186,10 @@ SLH-DSA (FIPS 205) completes the NIST PQC trio for conservative, hash-based sign
 all 12 parameter sets via `SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f)` with the
 same API shape; prefer the `f` (fast) sets unless minimal signature size is critical.
 
+Both schemes also offer the pre-hash variants (HashML-DSA / HashSLH-DSA) via
+`SignPreHash`/`VerifyPreHash` for digest-only signing workflows, accepting all twelve
+approved pre-hash functions by OID.
+
 ### cSHAKE — Domain-Separated XOF
 
 ```csharp

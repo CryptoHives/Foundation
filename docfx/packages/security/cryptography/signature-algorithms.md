@@ -105,11 +105,15 @@ between the two is a `using` swap.
 | `ImportMLDsaPublicKey(MLDsaAlgorithm, ReadOnlySpan<byte>)` | Import a public key (verify-only instance) |
 | `SignData(data, context)` / `SignData(data, destination, context)` | Hedged (randomized) signing |
 | `VerifyData(data, signature, context)` | Verification; wrong-length signatures return false |
+| `SignPreHash(hash, oid, context)` / `SignPreHash(hash, destination, oid, context)` | HashML-DSA signing over a caller-supplied digest |
+| `VerifyPreHash(hash, signature, oid, context)` | HashML-DSA verification |
 | `ExportMLDsaPrivateSeed()` / `ExportMLDsaPublicKey()` / `ExportMLDsaPrivateKey()` | Key export (span overloads available) |
 | `Dispose()` | Zeroize the private seed and private key |
 
-Every import takes a `byte[]` as well as a `ReadOnlySpan<byte>`, and `SignData`/`VerifyData`
-have the `byte[]`-based overloads the in-box type provides.
+Every import takes a `byte[]` as well as a `ReadOnlySpan<byte>`, and `SignData`/`VerifyData`/
+`SignPreHash`/`VerifyPreHash` have the `byte[]`-based overloads the in-box type provides. See
+[Pre-Hash Variants](#pre-hash-variants-hashml-dsa--hashslh-dsa) for the overload hazard those
+bring with them.
 
 #### Pairwise Consistency Test
 
@@ -185,7 +189,7 @@ using var verifier = SlhDsa.ImportSlhDsaPublicKey(SlhDsaAlgorithm.SlhDsaShake128
 bool valid = verifier.VerifyData(message, signature);
 ```
 
-The member names are the in-box ones, so `SlhDsa` is a drop-in for `System.Security.Cryptography.SlhDsa` — change the `using` and the code compiles unchanged, on .NET Framework 4.6.2 upward. `IsSupported` is always `true` here, which is the practical difference: no shipping Windows exposes SLH-DSA through CNG, so the in-box type is unavailable on most platforms today.
+The member names are the in-box ones, so `SlhDsa` is a drop-in for `System.Security.Cryptography.SlhDsa` — change the `using` and the code compiles unchanged, on .NET Framework 4.6.2 upward. `IsSupported` is always `true` here, which is the practical difference: the in-box type needs SLH-DSA from CNG or OpenSSL 3.5+, and no shipping Windows build provides it.
 
 Context strings (≤ 255 bytes) work exactly as with ML-DSA. The 4n-byte private key is itself the compact storage form (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root); there is no separate private seed. Key generation includes a sign/verify pairwise consistency test (FIPS 140-3), which for `s` sets makes `GenerateKey` take seconds by design — `GenerateKey(algorithm, pairwiseConsistencyTest: false)` opts out where that matters.
 
@@ -200,18 +204,58 @@ Context strings (≤ 255 bytes) work exactly as with ML-DSA. The 4n-byte private
 | `ImportSlhDsaPublicKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 2n-byte public key (verify-only instance) |
 | `SignData(data, context)` / `SignData(data, destination, context)` | Hedged (randomized) signing |
 | `VerifyData(data, signature, context)` | Verification; wrong-length signatures return false |
+| `SignPreHash(hash, oid, context)` / `SignPreHash(hash, destination, oid, context)` | HashSLH-DSA signing over a caller-supplied digest |
+| `VerifyPreHash(hash, signature, oid, context)` | HashSLH-DSA verification |
 | `ExportSlhDsaPublicKey()` / `ExportSlhDsaPrivateKey()` | Key export (span overloads available) |
 | `Dispose()` | Zeroize the private key |
 
-Every import, export, `SignData` and `VerifyData` has a `byte[]` overload beside the span one, matching the in-box type. Note the inherited hazard that comes with that: `SignData(byte[], byte[])` binds the **second argument as the context string**, not as a destination buffer. To sign into a buffer you own, use the span overload explicitly.
+Every import, export, `SignData`, `VerifyData`, `SignPreHash` and `VerifyPreHash` has a `byte[]` overload beside the span one, matching the in-box type. Note the inherited hazard that comes with that: `SignData(byte[], byte[])` binds the **second argument as the context string**, not as a destination buffer, and `SignPreHash`'s span overload takes the destination second while its `byte[]` overload takes the OID second. To sign into a buffer you own, spell the spans out.
 
-PKCS#8, SPKI and PEM import/export, and the `HashSLH-DSA` pre-hash variants, are not implemented yet — they land in one batch across ML-KEM, ML-DSA and SLH-DSA.
+PKCS#8, SPKI and PEM import/export are not implemented yet — they land in one batch across ML-KEM, ML-DSA and SLH-DSA.
 
 ### Validation
 
 Same three-way playbook as ML-KEM/ML-DSA (see [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md)): NIST ACVP known-answer tests (keyGen for all 12 sets — byte-exact keys through the full hypertree; byte-exact deterministic and hedged signatures; sigVer including modified R/SIGFORS/SIGHT/message and wrong-length rejections), BouncyCastle interop in both directions, and .NET 10 `SlhDsa` cross-checks where the OS supports it.
 
 Unlike ML-KEM and ML-DSA, the embedded vector file is a **stratified selection** rather than everything runnable: SLH-DSA signatures are 7,856–49,856 bytes each, so the full set is 11.8 MB gzipped. The committed 180 cases still cover every parameter set, and a weekly CI job downloads and runs the complete 456-case set. See [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md) for the rule and for how to run the full set locally.
+
+---
+
+## Pre-Hash Variants (HashML-DSA / HashSLH-DSA)
+
+Both schemes support the FIPS pre-hash variants (FIPS 204 §5.4, FIPS 205 §10.2), where the caller hashes the message once with an approved hash or XOF and signs the digest. This suits large messages, streaming, and CMS/X.509 workflows where only the digest reaches the signer. The signature binds the pre-hash function via its DER-encoded OID inside M′ = 0x01 ‖ |ctx| ‖ ctx ‖ OID ‖ PH(M), so pre-hash and pure signatures over the same message are never interchangeable.
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
+using CryptoHives.Foundation.Security.Cryptography.Hash;
+
+const string Sha512Oid = "2.16.840.1.101.3.4.2.3";
+
+// Caller computes PH(M) once — here SHA-512.
+using var sha512 = SHA512.Create();
+byte[] digest = new byte[64];
+sha512.TryComputeHash(largeMessage, digest, out _);
+
+using var signer = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
+byte[] signature = signer.SignPreHash(digest, Sha512Oid);
+
+bool valid = signer.VerifyPreHash(digest, signature, Sha512Oid);
+```
+
+To sign into a buffer you already own, use the span overload — note that it takes the destination
+**second**, which is where the `byte[]` overload takes the OID:
+
+```csharp
+byte[] signature = new byte[MLDsaAlgorithm.MLDsa65.SignatureSizeInBytes];
+signer.SignPreHash(new ReadOnlySpan<byte>(digest), new Span<byte>(signature), Sha512Oid);
+```
+
+`SlhDsa.SignPreHash`/`VerifyPreHash` work identically. All twelve approved pre-hash functions are
+accepted (SHA-2 family incl. SHA-512/224 and SHA-512/256, SHA-3 family, SHAKE128/256); the digest
+length is validated against the OID, so a SHAKE128 digest must be 32 bytes and a SHAKE256 one 64.
+Choose a pre-hash function that meets the parameter set's security category — e.g. SHA-512 for
+ML-DSA-65/87. The API shape mirrors .NET 10's `SignPreHash`/`VerifyPreHash` member for member.
+
 
 ---
 
@@ -247,12 +291,12 @@ The implementation is validated on every target framework by three independent m
 | Context strings | ✅ | ✅ |
 | Deterministic signing | ✅ (`IDsa.SignDeterministic`) | ❌ |
 | Pairwise consistency test opt-out | ✅ | ❌ |
-| HashML-DSA (pre-hash) | 🔲 Planned | ✅ |
+| HashML-DSA (pre-hash) | ✅ | ✅ |
 | External-μ signing (`SignMu`/`VerifyMu`) | 🔲 Planned | ✅ |
 | PKCS#8 / SPKI / PEM | 🔲 Planned (with X.509 support) | ✅ |
 
-The deferred rows are held back deliberately: pre-hash, external-μ signing and the ASN.1 key
-formats land as one batch once the post-quantum algorithm set is complete, so ML-KEM and ML-DSA
+The two deferred rows are held back deliberately: external-μ signing and the ASN.1 key formats
+land as one batch once the post-quantum algorithm set is complete, so ML-KEM, ML-DSA and SLH-DSA
 gain them together.
 
 ---
@@ -263,7 +307,7 @@ gain them together.
 |-----------|----------|--------|
 | ML-DSA-44/65/87 (pure) | FIPS 204 | ✅ Implemented |
 | SLH-DSA, all 12 parameter sets (pure) | FIPS 205 | ✅ Implemented |
-| HashML-DSA / HashSLH-DSA (pre-hash variants) | FIPS 204 §5.4 / FIPS 205 §10.2 | 🔲 Planned |
+| HashML-DSA / HashSLH-DSA (pre-hash variants) | FIPS 204 §5.4 / FIPS 205 §10.2 | ✅ Implemented |
 | External-μ signing (`SignMu`/`VerifyMu`) | FIPS 204 §6.2 | 🔲 Planned |
 | Ed25519 | RFC 8032 | 🔲 Under review |
 | PKCS#8 / SPKI key formats | RFC 5208 / RFC 5280 | 🔲 Planned with X.509 support |

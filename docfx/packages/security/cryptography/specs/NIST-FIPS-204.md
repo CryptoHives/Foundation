@@ -28,7 +28,7 @@ Deployment targets include code signing, firmware signing, X.509 certificates, a
 | ML-DSA-44 | ✅ Implemented | `MLDsa44`, `MLDsa` + `MLDsaAlgorithm.MLDsa44` |
 | ML-DSA-65 | ✅ Implemented | `MLDsa65`, `MLDsa` + `MLDsaAlgorithm.MLDsa65` |
 | ML-DSA-87 | ✅ Implemented | `MLDsa87`, `MLDsa` + `MLDsaAlgorithm.MLDsa87` |
-| HashML-DSA (pre-hash) | ⬜ Not implemented | - |
+| HashML-DSA (pre-hash, §5.4) | ✅ Implemented | `MLDsa.SignPreHash` / `MLDsa.VerifyPreHash` |
 
 ---
 
@@ -78,7 +78,7 @@ All symmetric primitives come from the FIPS 202 Keccak family (implemented in th
 
 ### External Interface (Algorithms 2/3)
 
-The message is domain-separated as M′ = 0x00 ‖ |ctx| ‖ ctx ‖ M with a context string of at most 255 bytes. Hedged signing (fresh 32-byte rnd) is the default; the deterministic variant uses rnd = 0³². HashML-DSA (pre-hash, domain byte 0x01) is not yet implemented.
+The message is domain-separated as M′ = 0x00 ‖ |ctx| ‖ ctx ‖ M with a context string of at most 255 bytes. Hedged signing (fresh 32-byte rnd) is the default; the deterministic variant uses rnd = 0³². HashML-DSA (§5.4, domain byte 0x01, M′ = 0x01 ‖ |ctx| ‖ ctx ‖ OID ‖ PH(M)) is available via `SignPreHash`/`VerifyPreHash` for all twelve approved pre-hash functions.
 
 ### Side-Channel Notes
 
