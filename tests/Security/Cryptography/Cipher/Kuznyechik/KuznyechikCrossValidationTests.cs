@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA5358
+#pragma warning disable CA5401 // ECB/CBC IV values are explicit test inputs; not production use. OpenGost requires IV assignment.
 
 namespace Cryptography.Tests.Cipher.Kuznyechik;
 
