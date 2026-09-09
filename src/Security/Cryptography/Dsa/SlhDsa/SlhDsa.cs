@@ -23,36 +23,47 @@ using OS = System.Security.Cryptography;
 /// than signing time; verification is fast for all sets.
 /// </para>
 /// <para>
-/// An instance holds either a full key pair (via <see cref="GenerateKey"/> or
-/// <see cref="ImportSecretKey"/>) or only a public key (via <see cref="ImportPublicKey"/>).
-/// The 4n-byte secret key is itself the compact storage form (SK.seed ‖ SK.prf ‖ PK.seed ‖
-/// PK.root); there is no separate private seed. Secret key material is zeroed when the
+/// An instance holds either a full key pair (via <see cref="GenerateKey(SlhDsaAlgorithm)"/> or
+/// <see cref="ImportSlhDsaPrivateKey(SlhDsaAlgorithm, ReadOnlySpan{byte})"/>) or only a public
+/// key (via <see cref="ImportSlhDsaPublicKey(SlhDsaAlgorithm, ReadOnlySpan{byte})"/>).
+/// The 4n-byte private key is itself the compact storage form (SK.seed ‖ SK.prf ‖ PK.seed ‖
+/// PK.root); there is no separate private seed. Private key material is zeroed when the
 /// instance is disposed.
 /// </para>
 /// <para>
 /// <b>Example usage:</b>
 /// <code>
 /// using var signer = SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f);
-/// byte[] publicKey = signer.ExportPublicKey();
+/// byte[] publicKey = signer.ExportSlhDsaPublicKey();
 /// byte[] signature = signer.SignData(message);
 ///
-/// using var verifier = SlhDsa.ImportPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, publicKey);
+/// using var verifier = SlhDsa.ImportSlhDsaPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, publicKey);
 /// bool valid = verifier.VerifyData(message, signature);
 /// </code>
 /// </para>
 /// </remarks>
 public sealed class SlhDsa : IDisposable
 {
-    private readonly byte[]? _secretKey;
+    private readonly byte[]? _privateKey;
     private readonly byte[] _publicKey;
     private bool _disposed;
 
-    private SlhDsa(SlhDsaAlgorithm algorithm, byte[]? secretKey, byte[] publicKey)
+    private SlhDsa(SlhDsaAlgorithm algorithm, byte[]? privateKey, byte[] publicKey)
     {
         Algorithm = algorithm;
-        _secretKey = secretKey;
+        _privateKey = privateKey;
         _publicKey = publicKey;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether SLH-DSA is supported on the current platform.
+    /// </summary>
+    /// <remarks>
+    /// Always <see langword="true"/>. This is a fully managed implementation, so unlike
+    /// <c>System.Security.Cryptography.SlhDsa.IsSupported</c> it never depends on the
+    /// operating system providing SLH-DSA.
+    /// </remarks>
+    public static bool IsSupported => true;
 
     /// <summary>
     /// Gets the SLH-DSA parameter set of this key.
@@ -65,35 +76,68 @@ public sealed class SlhDsa : IDisposable
     /// <param name="algorithm">The parameter set to generate a key for.</param>
     /// <returns>A new instance holding the generated key pair.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
+    /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
     public static SlhDsa GenerateKey(SlhDsaAlgorithm algorithm)
+        => GenerateKey(algorithm, pairwiseConsistencyTest: true);
+
+    /// <summary>
+    /// Generates a new SLH-DSA key pair, optionally skipping the pairwise consistency test.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The pairwise consistency test verifies a freshly generated key pair by signing and
+    /// verifying one message, as FIPS 140-3 IG 10.3.A expects of a validated module.
+    /// </para>
+    /// <para>
+    /// It is disproportionately expensive for SLH-DSA. A signature is on the order of 10⁶
+    /// hash invocations for the <c>s</c> parameter sets, so the check does not merely add to
+    /// key generation — it costs orders of magnitude more than generating the key did.
+    /// </para>
+    /// <para>
+    /// It guards against a <i>fault</i> — bad memory, a bit flip, a miscompiled build —
+    /// producing a key pair that does not round-trip. It cannot catch an implementation bug,
+    /// since both halves of the test would be wrong in the same way. Disable it only where
+    /// that trade is understood and key generation throughput actually matters; the default
+    /// on the BCL-shaped overload keeps it enabled.
+    /// </para>
+    /// </remarks>
+    /// <param name="algorithm">The parameter set to generate a key for.</param>
+    /// <param name="pairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the generated key pair with a sign/verify round trip;
+    /// <see langword="false"/> to skip it.
+    /// </param>
+    /// <returns>A new instance holding the generated key pair.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
+    /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
+    public static SlhDsa GenerateKey(SlhDsaAlgorithm algorithm, bool pairwiseConsistencyTest)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
 
         byte[] publicKey = new byte[algorithm.PublicKeySizeInBytes];
-        byte[] secretKey = new byte[algorithm.SecretKeySizeInBytes];
-        SlhDsaCore.KeyGen(algorithm.Parameters, publicKey, secretKey);
-        return new SlhDsa(algorithm, secretKey, publicKey);
+        byte[] privateKey = new byte[algorithm.PrivateKeySizeInBytes];
+        SlhDsaCore.KeyGen(algorithm.Parameters, publicKey, privateKey, pairwiseConsistencyTest);
+        return new SlhDsa(algorithm, privateKey, publicKey);
     }
 
     /// <summary>
-    /// Imports an SLH-DSA secret key.
+    /// Imports an SLH-DSA private key in the FIPS 205 private key format.
     /// </summary>
     /// <remarks>
-    /// The public key (PK.seed ‖ PK.root) is embedded in the secret key and extracted on
+    /// The public key (PK.seed ‖ PK.root) is embedded in the private key and extracted on
     /// import; no expensive consistency recomputation is performed.
     /// </remarks>
     /// <param name="algorithm">The parameter set of the key.</param>
-    /// <param name="source">The 4n-byte secret key.</param>
+    /// <param name="source">The 4n-byte private key.</param>
     /// <returns>A new instance holding the key pair.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
-    public static SlhDsa ImportSecretKey(SlhDsaAlgorithm algorithm, ReadOnlySpan<byte> source)
+    public static SlhDsa ImportSlhDsaPrivateKey(SlhDsaAlgorithm algorithm, ReadOnlySpan<byte> source)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
-        if (source.Length != algorithm.SecretKeySizeInBytes)
-            throw new ArgumentException($"Secret key must be exactly {algorithm.SecretKeySizeInBytes} bytes.", nameof(source));
+        if (source.Length != algorithm.PrivateKeySizeInBytes)
+            throw new ArgumentException($"Private key must be exactly {algorithm.PrivateKeySizeInBytes} bytes.", nameof(source));
 
         int n = algorithm.Parameters.N;
         byte[] publicKey = source.Slice(2 * n, 2 * n).ToArray();
@@ -101,21 +145,53 @@ public sealed class SlhDsa : IDisposable
     }
 
     /// <summary>
-    /// Imports an SLH-DSA public key.
+    /// Imports an SLH-DSA private key in the FIPS 205 private key format.
+    /// </summary>
+    /// <param name="algorithm">The parameter set of the key.</param>
+    /// <param name="source">The 4n-byte private key.</param>
+    /// <returns>A new instance holding the key pair.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> or <paramref name="source"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
+    public static SlhDsa ImportSlhDsaPrivateKey(SlhDsaAlgorithm algorithm, byte[] source)
+    {
+        if (source is null)
+            throw new ArgumentNullException(nameof(source));
+
+        return ImportSlhDsaPrivateKey(algorithm, new ReadOnlySpan<byte>(source));
+    }
+
+    /// <summary>
+    /// Imports an SLH-DSA public key in the FIPS 205 public key format.
     /// </summary>
     /// <param name="algorithm">The parameter set of the key.</param>
     /// <param name="source">The 2n-byte public key.</param>
     /// <returns>A new instance holding only the public key; it can verify but not sign.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
-    public static SlhDsa ImportPublicKey(SlhDsaAlgorithm algorithm, ReadOnlySpan<byte> source)
+    public static SlhDsa ImportSlhDsaPublicKey(SlhDsaAlgorithm algorithm, ReadOnlySpan<byte> source)
     {
         if (algorithm is null)
             throw new ArgumentNullException(nameof(algorithm));
         if (source.Length != algorithm.PublicKeySizeInBytes)
             throw new ArgumentException($"Public key must be exactly {algorithm.PublicKeySizeInBytes} bytes.", nameof(source));
 
-        return new SlhDsa(algorithm, secretKey: null, source.ToArray());
+        return new SlhDsa(algorithm, privateKey: null, source.ToArray());
+    }
+
+    /// <summary>
+    /// Imports an SLH-DSA public key in the FIPS 205 public key format.
+    /// </summary>
+    /// <param name="algorithm">The parameter set of the key.</param>
+    /// <param name="source">The 2n-byte public key.</param>
+    /// <returns>A new instance holding only the public key; it can verify but not sign.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="algorithm"/> or <paramref name="source"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="source"/> has an invalid length.</exception>
+    public static SlhDsa ImportSlhDsaPublicKey(SlhDsaAlgorithm algorithm, byte[] source)
+    {
+        if (source is null)
+            throw new ArgumentNullException(nameof(source));
+
+        return ImportSlhDsaPublicKey(algorithm, new ReadOnlySpan<byte>(source));
     }
 
     /// <summary>
@@ -126,12 +202,36 @@ public sealed class SlhDsa : IDisposable
     /// <returns>The signature.</returns>
     /// <exception cref="ArgumentException"><paramref name="context"/> is longer than 255 bytes.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
-    /// <exception cref="OS.CryptographicException">The instance holds no secret key.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public byte[] SignData(ReadOnlySpan<byte> data, ReadOnlySpan<byte> context = default)
     {
         byte[] signature = new byte[Algorithm.SignatureSizeInBytes];
         SignData(data, signature, context);
         return signature;
+    }
+
+    /// <summary>
+    /// Signs data using the hedged (randomized) variant of SLH-DSA.
+    /// </summary>
+    /// <remarks>
+    /// Mirrors the in-box overload, and inherits its shape: the second parameter is the
+    /// <b>context</b>, not a destination buffer. Callers holding a pre-allocated signature
+    /// buffer want the span overload and must say so explicitly — passing two arrays binds
+    /// here and silently treats the signature buffer as a context string.
+    /// </remarks>
+    /// <param name="data">The data to sign.</param>
+    /// <param name="context">The optional context string (at most 255 bytes), or <see langword="null"/>.</param>
+    /// <returns>The signature.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="data"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="context"/> is longer than 255 bytes.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    public byte[] SignData(byte[] data, byte[]? context = null)
+    {
+        if (data is null)
+            throw new ArgumentNullException(nameof(data));
+
+        return SignData(new ReadOnlySpan<byte>(data), new ReadOnlySpan<byte>(context));
     }
 
     /// <summary>
@@ -142,11 +242,11 @@ public sealed class SlhDsa : IDisposable
     /// <param name="context">The optional context string (at most 255 bytes).</param>
     /// <exception cref="ArgumentException">A parameter has an invalid size.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
-    /// <exception cref="OS.CryptographicException">The instance holds no secret key.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public void SignData(ReadOnlySpan<byte> data, Span<byte> destination, ReadOnlySpan<byte> context = default)
     {
         ThrowIfDisposed();
-        if (_secretKey is null)
+        if (_privateKey is null)
             throw new OS.CryptographicException("The instance holds only a public key and cannot sign.");
         if (context.Length > SlhDsaParams.MaxContextBytes)
             throw new ArgumentException($"Context must be at most {SlhDsaParams.MaxContextBytes} bytes.", nameof(context));
@@ -160,7 +260,7 @@ public sealed class SlhDsa : IDisposable
         Span<byte> rand = optRand.Slice(0, Algorithm.Parameters.N);
         MLDsaCore.GenerateRandomSeed(rand);
 
-        SlhDsaCore.Sign(Algorithm.Parameters, _secretKey, prefix.Slice(0, prefixLength), data, rand, destination);
+        SlhDsaCore.Sign(Algorithm.Parameters, _privateKey, prefix.Slice(0, prefixLength), data, rand, destination);
         CryptographicOperations.ZeroMemory(optRand);
     }
 
@@ -191,23 +291,46 @@ public sealed class SlhDsa : IDisposable
     }
 
     /// <summary>
-    /// Exports the public key (PK.seed ‖ PK.root).
+    /// Verifies a signature over data.
     /// </summary>
+    /// <param name="data">The signed data.</param>
+    /// <param name="signature">The signature to verify.</param>
+    /// <param name="context">The context string used when signing (at most 255 bytes), or <see langword="null"/>.</param>
+    /// <returns>True when the signature is valid; false for invalid signatures, including malformed lengths.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="data"/> or <paramref name="signature"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="context"/> is longer than 255 bytes.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
-    public byte[] ExportPublicKey()
+    public bool VerifyData(byte[] data, byte[] signature, byte[]? context = null)
+    {
+        if (data is null)
+            throw new ArgumentNullException(nameof(data));
+        if (signature is null)
+            throw new ArgumentNullException(nameof(signature));
+
+        return VerifyData(new ReadOnlySpan<byte>(data), new ReadOnlySpan<byte>(signature),
+                          new ReadOnlySpan<byte>(context));
+    }
+
+    /// <summary>
+    /// Exports the public-key portion of the current key in the FIPS 205 public key format
+    /// (PK.seed ‖ PK.root).
+    /// </summary>
+    /// <returns>The public key.</returns>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public byte[] ExportSlhDsaPublicKey()
     {
         byte[] destination = new byte[Algorithm.PublicKeySizeInBytes];
-        ExportPublicKey(destination);
+        ExportSlhDsaPublicKey(destination);
         return destination;
     }
 
     /// <summary>
-    /// Exports the public key into a buffer.
+    /// Exports the public-key portion of the current key into a buffer.
     /// </summary>
     /// <param name="destination">The buffer to receive the key; must be exactly <see cref="SlhDsaAlgorithm.PublicKeySizeInBytes"/> bytes.</param>
     /// <exception cref="ArgumentException"><paramref name="destination"/> has an incorrect length.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
-    public void ExportPublicKey(Span<byte> destination)
+    public void ExportSlhDsaPublicKey(Span<byte> destination)
     {
         ThrowIfDisposed();
         if (destination.Length != Algorithm.PublicKeySizeInBytes)
@@ -217,37 +340,39 @@ public sealed class SlhDsa : IDisposable
     }
 
     /// <summary>
-    /// Exports the secret key (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root).
+    /// Exports the current key in the FIPS 205 private key format
+    /// (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root).
     /// </summary>
+    /// <returns>The private key.</returns>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
-    /// <exception cref="OS.CryptographicException">The instance holds no secret key.</exception>
-    public byte[] ExportSecretKey()
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    public byte[] ExportSlhDsaPrivateKey()
     {
-        byte[] destination = new byte[Algorithm.SecretKeySizeInBytes];
-        ExportSecretKey(destination);
+        byte[] destination = new byte[Algorithm.PrivateKeySizeInBytes];
+        ExportSlhDsaPrivateKey(destination);
         return destination;
     }
 
     /// <summary>
-    /// Exports the secret key into a buffer.
+    /// Exports the current key in the FIPS 205 private key format into a buffer.
     /// </summary>
-    /// <param name="destination">The buffer to receive the key; must be exactly <see cref="SlhDsaAlgorithm.SecretKeySizeInBytes"/> bytes.</param>
+    /// <param name="destination">The buffer to receive the key; must be exactly <see cref="SlhDsaAlgorithm.PrivateKeySizeInBytes"/> bytes.</param>
     /// <exception cref="ArgumentException"><paramref name="destination"/> has an incorrect length.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
-    /// <exception cref="OS.CryptographicException">The instance holds no secret key.</exception>
-    public void ExportSecretKey(Span<byte> destination)
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    public void ExportSlhDsaPrivateKey(Span<byte> destination)
     {
         ThrowIfDisposed();
-        if (_secretKey is null)
+        if (_privateKey is null)
             throw new OS.CryptographicException("The instance holds only a public key.");
-        if (destination.Length != Algorithm.SecretKeySizeInBytes)
-            throw new ArgumentException($"Destination must be exactly {Algorithm.SecretKeySizeInBytes} bytes.", nameof(destination));
+        if (destination.Length != Algorithm.PrivateKeySizeInBytes)
+            throw new ArgumentException($"Destination must be exactly {Algorithm.PrivateKeySizeInBytes} bytes.", nameof(destination));
 
-        _secretKey.AsSpan().CopyTo(destination);
+        _privateKey.AsSpan().CopyTo(destination);
     }
 
     /// <summary>
-    /// Zeroizes the secret key and releases the instance.
+    /// Zeroizes the private key and releases the instance.
     /// </summary>
     public void Dispose()
     {
@@ -257,9 +382,9 @@ public sealed class SlhDsa : IDisposable
         }
 
         _disposed = true;
-        if (_secretKey is not null)
+        if (_privateKey is not null)
         {
-            CryptographicOperations.ZeroMemory(_secretKey);
+            CryptographicOperations.ZeroMemory(_privateKey);
         }
     }
 
@@ -267,7 +392,7 @@ public sealed class SlhDsa : IDisposable
     {
         if (_disposed)
         {
-            throw new ObjectDisposedException(nameof(SlhDsa));
+            throw new ObjectDisposedException(typeof(SlhDsa).FullName);
         }
     }
 }

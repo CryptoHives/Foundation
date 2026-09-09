@@ -458,3 +458,9 @@ docfx/api/*
 # Ignore github Copilot local MCP data
 /.playwright-mcp
 
+# On-demand ACVP vector sets. The committed *.json.gz files carry the selection the test suite
+# runs by default; a *.full.json.gz is the complete NIST set, fetched with
+# scripts/fetch-slhdsa-acvp-vectors.py --profile full. At ~11.8 MB for SLH-DSA it is far too
+# large to keep in git history, and it is fully reproducible from the script.
+tests/Security/Cryptography/TestData/*.full.json.gz
+

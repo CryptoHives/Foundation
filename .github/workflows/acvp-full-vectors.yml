@@ -1,0 +1,75 @@
+name: ACVP Full Vector Sets
+
+# Runs the post-quantum conformance suites against the *complete* NIST ACVP vector sets, rather
+# than the selections the repository embeds.
+#
+# ML-KEM and ML-DSA embed everything they can run. SLH-DSA cannot: its signatures are 7,856 to
+# 49,856 bytes each, so the runnable set is 11.8 MB gzipped even after filtering out the pre-hash
+# and internal-interface groups. The repository therefore carries a stratified 180-case selection
+# (~2.15 MB) that still covers every parameter set, and this workflow downloads the full 456-case
+# set weekly so nothing is only ever checked in the small file.
+#
+# See scripts/fetch-slhdsa-acvp-vectors.py for the stratification rule, and SlhDsaAcvpVectors for
+# how CRYPTOHIVES_SLHDSA_ACVP_VECTORS overrides the embedded resource.
+
+on:
+  schedule:
+    # Tuesdays, 05:00 UTC — a day after the published-packages run, so the two do not compete.
+    - cron: '0 5 * * 2'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to test. Empty = the default branch.'
+        type: string
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  slh-dsa:
+    name: SLH-DSA (FIPS 205), full ACVP set
+    runs-on: ubuntu-latest
+    # The 's' parameter sets dominate: a single signature is on the order of 10^6 hash
+    # invocations, and the full set signs with all twelve.
+    timeout-minutes: 120
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.ref }}
+
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.x'
+
+    - name: Fetch the complete SLH-DSA vector set
+      run: python scripts/fetch-slhdsa-acvp-vectors.py --profile full
+
+    - name: Run the SLH-DSA conformance suite
+      env:
+        # The loader also finds this file at its default path on its own; setting the variable
+        # makes the choice explicit in the log and fails loudly if the fetch step wrote nothing.
+        CRYPTOHIVES_SLHDSA_ACVP_VECTORS: tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.full.json.gz
+      run: >
+        dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj
+        -c Release --framework net10.0
+        --filter "FullyQualifiedName~SlhDsaAcvp"
+        --logger "console;verbosity=normal"
+
+    - name: Confirm the committed selection still regenerates byte-identically
+      # Compression is deterministic (mtime zeroed, compact separators), so regenerating the
+      # stratified profile must reproduce the committed file exactly. A diff here means either
+      # NIST republished a vector file or the script's selection rule drifted — both are things
+      # to notice on a schedule rather than discover in a pull request.
+      run: |
+        python scripts/fetch-slhdsa-acvp-vectors.py --profile stratified
+        git diff --exit-code -- tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.json.gz

@@ -66,6 +66,7 @@ param(
         "MLKem", "MLKemKeyGen", "MLKemOps", "MLKemInternals",
         # Post-quantum signatures (individual)
         "MLDsa", "MLDsaKeyGen", "MLDsaOps",
+        "SlhDsa", "SlhDsaKeyGen", "SlhDsaOps",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "KeccakCore", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
@@ -277,9 +278,14 @@ $AlgorithmBenchmarkMap = @{
     "MLKemKeyGen"       = "Kem.MLKemKeyGenBenchmark"
     "MLKemInternals"    = "Kem.MLKemInternalsBenchmark"
     # Post-quantum signatures. Namespace-qualified for the same reason as the KEM entries above.
-    # There is no MLDsaInternals: ML-DSA has no counterpart to MLKemInternalsBenchmark yet.
+    # There is no MLDsaInternals or SlhDsaInternals: neither scheme has a counterpart to
+    # MLKemInternalsBenchmark yet.
     "MLDsaOps"          = "Dsa.MLDsaBenchmark"
     "MLDsaKeyGen"       = "Dsa.MLDsaKeyGenBenchmark"
+    # SLH-DSA runs the six 'f' parameter sets only; the 's' sets are marked
+    # ExcludeFromBenchmark in DsaAlgorithmRegistry, because signing with one takes seconds.
+    "SlhDsaOps"         = "Dsa.SlhDsaBenchmark"
+    "SlhDsaKeyGen"      = "Dsa.SlhDsaKeyGenBenchmark"
     # Group Aliases
     "All"               = "Hash"
 }
@@ -321,11 +327,11 @@ $GroupAliases = @{
     "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
     "MLKem"          = @("MLKemKeyGen", "MLKemOps")
     "KEM"            = @("MLKemKeyGen", "MLKemOps", "MLKemInternals")
-    # 'MLDsa' is the algorithm, 'DSA' the category. Identical today because ML-DSA is the only
-    # signature scheme implemented; kept separate so SLH-DSA joins 'DSA' without silently
-    # changing what '-Family MLDsa' runs.
+    # 'MLDsa' and 'SlhDsa' are the algorithms, 'DSA' the category that runs both. Keeping them
+    # separate is what let SLH-DSA join 'DSA' without changing what '-Family MLDsa' runs.
     "MLDsa"          = @("MLDsaKeyGen", "MLDsaOps")
-    "DSA"            = @("MLDsaKeyGen", "MLDsaOps")
+    "SlhDsa"         = @("SlhDsaKeyGen", "SlhDsaOps")
+    "DSA"            = @("MLDsaKeyGen", "MLDsaOps", "SlhDsaKeyGen", "SlhDsaOps")
 }
 
 $GroupAliases["MAC"] = $GroupAliases["HMAC"] + @("AesCmac", "AesGmac", "Poly1305")
@@ -467,6 +473,11 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  ML-DSA:        -Family MLDsa            (key generation plus sign/verify)"
     Write-Host "  ML-DSA keygen: -Family MLDsaKeyGen      (adds the no-pairwise-consistency-test variant)"
     Write-Host "  ML-DSA ops:    -Family MLDsaOps         (sign, verify, verify of a tampered signature)"
+    Write-Host "  SLH-DSA:       -Family SlhDsa           (key generation plus sign/verify, 'f' sets only)"
+    Write-Host "  SLH-DSA keygen:-Family SlhDsaKeyGen     (adds the no-pairwise-consistency-test variant)"
+    Write-Host "  SLH-DSA ops:   -Family SlhDsaOps        (sign, verify, verify of a tampered signature)"
+    Write-Host "                                          The 's' (small-signature) sets are excluded:"
+    Write-Host "                                          signing with one takes seconds per operation."
     Write-Host ""
     Write-Host "Group aliases (run multiple benchmarks, each with its own output):" -ForegroundColor Yellow
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -504,7 +515,8 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family MLKem      runs: MLKemKeyGen, MLKemOps"
     Write-Host "  -Family KEM        runs: MLKemKeyGen, MLKemOps, MLKemInternals"
     Write-Host "  -Family MLDsa      runs: MLDsaKeyGen, MLDsaOps"
-    Write-Host "  -Family DSA        runs: MLDsaKeyGen, MLDsaOps"
+    Write-Host "  -Family SlhDsa     runs: SlhDsaKeyGen, SlhDsaOps"
+    Write-Host "  -Family DSA        runs: MLDsaKeyGen, MLDsaOps, SlhDsaKeyGen, SlhDsaOps"
     Write-Host "  -Family All        runs: All Hash, Cipher, MAC, KEM and signature benchmarks"
     Write-Host ""
     exit 0

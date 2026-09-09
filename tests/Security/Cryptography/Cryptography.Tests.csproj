@@ -109,6 +109,19 @@
                       LogicalName="Cryptography.Tests.TestData.mldsa-acvp-fips204.json.gz" />
   </ItemGroup>
 
+  <!--
+    NIST ACVP conformance vectors for SLH-DSA (FIPS 205). Same filter as ML-DSA, but the same
+    filter is not enough here: SLH-DSA signatures run from 7.8 KB to 48.7 KB, so the runnable
+    set is 11.8 MB gzipped. What ships is a stratified 180-case selection (~2.15 MB) that still
+    covers every parameter set. The complete 456-case file is fetched on demand: run
+    scripts/fetch-slhdsa-acvp-vectors.py with the 'full' profile, and SlhDsaAcvpVectors prefers
+    it when present. Regenerate with scripts/fetch-slhdsa-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/slhdsa-acvp-fips205.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.slhdsa-acvp-fips205.json.gz" />
+  </ItemGroup>
+
   <ItemGroup>
     <Folder Include="Properties/" />
   </ItemGroup>

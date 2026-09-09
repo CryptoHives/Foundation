@@ -178,30 +178,40 @@ Twelve sets: SHA2 or SHAKE instantiation × security category 1/3/5 × **s** (sm
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using var signer = SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f);
-byte[] publicKey = signer.ExportPublicKey();   // 32 bytes
-byte[] signature = signer.SignData(message);   // 17,088 bytes, hedged
+byte[] publicKey = signer.ExportSlhDsaPublicKey();   // 32 bytes
+byte[] signature = signer.SignData(message);         // 17,088 bytes, hedged
 
-using var verifier = SlhDsa.ImportPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, publicKey);
+using var verifier = SlhDsa.ImportSlhDsaPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, publicKey);
 bool valid = verifier.VerifyData(message, signature);
 ```
 
-Context strings (≤ 255 bytes) work exactly as with ML-DSA. The 4n-byte secret key is itself the compact storage form (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root); there is no separate private seed. Key generation includes a sign/verify pairwise consistency test (FIPS 140-3), which for `s` sets makes `GenerateKey` take seconds by design.
+The member names are the in-box ones, so `SlhDsa` is a drop-in for `System.Security.Cryptography.SlhDsa` — change the `using` and the code compiles unchanged, on .NET Framework 4.6.2 upward. `IsSupported` is always `true` here, which is the practical difference: no shipping Windows exposes SLH-DSA through CNG, so the in-box type is unavailable on most platforms today.
+
+Context strings (≤ 255 bytes) work exactly as with ML-DSA. The 4n-byte private key is itself the compact storage form (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root); there is no separate private seed. Key generation includes a sign/verify pairwise consistency test (FIPS 140-3), which for `s` sets makes `GenerateKey` take seconds by design — `GenerateKey(algorithm, pairwiseConsistencyTest: false)` opts out where that matters.
 
 #### Methods (`SlhDsa`)
 
 | Method | Description |
 |--------|-------------|
+| `IsSupported` | Always `true` — fully managed, never OS-dependent |
 | `GenerateKey(SlhDsaAlgorithm)` | Generate a fresh key pair |
-| `ImportSecretKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 4n-byte secret key (embedded public key is extracted) |
-| `ImportPublicKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 2n-byte public key (verify-only instance) |
+| `GenerateKey(SlhDsaAlgorithm, bool)` | As above, optionally skipping the pairwise consistency test |
+| `ImportSlhDsaPrivateKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 4n-byte private key (embedded public key is extracted) |
+| `ImportSlhDsaPublicKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 2n-byte public key (verify-only instance) |
 | `SignData(data, context)` / `SignData(data, destination, context)` | Hedged (randomized) signing |
 | `VerifyData(data, signature, context)` | Verification; wrong-length signatures return false |
-| `ExportPublicKey()` / `ExportSecretKey()` | Key export (span overloads available) |
-| `Dispose()` | Zeroize the secret key |
+| `ExportSlhDsaPublicKey()` / `ExportSlhDsaPrivateKey()` | Key export (span overloads available) |
+| `Dispose()` | Zeroize the private key |
+
+Every import, export, `SignData` and `VerifyData` has a `byte[]` overload beside the span one, matching the in-box type. Note the inherited hazard that comes with that: `SignData(byte[], byte[])` binds the **second argument as the context string**, not as a destination buffer. To sign into a buffer you own, use the span overload explicitly.
+
+PKCS#8, SPKI and PEM import/export, and the `HashSLH-DSA` pre-hash variants, are not implemented yet — they land in one batch across ML-KEM, ML-DSA and SLH-DSA.
 
 ### Validation
 
 Same three-way playbook as ML-KEM/ML-DSA (see [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md)): NIST ACVP known-answer tests (keyGen for all 12 sets — byte-exact keys through the full hypertree; byte-exact deterministic and hedged signatures; sigVer including modified R/SIGFORS/SIGHT/message and wrong-length rejections), BouncyCastle interop in both directions, and .NET 10 `SlhDsa` cross-checks where the OS supports it.
+
+Unlike ML-KEM and ML-DSA, the embedded vector file is a **stratified selection** rather than everything runnable: SLH-DSA signatures are 7,856–49,856 bytes each, so the full set is 11.8 MB gzipped. The committed 180 cases still cover every parameter set, and a weekly CI job downloads and runs the complete 456-case set. See [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md) for the rule and for how to run the full set locally.
 
 ---
 

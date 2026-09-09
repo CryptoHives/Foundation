@@ -43,7 +43,7 @@ public class SlhDsaInteropTests
         byte[] signature = dsa.SignData(message);
 
         var verifier = new SlhDsaSigner(BcParameters(name), deterministic: false);
-        verifier.Init(forSigning: false, SlhDsaPublicKeyParameters.FromEncoding(BcParameters(name), dsa.ExportPublicKey()));
+        verifier.Init(forSigning: false, SlhDsaPublicKeyParameters.FromEncoding(BcParameters(name), dsa.ExportSlhDsaPublicKey()));
         verifier.BlockUpdate(message, 0, message.Length);
 
         Assert.That(verifier.VerifySignature(signature), Is.True,
@@ -68,7 +68,7 @@ public class SlhDsaInteropTests
 
         byte[] pk = ((SlhDsaPublicKeyParameters)keyPair.Public).GetEncoded();
 
-        using var verifier = SlhDsa.ImportPublicKey(algorithm, pk);
+        using var verifier = SlhDsa.ImportSlhDsaPublicKey(algorithm, pk);
         Assert.That(verifier.VerifyData(message, signature), Is.True,
             "We must verify BouncyCastle's signature.");
 
@@ -87,7 +87,7 @@ public class SlhDsaInteropTests
         var keyPair = generator.GenerateKeyPair();
         byte[] sk = ((SlhDsaPrivateKeyParameters)keyPair.Private).GetEncoded();
 
-        using var ours = SlhDsa.ImportSecretKey(algorithm, sk);
+        using var ours = SlhDsa.ImportSlhDsaPrivateKey(algorithm, sk);
 
         byte[] message = new byte[48];
         byte[] signature = ours.SignData(message);
@@ -120,7 +120,7 @@ public class SlhDsaInteropTests
         byte[] signature = dsa.SignData(message, context);
 
         using var dotnetDsa = System.Security.Cryptography.SlhDsa.ImportSlhDsaPublicKey(
-            DotnetAlgorithm(name), dsa.ExportPublicKey());
+            DotnetAlgorithm(name), dsa.ExportSlhDsaPublicKey());
         Assert.That(dotnetDsa.VerifyData(message, signature, context), Is.True,
             ".NET SlhDsa must verify our signature, including the context binding.");
     }
@@ -138,7 +138,7 @@ public class SlhDsaInteropTests
         byte[] message = new byte[71];
         byte[] signature = dotnetDsa.SignData(message);
 
-        using var verifier = SlhDsa.ImportPublicKey(algorithm, dotnetDsa.ExportSlhDsaPublicKey());
+        using var verifier = SlhDsa.ImportSlhDsaPublicKey(algorithm, dotnetDsa.ExportSlhDsaPublicKey());
         Assert.That(verifier.VerifyData(message, signature), Is.True,
             "We must verify .NET SlhDsa's signature.");
     }

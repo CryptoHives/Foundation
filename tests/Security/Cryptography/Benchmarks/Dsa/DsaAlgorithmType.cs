@@ -92,17 +92,37 @@ public sealed class DsaAlgorithmType : IFormattable
     /// to a sibling entry — measuring them here would duplicate rows rather than add
     /// information. Use <see cref="MLDsaKeyGen"/> for the key generation benchmark.
     /// </remarks>
-    public static IEnumerable<DsaAlgorithmType> MLDsa() => All(includeKeyGenOnly: false);
+    public static IEnumerable<DsaAlgorithmType> MLDsa()
+        => All(DsaAlgorithmRegistry.MLDsaFamilies, includeKeyGenOnly: false);
 
     /// <summary>
     /// Returns the implementations to benchmark for key generation, including variants that
     /// differ only there — such as the one with the pairwise consistency test disabled.
     /// </summary>
-    public static IEnumerable<DsaAlgorithmType> MLDsaKeyGen() => All(includeKeyGenOnly: true);
+    public static IEnumerable<DsaAlgorithmType> MLDsaKeyGen()
+        => All(DsaAlgorithmRegistry.MLDsaFamilies, includeKeyGenOnly: true);
 
-    private static IEnumerable<DsaAlgorithmType> All(bool includeKeyGenOnly)
+    /// <summary>
+    /// Returns the SLH-DSA implementations to benchmark for signing and verification.
+    /// </summary>
+    /// <remarks>
+    /// In practice this is the six <c>f</c> parameter sets: the registry marks the <c>s</c> sets
+    /// <c>ExcludeFromBenchmark</c>, because signing with one runs into the millions of hash
+    /// invocations. They keep their correctness coverage in the ACVP and round-trip suites.
+    /// </remarks>
+    public static IEnumerable<DsaAlgorithmType> SlhDsa()
+        => All(DsaAlgorithmRegistry.SlhDsaFamilies, includeKeyGenOnly: false);
+
+    /// <summary>
+    /// Returns the SLH-DSA implementations to benchmark for key generation, including variants
+    /// that differ only there — such as the one with the pairwise consistency test disabled.
+    /// </summary>
+    public static IEnumerable<DsaAlgorithmType> SlhDsaKeyGen()
+        => All(DsaAlgorithmRegistry.SlhDsaFamilies, includeKeyGenOnly: true);
+
+    private static IEnumerable<DsaAlgorithmType> All(string[] families, bool includeKeyGenOnly)
     {
-        foreach (string family in DsaAlgorithmRegistry.Families)
+        foreach (string family in families)
         {
             foreach (var algorithm in FromRegistry(family, includeKeyGenOnly))
             {
