@@ -143,6 +143,13 @@ public class SlhDsaApiTests
 #if NET10_0_OR_GREATER
 #pragma warning disable SYSLIB5006 // Post-quantum cryptography APIs may be experimental.
 
+    /// <summary>SHA-256, one of the twelve approved pre-hash functions.</summary>
+    /// <remarks>
+    /// Inside the net10.0 guard because only the drop-in proof uses it, and that test needs the
+    /// in-box type to compile against.
+    /// </remarks>
+    private const string Sha256Oid = "2.16.840.1.101.3.4.2.1";
+
     /// <summary>
     /// Asserts, at compile time, that the managed type can stand in for the in-box one.
     /// </summary>
@@ -197,6 +204,21 @@ public class SlhDsaApiTests
 
         Assert.That(fromPublic.VerifyData(message, signature, context), Is.True);
         Assert.That(fromPublic.VerifyData(message, fromPrivate.SignData(message, context), context), Is.True);
+
+        // Pre-hash: all four overloads, in the in-box shape. The span overload takes the
+        // destination second - unlike SignData(byte[], byte[]), whose second parameter is the
+        // context - so the spans are spelled out.
+        byte[] digest = OS.SHA256.HashData(message);
+        byte[] preHashSignature = new byte[algorithm.SignatureSizeInBytes];
+        signer.SignPreHash(new ReadOnlySpan<byte>(digest), new Span<byte>(preHashSignature), Sha256Oid,
+                           new ReadOnlySpan<byte>(context));
+
+        Assert.That(fromPublic.VerifyPreHash(digest, preHashSignature, Sha256Oid, context), Is.True);
+        Assert.That(
+            fromPublic.VerifyPreHash(new ReadOnlySpan<byte>(digest),
+                                     new ReadOnlySpan<byte>(fromPrivate.SignPreHash(digest, Sha256Oid, context)),
+                                     Sha256Oid, new ReadOnlySpan<byte>(context)),
+            Is.True);
     }
 
     private static void ExerciseInBox(byte[] message, byte[] context)
@@ -219,6 +241,21 @@ public class SlhDsaApiTests
 
         Assert.That(fromPublic.VerifyData(message, signature, context), Is.True);
         Assert.That(fromPublic.VerifyData(message, fromPrivate.SignData(message, context), context), Is.True);
+
+        // Pre-hash: all four overloads, in the in-box shape. The span overload takes the
+        // destination second - unlike SignData(byte[], byte[]), whose second parameter is the
+        // context - so the spans are spelled out.
+        byte[] digest = OS.SHA256.HashData(message);
+        byte[] preHashSignature = new byte[algorithm.SignatureSizeInBytes];
+        signer.SignPreHash(new ReadOnlySpan<byte>(digest), new Span<byte>(preHashSignature), Sha256Oid,
+                           new ReadOnlySpan<byte>(context));
+
+        Assert.That(fromPublic.VerifyPreHash(digest, preHashSignature, Sha256Oid, context), Is.True);
+        Assert.That(
+            fromPublic.VerifyPreHash(new ReadOnlySpan<byte>(digest),
+                                     new ReadOnlySpan<byte>(fromPrivate.SignPreHash(digest, Sha256Oid, context)),
+                                     Sha256Oid, new ReadOnlySpan<byte>(context)),
+            Is.True);
     }
 
 #pragma warning restore SYSLIB5006

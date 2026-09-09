@@ -12,7 +12,7 @@ NIST FIPS 203 specifies ML-KEM, the module-lattice-based key encapsulation mecha
 
 - **Document:** NIST FIPS 203
 - **Title:** Module-Lattice-Based Key-Encapsulation Mechanism Standard
-- **URL:** https://csrc.nist.gov/pubs/fips/203/final
+- **URL:** [csrc.nist.gov/pubs/fips/203/final](https://csrc.nist.gov/pubs/fips/203/final)
 - **Status:** Final (August 2024)
 
 ## Background
@@ -105,7 +105,7 @@ Validated against the official NIST ACVP vector sets and cross-checked against B
 
 ## References
 
-1. **NIST FIPS 203:** https://csrc.nist.gov/pubs/fips/203/final
-2. **NIST ACVP test vectors:** https://github.com/usnistgov/ACVP-Server (gen-val/json-files, ML-KEM-*-FIPS203)
-3. **CRYSTALS-Kyber:** https://pq-crystals.org/kyber/
-4. **NIST PQC project:** https://csrc.nist.gov/projects/post-quantum-cryptography
+1. [**NIST FIPS 203**](https://csrc.nist.gov/pubs/fips/203/final)
+2. [**NIST ACVP test vectors**](https://github.com/usnistgov/ACVP-Server) (gen-val/json-files, ML-KEM-*-FIPS203)
+3. [**CRYSTALS-Kyber**](https://pq-crystals.org/kyber/)
+4. [**NIST PQC project**](https://csrc.nist.gov/projects/post-quantum-cryptography)

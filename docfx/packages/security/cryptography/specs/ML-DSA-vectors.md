@@ -4,9 +4,9 @@
 
 NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets for FIPS 204:
 
-- **ML-DSA-keyGen-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-keyGen-FIPS204
-- **ML-DSA-sigGen-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigGen-FIPS204
-- **ML-DSA-sigVer-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigVer-FIPS204
+- [**ML-DSA-keyGen-FIPS204**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-keyGen-FIPS204)
+- [**ML-DSA-sigGen-FIPS204**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigGen-FIPS204)
+- [**ML-DSA-sigVer-FIPS204**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigVer-FIPS204)
 
 The vectors are stored in **NIST's own ACVP JSON schema** in
 `tests/Security/Cryptography/TestData/mldsa-acvp-fips204.json.gz`, and read at run time by
@@ -106,9 +106,50 @@ gzipped result. Running it against unchanged upstream vectors produces a byte-id
 real diff means NIST published new vectors.
 
 Pass `--limit N` to cap the cases per kept group — useful when iterating locally, but the committed
-file is the complete runnable set. To take on HashML-DSA or external-μ later, widen
-`is_pure_external()` in the script and teach `MLDsaAcvpVectors` the extra fields: because the stored
-schema is NIST's own, neither is a file-format change.
+file is the complete runnable set. To take on external-μ later, widen `is_pure_external()` in the
+script and teach `MLDsaAcvpVectors` the extra fields: because the stored schema is NIST's own,
+neither is a file-format change.
+
+---
+
+## HashML-DSA (Pre-Hash) Vectors
+
+The pre-hash groups (FIPS 204 §5.4) live in their own file,
+`tests/Security/Cryptography/TestData/mldsa-prehash-acvp-fips204.json.gz`, loaded by
+`MLDsaPreHashAcvpVectors` and exercised by `MLDsaPreHashAcvpTests`. They are kept separate from the
+pure set rather than merged into it: the selection rule differs, and merging would rewrite an
+already-committed 2.5 MB blob every time either set is regenerated.
+
+```bash
+python scripts/fetch-mldsa-acvp-vectors.py --profile prehash
+```
+
+The runnable pre-hash set is 135 cases and 2.11 MB gzipped — affordable, but the committed file is
+a **57-case stratified selection (~0.88 MB)** chosen by rule rather than by cap:
+
+| Mode | Kept | Rule |
+|------|-----:|------|
+| sigGen | 36 | Every (parameter set × pre-hash function) pair exactly once — 3 × 12. Even-indexed pre-hash functions are taken from the deterministic group and odd-indexed from the hedged one, so both signing modes are exercised for every set. |
+| sigVer | 21 | One valid case per (set × pre-hash function), plus every failure reason: modified message, commitment, hint and z. |
+
+All twelve approved pre-hash functions and all three parameter sets appear. The digest PH(M) is
+**recomputed from the vector's message** by the tests rather than read from the file, so they also
+cross-check the OID-to-hash binding end to end — a wrong OID table entry or a wrong SHAKE output
+length fails there rather than silently signing the wrong prefix.
+
+### Running the complete set
+
+```bash
+python scripts/fetch-mldsa-acvp-vectors.py --profile prehash-full
+dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj   --framework net10.0 --filter "FullyQualifiedName~MLDsaPreHashAcvpTests"
+```
+
+The script writes a gitignored `mldsa-prehash-acvp-fips204.full.json.gz`, which the loader prefers
+automatically — it resolves `CRYPTOHIVES_MLDSA_PREHASH_ACVP_VECTORS` first, then that default path,
+then the embedded resource, and logs which it used. `VectorFile_CoversAtLeastTheCommittedSelection`
+fails if an override ever carries *fewer* cases, so a truncated download cannot quietly shrink the
+suite. The weekly `acvp-full-vectors` workflow runs all 135 and checks the committed file still
+regenerates byte-identically.
 
 ## Usage
 

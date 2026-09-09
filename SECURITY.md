@@ -55,7 +55,7 @@ o/ZuuOhQXECjaAAScxO8HbxOJv1dMLQB7PRyk6G+bE3PNRbEWyG99g+CSrPfstfL 52BSJm5xhdizxnu
 
 **Fingerprint:** `5DEF 959E E629 26A5 6952 1311 9F89 9CAD EB41 1387`
 
-*(Rotate keys periodically — verify the latest version at [https://cryptohives.org/security](https://cryptohives.org/security)).*
+*(Rotate keys periodically — verify the latest version at [cryptohives.org/security](https://cryptohives.org/security)).*
 
 ---
 

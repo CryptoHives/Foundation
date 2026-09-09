@@ -14,8 +14,8 @@ All variants operate on a fixed block size of 128 bits (16 bytes).
 
 - **Document:** NIST FIPS 197
 - **Title:** Advanced Encryption Standard (AES)
-- **URL:** https://csrc.nist.gov/pubs/fips/197/final
-- **PDF:** https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf
+- **URL:** [csrc.nist.gov/pubs/fips/197/final](https://csrc.nist.gov/pubs/fips/197/final)
+- **PDF:** [nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf)
 
 ## Implementation Status
 
@@ -157,8 +157,8 @@ Ciphertext: 8ea2b7ca 516745bf eafc4990 4b496089
 
 ## References
 
-1. NIST FIPS 197: https://doi.org/10.6028/NIST.FIPS.197-upd1
-2. NIST SP 800-38A: https://csrc.nist.gov/pubs/sp/800-38a/final
-3. NIST SP 800-38C: https://csrc.nist.gov/pubs/sp/800-38c/upd1/final
-4. NIST SP 800-38D: https://csrc.nist.gov/pubs/sp/800-38d/final
-5. RFC 3610: https://www.rfc-editor.org/rfc/rfc3610
+1. [NIST FIPS 197](https://doi.org/10.6028/NIST.FIPS.197-upd1)
+2. [NIST SP 800-38A](https://csrc.nist.gov/pubs/sp/800-38a/final)
+3. [NIST SP 800-38C](https://csrc.nist.gov/pubs/sp/800-38c/upd1/final)
+4. [NIST SP 800-38D](https://csrc.nist.gov/pubs/sp/800-38d/final)
+5. [RFC 3610](https://www.rfc-editor.org/rfc/rfc3610)

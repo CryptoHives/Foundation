@@ -19,9 +19,9 @@ This implementation uses Whirlpool 3.0 (the final, standardized version).
 ## Official Reference
 
 - ISO/IEC 10118-3:2004
-- NESSIE project: https://www.cosic.esat.kuleuven.be/nessie/
+- [NESSIE project](https://www.cosic.esat.kuleuven.be/nessie/)
 - Original paper: "The Whirlpool Hashing Function"
-- https://www.larc.usp.br/~pbarreto/WhirlpoolPage.html
+- [www.larc.usp.br/~pbarreto/WhirlpoolPage.html](https://www.larc.usp.br/~pbarreto/WhirlpoolPage.html)
 
 ## Test Vectors
 

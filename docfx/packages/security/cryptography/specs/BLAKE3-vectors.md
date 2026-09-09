@@ -3,8 +3,8 @@
 ## Source
 
 BLAKE3 Official Specification and Reference Implementation
-- https://github.com/BLAKE3-team/BLAKE3
-- https://github.com/BLAKE3-team/BLAKE3-specs
+- [github.com/BLAKE3-team/BLAKE3](https://github.com/BLAKE3-team/BLAKE3)
+- [github.com/BLAKE3-team/BLAKE3-specs](https://github.com/BLAKE3-team/BLAKE3-specs)
 
 ---
 

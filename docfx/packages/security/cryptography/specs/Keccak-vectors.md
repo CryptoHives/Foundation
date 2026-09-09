@@ -69,6 +69,6 @@ The outputs differ due to different domain separation padding bytes.
 
 ## References
 
-- Ethereum Yellow Paper: https://ethereum.github.io/yellowpaper/paper.pdf
-- Keccak Team: https://keccak.team/
+- [Ethereum Yellow Paper](https://ethereum.github.io/yellowpaper/paper.pdf)
+- [Keccak Team](https://keccak.team/)
 - BouncyCastle KeccakDigest: Used as reference implementation

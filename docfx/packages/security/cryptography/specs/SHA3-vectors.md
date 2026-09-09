@@ -3,8 +3,8 @@
 ## Source
 
 NIST FIPS 202: SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions
-- https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_Msg0.pdf
-- https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_Msg0.pdf
+- [csrc.nist.gov/…/SHA3-256_Msg0.pdf](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-256_Msg0.pdf)
+- [csrc.nist.gov/…/SHA3-512_Msg0.pdf](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA3-512_Msg0.pdf)
 
 ---
 

@@ -367,6 +367,127 @@ public sealed class MLDsa : IDisposable
     }
 
     /// <summary>
+    /// Signs a pre-computed message digest using HashML-DSA (FIPS 204 §5.4).
+    /// </summary>
+    /// <remarks>
+    /// The caller computes PH(M) with an approved hash or XOF and passes the digest with its
+    /// OID; the signature binds the pre-hash function via M′ = 0x01 ‖ |ctx| ‖ ctx ‖ OID ‖ PH(M).
+    /// Pre-hash signatures are never interchangeable with pure ML-DSA signatures over the same
+    /// message.
+    /// </remarks>
+    /// <param name="hash">The pre-computed digest PH(M).</param>
+    /// <param name="hashAlgorithmOid">The dotted-decimal OID of the pre-hash function, e.g. <c>2.16.840.1.101.3.4.2.3</c> for SHA-512.</param>
+    /// <param name="context">The optional context string (at most 255 bytes), or <see langword="null"/>.</param>
+    /// <returns>The signature.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="hash"/> or <paramref name="hashAlgorithmOid"/> is null.</exception>
+    /// <exception cref="ArgumentException">The OID is not approved, the digest length does not match it, or <paramref name="context"/> is longer than 255 bytes.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    public byte[] SignPreHash(byte[] hash, string hashAlgorithmOid, byte[]? context = null)
+    {
+        if (hash is null)
+            throw new ArgumentNullException(nameof(hash));
+
+        byte[] signature = new byte[Algorithm.SignatureSizeInBytes];
+        SignPreHash(new ReadOnlySpan<byte>(hash), new Span<byte>(signature), hashAlgorithmOid,
+                    new ReadOnlySpan<byte>(context));
+        return signature;
+    }
+
+    /// <summary>
+    /// Signs a pre-computed message digest into a caller-provided buffer using HashML-DSA
+    /// (FIPS 204 §5.4).
+    /// </summary>
+    /// <remarks>
+    /// Note the parameter order, which this type inherits from the in-box <c>MLDsa</c>: the
+    /// <i>second</i> parameter is the destination buffer, whereas on <see cref="SignData(byte[], byte[])"/>
+    /// the second parameter is the context. Call sites that pass arrays should spell out
+    /// <c>new ReadOnlySpan&lt;byte&gt;(…)</c> and <c>new Span&lt;byte&gt;(…)</c> so the intended
+    /// overload is unambiguous.
+    /// </remarks>
+    /// <param name="hash">The pre-computed digest PH(M).</param>
+    /// <param name="destination">The buffer to receive the signature; must be exactly <see cref="MLDsaAlgorithm.SignatureSizeInBytes"/> bytes.</param>
+    /// <param name="hashAlgorithmOid">The dotted-decimal OID of the pre-hash function.</param>
+    /// <param name="context">The optional context string (at most 255 bytes).</param>
+    /// <exception cref="ArgumentNullException"><paramref name="hashAlgorithmOid"/> is null.</exception>
+    /// <exception cref="ArgumentException">A parameter has an invalid size, or the OID is not an approved pre-hash function.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    public void SignPreHash(ReadOnlySpan<byte> hash, Span<byte> destination, string hashAlgorithmOid,
+                            ReadOnlySpan<byte> context = default)
+    {
+        ThrowIfDisposed();
+        if (_secretKey is null)
+            throw new OS.CryptographicException("The instance holds only a public key and cannot sign.");
+        if (destination.Length != Algorithm.SignatureSizeInBytes)
+            throw new ArgumentException($"Destination must be exactly {Algorithm.SignatureSizeInBytes} bytes.", nameof(destination));
+        if (context.Length > MLDsaParams.MaxContextBytes)
+            throw new ArgumentException($"Context must be at most {MLDsaParams.MaxContextBytes} bytes.", nameof(context));
+        PreHash.ValidateHash(hashAlgorithmOid, hash.Length);
+
+        Span<byte> prefix = stackalloc byte[PreHash.MaxPrefixBytes];
+        int prefixLength = PreHash.BuildPrefix(context, hashAlgorithmOid, prefix);
+
+        Span<byte> rnd = stackalloc byte[MLDsaParams.SignSeedBytes];
+        MLDsaCore.GenerateRandomSeed(rnd);
+
+        MLDsaCore.Sign(Algorithm.Parameters, _secretKey, prefix.Slice(0, prefixLength), hash, rnd, destination);
+        CryptographicOperations.ZeroMemory(rnd);
+    }
+
+    /// <summary>
+    /// Verifies a HashML-DSA signature over a pre-computed message digest (FIPS 204 §5.4).
+    /// </summary>
+    /// <param name="hash">The pre-computed digest PH(M).</param>
+    /// <param name="signature">The signature to verify.</param>
+    /// <param name="hashAlgorithmOid">The dotted-decimal OID of the pre-hash function used when signing.</param>
+    /// <param name="context">The context string used when signing (at most 255 bytes), or <see langword="null"/>.</param>
+    /// <returns>True when the signature is valid; false for invalid signatures, including malformed lengths.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="hash"/>, <paramref name="signature"/> or <paramref name="hashAlgorithmOid"/> is null.</exception>
+    /// <exception cref="ArgumentException">The OID is not approved, the digest length does not match it, or <paramref name="context"/> is longer than 255 bytes.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public bool VerifyPreHash(byte[] hash, byte[] signature, string hashAlgorithmOid, byte[]? context = null)
+    {
+        if (hash is null)
+            throw new ArgumentNullException(nameof(hash));
+        if (signature is null)
+            throw new ArgumentNullException(nameof(signature));
+
+        return VerifyPreHash(new ReadOnlySpan<byte>(hash), new ReadOnlySpan<byte>(signature),
+                             hashAlgorithmOid, new ReadOnlySpan<byte>(context));
+    }
+
+    /// <summary>
+    /// Verifies a HashML-DSA signature over a pre-computed message digest (FIPS 204 §5.4).
+    /// </summary>
+    /// <param name="hash">The pre-computed digest PH(M).</param>
+    /// <param name="signature">The signature to verify.</param>
+    /// <param name="hashAlgorithmOid">The dotted-decimal OID of the pre-hash function used when signing.</param>
+    /// <param name="context">The context string used when signing (at most 255 bytes).</param>
+    /// <returns>True when the signature is valid; false for invalid signatures, including malformed lengths.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="hashAlgorithmOid"/> is null.</exception>
+    /// <exception cref="ArgumentException">The OID is not approved, the digest length does not match it, or <paramref name="context"/> is longer than 255 bytes.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public bool VerifyPreHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature, string hashAlgorithmOid,
+                              ReadOnlySpan<byte> context = default)
+    {
+        ThrowIfDisposed();
+        if (context.Length > MLDsaParams.MaxContextBytes)
+            throw new ArgumentException($"Context must be at most {MLDsaParams.MaxContextBytes} bytes.", nameof(context));
+        PreHash.ValidateHash(hashAlgorithmOid, hash.Length);
+
+        if (signature.Length != Algorithm.SignatureSizeInBytes)
+        {
+            return false;
+        }
+
+        Span<byte> prefix = stackalloc byte[PreHash.MaxPrefixBytes];
+        int prefixLength = PreHash.BuildPrefix(context, hashAlgorithmOid, prefix);
+
+        return MLDsaCore.Verify(Algorithm.Parameters, _publicKey, prefix.Slice(0, prefixLength), hash, signature);
+    }
+
+    /// <summary>
     /// Exports the 32-byte private seed ξ.
     /// </summary>
     /// <returns>The private seed.</returns>

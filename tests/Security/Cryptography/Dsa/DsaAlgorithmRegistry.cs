@@ -197,6 +197,7 @@ public static class DsaAlgorithmRegistry
     {
         CH.MLDsaAlgorithm managed = ManagedAlgorithm(family);
         BC.MLDsaParameters bouncyCastle = BouncyCastleParameters(family);
+        BC.MLDsaParameters bouncyCastlePreHash = BouncyCastlePreHashParameters(family);
 
         list.Add(new(family, "CryptoHives",
             () => new MLDsaAdapter(managed), Source.Managed));
@@ -212,10 +213,11 @@ public static class DsaAlgorithmRegistry
             keyGenOnly: true));
 
         list.Add(new(family, "CryptoHives-Stateless",
-            () => new MLDsaStatelessAdapter(StatelessDsa(family)), Source.Managed));
+            () => new MLDsaStatelessAdapter(StatelessDsa(family), family), Source.Managed));
 
         list.Add(new(family, "BouncyCastle",
-            () => new BouncyCastleDsaAdapter(bouncyCastle, managed.PublicKeySizeInBytes,
+            () => new BouncyCastleDsaAdapter(bouncyCastle, bouncyCastlePreHash,
+                managed.PublicKeySizeInBytes,
                 managed.PrivateKeySizeInBytes, managed.SignatureSizeInBytes),
             Source.BouncyCastle));
 
@@ -234,6 +236,7 @@ public static class DsaAlgorithmRegistry
     {
         CH.SlhDsaAlgorithm managed = ManagedSlhDsaAlgorithm(family);
         BC.SlhDsaParameters bouncyCastle = BouncyCastleSlhDsaParameters(family);
+        BC.SlhDsaParameters bouncyCastlePreHash = BouncyCastleSlhDsaPreHashParameters(family);
 
         // The 's' (small-signature) sets are correctness-tested but not benchmarked. Signing with
         // one is on the order of 10^6 hash invocations — seconds per operation — so including
@@ -257,7 +260,7 @@ public static class DsaAlgorithmRegistry
 
         list.Add(new(family, "BouncyCastle",
             () => new BouncyCastleSlhDsaAdapter(bouncyCastle, managed.PublicKeySizeInBytes,
-                managed.PrivateKeySizeInBytes, managed.SignatureSizeInBytes),
+                managed.PrivateKeySizeInBytes, managed.SignatureSizeInBytes, bouncyCastlePreHash),
             Source.BouncyCastle,
             excludeFromBenchmark: slowSet));
 
@@ -294,6 +297,18 @@ public static class DsaAlgorithmRegistry
         _ => throw new ArgumentException($"Unknown parameter set: {family}", nameof(family)),
     };
 
+    /// <remarks>
+    /// BouncyCastle binds one pre-hash function into each parameter set rather than accepting it
+    /// per call, and offers only the SHA-512 pairing for ML-DSA. <c>DsaPreHash</c> makes the same
+    /// choice for every other implementation so the rows stay comparable.
+    /// </remarks>
+    private static BC.MLDsaParameters BouncyCastlePreHashParameters(string family) => family switch {
+        "ML-DSA-44" => BC.MLDsaParameters.ml_dsa_44_with_sha512,
+        "ML-DSA-65" => BC.MLDsaParameters.ml_dsa_65_with_sha512,
+        "ML-DSA-87" => BC.MLDsaParameters.ml_dsa_87_with_sha512,
+        _ => throw new ArgumentException($"Unknown parameter set: {family}", nameof(family)),
+    };
+
     private static CH.SlhDsaAlgorithm ManagedSlhDsaAlgorithm(string family) => family switch {
         "SLH-DSA-SHA2-128s" => CH.SlhDsaAlgorithm.SlhDsaSha2_128s,
         "SLH-DSA-SHAKE-128s" => CH.SlhDsaAlgorithm.SlhDsaShake128s,
@@ -323,6 +338,28 @@ public static class DsaAlgorithmRegistry
         "SLH-DSA-SHAKE-256s" => BC.SlhDsaParameters.slh_dsa_shake_256s,
         "SLH-DSA-SHA2-256f" => BC.SlhDsaParameters.slh_dsa_sha2_256f,
         "SLH-DSA-SHAKE-256f" => BC.SlhDsaParameters.slh_dsa_shake_256f,
+        _ => throw new ArgumentException($"Unknown parameter set: {family}", nameof(family)),
+    };
+
+    /// <remarks>
+    /// BouncyCastle binds one pre-hash function into each parameter set rather than accepting it
+    /// per call: SHA-256 for the SHA2 category-1 sets, SHA-512 for the SHA2 category-3 and -5
+    /// sets, and SHAKE128 or SHAKE256 to match for the SHAKE sets. <c>DsaPreHash</c> makes the
+    /// same choice for every other implementation so the rows stay comparable.
+    /// </remarks>
+    private static BC.SlhDsaParameters BouncyCastleSlhDsaPreHashParameters(string family) => family switch {
+        "SLH-DSA-SHA2-128s" => BC.SlhDsaParameters.slh_dsa_sha2_128s_with_sha256,
+        "SLH-DSA-SHAKE-128s" => BC.SlhDsaParameters.slh_dsa_shake_128s_with_shake128,
+        "SLH-DSA-SHA2-128f" => BC.SlhDsaParameters.slh_dsa_sha2_128f_with_sha256,
+        "SLH-DSA-SHAKE-128f" => BC.SlhDsaParameters.slh_dsa_shake_128f_with_shake128,
+        "SLH-DSA-SHA2-192s" => BC.SlhDsaParameters.slh_dsa_sha2_192s_with_sha512,
+        "SLH-DSA-SHAKE-192s" => BC.SlhDsaParameters.slh_dsa_shake_192s_with_shake256,
+        "SLH-DSA-SHA2-192f" => BC.SlhDsaParameters.slh_dsa_sha2_192f_with_sha512,
+        "SLH-DSA-SHAKE-192f" => BC.SlhDsaParameters.slh_dsa_shake_192f_with_shake256,
+        "SLH-DSA-SHA2-256s" => BC.SlhDsaParameters.slh_dsa_sha2_256s_with_sha512,
+        "SLH-DSA-SHAKE-256s" => BC.SlhDsaParameters.slh_dsa_shake_256s_with_shake256,
+        "SLH-DSA-SHA2-256f" => BC.SlhDsaParameters.slh_dsa_sha2_256f_with_sha512,
+        "SLH-DSA-SHAKE-256f" => BC.SlhDsaParameters.slh_dsa_shake_256f_with_shake256,
         _ => throw new ArgumentException($"Unknown parameter set: {family}", nameof(family)),
     };
 

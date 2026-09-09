@@ -37,7 +37,7 @@ The following assets are under the control of the **CryptoHives Open Source Init
  Founder and Keeper — CryptoHives Open Source Initiative.
  
  📧 info@cryptohives.org
- 🌐 https://cryptohives.org
+ 🌐 [cryptohives.org](https://cryptohives.org)
 
 ---
 
