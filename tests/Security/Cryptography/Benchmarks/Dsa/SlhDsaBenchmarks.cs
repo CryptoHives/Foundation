@@ -58,6 +58,8 @@ public class SlhDsaBenchmark
     private IDsaRunner _runner = null!;
     private byte[] _signature = null!;
     private byte[] _invalidSignature = null!;
+    private byte[] _digest = null!;
+    private byte[] _preHashSignature = null!;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SlhDsaBenchmark"/> class for BenchmarkDotNet.
@@ -114,6 +116,13 @@ public class SlhDsaBenchmark
         // down the rejection path instead. See VerifyInvalid.
         _invalidSignature = (byte[])_signature.Clone();
         _invalidSignature[0] ^= 0x01;
+
+        // Pre-hash: the digest is computed once here, so the Sign (pre-hash) row measures the
+        // signature and not the hash. DsaPreHash picks the function BouncyCastle binds to this
+        // parameter set, which is the only way its row stays comparable with the others.
+        _digest = DsaPreHash.Digest(TestDsaAlgorithm.Category, Message);
+        _preHashSignature = new byte[_runner.SignatureSizeBytes];
+        _runner.SignPreHash(Message, _digest, _preHashSignature);
     }
 
     /// <summary>
@@ -181,6 +190,46 @@ public class SlhDsaBenchmark
     /// </remarks>
     [Benchmark(Description = "Verify (invalid)")]
     public bool VerifyInvalid() => _runner.Verify(Message, _invalidSignature);
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void SignPreHashTest()
+    {
+        byte[] signature = new byte[_runner.SignatureSizeBytes];
+        _runner.SignPreHash(Message, _digest, signature);
+
+        Assert.That(signature, Is.Not.All.Zero, "Pre-hash signing must produce a signature.");
+        Assert.That(_runner.VerifyPreHash(Message, _digest, signature), Is.True,
+            "A freshly produced pre-hash signature must verify.");
+        Assert.That(_runner.Verify(Message, signature), Is.False,
+            "A pre-hash signature must not verify as a pure signature.");
+    }
+
+    /// <summary>
+    /// Benchmarks hedged pre-hash signing (HashSLH-DSA, FIPS 205 section 10.2).
+    /// </summary>
+    /// <remarks>
+    /// Read against <see cref="Sign"/>. The gap should be barely visible: what pre-hashing saves
+    /// is one pass over the message, and an SLH-DSA signature is hundreds of thousands of hash
+    /// invocations either way. That is the point of measuring it — pre-hashing is a interface
+    /// convenience here, not a throughput optimization, and the numbers should say so.
+    /// </remarks>
+    [Benchmark(Description = "Sign (pre-hash)")]
+    public void SignPreHash() => _runner.SignPreHash(Message, _digest, _preHashSignature);
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void VerifyPreHashTest()
+    {
+        Assert.That(_runner.VerifyPreHash(Message, _digest, _preHashSignature), Is.True,
+            "Pre-hash verification must accept a signature this key produced.");
+    }
+
+    /// <summary>
+    /// Benchmarks verification of a valid pre-hash signature.
+    /// </summary>
+    [Benchmark(Description = "Verify (pre-hash)")]
+    public bool VerifyPreHash() => _runner.VerifyPreHash(Message, _digest, _preHashSignature);
 
     /// <summary>
     /// Expands a key pair deterministically from fixed seeds, so every runner in a family is

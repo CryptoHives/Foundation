@@ -4,9 +4,9 @@
 
 NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets for FIPS 205:
 
-- **SLH-DSA-keyGen-FIPS205** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-keyGen-FIPS205
-- **SLH-DSA-sigGen-FIPS205** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-sigGen-FIPS205
-- **SLH-DSA-sigVer-FIPS205** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-sigVer-FIPS205
+- [**SLH-DSA-keyGen-FIPS205**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-keyGen-FIPS205)
+- [**SLH-DSA-sigGen-FIPS205**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-sigGen-FIPS205)
+- [**SLH-DSA-sigVer-FIPS205**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-sigVer-FIPS205)
 
 The vectors are stored in **NIST's own ACVP JSON schema** in
 `tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.json.gz`, and read at run time by
@@ -120,6 +120,49 @@ applies the `signatureInterface: external` / `preHash: pure` filter, applies the
 selection rule, and writes deterministic gzip. Because the stored schema is the upstream one,
 enabling a currently skipped group later is a change to the script's filter rather than to the
 file format.
+
+---
+
+## HashSLH-DSA (Pre-Hash) Vectors
+
+The pre-hash groups (FIPS 205 §10.2) live in their own file,
+`tests/Security/Cryptography/TestData/slhdsa-prehash-acvp-fips205.json.gz`, loaded by
+`SlhDsaPreHashAcvpVectors` and exercised by `SlhDsaPreHashAcvpTests`.
+
+```bash
+python scripts/fetch-slhdsa-acvp-vectors.py --profile prehash
+```
+
+The size problem is sharper here than anywhere else in the suite. The runnable pre-hash set is 456
+cases and **15.9 MB gzipped**, and even the full cross product of 12 parameter sets by 12 approved
+pre-hash functions would be 144 sigGen cases and roughly 5 MB. The committed file is therefore a
+**37-case selection (~1.38 MB)**, chosen by rotation rather than by cap:
+
+| Mode | Kept | Rule |
+|------|-----:|------|
+| sigGen | 24 | One case per group, rotating the pre-hash function by parameter-set index. All 12 sets × {deterministic, hedged}, and all 12 pre-hash functions, in 24 cases. |
+| sigVer | 13 | The valid case on that same rotation for every set, plus all 6 failure reasons on `SLH-DSA-SHA2-128f` and `SLH-DSA-SHAKE-256f`. |
+
+Two representative sets rather than the four the pure profile uses, and deliberately so: the
+failure-reason matrix is a property of SLH-DSA verification that the pure profile already covers in
+full. What pre-hash adds is the OID-bound prefix, and these two span both hash instantiations and
+the SHA-512 split that `SlhDsaHash` applies for categories 3 and 5.
+
+The digest PH(M) is **recomputed from the vector's message** by the tests rather than read from the
+file, so they also cross-check the OID-to-hash binding end to end.
+
+### Running the complete set
+
+```bash
+python scripts/fetch-slhdsa-acvp-vectors.py --profile prehash-full
+dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj   --framework net10.0 --filter "FullyQualifiedName~SlhDsaPreHashAcvpTests"
+```
+
+Same escape hatch as the pure set: the gitignored `*.full.json.gz` is preferred automatically, or
+name it in `CRYPTOHIVES_SLHDSA_PREHASH_ACVP_VECTORS`.
+`VectorFile_CoversAtLeastTheCommittedSelection` fails if an override carries fewer cases than the
+committed file, and the weekly `acvp-full-vectors` workflow runs all 456. Expect it to be slow: the
+`s` sets sign at roughly 10⁶ hash invocations each, which is why it is weekly rather than per-PR.
 
 ## Usage
 

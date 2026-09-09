@@ -167,8 +167,12 @@ public class DsaConfig : ManualConfig
         private static int MethodRank(string method) => method switch {
             "KeyGen" => 0,
             "Sign" => 1,
-            "Verify" => 2,
-            "Verify (invalid)" => 3,
+            // Directly beneath its pure counterpart: the pair is meant to be read together, and
+            // the difference between them is the whole point of measuring the pre-hash variant.
+            "Sign (pre-hash)" => 2,
+            "Verify" => 3,
+            "Verify (pre-hash)" => 4,
+            "Verify (invalid)" => 5,
             _ => int.MaxValue,
         };
 

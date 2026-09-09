@@ -17,7 +17,7 @@ GOST R 34.11-2012. It supports two output sizes: 256-bit and 512-bit.
 
 - GOST R 34.11-2012
 - RFC 6986: "GOST R 34.11-2012: Hash Function"
-- https://tc26.ru/ (Technical Committee for Standardization)
+- [Technical Committee for Standardization](https://tc26.ru/)
 
 ## Test Vectors
 

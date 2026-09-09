@@ -10,7 +10,7 @@ Twelve parameter sets: SLH-DSA-{SHA2, SHAKE}-{128, 192, 256}{s, f} — two hash 
 
 - **Document:** NIST FIPS 205
 - **Title:** Stateless Hash-Based Digital Signature Standard
-- **URL:** https://csrc.nist.gov/pubs/fips/205/final
+- **URL:** [csrc.nist.gov/pubs/fips/205/final](https://csrc.nist.gov/pubs/fips/205/final)
 - **Status:** Final (August 2024)
 
 ## Background
@@ -24,7 +24,7 @@ Being *stateless*, it avoids the dangerous key-state management of LMS/XMSS (SP 
 | Variant | Status | Class |
 |---------|--------|-------|
 | SLH-DSA (pure), all 12 parameter sets | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
-| HashSLH-DSA (pre-hash) | ⬜ Not implemented | - |
+| HashSLH-DSA (pre-hash, §10.2) | ✅ Implemented | `SlhDsa.SignPreHash` / `SlhDsa.VerifyPreHash` |
 
 ---
 
@@ -70,7 +70,7 @@ The SHA-2 instantiation pads PK.seed to the hash block size and uses the 22-byte
 
 ### External Interface
 
-The message is domain-separated as M′ = 0x00 ‖ |ctx| ‖ ctx ‖ M with a context string of at most 255 bytes (same prefix scheme as ML-DSA). Hedged signing (fresh n-byte opt_rand) is the default; the deterministic variant uses opt_rand = PK.seed. HashSLH-DSA (pre-hash, domain byte 0x01) is not yet implemented.
+The message is domain-separated as M′ = 0x00 ‖ |ctx| ‖ ctx ‖ M with a context string of at most 255 bytes (same prefix scheme as ML-DSA). Hedged signing (fresh n-byte opt_rand) is the default; the deterministic variant uses opt_rand = PK.seed. HashSLH-DSA (§10.2, domain byte 0x01, M′ = 0x01 ‖ |ctx| ‖ ctx ‖ OID ‖ PH(M)) is available via `SignPreHash`/`VerifyPreHash` for all twelve approved pre-hash functions.
 
 ### Performance Characteristics
 
@@ -86,7 +86,7 @@ Validated against the official NIST ACVP vector sets (keyGen for all 12 sets; si
 
 ## References
 
-1. **NIST FIPS 205:** https://csrc.nist.gov/pubs/fips/205/final
-2. **NIST ACVP test vectors:** https://github.com/usnistgov/ACVP-Server (gen-val/json-files, SLH-DSA-*-FIPS205)
-3. **SPHINCS+:** https://sphincs.org/
-4. **NIST PQC project:** https://csrc.nist.gov/projects/post-quantum-cryptography
+1. [**NIST FIPS 205**](https://csrc.nist.gov/pubs/fips/205/final)
+2. [**NIST ACVP test vectors**](https://github.com/usnistgov/ACVP-Server) (gen-val/json-files, SLH-DSA-*-FIPS205)
+3. [**SPHINCS+**](https://sphincs.org/)
+4. [**NIST PQC project**](https://csrc.nist.gov/projects/post-quantum-cryptography)

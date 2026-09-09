@@ -6,7 +6,7 @@
 ## Source
 
 NIST FIPS 180-4: Secure Hash Standard (SHS)
-- https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf
+- [csrc.nist.gov/…/SHA1.pdf](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf)
 
 ## Algorithm Parameters
 

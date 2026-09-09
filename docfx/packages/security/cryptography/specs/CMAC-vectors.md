@@ -5,9 +5,9 @@ Test vectors for AES-CMAC from NIST SP 800-38B and RFC 4493.
 ## Source
 
 - **NIST SP 800-38B:** Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication
-- **URL:** https://csrc.nist.gov/pubs/sp/800-38b/upd1/final
+- **URL:** [csrc.nist.gov/pubs/sp/800-38b/upd1/final](https://csrc.nist.gov/pubs/sp/800-38b/upd1/final)
 - **RFC 4493:** The AES-CMAC Algorithm
-- **URL:** https://www.rfc-editor.org/rfc/rfc4493
+- **URL:** [www.rfc-editor.org/rfc/rfc4493](https://www.rfc-editor.org/rfc/rfc4493)
 
 ---
 
