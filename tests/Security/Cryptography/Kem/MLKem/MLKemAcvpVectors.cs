@@ -27,13 +27,6 @@ using System.Text.Json;
 /// parameter set, plus 10 each of decapsulation, encapsulation key check and decapsulation key
 /// check.
 /// </para>
-/// <para>
-/// The vectors live in a data file rather than in C# literals because ML-KEM-1024 alone carries
-/// roughly 9.6 KB of hex per key generation case; inline they would dominate the test source. The
-/// file is gzip-compressed because the JSON is about 2 MB, which compresses to roughly 815 KB.
-/// Regenerate it with <c>scripts/fetch-mlkem-acvp-vectors.py</c>, which zeroes the gzip mtime so
-/// unchanged vectors round-trip to a byte-identical file.
-/// </para>
 /// </remarks>
 public static class MLKemAcvpVectors
 {

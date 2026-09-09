@@ -29,14 +29,6 @@ using System.Text.Json;
 /// and hedged variants, and 15 verification cases per parameter set. The pre-hash (HashML-DSA),
 /// internal-interface and external-μ groups are filtered out at generation time.
 /// </para>
-/// <para>
-/// The vectors live in a data file rather than in C# literals because ACVP messages run to
-/// several kilobytes each and ML-DSA-87 carries a 4.6 KB signature per case; inline they added up
-/// to 448 KB of test source that dwarfed the tests themselves. The file is gzip-compressed
-/// because the JSON is about 4.4 MB, which compresses to roughly 2.5 MB. Regenerate it with
-/// <c>scripts/fetch-mldsa-acvp-vectors.py</c>, which zeroes the gzip mtime so unchanged vectors
-/// round-trip to a byte-identical file.
-/// </para>
 /// </remarks>
 public static class MLDsaAcvpVectors
 {
