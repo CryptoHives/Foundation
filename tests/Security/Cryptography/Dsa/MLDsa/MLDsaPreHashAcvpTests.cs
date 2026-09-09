@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Dsa.MlDsa;
@@ -65,13 +65,13 @@ public class MlDsaPreHashAcvpTests
     public void SigGenPreHashDeterministic_MatchesAcvpVector(string parameterSet, int tcId, string hashAlg,
         string skHex, string messageHex, string contextHex, string signatureHex)
     {
-        MlDsaParams p = PreHashTestUtil.MlDsaParamsFor(parameterSet);
+        MLDsaParams p = PreHashTestUtil.MlDsaParamsFor(parameterSet);
         (byte[] digest, string oid) = PreHashTestUtil.ComputeDigest(hashAlg, PreHashTestUtil.FromHex(messageHex));
 
         byte[] prefix = new byte[PreHash.MaxPrefixBytes];
         int prefixLength = PreHash.BuildPrefix(PreHashTestUtil.FromHex(contextHex), oid, prefix);
 
-        byte[] rnd = new byte[MlDsaParams.SignSeedBytes];
+        byte[] rnd = new byte[MLDsaParams.SignSeedBytes];
         byte[] signature = new byte[p.SignatureBytes];
         MlDsaCore.Sign(p, PreHashTestUtil.FromHex(skHex), prefix.AsSpan(0, prefixLength), digest, rnd, signature);
 
