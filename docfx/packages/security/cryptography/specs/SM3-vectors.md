@@ -18,7 +18,7 @@ to SHA-256 but with different constants and operations.
 
 - GB/T 32905-2016: "Information security techniques — SM3 cryptographic hash algorithm"
 - ISO/IEC 10118-3:2018 (includes SM3)
-- https://www.oscca.gov.cn/ (State Cryptography Administration of China)
+- [State Cryptography Administration of China](https://www.oscca.gov.cn/)
 
 ## Test Vectors
 

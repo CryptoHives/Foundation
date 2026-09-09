@@ -20,7 +20,7 @@ LSH-512 (64-bit words), each supporting multiple output sizes.
 ## Official Reference
 
 - KS X 3262 — Korean national standard for hash functions
-- KISA (Korea Internet & Security Agency): https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do
+- [KISA (Korea Internet & Security Agency)](https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do)
 
 ## Test Vectors
 

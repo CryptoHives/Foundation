@@ -12,7 +12,7 @@ NIST FIPS 204 specifies ML-DSA, the module-lattice-based digital signature algor
 
 - **Document:** NIST FIPS 204
 - **Title:** Module-Lattice-Based Digital Signature Standard
-- **URL:** https://csrc.nist.gov/pubs/fips/204/final
+- **URL:** [csrc.nist.gov/pubs/fips/204/final](https://csrc.nist.gov/pubs/fips/204/final)
 - **Status:** Final (August 2024)
 
 ## Background
@@ -96,7 +96,7 @@ Validated against the official NIST ACVP vector sets (keyGen, sigGen determinist
 
 ## References
 
-1. **NIST FIPS 204:** https://csrc.nist.gov/pubs/fips/204/final
-2. **NIST ACVP test vectors:** https://github.com/usnistgov/ACVP-Server (gen-val/json-files, ML-DSA-*-FIPS204)
-3. **CRYSTALS-Dilithium:** https://pq-crystals.org/dilithium/
-4. **NIST PQC project:** https://csrc.nist.gov/projects/post-quantum-cryptography
+1. [**NIST FIPS 204**](https://csrc.nist.gov/pubs/fips/204/final)
+2. [**NIST ACVP test vectors**](https://github.com/usnistgov/ACVP-Server) (gen-val/json-files, ML-DSA-*-FIPS204)
+3. [**CRYSTALS-Dilithium**](https://pq-crystals.org/dilithium/)
+4. [**NIST PQC project**](https://csrc.nist.gov/projects/post-quantum-cryptography)

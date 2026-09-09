@@ -16,7 +16,7 @@ particularly Bitcoin for address generation.
 ## Official Reference
 
 - Original paper: "RIPEMD-160: A Strengthened Version of RIPEMD"
-- https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
+- [homes.esat.kuleuven.be/~bosselae/ripemd160.html](https://homes.esat.kuleuven.be/~bosselae/ripemd160.html)
 
 ## Test Vectors
 

@@ -5,7 +5,7 @@ Test vectors for HMAC-SHA-256, HMAC-SHA-384, and HMAC-SHA-512 from RFC 4231.
 ## Source
 
 - **RFC 4231:** Identifiers and Test Vectors for HMAC-SHA-224, HMAC-SHA-256, HMAC-SHA-384, and HMAC-SHA-512
-- **URL:** https://www.rfc-editor.org/rfc/rfc4231
+- **URL:** [www.rfc-editor.org/rfc/rfc4231](https://www.rfc-editor.org/rfc/rfc4231)
 
 ---
 

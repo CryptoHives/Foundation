@@ -4,9 +4,9 @@
 
 NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets for FIPS 205:
 
-- **SLH-DSA-keyGen-FIPS205** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-keyGen-FIPS205
-- **SLH-DSA-sigGen-FIPS205** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-sigGen-FIPS205
-- **SLH-DSA-sigVer-FIPS205** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-sigVer-FIPS205
+- [**SLH-DSA-keyGen-FIPS205**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-keyGen-FIPS205)
+- [**SLH-DSA-sigGen-FIPS205**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-sigGen-FIPS205)
+- [**SLH-DSA-sigVer-FIPS205**](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/SLH-DSA-sigVer-FIPS205)
 
 The vectors are stored in **NIST's own ACVP JSON schema** in
 `tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.json.gz`, and read at run time by

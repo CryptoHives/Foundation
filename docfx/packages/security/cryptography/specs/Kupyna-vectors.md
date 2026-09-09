@@ -19,9 +19,9 @@ It supports output sizes of 256, 384, and 512 bits.
 
 - DSTU 7564:2014 — Ukrainian national standard for hash functions
 - IACR ePrint 2015/885: "The Kupyna Hash Function" by Oliynykov et al.
-  https://eprint.iacr.org/2015/885.pdf
+  [eprint.iacr.org/2015/885.pdf](https://eprint.iacr.org/2015/885.pdf)
 - Reference implementation by Kiianchuk, Mordvinov, Oliynykov:
-  https://github.com/Roman-Oliynykov/Kupyna-reference
+  [github.com/Roman-Oliynykov/Kupyna-reference](https://github.com/Roman-Oliynykov/Kupyna-reference)
 
 ## Test Vectors
 
