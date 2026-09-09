@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Cipher.Aes;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Tests for AES implementations using NIST FIPS 197 test vectors.
@@ -208,9 +209,12 @@ public class AesTests
     {
         byte[] plaintext = FromHex("00112233445566778899aabbccddeeff");
         byte[] key = new byte[keyLength];
-        for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
+        for (int i = 0; i < keyLength; i++)
+        {
+            key[i] = (byte)i;
+        }
 
-        using var aes = CreateAes(keyLength);
+        using SymmetricCipher aes = CreateAes(keyLength);
         aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
@@ -231,10 +235,17 @@ public class AesTests
         byte[] plaintext = FromHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
         byte[] key = new byte[keyLength];
         byte[] iv = new byte[16];
-        for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
-        for (int i = 0; i < 16; i++) iv[i] = (byte)(0x10 + i);
+        for (int i = 0; i < keyLength; i++)
+        {
+            key[i] = (byte)i;
+        }
 
-        using var aes = CreateAes(keyLength);
+        for (int i = 0; i < 16; i++)
+        {
+            iv[i] = (byte)(0x10 + i);
+        }
+
+        using SymmetricCipher aes = CreateAes(keyLength);
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
@@ -256,10 +267,17 @@ public class AesTests
         byte[] plaintext = FromHex("00112233445566778899aabbccdd");
         byte[] key = new byte[keyLength];
         byte[] iv = new byte[16];
-        for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
-        for (int i = 0; i < 16; i++) iv[i] = (byte)(0x20 + i);
+        for (int i = 0; i < keyLength; i++)
+        {
+            key[i] = (byte)i;
+        }
 
-        using var aes = CreateAes(keyLength);
+        for (int i = 0; i < 16; i++)
+        {
+            iv[i] = (byte)(0x20 + i);
+        }
+
+        using SymmetricCipher aes = CreateAes(keyLength);
         aes.Mode = CipherMode.CTR;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
@@ -284,10 +302,17 @@ public class AesTests
         byte[] plaintext = FromHex("00112233445566778899aabbccdd"); // 14 bytes - needs 2 bytes padding
         byte[] key = new byte[keyLength];
         byte[] iv = new byte[16];
-        for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
-        for (int i = 0; i < 16; i++) iv[i] = (byte)(0x30 + i);
+        for (int i = 0; i < keyLength; i++)
+        {
+            key[i] = (byte)i;
+        }
 
-        using var aes = CreateAes(keyLength);
+        for (int i = 0; i < 16; i++)
+        {
+            iv[i] = (byte)(0x30 + i);
+        }
+
+        using SymmetricCipher aes = CreateAes(keyLength);
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
         aes.Key = key;
@@ -328,7 +353,7 @@ public class AesTests
         byte[] key = new byte[16];
         byte[] iv = new byte[16];
 
-        using var aes = CreateAes(16);
+        using SymmetricCipher aes = CreateAes(16);
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
         aes.Key = key;
@@ -341,7 +366,7 @@ public class AesTests
         ciphertext[corruptIndexInPadBlock] ^= 0xFF;
 
         aes.IV = iv;
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => aes.Decrypt(ciphertext));
+        Assert.Throws<OS.CryptographicException>(() => aes.Decrypt(ciphertext));
     }
 
     // ========================================================================
@@ -353,12 +378,22 @@ public class AesTests
     {
         // Multiple blocks to test CBC chaining
         byte[] plaintext = new byte[64]; // 4 blocks
-        for (int i = 0; i < plaintext.Length; i++) plaintext[i] = (byte)i;
+        for (int i = 0; i < plaintext.Length; i++)
+        {
+            plaintext[i] = (byte)i;
+        }
 
         byte[] key = new byte[32];
         byte[] iv = new byte[16];
-        for (int i = 0; i < 32; i++) key[i] = (byte)(0x40 + i);
-        for (int i = 0; i < 16; i++) iv[i] = (byte)(0x60 + i);
+        for (int i = 0; i < 32; i++)
+        {
+            key[i] = (byte)(0x40 + i);
+        }
+
+        for (int i = 0; i < 16; i++)
+        {
+            iv[i] = (byte)(0x60 + i);
+        }
 
         using var aes = Aes256.Create();
         aes.Mode = CipherMode.CBC;
@@ -392,7 +427,7 @@ public class AesTests
     public void Aes128_InvalidKeySize_Throws()
     {
         using var aes = Aes128.Create();
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
+        Assert.Throws<OS.CryptographicException>(() => {
             aes.Key = new byte[24]; // Wrong size for AES-128
         });
     }
@@ -401,7 +436,7 @@ public class AesTests
     public void Aes256_InvalidKeySize_Throws()
     {
         using var aes = Aes256.Create();
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
+        Assert.Throws<OS.CryptographicException>(() => {
             aes.Key = new byte[16]; // Wrong size for AES-256
         });
     }
@@ -419,7 +454,7 @@ public class AesTests
         aes.Key = new byte[16];
         aes.IV = new byte[16];
 
-        var encryptor = aes.CreateEncryptor();
+        ICipherTransform encryptor = aes.CreateEncryptor();
         byte[] block = new byte[16];
         byte[] output = new byte[16];
         encryptor.TransformBlock(block, output);
