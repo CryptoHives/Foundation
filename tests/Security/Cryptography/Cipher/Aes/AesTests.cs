@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA5401 // AES test vectors use explicit fixed IVs for deterministic verification.
+
 namespace Cryptography.Tests.Cipher.Aes;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
@@ -448,11 +450,16 @@ public class AesTests
     [Test]
     public void AesCipherTransform_DisposedInstance_Throws()
     {
+        var random = new Random(42);
         using var aes = Aes128.Create();
         aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
-        aes.Key = new byte[16];
-        aes.IV = new byte[16];
+        var key = new byte[16];
+        var iv = new byte[16];
+        random.NextBytes(key);
+        random.NextBytes(iv);
+        aes.Key = key;
+        aes.IV = iv;
 
         ICipherTransform encryptor = aes.CreateEncryptor();
         byte[] block = new byte[16];
