@@ -69,11 +69,11 @@ MAC_EXACT = {"aes-cmac", "aes-gmac", "poly1305"}
 # ordered dimension is the FIPS 203 parameter set, which the Description column already puts in
 # the family slot (ML-KEM-512/768/1024), so data_size_label comes out empty for every row.
 KEM_PREFIXES = ("ml-kem",)
-# Post-quantum signatures, on the same terms: the ordered dimension is the FIPS 204 parameter set
-# (ML-DSA-44/65/87) and data_size_label is empty for every row. The prefix has to be listed here
-# or the fallback below files these under Hash, which is wrong and — unlike an unmapped report —
-# silent.
-DSA_PREFIXES = ("ml-dsa",)
+# Post-quantum signatures, on the same terms: the ordered dimension is the parameter set — FIPS
+# 204's ML-DSA-44/65/87 and FIPS 205's twelve SLH-DSA sets — and data_size_label is empty for
+# every row. Each prefix has to be listed here or the fallback below files those reports under
+# Hash, which is wrong and — unlike an unmapped report — silent.
+DSA_PREFIXES = ("ml-dsa", "slh-dsa")
 
 # A handful of historical commits (e.g. KMAC128/256 at 471b6052d4, 2026-02-09) had a
 # DescriptionColumn bug where the "family" slot got filled with a benchmark method name
