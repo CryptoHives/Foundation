@@ -35,7 +35,7 @@
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="Dao.IndividualLock" Version="3.1.1" />
-    <PackageVersion Include="DotNext.Threading" Version="6.7.0" />
+    <PackageVersion Include="DotNext.Threading" Version="6.7.1" />
     <PackageVersion Include="HashifyNET" Version="7.1.1" />
     <PackageVersion Include="IndexRange" Version="1.1.1" />
     <PackageVersion Include="KeyedSemaphores" Version="6.1.0" />
@@ -59,6 +59,7 @@
     <PackageVersion Include="OpenGost.Security.Cryptography" Version="0.3.0" />
     <PackageVersion Include="ProtoPromise" Version="3.5.1" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.11" />
   </ItemGroup>
   <!--
     Repo-wide build tooling, pulled in via common.props/version.props <- Directory.Build.props. 

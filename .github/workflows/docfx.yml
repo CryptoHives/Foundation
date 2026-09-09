@@ -123,19 +123,14 @@ jobs:
     - run: dotnet tool update -g docfx
     - run: docfx docfx/docfx.json
 
-    # docfx writes _site/sitemap.xml with a UTF-8 byte-order mark. Google Search
-    # Console rejects a sitemap that has bytes before the `<?xml` declaration with
-    # "Sitemap could not be read", even though the URL loads fine in a browser.
-    # Strip the BOM before the artifact is published.
-    - name: Strip BOM from sitemap.xml
-      run: |
-        f=docfx/_site/sitemap.xml
-        test -f "$f" || { echo "::error::$f not found"; exit 1; }
-        perl -i -0pe 's/^\x{EF}\x{BB}\x{BF}//' "$f"
-        if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' ')" = "efbbbf" ]; then
-          echo "::error::BOM still present in $f"; exit 1
-        fi
-        echo "sitemap.xml starts with: $(head -c 40 "$f")"
+    # Post-process the built site before it is published:
+    #  - strip the UTF-8 BOM docfx writes on sitemap.xml (Search Console rejects it);
+    #  - turn `_noindex: true` pages (the Impressum) into a real robots noindex and
+    #    drop them from the sitemap.
+    # The script throws on any failed assertion, which fails the job.
+    - name: Finalize the built site
+      shell: pwsh
+      run: ./scripts/finalize-docfx-site.ps1 -SiteDir docfx/_site
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v5
@@ -163,3 +158,49 @@ jobs:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v5
+
+    # Tell IndexNow (Bing, Yandex, Seznam, Naver) the docs were just republished.
+    # The key is not a secret - it is served publicly at /<key>.txt for verification,
+    # exactly like the Google site-verification file - so it lives in the repo, added
+    # to docfx.json's `resource` list. `keyLocation` points IndexNow at the key under
+    # /Foundation/, which is what authorises submitting URLs beneath that path.
+    # Best-effort: a failed ping never fails the deploy.
+    - name: Notify IndexNow
+      continue-on-error: true
+      shell: bash
+      env:
+        INDEXNOW_KEY: 7c2e1cbd9afe450880c3e3e3d0b35728
+        SITE: https://cryptohives.github.io/Foundation/
+      run: |
+        set -uo pipefail
+        key_url="${SITE}${INDEXNOW_KEY}.txt"
+
+        # The key file must be live and contain exactly the key, or every endpoint
+        # rejects the whole batch.
+        got=$(curl -fsS --retry 3 --retry-delay 5 "$key_url") || {
+          echo "::warning::IndexNow key file not reachable at $key_url - skipping"; exit 0; }
+        if [ "$got" != "$INDEXNOW_KEY" ]; then
+          echo "::warning::key file at $key_url does not contain the key - skipping"; exit 0; fi
+
+        curl -fsS --retry 3 --retry-delay 5 "${SITE}sitemap.xml" -o sitemap.xml || {
+          echo "::warning::could not fetch the deployed sitemap - skipping IndexNow"; exit 0; }
+
+        mapfile -t urls < <(grep -oP '(?<=<loc>)[^<]+' sitemap.xml | sed 's/&amp;/\&/g')
+        if [ "${#urls[@]}" -eq 0 ]; then
+          echo "::warning::no <loc> entries in sitemap - skipping IndexNow"; exit 0; fi
+        echo "Submitting ${#urls[@]} URL(s) to IndexNow"
+
+        payload=$(printf '%s\n' "${urls[@]}" | jq -R . | jq -s \
+          --arg host cryptohives.github.io \
+          --arg key "$INDEXNOW_KEY" \
+          --arg keyLocation "$key_url" \
+          '{host: $host, key: $key, keyLocation: $keyLocation, urlList: .}')
+
+        code=$(curl -sS -o resp.txt -w '%{http_code}' \
+          -X POST -H 'Content-Type: application/json; charset=utf-8' \
+          --data "$payload" https://api.indexnow.org/indexnow)
+        echo "IndexNow HTTP $code"; cat resp.txt 2>/dev/null || true
+        case "$code" in
+          200|202) echo "IndexNow accepted the submission" ;;
+          *) echo "::warning::IndexNow returned HTTP $code" ;;
+        esac

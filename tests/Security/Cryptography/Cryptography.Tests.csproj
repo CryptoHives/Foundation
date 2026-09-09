@@ -35,6 +35,14 @@
     <PackageReference Include="IndexRange" ExcludeAssets="all" PrivateAssets="all" />
   </ItemGroup>
 
+  <!--
+    System.Text.Json is in-box from net8.0 onward and a package only on the older test legs, where
+    the ACVP vector loaders use it to read the NIST JSON.
+  -->
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+
   <!-- Blake3 NuGet packages that only support .NET 8+ and which are not strong name signed. -->
   <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <PackageReference Include="Blake3" Aliases="Blake3Managed" />
@@ -78,14 +86,27 @@
   </ItemGroup>
 
   <!--
-    NIST ACVP conformance vectors for ML-KEM (FIPS 203). Embedded rather than inlined as C#
-    literals: ML-KEM-1024 alone carries ~9.6 KB of hex per key generation case. Gzipped
-    because the flattened set is ~1.7 MB of hex; MLKemAcvpVectors decompresses on load.
+    NIST ACVP conformance vectors for ML-KEM (FIPS 203), stored in NIST's own ACVP JSON schema.
+    Embedded rather than inlined as C# literals: ML-KEM-1024 alone carries ~9.6 KB of hex per key
+    generation case. Gzipped because the JSON is ~2 MB; MLKemAcvpVectors decompresses and parses
+    it on load. Nothing is filtered — every ML-KEM group has an implementation.
     Regenerate with scripts/fetch-mlkem-acvp-vectors.py.
   -->
   <ItemGroup>
-    <EmbeddedResource Include="TestData/mlkem-acvp-fips203.txt.gz"
-                      LogicalName="Cryptography.Tests.TestData.mlkem-acvp-fips203.txt.gz" />
+    <EmbeddedResource Include="TestData/mlkem-acvp-fips203.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mlkem-acvp-fips203.json.gz" />
+  </ItemGroup>
+
+  <!--
+    NIST ACVP conformance vectors for ML-DSA (FIPS 204), on the same terms. Larger than the
+    ML-KEM set because ACVP messages run to several KB each and ML-DSA-87 signatures are 4.6 KB;
+    ~4.4 MB of JSON gzipped to ~2.5 MB. Only the external-interface pure ML-DSA groups are kept —
+    pre-hash, internal-interface and external-mu have no implementation to test yet.
+    Regenerate with scripts/fetch-mldsa-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mldsa-acvp-fips204.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mldsa-acvp-fips204.json.gz" />
   </ItemGroup>
 
   <ItemGroup>
