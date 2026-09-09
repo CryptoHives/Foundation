@@ -1,3 +1,8 @@
+---
+title: Threading Package
+_description: CryptoHives.Foundation.Threading — pooled, ValueTask-based async synchronization primitives for .NET (AsyncLock, AsyncKeyedLock<TKey>, AsyncSemaphore, events, barrier, countdown, reader-writer lock) with allocation-free waiters. Targets net462 through net10.0.
+---
+
 # CryptoHives.Foundation.Threading Package
 
 ## Overview
@@ -23,6 +28,9 @@ Most popular async synchronization libraries allocate a `Task` and/or `TaskCompl
 ```bash
 dotnet add package CryptoHives.Foundation.Threading
 ```
+
+**Target frameworks:** `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0`. No
+dependency on any other CryptoHives package.
 
 > **Note:** This package does not include [Threading Analyzers](../threading.analyzers/index.md) automatically.
 

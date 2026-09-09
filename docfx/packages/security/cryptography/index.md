@@ -1,3 +1,8 @@
+---
+title: Security.Cryptography Package
+_description: CryptoHives.Foundation.Security.Cryptography — fully managed, OS-independent implementations of hashes, MACs, ciphers, AEAD, KDFs and ML-KEM (FIPS 203), drop-in for System.Security.Cryptography, with optional hardware acceleration. Targets net462 through net10.0.
+---
+
 # CryptoHives.Foundation.Security.Cryptography Package
 
 ## Overview
@@ -13,7 +18,7 @@ The Cryptography package implements hash algorithms, message authentication code
 - **AEAD support** — AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128
 - **Key management** — AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
 - **Post-quantum KEM** — ML-KEM-512/768/1024 (FIPS 203) on every target framework, mirroring the .NET 10 `MLKem` API
-- **Post-quantum signatures** — ML-DSA (FIPS 204) and SLH-DSA (FIPS 205, all 12 parameter sets) on every target framework, mirroring the .NET 10 `MLDsa`/`SlhDsa` APIs — the complete NIST PQC trio
+- **Post-quantum signatures** — ML-DSA-44/65/87 (FIPS 204) and SLH-DSA (FIPS 205, all 12 parameter sets) on every target framework, mirroring the .NET 10 `MLDsa`/`SlhDsa` APIs — the complete NIST PQC trio
 - **Variable-length output** — XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
 - **Keyed hashing** — built-in MAC modes for BLAKE2, BLAKE3, and KMAC
 - **Standards compliant** — verified against NIST, RFC, and ISO test vectors

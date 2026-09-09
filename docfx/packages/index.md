@@ -1,3 +1,8 @@
+---
+title: Packages Overview
+_description: The four independent CryptoHives.Foundation NuGet packages — Memory, Threading, Threading.Analyzers, and Security.Cryptography — what each one gives you, and where to start.
+---
+
 # Packages
 
 The CryptoHives .NET Foundation is a set of independent NuGet packages — take only the one you need.

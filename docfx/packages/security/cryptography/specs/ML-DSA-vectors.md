@@ -8,9 +8,25 @@ NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets f
 - **ML-DSA-sigGen-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigGen-FIPS204
 - **ML-DSA-sigVer-FIPS204** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-sigVer-FIPS204
 
-The curated vectors are embedded as hex constants in
-`tests/Security/Cryptography/Dsa/MlDsa/MlDsaAcvpTests.cs`; each test case references the
-`tcId` of the original ACVP vector file so it can be traced back to the NIST source.
+The vectors are stored in **NIST's own ACVP JSON schema** in
+`tests/Security/Cryptography/TestData/mldsa-acvp-fips204.json.gz`, and read at run time by
+`MLDsaAcvpVectors` with `System.Text.Json`. The file holds the upstream keyGen, sigGen and sigVer
+documents with their `testGroups` and `tests` arrays exactly as published, behind a small envelope
+recording provenance. Every NUnit case is named after its parameter set and the `tcId` of the
+original ACVP vector file, so a failure traces straight back to the NIST source.
+
+It is a data file rather than C# literals because ACVP messages run to several kilobytes each and
+an ML-DSA-87 signature is 4.6 KB per case — inline they added up to 448 KB of test source that
+dwarfed the tests themselves. It is gzipped because the JSON is ~4.4 MB, compressing to ~2.5 MB.
+Regenerate it with `scripts/fetch-mldsa-acvp-vectors.py`, which zeroes the gzip mtime so
+regenerating unchanged vectors produces a byte-identical file rather than a spurious diff.
+
+Only the **external-interface, pure ML-DSA** groups are kept — the ones the library implements.
+The ACVP files also carry pre-hash (HashML-DSA), internal-interface and external-μ groups;
+skipping them takes sigGen from 360 cases to 90 and sigVer from 180 to 45. Every case that can
+actually be run is included, so there is no curated subset to revisit — and because the stored
+schema is the upstream one, enabling a skipped group later is a one-line change to the script's
+filter rather than a change to the file format.
 
 ---
 
@@ -18,18 +34,31 @@ The curated vectors are embedded as hex constants in
 
 For **each** of ML-DSA-44, ML-DSA-65, and ML-DSA-87 (external interface, pure ML-DSA — no pre-hash, no external μ):
 
-| Operation | ACVP group | What is verified |
-|-----------|-----------|------------------|
-| Key generation (AFT) | keyGen | Seed ξ → byte-exact pk and sk |
-| Deterministic signing (AFT) | sigGen, deterministic = true | (sk, message, context) → byte-exact signature |
-| Hedged signing (AFT) | sigGen, deterministic = false | (sk, message, context, ACVP-provided rnd) → byte-exact signature, exercised through the internal interface |
-| Verification (AFT) | sigVer | Valid signatures accepted; *modified signature — commitment*, *modified signature — z*, *modified signature — hint*, and *modified message* cases rejected |
+| Operation | ACVP group | Cases | What is verified |
+|-----------|-----------|-------|------------------|
+| Key generation (AFT) | keyGen | 25 | Seed ξ → byte-exact pk and sk |
+| Deterministic signing (AFT) | sigGen, deterministic = true | 15 | (sk, message, context) → byte-exact signature |
+| Hedged signing (AFT) | sigGen, deterministic = false | 15 | (sk, message, context, ACVP-provided rnd) → byte-exact signature, exercised through the internal interface |
+| Verification (AFT) | sigVer | 15 | Valid signatures accepted; *modified signature — commitment*, *modified signature — z*, *modified signature — hint*, and *modified message* cases rejected |
 
 The sigVer *modified hint* cases exercise the strict HintBitPack validation required for strong unforgeability.
 
+### Both API levels
+
+Each operation is exercised twice where the API allows it: once through the stateless `IDsa`
+interface and once through the key-holding `MLDsa` API that mirrors
+`System.Security.Cryptography.MLDsa`. 420 test cases in total.
+
+One asymmetry is deliberate. Reproducing a sigGen vector byte for byte needs either
+deterministic signing (rnd = 0³²) or an injected `rnd`, and `MLDsa` signs hedged-only —
+matching the in-box type, which exposes no deterministic mode either. Byte-exact sigGen
+therefore lives on the `IDsa` path; what the `MLDsa` pass adds is that the key-holding API
+agrees with NIST about which signatures are *valid*, over a key imported from an expanded
+private key.
+
 ## Cross-Validation (Interop)
 
-`MlDsaInteropTests` cross-validates against independent implementations on every target framework:
+`MLDsaInteropTests` cross-validates against independent implementations on every target framework:
 
 | Peer | Tests |
 |------|-------|
@@ -40,7 +69,7 @@ The sigVer *modified hint* cases exercise the strict HintBitPack validation requ
 
 ## Sample Vectors
 
-Complete vectors are thousands of hex characters; the samples below show short values in full and truncate keys/signatures (lengths noted). Full data: `MlDsaAcvpTests.cs` or the ACVP repository.
+Complete vectors are thousands of hex characters; the samples below show short values in full and truncate keys/signatures (lengths noted). Full data: `tests/Security/Cryptography/TestData/mldsa-acvp-fips204.json.gz` or the ACVP repository.
 
 ### Key Generation (ML-DSA-44, ACVP keyGen tcId 1)
 
@@ -66,9 +95,20 @@ The context string participates via the FIPS 204 message prefix 0x00 ‖ |ctx| �
 
 ## Regenerating / Extending the Vectors
 
-1. Download `internalProjection.json` from the ACVP vector folders listed above (it contains both prompts and expected results, including the `rnd` values for hedged sigGen cases).
-2. Filter to `signatureInterface: external`, `preHash: pure`, `externalMu: false` groups for the standard API surface.
-3. Keep the ACVP `tcId` in the generated comment so vectors remain traceable.
+```bash
+python scripts/fetch-mldsa-acvp-vectors.py
+```
+
+The script downloads `internalProjection.json` from the ACVP folders listed above (it contains both
+prompts and expected results, including the `rnd` values for hedged sigGen cases), keeps the groups
+matching `signatureInterface: external`, `preHash: pure`, `externalMu: false`, and writes the
+gzipped result. Running it against unchanged upstream vectors produces a byte-identical file, so a
+real diff means NIST published new vectors.
+
+Pass `--limit N` to cap the cases per kept group — useful when iterating locally, but the committed
+file is the complete runnable set. To take on HashML-DSA or external-μ later, widen
+`is_pure_external()` in the script and teach `MLDsaAcvpVectors` the extra fields: because the stored
+schema is NIST's own, neither is a file-format change.
 
 ## Usage
 

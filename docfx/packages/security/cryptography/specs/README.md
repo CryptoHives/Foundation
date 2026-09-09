@@ -338,16 +338,21 @@ official sources.
 
 | Algorithm | Security Category | Status | Class |
 |-----------|-------------------|--------|-------|
-| ML-DSA-44 | 2 | ✅ Implemented | `MlDsa44`, `MlDsa` |
-| ML-DSA-65 | 3 | ✅ Implemented | `MlDsa65`, `MlDsa` |
-| ML-DSA-87 | 5 | ✅ Implemented | `MlDsa87`, `MlDsa` |
+| ML-DSA-44 | 2 | ✅ Implemented | `MLDsa44`, `MLDsa` |
+| ML-DSA-65 | 3 | ✅ Implemented | `MLDsa65`, `MLDsa` |
+| ML-DSA-87 | 5 | ✅ Implemented | `MLDsa87`, `MLDsa` |
 | HashML-DSA (pre-hash) | - | ⬜ Not implemented | - |
 
 > **Note:** Validated against official NIST ACVP vectors (key generation, deterministic
 > and hedged signing with byte-exact signatures, and verification including modified
 > commitment/z/hint/message rejections) and cross-checked against BouncyCastle and
-> .NET 10 `System.Security.Cryptography.MLDsa`. The `MlDsa` key-holding class mirrors
+> .NET 10 `System.Security.Cryptography.MLDsa`. The `MLDsa` key-holding class mirrors
 > the .NET 10 API shape on all target frameworks.
+
+
+---
+
+## Digital Signature Algorithms
 
 ### FIPS 205 (Stateless Hash-Based Digital Signature Algorithm)
 

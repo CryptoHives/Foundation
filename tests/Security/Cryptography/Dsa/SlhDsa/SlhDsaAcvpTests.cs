@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Dsa.SlhDsa;
@@ -145,7 +145,7 @@ public class SlhDsaAcvpTests
 
         byte[] context = FromHex(contextHex);
         byte[] prefix = new byte[2 + context.Length];
-        MlDsaCore.BuildExternalPrefix(context, prefix);
+        MLDsaCore.BuildExternalPrefix(context, prefix);
 
         // Deterministic signing uses opt_rand = PK.seed (embedded in sk at offset 2n).
         byte[] signature = new byte[p.SignatureBytes];
@@ -163,7 +163,7 @@ public class SlhDsaAcvpTests
 
         byte[] context = FromHex(contextHex);
         byte[] prefix = new byte[2 + context.Length];
-        MlDsaCore.BuildExternalPrefix(context, prefix);
+        MLDsaCore.BuildExternalPrefix(context, prefix);
 
         byte[] signature = new byte[p.SignatureBytes];
         SlhDsaCore.Sign(p, FromHex(skHex), prefix, FromHex(messageHex), FromHex(additionalRandomnessHex), signature);

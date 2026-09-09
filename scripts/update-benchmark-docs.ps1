@@ -248,6 +248,16 @@ $packageConfigurations = @{
             # two thirds of the measurements.
             @{ Source = "MLKemKeyGenBenchmark-report.md"; Target = "ml-kem-keygen.md" }
             @{ Source = "MLKemBenchmark-report.md"; Target = "ml-kem-ops.md" }
+
+            # Post-quantum signature benchmarks, on the same terms: the 'ml-dsa-' prefix is what
+            # files these under Dsa rather than the Hash fallback.
+            #
+            # There is no internals suite to exclude here yet. The ML-KEM block above leaves
+            # MLKemInternalsBenchmark out deliberately; ML-DSA simply has no counterpart written,
+            # so nothing is being omitted. Should one arrive, it will need the same exclusion for
+            # the same reason - a [Params] column instead of the parsed description.
+            @{ Source = "MLDsaKeyGenBenchmark-report.md"; Target = "ml-dsa-keygen.md" }
+            @{ Source = "MLDsaBenchmark-report.md"; Target = "ml-dsa-ops.md" }
         )
     }
 }

@@ -12,7 +12,7 @@ using System;
 /// <para>
 /// This is the low-level, stateless interface: keys are raw byte spans owned by the
 /// caller and never retained by the implementation. For a key-holding API that mirrors
-/// the .NET 10 built-in types, see <see cref="MlDsa"/>.
+/// the .NET 10 built-in types, see <see cref="MLDsa"/>.
 /// </para>
 /// <para>
 /// <b>Implemented algorithms:</b>
@@ -61,6 +61,30 @@ public interface IDsa : IDisposable
     /// <param name="secretKey">The buffer to receive the secret key.</param>
     /// <exception cref="ArgumentException">A parameter has an invalid size.</exception>
     void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> publicKey, Span<byte> secretKey);
+
+    /// <summary>
+    /// Generates a key pair, optionally skipping the pairwise consistency test.
+    /// </summary>
+    /// <param name="publicKey">The buffer to receive the public key.</param>
+    /// <param name="secretKey">The buffer to receive the secret key.</param>
+    /// <param name="pairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the generated key pair with a sign/verify round trip;
+    /// <see langword="false"/> to skip it. See the remarks on the signature type.
+    /// </param>
+    /// <exception cref="ArgumentException">A buffer is too small.</exception>
+    void GenerateKeyPair(Span<byte> publicKey, Span<byte> secretKey, bool pairwiseConsistencyTest);
+
+    /// <summary>
+    /// Generates a key pair from a seed, optionally skipping the pairwise consistency test.
+    /// </summary>
+    /// <param name="seed">The 32-byte key generation seed ξ.</param>
+    /// <param name="publicKey">The buffer to receive the public key.</param>
+    /// <param name="secretKey">The buffer to receive the secret key.</param>
+    /// <param name="pairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the generated key pair; <see langword="false"/> to skip it.
+    /// </param>
+    /// <exception cref="ArgumentException">A parameter has an invalid size.</exception>
+    void GenerateKeyPair(ReadOnlySpan<byte> seed, Span<byte> publicKey, Span<byte> secretKey, bool pairwiseConsistencyTest);
 
     /// <summary>
     /// Signs a message using the hedged (randomized) variant of ML-DSA.

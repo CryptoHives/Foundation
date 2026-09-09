@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
@@ -56,13 +56,13 @@ internal static class SlhDsaCore
     {
         Span<byte> seeds = stackalloc byte[3 * 32];
         Span<byte> used = seeds.Slice(0, 3 * p.N);
-        MlDsaCore.GenerateRandomSeed(used);
+        MLDsaCore.GenerateRandomSeed(used);
 
         KeyGenFromSeeds(p, used.Slice(0, p.N), used.Slice(p.N, p.N), used.Slice(2 * p.N, p.N), pk, sk);
         CryptographicOperations.ZeroMemory(seeds);
 
         Span<byte> message = stackalloc byte[32];
-        MlDsaCore.GenerateRandomSeed(message);
+        MLDsaCore.GenerateRandomSeed(message);
 
         byte[] signature = new byte[p.SignatureBytes];
         Sign(p, sk, ReadOnlySpan<byte>.Empty, message, sk.Slice(2 * p.N, p.N), signature);

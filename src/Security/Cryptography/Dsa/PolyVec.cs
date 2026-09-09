@@ -24,7 +24,7 @@ internal static class PolyVec
         var vec = new int[length][];
         for (int i = 0; i < length; i++)
         {
-            vec[i] = new int[MlDsaParams.N];
+            vec[i] = new int[MLDsaParams.N];
         }
 
         return vec;
@@ -116,10 +116,10 @@ internal static class PolyVec
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void MatrixPointwiseMontgomery(int[][] r, int[][][] matrix, int[][] vec)
     {
-        var t = new int[MlDsaParams.N];
+        var t = new int[MLDsaParams.N];
         for (int i = 0; i < matrix.Length; i++)
         {
-            Array.Clear(r[i], 0, MlDsaParams.N);
+            Array.Clear(r[i], 0, MLDsaParams.N);
             for (int j = 0; j < vec.Length; j++)
             {
                 Poly.PointwiseMontgomery(t, matrix[i][j], vec[j]);
@@ -127,7 +127,7 @@ internal static class PolyVec
             }
         }
 
-        MlDsaCore.Zero(t);
+        MLDsaCore.Zero(t);
     }
 
     /// <summary>

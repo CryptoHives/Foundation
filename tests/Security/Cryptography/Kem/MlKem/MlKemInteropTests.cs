@@ -336,7 +336,8 @@ public class MLKemInteropTests
         ours.Encapsulate(out byte[] oursCt, out byte[] oursSs);
         byte[] oursRecovered = ours.Decapsulate(oursCt);
 
-        Assert.Multiple(() => {
+        using (Assert.EnterMultipleScope())
+        {
             Assert.That(oursEk, Is.EqualTo(bclEk), "Encapsulation keys must match for the same seed.");
             Assert.That(oursDk, Is.EqualTo(bclDk), "Decapsulation keys must match for the same seed.");
             Assert.That(oursSeed, Is.EqualTo(bclSeed));
@@ -348,7 +349,7 @@ public class MLKemInteropTests
             Assert.That(ours.Algorithm.Name, Is.EqualTo(bcl.Algorithm.Name));
             Assert.That(ours.Decapsulate(bclCt), Is.EqualTo(bclSs));
             Assert.That(bcl.Decapsulate(oursCt), Is.EqualTo(oursSs));
-        });
+        }
     }
 
 #pragma warning restore SYSLIB5006

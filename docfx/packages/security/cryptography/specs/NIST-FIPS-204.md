@@ -25,9 +25,9 @@ Deployment targets include code signing, firmware signing, X.509 certificates, a
 
 | Algorithm | Status | Class |
 |-----------|--------|-------|
-| ML-DSA-44 | ✅ Implemented | `MlDsa44`, `MlDsa` + `MlDsaAlgorithm.MlDsa44` |
-| ML-DSA-65 | ✅ Implemented | `MlDsa65`, `MlDsa` + `MlDsaAlgorithm.MlDsa65` |
-| ML-DSA-87 | ✅ Implemented | `MlDsa87`, `MlDsa` + `MlDsaAlgorithm.MlDsa87` |
+| ML-DSA-44 | ✅ Implemented | `MLDsa44`, `MLDsa` + `MLDsaAlgorithm.MLDsa44` |
+| ML-DSA-65 | ✅ Implemented | `MLDsa65`, `MLDsa` + `MLDsaAlgorithm.MLDsa65` |
+| ML-DSA-87 | ✅ Implemented | `MLDsa87`, `MLDsa` + `MLDsaAlgorithm.MLDsa87` |
 | HashML-DSA (pre-hash) | ⬜ Not implemented | - |
 
 ---
@@ -66,9 +66,9 @@ All symmetric primitives come from the FIPS 202 Keccak family (implemented in th
 
 | FIPS 204 | Description | Implementation |
 |----------|-------------|----------------|
-| Alg. 6 KeyGen_internal | ξ → (pk, sk) | `MlDsaCore.KeyGen` |
-| Alg. 7 Sign_internal | Rejection-loop signing, hedged/deterministic | `MlDsaCore.Sign` |
-| Alg. 8 Verify_internal | Hint-based verification | `MlDsaCore.Verify` |
+| Alg. 6 KeyGen_internal | ξ → (pk, sk) | `MLDsaCore.KeyGen` |
+| Alg. 7 Sign_internal | Rejection-loop signing, hedged/deterministic | `MLDsaCore.Sign` |
+| Alg. 8 Verify_internal | Hint-based verification | `MLDsaCore.Verify` |
 | Alg. 16–21 bit/hint packing | SimpleBitPack, BitPack, HintBitPack with strict validation | `Encode` |
 | Alg. 22–28 encodings | pkEncode/skEncode/sigEncode/w1Encode + decoders | `Encode` |
 | Alg. 29 SampleInBall | Sparse challenge from c̃ | `Sampling.SampleInBall` |

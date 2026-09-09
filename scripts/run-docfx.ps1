@@ -165,6 +165,11 @@ if (-not $NoBuild) {
             exit $exitCode
         }
 
+        # Post-process the built site: strip the sitemap BOM and enforce noindex on
+        # `_noindex: true` pages (robots meta + sitemap removal). Same script the
+        # deploy workflow runs, so local output matches what gets published.
+        & (Join-Path $scriptPath "finalize-docfx-site.ps1") -SiteDir $siteOutput
+
         Write-Host ""
         Write-Host "========================================"
         Write-Host " Documentation built successfully!"

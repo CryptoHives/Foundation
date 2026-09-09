@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
@@ -154,11 +154,11 @@ public sealed class SlhDsa : IDisposable
             throw new ArgumentException($"Destination must be exactly {Algorithm.SignatureSizeInBytes} bytes.", nameof(destination));
 
         Span<byte> prefix = stackalloc byte[2 + SlhDsaParams.MaxContextBytes];
-        int prefixLength = MlDsaCore.BuildExternalPrefix(context, prefix);
+        int prefixLength = MLDsaCore.BuildExternalPrefix(context, prefix);
 
         Span<byte> optRand = stackalloc byte[32];
         Span<byte> rand = optRand.Slice(0, Algorithm.Parameters.N);
-        MlDsaCore.GenerateRandomSeed(rand);
+        MLDsaCore.GenerateRandomSeed(rand);
 
         SlhDsaCore.Sign(Algorithm.Parameters, _secretKey, prefix.Slice(0, prefixLength), data, rand, destination);
         CryptographicOperations.ZeroMemory(optRand);
@@ -185,7 +185,7 @@ public sealed class SlhDsa : IDisposable
         }
 
         Span<byte> prefix = stackalloc byte[2 + SlhDsaParams.MaxContextBytes];
-        int prefixLength = MlDsaCore.BuildExternalPrefix(context, prefix);
+        int prefixLength = MLDsaCore.BuildExternalPrefix(context, prefix);
 
         return SlhDsaCore.Verify(Algorithm.Parameters, _publicKey, prefix.Slice(0, prefixLength), data, signature);
     }

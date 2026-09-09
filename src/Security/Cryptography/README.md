@@ -169,12 +169,12 @@ using CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 // The API mirrors System.Security.Cryptography.MLDsa from .NET 10,
 // but runs fully managed on every target framework down to net462.
-using var signer = MlDsa.GenerateKey(MlDsaAlgorithm.MlDsa65);
-byte[] publicKey = signer.ExportPublicKey();
+using var signer = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
+byte[] publicKey = signer.ExportMLDsaPublicKey();
 byte[] signature = signer.SignData(message);
 
 // Verifier:
-using var verifier = MlDsa.ImportPublicKey(MlDsaAlgorithm.MlDsa65, publicKey);
+using var verifier = MLDsa.ImportMLDsaPublicKey(MLDsaAlgorithm.MLDsa65, publicKey);
 bool valid = verifier.VerifyData(message, signature);
 ```
 

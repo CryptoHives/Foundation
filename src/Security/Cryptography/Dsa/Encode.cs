@@ -28,7 +28,7 @@ internal static class Encode
         ulong acc = 0;
         int accBits = 0;
         int pos = 0;
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             acc |= (ulong)(uint)coeffs[i] << accBits;
             accBits += bits;
@@ -51,7 +51,7 @@ internal static class Encode
         int accBits = 0;
         int pos = 0;
         uint mask = (1u << bits) - 1;
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             while (accBits < bits)
             {
@@ -78,7 +78,7 @@ internal static class Encode
         ulong acc = 0;
         int accBits = 0;
         int pos = 0;
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             acc |= (ulong)(uint)(b - coeffs[i]) << accBits;
             accBits += bits;
@@ -105,7 +105,7 @@ internal static class Encode
         int accBits = 0;
         int pos = 0;
         uint mask = (1u << bits) - 1;
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             while (accBits < bits)
             {
@@ -126,13 +126,13 @@ internal static class Encode
     /// <summary>
     /// HintBitPack (Algorithm 20): packs the hint vector into ω + k bytes.
     /// </summary>
-    public static void HintBitPack(MlDsaParams p, int[][] hint, Span<byte> output)
+    public static void HintBitPack(MLDsaParams p, int[][] hint, Span<byte> output)
     {
         output.Slice(0, p.Omega + p.K).Clear();
         int index = 0;
         for (int i = 0; i < p.K; i++)
         {
-            for (int j = 0; j < MlDsaParams.N; j++)
+            for (int j = 0; j < MLDsaParams.N; j++)
             {
                 if (hint[i][j] != 0)
                 {
@@ -149,12 +149,12 @@ internal static class Encode
     /// </summary>
     /// <returns>False when the encoding is malformed (positions not strictly increasing,
     /// counts inconsistent, or padding bytes non-zero) — the signature must then be rejected.</returns>
-    public static bool HintBitUnpack(MlDsaParams p, ReadOnlySpan<byte> input, int[][] hint)
+    public static bool HintBitUnpack(MLDsaParams p, ReadOnlySpan<byte> input, int[][] hint)
     {
         int index = 0;
         for (int i = 0; i < p.K; i++)
         {
-            Array.Clear(hint[i], 0, MlDsaParams.N);
+            Array.Clear(hint[i], 0, MLDsaParams.N);
             int end = input[p.Omega + i];
             if (end < index || end > p.Omega)
             {
@@ -192,7 +192,7 @@ internal static class Encode
     /// <summary>
     /// pkEncode (Algorithm 22): pk = ρ ‖ SimpleBitPack₁₀(t1).
     /// </summary>
-    public static void PkEncode(MlDsaParams p, ReadOnlySpan<byte> rho, int[][] t1, Span<byte> pk)
+    public static void PkEncode(MLDsaParams p, ReadOnlySpan<byte> rho, int[][] t1, Span<byte> pk)
     {
         rho.Slice(0, 32).CopyTo(pk);
         for (int i = 0; i < p.K; i++)
@@ -204,7 +204,7 @@ internal static class Encode
     /// <summary>
     /// pkDecode (Algorithm 23).
     /// </summary>
-    public static void PkDecode(MlDsaParams p, ReadOnlySpan<byte> pk, Span<byte> rho, int[][] t1)
+    public static void PkDecode(MLDsaParams p, ReadOnlySpan<byte> pk, Span<byte> rho, int[][] t1)
     {
         pk.Slice(0, 32).CopyTo(rho);
         for (int i = 0; i < p.K; i++)
@@ -216,7 +216,7 @@ internal static class Encode
     /// <summary>
     /// skEncode (Algorithm 24): sk = ρ ‖ K ‖ tr ‖ BitPack(s1) ‖ BitPack(s2) ‖ BitPack(t0).
     /// </summary>
-    public static void SkEncode(MlDsaParams p, ReadOnlySpan<byte> rho, ReadOnlySpan<byte> key,
+    public static void SkEncode(MLDsaParams p, ReadOnlySpan<byte> rho, ReadOnlySpan<byte> key,
                                 ReadOnlySpan<byte> tr, int[][] s1, int[][] s2, int[][] t0, Span<byte> sk)
     {
         rho.Slice(0, 32).CopyTo(sk);
@@ -235,17 +235,17 @@ internal static class Encode
             BitPack(s2[i], p.Eta, p.EtaBits, sk.Slice(offset, etaPolyBytes));
         }
 
-        const int t0PolyBytes = 32 * MlDsaParams.D;
+        const int t0PolyBytes = 32 * MLDsaParams.D;
         for (int i = 0; i < p.K; i++, offset += t0PolyBytes)
         {
-            BitPack(t0[i], 1 << (MlDsaParams.D - 1), MlDsaParams.D, sk.Slice(offset, t0PolyBytes));
+            BitPack(t0[i], 1 << (MLDsaParams.D - 1), MLDsaParams.D, sk.Slice(offset, t0PolyBytes));
         }
     }
 
     /// <summary>
     /// skDecode (Algorithm 25).
     /// </summary>
-    public static void SkDecode(MlDsaParams p, ReadOnlySpan<byte> sk, Span<byte> rho, Span<byte> key,
+    public static void SkDecode(MLDsaParams p, ReadOnlySpan<byte> sk, Span<byte> rho, Span<byte> key,
                                 Span<byte> tr, int[][] s1, int[][] s2, int[][] t0)
     {
         sk.Slice(0, 32).CopyTo(rho);
@@ -264,17 +264,17 @@ internal static class Encode
             BitUnpackSigned(sk.Slice(offset, etaPolyBytes), p.EtaBits, p.Eta, s2[i]);
         }
 
-        const int t0PolyBytes = 32 * MlDsaParams.D;
+        const int t0PolyBytes = 32 * MLDsaParams.D;
         for (int i = 0; i < p.K; i++, offset += t0PolyBytes)
         {
-            BitUnpackSigned(sk.Slice(offset, t0PolyBytes), MlDsaParams.D, 1 << (MlDsaParams.D - 1), t0[i]);
+            BitUnpackSigned(sk.Slice(offset, t0PolyBytes), MLDsaParams.D, 1 << (MLDsaParams.D - 1), t0[i]);
         }
     }
 
     /// <summary>
     /// sigEncode (Algorithm 26): σ = c̃ ‖ BitPack(z) ‖ HintBitPack(h).
     /// </summary>
-    public static void SigEncode(MlDsaParams p, ReadOnlySpan<byte> cTilde, int[][] z, int[][] hint, Span<byte> sig)
+    public static void SigEncode(MLDsaParams p, ReadOnlySpan<byte> cTilde, int[][] z, int[][] hint, Span<byte> sig)
     {
         cTilde.Slice(0, p.CTildeBytes).CopyTo(sig);
 
@@ -292,7 +292,7 @@ internal static class Encode
     /// sigDecode (Algorithm 27).
     /// </summary>
     /// <returns>False when the hint encoding is malformed; the signature must then be rejected.</returns>
-    public static bool SigDecode(MlDsaParams p, ReadOnlySpan<byte> sig, Span<byte> cTilde, int[][] z, int[][] hint)
+    public static bool SigDecode(MLDsaParams p, ReadOnlySpan<byte> sig, Span<byte> cTilde, int[][] z, int[][] hint)
     {
         sig.Slice(0, p.CTildeBytes).CopyTo(cTilde);
 
@@ -309,7 +309,7 @@ internal static class Encode
     /// <summary>
     /// w1Encode (Algorithm 28): packs the commitment high bits (6 bits for γ₂ = (q−1)/88, 4 bits otherwise).
     /// </summary>
-    public static void W1Encode(MlDsaParams p, int[][] w1, Span<byte> output)
+    public static void W1Encode(MLDsaParams p, int[][] w1, Span<byte> output)
     {
         int polyBytes = 32 * p.W1Bits;
         for (int i = 0; i < p.K; i++)
