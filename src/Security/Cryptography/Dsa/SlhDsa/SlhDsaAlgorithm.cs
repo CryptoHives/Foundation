@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1707 // Identifiers should not contain underscores - The algorithm names are defined by the FIPS 205 standard and contain underscores.
+
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
