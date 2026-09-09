@@ -169,12 +169,12 @@ using CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 // The API mirrors System.Security.Cryptography.MLDsa from .NET 10,
 // but runs fully managed on every target framework down to net462.
-using var signer = MlDsa.GenerateKey(MlDsaAlgorithm.MlDsa65);
-byte[] publicKey = signer.ExportPublicKey();
+using var signer = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
+byte[] publicKey = signer.ExportMLDsaPublicKey();
 byte[] signature = signer.SignData(message);
 
 // Verifier:
-using var verifier = MlDsa.ImportPublicKey(MlDsaAlgorithm.MlDsa65, publicKey);
+using var verifier = MLDsa.ImportMLDsaPublicKey(MLDsaAlgorithm.MLDsa65, publicKey);
 bool valid = verifier.VerifyData(message, signature);
 ```
 
@@ -185,8 +185,6 @@ all three parameter sets are verified against the official NIST ACVP test vector
 SLH-DSA (FIPS 205) completes the NIST PQC trio for conservative, hash-based signing —
 all 12 parameter sets via `SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f)` with the
 same API shape; prefer the `f` (fast) sets unless minimal signature size is critical.
-Both schemes also offer the pre-hash variants (HashML-DSA/HashSLH-DSA) via
-`SignPreHash`/`VerifyPreHash` for digest-only signing workflows.
 
 ### cSHAKE — Domain-Separated XOF
 

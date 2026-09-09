@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
@@ -48,21 +48,38 @@ internal static class SlhDsaCore
     }
 
     /// <summary>
-    /// slh_keygen (Algorithm 21): generates a key pair from fresh randomness and runs a
-    /// sign/verify pairwise consistency test as expected by FIPS 140-3.
+    /// slh_keygen (Algorithm 21): generates a key pair from fresh randomness and, unless
+    /// suppressed, runs a sign/verify pairwise consistency test as expected by FIPS 140-3.
     /// </summary>
+    /// <param name="p">The parameter set.</param>
+    /// <param name="pk">Output: the 2n-byte public key.</param>
+    /// <param name="sk">Output: the 4n-byte secret key.</param>
+    /// <param name="pairwiseConsistencyTest">
+    /// <see langword="true"/> to verify the generated key pair with a sign/verify round trip;
+    /// <see langword="false"/> to skip it.
+    /// </param>
+    /// <remarks>
+    /// The consistency test is far more expensive here than it is for ML-DSA: it performs a
+    /// full SLH-DSA signature, which for the <c>s</c> parameter sets is on the order of a
+    /// million hash invocations and dominates key generation by orders of magnitude.
+    /// </remarks>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
-    public static void KeyGen(SlhDsaParams p, Span<byte> pk, Span<byte> sk)
+    public static void KeyGen(SlhDsaParams p, Span<byte> pk, Span<byte> sk, bool pairwiseConsistencyTest = true)
     {
         Span<byte> seeds = stackalloc byte[3 * 32];
         Span<byte> used = seeds.Slice(0, 3 * p.N);
-        MlDsaCore.GenerateRandomSeed(used);
+        MLDsaCore.GenerateRandomSeed(used);
 
         KeyGenFromSeeds(p, used.Slice(0, p.N), used.Slice(p.N, p.N), used.Slice(2 * p.N, p.N), pk, sk);
         CryptographicOperations.ZeroMemory(seeds);
 
+        if (!pairwiseConsistencyTest)
+        {
+            return;
+        }
+
         Span<byte> message = stackalloc byte[32];
-        MlDsaCore.GenerateRandomSeed(message);
+        MLDsaCore.GenerateRandomSeed(message);
 
         byte[] signature = new byte[p.SignatureBytes];
         Sign(p, sk, ReadOnlySpan<byte>.Empty, message, sk.Slice(2 * p.N, p.N), signature);

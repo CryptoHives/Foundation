@@ -1,10 +1,11 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 /// <summary>
 /// Pre-hash support shared by HashML-DSA (FIPS 204 §5.4) and HashSLH-DSA (FIPS 205 §10.2).
@@ -90,11 +91,11 @@ internal static class PreHash
         int bodyLength = 0;
 
         // First two arcs combine into one value: 40·arc1 + arc2.
-        long first = long.Parse(parts[0]) * 40 + long.Parse(parts[1]);
+        long first = long.Parse(parts[0], CultureInfo.InvariantCulture) * 40 + long.Parse(parts[1], CultureInfo.InvariantCulture);
         bodyLength += EncodeArc(first, body.Slice(bodyLength));
         for (int i = 2; i < parts.Length; i++)
         {
-            bodyLength += EncodeArc(long.Parse(parts[i]), body.Slice(bodyLength));
+            bodyLength += EncodeArc(long.Parse(parts[i], CultureInfo.InvariantCulture), body.Slice(bodyLength));
         }
 
         destination[0] = 0x06;

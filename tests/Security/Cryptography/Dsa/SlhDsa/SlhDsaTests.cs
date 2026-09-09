@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Dsa.SlhDsa;
@@ -63,11 +63,11 @@ public class SlhDsaTests
         using var original = SlhDsa.GenerateKey(algorithm);
         byte[] message = new byte[33];
 
-        using var imported = SlhDsa.ImportSecretKey(algorithm, original.ExportSecretKey());
+        using var imported = SlhDsa.ImportSlhDsaPrivateKey(algorithm, original.ExportSlhDsaPrivateKey());
         byte[] signature = imported.SignData(message);
 
         Assert.That(original.VerifyData(message, signature), Is.True);
-        Assert.That(imported.ExportPublicKey(), Is.EqualTo(original.ExportPublicKey()),
+        Assert.That(imported.ExportSlhDsaPublicKey(), Is.EqualTo(original.ExportSlhDsaPublicKey()),
             "The embedded public key must be extracted on import.");
     }
 
@@ -96,10 +96,10 @@ public class SlhDsaTests
         byte[] message = new byte[16];
         byte[] signature = signer.SignData(message);
 
-        using var verifier = SlhDsa.ImportPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, signer.ExportPublicKey());
+        using var verifier = SlhDsa.ImportSlhDsaPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, signer.ExportSlhDsaPublicKey());
         Assert.That(verifier.VerifyData(message, signature), Is.True);
         Assert.That(() => verifier.SignData(message), Throws.InstanceOf<CryptographicException>());
-        Assert.That(() => verifier.ExportSecretKey(), Throws.InstanceOf<CryptographicException>());
+        Assert.That(() => verifier.ExportSlhDsaPrivateKey(), Throws.InstanceOf<CryptographicException>());
     }
 
     [Test]
@@ -118,9 +118,9 @@ public class SlhDsaTests
         using var dsa = SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f);
         byte[] message = new byte[8];
 
-        Assert.That(() => SlhDsa.ImportPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, new byte[16]),
+        Assert.That(() => SlhDsa.ImportSlhDsaPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, new byte[16]),
             Throws.InstanceOf<ArgumentException>());
-        Assert.That(() => SlhDsa.ImportSecretKey(SlhDsaAlgorithm.SlhDsaShake128f, new byte[16]),
+        Assert.That(() => SlhDsa.ImportSlhDsaPrivateKey(SlhDsaAlgorithm.SlhDsaShake128f, new byte[16]),
             Throws.InstanceOf<ArgumentException>());
         Assert.That(() => dsa.SignData(message, new byte[256]), Throws.InstanceOf<ArgumentException>(),
             "Context longer than 255 bytes must be rejected.");
@@ -138,17 +138,16 @@ public class SlhDsaTests
 
         Assert.That(() => dsa.SignData(message), Throws.InstanceOf<ObjectDisposedException>());
         Assert.That(() => dsa.VerifyData(message, signature), Throws.InstanceOf<ObjectDisposedException>());
-        Assert.That(() => dsa.ExportPublicKey(), Throws.InstanceOf<ObjectDisposedException>());
-        Assert.That(() => dsa.ExportSecretKey(), Throws.InstanceOf<ObjectDisposedException>());
+        Assert.That(() => dsa.ExportSlhDsaPublicKey(), Throws.InstanceOf<ObjectDisposedException>());
+        Assert.That(() => dsa.ExportSlhDsaPrivateKey(), Throws.InstanceOf<ObjectDisposedException>());
     }
 
     [Test]
     public void AlgorithmDescriptors_ReportFips205Sizes()
     {
-        Assert.Multiple(() =>
-        {
+        Assert.Multiple(() => {
             Assert.That(SlhDsaAlgorithm.SlhDsaSha2_128s.PublicKeySizeInBytes, Is.EqualTo(32));
-            Assert.That(SlhDsaAlgorithm.SlhDsaSha2_128s.SecretKeySizeInBytes, Is.EqualTo(64));
+            Assert.That(SlhDsaAlgorithm.SlhDsaSha2_128s.PrivateKeySizeInBytes, Is.EqualTo(64));
             Assert.That(SlhDsaAlgorithm.SlhDsaSha2_128s.SignatureSizeInBytes, Is.EqualTo(7856));
             Assert.That(SlhDsaAlgorithm.SlhDsaShake128f.SignatureSizeInBytes, Is.EqualTo(17088));
             Assert.That(SlhDsaAlgorithm.SlhDsaShake192s.SignatureSizeInBytes, Is.EqualTo(16224));
@@ -156,7 +155,7 @@ public class SlhDsaTests
             Assert.That(SlhDsaAlgorithm.SlhDsaShake256s.SignatureSizeInBytes, Is.EqualTo(29792));
             Assert.That(SlhDsaAlgorithm.SlhDsaSha2_256f.SignatureSizeInBytes, Is.EqualTo(49856));
             Assert.That(SlhDsaAlgorithm.SlhDsaShake256f.PublicKeySizeInBytes, Is.EqualTo(64));
-            Assert.That(SlhDsaAlgorithm.SlhDsaShake256f.SecretKeySizeInBytes, Is.EqualTo(128));
+            Assert.That(SlhDsaAlgorithm.SlhDsaShake256f.PrivateKeySizeInBytes, Is.EqualTo(128));
             Assert.That(SlhDsaAlgorithm.SlhDsaShake128f.Name, Is.EqualTo("SLH-DSA-SHAKE-128f"));
             Assert.That(SlhDsaAlgorithm.SlhDsaShake128f.ToString(), Is.EqualTo("SLH-DSA-SHAKE-128f"));
         });

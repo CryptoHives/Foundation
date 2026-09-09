@@ -21,7 +21,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Add(int[] r, int[] a, int[] b)
     {
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             r[i] = a[i] + b[i];
         }
@@ -33,7 +33,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Sub(int[] r, int[] a, int[] b)
     {
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             r[i] = a[i] - b[i];
         }
@@ -45,7 +45,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Reduce(int[] r)
     {
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             r[i] = Ntt.Reduce32(r[i]);
         }
@@ -57,7 +57,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ConditionalAddQ(int[] r)
     {
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             r[i] = Ntt.ConditionalAddQ(r[i]);
         }
@@ -69,9 +69,9 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ShiftLeftD(int[] r)
     {
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
-            r[i] <<= MlDsaParams.D;
+            r[i] <<= MLDsaParams.D;
         }
     }
 
@@ -81,7 +81,7 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void PointwiseMontgomery(int[] r, int[] a, int[] b)
     {
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             r[i] = Ntt.MontgomeryMultiply(a[i], b[i]);
         }
@@ -96,11 +96,11 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Power2Round(int[] r1, int[] r0, int[] a)
     {
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             int v = a[i];
-            int high = (v + (1 << (MlDsaParams.D - 1)) - 1) >> MlDsaParams.D;
-            r0[i] = v - (high << MlDsaParams.D);
+            int high = (v + (1 << (MLDsaParams.D - 1)) - 1) >> MLDsaParams.D;
+            r0[i] = v - (high << MLDsaParams.D);
             r1[i] = high;
         }
     }
@@ -115,12 +115,12 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Decompose(int[] r1, int[] r0, int[] a, int gamma2)
     {
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             int v = a[i];
             int high = DecomposeHigh(v, gamma2);
             int low = v - high * 2 * gamma2;
-            low -= (((MlDsaParams.Q - 1) / 2 - low) >> 31) & MlDsaParams.Q;
+            low -= (((MLDsaParams.Q - 1) / 2 - low) >> 31) & MLDsaParams.Q;
             r1[i] = high;
             r0[i] = low;
         }
@@ -133,7 +133,7 @@ internal static class Poly
     internal static int DecomposeHigh(int a, int gamma2)
     {
         int a1 = (a + 127) >> 7;
-        if (gamma2 == (MlDsaParams.Q - 1) / 32)
+        if (gamma2 == (MLDsaParams.Q - 1) / 32)
         {
             a1 = (a1 * 1025 + (1 << 21)) >> 22;
             a1 &= 15;
@@ -160,7 +160,7 @@ internal static class Poly
     public static int MakeHint(int[] hint, int[] low, int[] high, int gamma2)
     {
         int count = 0;
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             int a0 = low[i];
             int a1 = high[i];
@@ -185,13 +185,13 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void UseHint(int[] r, int[] hint, int gamma2)
     {
-        int m = (MlDsaParams.Q - 1) / (2 * gamma2);
-        for (int i = 0; i < MlDsaParams.N; i++)
+        int m = (MLDsaParams.Q - 1) / (2 * gamma2);
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             int v = r[i];
             int a1 = DecomposeHigh(v, gamma2);
             int a0 = v - a1 * 2 * gamma2;
-            a0 -= (((MlDsaParams.Q - 1) / 2 - a0) >> 31) & MlDsaParams.Q;
+            a0 -= (((MLDsaParams.Q - 1) / 2 - a0) >> 31) & MLDsaParams.Q;
 
             if (hint[i] == 0)
             {
@@ -222,7 +222,7 @@ internal static class Poly
     public static bool NormExceeds(int[] a, int bound)
     {
         int violated = 0;
-        for (int i = 0; i < MlDsaParams.N; i++)
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             int v = a[i];
             int mask = v >> 31;
@@ -238,7 +238,7 @@ internal static class Poly
     /// </summary>
     public static void Copy(int[] destination, int[] source)
     {
-        Array.Copy(source, destination, MlDsaParams.N);
+        Array.Copy(source, destination, MLDsaParams.N);
     }
 
     /// <summary>Returns -1 when a == b, else 0, without branching.</summary>

@@ -148,6 +148,65 @@ are the seed (`d ‖ z`), the decapsulation key and the encapsulation key; all t
 > come from `ArrayPool<short>`, the hash and XOF objects from the shared `HashAlgorithmPool`, and
 > the small fixed-size buffers from the stack.
 
+### Post-Quantum Signatures
+
+An `MLDsa` object holds key material rather than absorbing state, so — as with ML-KEM — its
+footprint is fixed by the parameter set. The three arrays it retains are the seed ξ, the expanded
+private key and the public key; all three are zeroed on `Dispose`.
+
+| Algorithm | Instance State | Public Key | Private Key | Signature | Static Tables |
+|-----------|---------------|-----------|-------------|-----------|---------------|
+| ML-DSA-44 | 3,904 B | 1,312 B | 2,560 B | 2,420 B | 1 KB + 3.6 KB |
+| ML-DSA-65 | 6,016 B | 1,952 B | 4,032 B | 3,309 B | 1 KB + 3.6 KB |
+| ML-DSA-87 | 7,520 B | 2,592 B | 4,896 B | 4,627 B | 1 KB + 3.6 KB |
+
+> Instance state is seed + private key + public key. A key imported from an expanded private key
+> rather than generated from a seed keeps no seed and is 32 B smaller; a public-key-only object
+> keeps just that array. The 1 KB of static tables is the `int[256]` NTT zeta table, computed at
+> type initialization from ζ = 1753 rather than hard-coded; the 3.6 KB is the Keccak constant
+> block shared with every SHA-3/SHAKE instance, which ML-DSA uses for H and the XOF — it is not
+> a second copy.
+>
+> **Unlike ML-KEM, signing and verification do allocate.** ML-DSA works over `int[]`
+> polynomials — q = 8380417 does not fit in a `short` — and the matrix Â alone is k×ℓ
+> polynomials, so `Sign` and `Verify` allocate their working vectors on the managed heap rather
+> than renting from a pool. Expect tens to hundreds of kilobytes per operation, rising with the
+> parameter set. Pooling that working set is a known optimization that has not been made yet.
+>
+> Signing cost is also **variable by construction**: the FIPS 204 rejection loop restarts
+> whenever a candidate signature falls outside the norm bounds, so the iteration count depends on
+> the key, the message and — for the hedged variant, which is the default — the randomness drawn
+> per attempt. Read the mean rather than the minimum, and expect wider distributions than the
+> ML-KEM tables show.
+
+An `SlhDsa` object is smaller still: SLH-DSA keys are just seeds, so what it retains is at most
+the 4n-byte private key and the 2n-byte public key, both zeroed on `Dispose`.
+
+| Algorithm | Instance State | Public Key | Private Key | Signature | Static Tables |
+|-----------|---------------|-----------|-------------|-----------|---------------|
+| SLH-DSA-{SHA2,SHAKE}-128s | 96 B | 32 B | 64 B | 7,856 B | 3.6 KB (SHAKE only) |
+| SLH-DSA-{SHA2,SHAKE}-128f | 96 B | 32 B | 64 B | 17,088 B | 3.6 KB (SHAKE only) |
+| SLH-DSA-{SHA2,SHAKE}-192s | 144 B | 48 B | 96 B | 16,224 B | 3.6 KB (SHAKE only) |
+| SLH-DSA-{SHA2,SHAKE}-192f | 144 B | 48 B | 96 B | 35,664 B | 3.6 KB (SHAKE only) |
+| SLH-DSA-{SHA2,SHAKE}-256s | 192 B | 64 B | 128 B | 29,792 B | 3.6 KB (SHAKE only) |
+| SLH-DSA-{SHA2,SHAKE}-256f | 192 B | 64 B | 128 B | 49,856 B | 3.6 KB (SHAKE only) |
+
+> **The signature is the memory story here.** Nothing else about SLH-DSA is large — the keys are
+> two and four n-byte seeds — but a single signature runs from 7.8 KB to 48.7 KB, and every
+> parameter set past 128s exceeds the 85 KB large-object threshold once a caller holds a couple
+> of them.
+>
+> Signing and verifying allocate on top of that. SLH-DSA is pure hash plumbing, but the plumbing
+> allocates per node: `Adrs.Clone()` inside the WOTS/XMSS/FORS loops, `new byte[len·n]` per WOTS
+> public key (once per XMSS leaf), and `new byte[2n]` per treehash node. Measured allocation is
+> roughly 0.4 MB per 128f signature and 3.5 MB per 256f signature. Pooling that working set is a
+> known optimization that has not been made yet — the same one outstanding for ML-DSA above.
+>
+> Unlike ML-DSA, signing cost is **not** variable: there is no rejection loop, just a fixed walk
+> of the hypertree, so the distributions are tight. The `s` sets sign roughly an order of
+> magnitude slower than the `f` sets at half the signature size, which is the entire point of the
+> split — and why only the six `f` sets are benchmarked.
+
 > **Static tables** are shared across all instances of algorithms in the same family and are loaded
 > once into memory. AES T-tables (8.5 KB) are shared by all AES-based algorithms (ECB, CBC, CTR, GCM,
 > CCM, CMAC, GMAC). The Keccak figure is 192 B of round constants plus ~3.5 KB of SIMD constant
@@ -174,6 +233,12 @@ are the seed (`d ‖ z`), the decapsulation key and the encapsulation key; all t
 
    # Run all regional cipher benchmarks
    .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher
+
+   # Run the post-quantum families (KEM and DSA are the category-level aliases)
+   .\scripts\run-benchmarks.ps1 -Project Cryptography -Family MLDsa
+   .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SlhDsa
+   .\scripts\run-benchmarks.ps1 -Project Cryptography -Family KEM
+   .\scripts\run-benchmarks.ps1 -Project Cryptography -Family DSA
 
    # Direct invocation
    cd tests/Security/Cryptography
@@ -211,7 +276,12 @@ are the seed (`d ‖ z`), the decapsulation key and the encapsulation key; all t
    with no entry is silently skipped and never reaches the archive, the database or the dashboard; it
    warns about each unmapped report it finds, but the warning does not stop the run. The archive name
    matters beyond being a label — the trends importer derives the category from its prefix, which is why
-   the KEM reports are recorded as `ml-kem-*.md`. Pushing the branch does not republish the site on
+   the KEM reports are recorded as `ml-kem-*.md` and the signature reports as `ml-dsa-*.md` and
+   `slh-dsa-*.md`. A prefix the
+   importer does not recognize falls back to `Hash`, which is the one failure here that produces no
+   warning at all: the rows arrive, just filed under the wrong category. Adding a category means adding
+   the prefix to `classify_category()` in `scripts/cryptography-benchmark-trends/import_historical_markdown.py`.
+   Pushing the branch does not republish the site on
    its own — GitHub only runs workflows that exist in the pushed branch, and the orphan archive branch
    carries no `.github/`. Publish a new run deliberately with `gh workflow run docfx.yml`, or let the
    next push to `main` pick it up.

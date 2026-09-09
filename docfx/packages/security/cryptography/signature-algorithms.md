@@ -47,22 +47,22 @@ ML-DSA is specified in [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) (fi
 
 | API | Classes | Best For |
 |-----|---------|----------|
-| Key-holding (recommended) | `MlDsa`, `MlDsaAlgorithm` | Application code; mirrors .NET 10's `System.Security.Cryptography.MLDsa` |
-| Low-level, stateless | `IDsa`, `MlDsa44`, `MlDsa65`, `MlDsa87` | Protocol implementations managing raw key bytes; allocation-conscious span APIs |
+| Key-holding (recommended) | `MLDsa`, `MLDsaAlgorithm` | Application code; mirrors .NET 10's `System.Security.Cryptography.MLDsa` |
+| Low-level, stateless | `IDsa`, `MLDsa44`, `MLDsa65`, `MLDsa87` | Protocol implementations managing raw key bytes; allocation-conscious span APIs |
 
-### Key-Holding API (`MlDsa`)
+### Key-Holding API (`MLDsa`)
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 // Signer: generate a key pair and publish the public key.
-using var signer = MlDsa.GenerateKey(MlDsaAlgorithm.MlDsa65);
-byte[] publicKey = signer.ExportPublicKey();
+using var signer = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
+byte[] publicKey = signer.ExportMLDsaPublicKey();
 
 byte[] signature = signer.SignData(message);
 
 // Verifier:
-using var verifier = MlDsa.ImportPublicKey(MlDsaAlgorithm.MlDsa65, publicKey);
+using var verifier = MLDsa.ImportMLDsaPublicKey(MLDsaAlgorithm.MLDsa65, publicKey);
 bool valid = verifier.VerifyData(message, signature);
 ```
 
@@ -80,42 +80,68 @@ bool valid = verifier.VerifyData(message, signature, "MyApp/v1"u8);
 The 32-byte seed ξ is the compact private-key form; a key created from a seed re-expands deterministically:
 
 ```csharp
-using var key = MlDsa.GenerateKey(MlDsaAlgorithm.MlDsa65);
-byte[] seed = key.ExportPrivateSeed(); // 32 bytes — store this
+using var key = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
+byte[] seed = key.ExportMLDsaPrivateSeed(); // 32 bytes — store this
 
-using var restored = MlDsa.ImportPrivateSeed(MlDsaAlgorithm.MlDsa65, seed);
+using var restored = MLDsa.ImportMLDsaPrivateSeed(MLDsaAlgorithm.MLDsa65, seed);
 // restored is byte-identical to the original key pair
 ```
 
-Keys imported from an expanded secret key (`ImportSecretKey`) hold no seed; on import the
+Keys imported from an expanded private key (`ImportMLDsaPrivateKey`) hold no seed; on import the
 public key is reconstructed from (ρ, s1, s2) and validated against the embedded hash
 tr = H(pk) — a corrupted key is rejected with a `CryptographicException`.
 
 #### Methods
 
+The member names match `System.Security.Cryptography.MLDsa` exactly, so porting code
+between the two is a `using` swap.
+
 | Method | Description |
 |--------|-------------|
-| `GenerateKey(MlDsaAlgorithm)` | Generate a fresh key pair (retains the private seed) |
-| `ImportPrivateSeed(MlDsaAlgorithm, ReadOnlySpan<byte>)` | Expand a 32-byte seed ξ into a key pair |
-| `ImportSecretKey(MlDsaAlgorithm, ReadOnlySpan<byte>)` | Import an expanded secret key (reconstructs and validates the public key) |
-| `ImportPublicKey(MlDsaAlgorithm, ReadOnlySpan<byte>)` | Import a public key (verify-only instance) |
+| `IsSupported` | Always `true` — see [Comparison with .NET Built-in](#comparison-with-net-built-in) |
+| `GenerateKey(MLDsaAlgorithm)` | Generate a fresh key pair (retains the private seed) |
+| `ImportMLDsaPrivateSeed(MLDsaAlgorithm, ReadOnlySpan<byte>)` | Expand a 32-byte seed ξ into a key pair |
+| `ImportMLDsaPrivateKey(MLDsaAlgorithm, ReadOnlySpan<byte>)` | Import an expanded private key (reconstructs and validates the public key) |
+| `ImportMLDsaPublicKey(MLDsaAlgorithm, ReadOnlySpan<byte>)` | Import a public key (verify-only instance) |
 | `SignData(data, context)` / `SignData(data, destination, context)` | Hedged (randomized) signing |
 | `VerifyData(data, signature, context)` | Verification; wrong-length signatures return false |
-| `ExportPrivateSeed()` / `ExportPublicKey()` / `ExportSecretKey()` | Key export (span overloads available) |
-| `Dispose()` | Zeroize the private seed and secret key |
+| `ExportMLDsaPrivateSeed()` / `ExportMLDsaPublicKey()` / `ExportMLDsaPrivateKey()` | Key export (span overloads available) |
+| `Dispose()` | Zeroize the private seed and private key |
+
+Every import takes a `byte[]` as well as a `ReadOnlySpan<byte>`, and `SignData`/`VerifyData`
+have the `byte[]`-based overloads the in-box type provides.
+
+#### Pairwise Consistency Test
+
+Key generation runs a sign/verify round trip on the fresh key pair, as FIPS 140-3 IG 10.3.A
+expects of a validated module. It is the dominant cost of key generation, because a sign is
+itself a rejection loop that runs several iterations on average. `GenerateKey` and
+`ImportMLDsaPrivateSeed` take an optional `pairwiseConsistencyTest` argument to skip it:
+
+```csharp
+using var key = MLDsa.ImportMLDsaPrivateSeed(
+    MLDsaAlgorithm.MLDsa65, seed, pairwiseConsistencyTest: false);
+```
+
+The test guards against a *fault* — bad memory, a bit flip, a miscompiled build — producing a
+key pair that does not round-trip. It cannot catch an implementation bug, since both halves of
+the test would be wrong in the same way. Disable it only where that trade is understood and key
+generation throughput actually matters. Skipping it never changes the key that is produced: the
+test message is derived from the seed, so expanding a stored seed stays fully deterministic and
+draws no entropy from the OS.
 
 ### Low-Level API (`IDsa`)
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
 
-using var dsa = MlDsa65.Create();
+using var dsa = MLDsa65.Create();
 
-byte[] pk = new byte[MlDsa65.PublicKeySizeBytesConst];   // 1952
-byte[] sk = new byte[MlDsa65.SecretKeySizeBytesConst];   // 4032
+byte[] pk = new byte[MLDsa65.PublicKeySizeBytesConst];   // 1952
+byte[] sk = new byte[MLDsa65.SecretKeySizeBytesConst];   // 4032
 dsa.GenerateKeyPair(pk, sk);
 
-byte[] signature = new byte[MlDsa65.SignatureSizeBytesConst]; // 3309
+byte[] signature = new byte[MLDsa65.SignatureSizeBytesConst]; // 3309
 dsa.Sign(sk, message, context: default, signature);
 
 bool valid = dsa.Verify(pk, message, context: default, signature);
@@ -152,30 +178,45 @@ Twelve sets: SHA2 or SHAKE instantiation × security category 1/3/5 × **s** (sm
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using var signer = SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f);
-byte[] publicKey = signer.ExportPublicKey();   // 32 bytes
-byte[] signature = signer.SignData(message);   // 17,088 bytes, hedged
+byte[] publicKey = signer.ExportSlhDsaPublicKey();   // 32 bytes
+byte[] signature = signer.SignData(message);         // 17,088 bytes, hedged
 
-using var verifier = SlhDsa.ImportPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, publicKey);
+using var verifier = SlhDsa.ImportSlhDsaPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, publicKey);
 bool valid = verifier.VerifyData(message, signature);
 ```
 
-Context strings (≤ 255 bytes) work exactly as with ML-DSA. The 4n-byte secret key is itself the compact storage form (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root); there is no separate private seed. Key generation includes a sign/verify pairwise consistency test (FIPS 140-3), which for `s` sets makes `GenerateKey` take seconds by design.
+The member names are the in-box ones, so `SlhDsa` is a drop-in for `System.Security.Cryptography.SlhDsa` — change the `using` and the code compiles unchanged, on .NET Framework 4.6.2 upward. `IsSupported` is always `true` here, which is the practical difference: no shipping Windows exposes SLH-DSA through CNG, so the in-box type is unavailable on most platforms today.
+
+Context strings (≤ 255 bytes) work exactly as with ML-DSA. The 4n-byte private key is itself the compact storage form (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root); there is no separate private seed. Key generation includes a sign/verify pairwise consistency test (FIPS 140-3), which for `s` sets makes `GenerateKey` take seconds by design — `GenerateKey(algorithm, pairwiseConsistencyTest: false)` opts out where that matters.
 
 #### Methods (`SlhDsa`)
 
 | Method | Description |
 |--------|-------------|
+| `IsSupported` | Always `true` — fully managed, never OS-dependent |
 | `GenerateKey(SlhDsaAlgorithm)` | Generate a fresh key pair |
-| `ImportSecretKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 4n-byte secret key (embedded public key is extracted) |
-| `ImportPublicKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 2n-byte public key (verify-only instance) |
+| `GenerateKey(SlhDsaAlgorithm, bool)` | As above, optionally skipping the pairwise consistency test |
+| `ImportSlhDsaPrivateKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 4n-byte private key (embedded public key is extracted) |
+| `ImportSlhDsaPublicKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 2n-byte public key (verify-only instance) |
 | `SignData(data, context)` / `SignData(data, destination, context)` | Hedged (randomized) signing |
 | `VerifyData(data, signature, context)` | Verification; wrong-length signatures return false |
+| `ExportSlhDsaPublicKey()` / `ExportSlhDsaPrivateKey()` | Key export (span overloads available) |
+| `Dispose()` | Zeroize the private key |
 | `ExportPublicKey()` / `ExportSecretKey()` | Key export (span overloads available) |
 | `Dispose()` | Zeroize the secret key |
 
 ### Validation
 
 Same three-way playbook as ML-KEM/ML-DSA (see [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md)): NIST ACVP known-answer tests (keyGen for all 12 sets — byte-exact keys through the full hypertree; byte-exact deterministic and hedged signatures; sigVer including modified R/SIGFORS/SIGHT/message and wrong-length rejections), BouncyCastle interop in both directions, and .NET 10 `SlhDsa` cross-checks where the OS supports it.
+
+Every import, export, `SignData` and `VerifyData` has a `byte[]` overload beside the span one, matching the in-box type. Note the inherited hazard that comes with that: `SignData(byte[], byte[])` binds the **second argument as the context string**, not as a destination buffer. To sign into a buffer you own, use the span overload explicitly.
+PKCS#8, SPKI and PEM import/export, and the `HashSLH-DSA` pre-hash variants, are not implemented yet — they land in one batch across ML-KEM, ML-DSA and SLH-DSA.
+
+### Validation
+
+Same three-way playbook as ML-KEM/ML-DSA (see [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md)): NIST ACVP known-answer tests (keyGen for all 12 sets — byte-exact keys through the full hypertree; byte-exact deterministic and hedged signatures; sigVer including modified R/SIGFORS/SIGHT/message and wrong-length rejections), BouncyCastle interop in both directions, and .NET 10 `SlhDsa` cross-checks where the OS supports it.
+Unlike ML-KEM and ML-DSA, the embedded vector file is a **stratified selection** rather than everything runnable: SLH-DSA signatures are 7,856–49,856 bytes each, so the full set is 11.8 MB gzipped. The committed 180 cases still cover every parameter set, and a weekly CI job downloads and runs the complete 456-case set. See [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md) for the rule and for how to run the full set locally.
+`SlhDsa.SignPreHash`/`VerifyPreHash` work identically. All twelve approved pre-hash functions are accepted (SHA-2 family incl. SHA-512/224 and SHA-512/256, SHA-3 family, SHAKE128/256); the digest length is validated against the OID. Choose a pre-hash function that meets the parameter set's security category — e.g. SHA-512 for ML-DSA-65/87. The API shape mirrors .NET 10's `SignPreHash`/`VerifyPreHash`.
 
 ---
 
@@ -198,7 +239,6 @@ byte[] signature = signer.SignPreHash(digest, "2.16.840.1.101.3.4.2.3");
 bool valid = signer.VerifyPreHash(digest, signature, "2.16.840.1.101.3.4.2.3");
 ```
 
-`SlhDsa.SignPreHash`/`VerifyPreHash` work identically. All twelve approved pre-hash functions are accepted (SHA-2 family incl. SHA-512/224 and SHA-512/256, SHA-3 family, SHAKE128/256); the digest length is validated against the OID. Choose a pre-hash function that meets the parameter set's security category — e.g. SHA-512 for ML-DSA-65/87. The API shape mirrors .NET 10's `SignPreHash`/`VerifyPreHash`.
 
 ---
 
@@ -207,7 +247,7 @@ bool valid = signer.VerifyPreHash(digest, signature, "2.16.840.1.101.3.4.2.3");
 - **Hedged signing by default** — each signature mixes fresh randomness into ρ″ per FIPS 204 Algorithm 2.
 - **Strong unforgeability** — the hint encoding is strictly validated on decode (positions strictly increasing, counts consistent, padding zero); malformed signatures are rejected before any arithmetic.
 - **Constant-time discipline** — infinity-norm checks on secret-dependent vectors scan all coefficients without early exit; the rejection-loop restart itself is spec-sanctioned to be observable. Rounding uses branch-free multiply-shift arithmetic.
-- **Key hygiene** — per-iteration secrets (y, rejected z candidates, c·s products) and decoded key material are zeroed; fresh key pairs run a sign/verify pairwise consistency test (FIPS 140-3); `MlDsa.Dispose()` zeroizes retained key material.
+- **Key hygiene** — per-iteration secrets (y, rejected z candidates, c·s products) and decoded key material are zeroed; fresh key pairs run a sign/verify pairwise consistency test (FIPS 140-3); `MLDsa.Dispose()` zeroizes retained key material.
 
 ---
 
@@ -223,16 +263,24 @@ The implementation is validated on every target framework by three independent m
 
 ## Comparison with .NET Built-in
 
-| Feature | CryptoHives `MlDsa` | `System.Security.Cryptography.MLDsa` |
+| Feature | CryptoHives `MLDsa` | `System.Security.Cryptography.MLDsa` |
 |---------|--------------------|--------------------------------------|
 | Availability | All TFMs (.NET Framework 4.6.2+) | .NET 10+ only |
 | OS requirement | None (fully managed) | Windows CNG (recent builds) / OpenSSL 3.5+ |
+| `IsSupported` | Always `true` | Depends on the OS build |
+| Member names | Identical — porting is a `using` swap | — |
 | Parameter sets | ML-DSA-44/65/87 | ML-DSA-44/65/87 |
 | Private seed import/export | ✅ | ✅ |
 | Context strings | ✅ | ✅ |
 | Deterministic signing | ✅ (`IDsa.SignDeterministic`) | ❌ |
+| Pairwise consistency test opt-out | ✅ | ❌ |
 | HashML-DSA (pre-hash) | 🔲 Planned | ✅ |
+| External-μ signing (`SignMu`/`VerifyMu`) | 🔲 Planned | ✅ |
 | PKCS#8 / SPKI / PEM | 🔲 Planned (with X.509 support) | ✅ |
+
+The deferred rows are held back deliberately: pre-hash, external-μ signing and the ASN.1 key
+formats land as one batch once the post-quantum algorithm set is complete, so ML-KEM and ML-DSA
+gain them together.
 
 ---
 
@@ -242,7 +290,8 @@ The implementation is validated on every target framework by three independent m
 |-----------|----------|--------|
 | ML-DSA-44/65/87 (pure) | FIPS 204 | ✅ Implemented |
 | SLH-DSA, all 12 parameter sets (pure) | FIPS 205 | ✅ Implemented |
-| HashML-DSA / HashSLH-DSA (pre-hash variants) | FIPS 204 §5.4 / FIPS 205 §10.2 | ✅ Implemented |
+| HashML-DSA / HashSLH-DSA (pre-hash variants) | FIPS 204 §5.4 / FIPS 205 §10.2 | 🔲 Planned |
+| External-μ signing (`SignMu`/`VerifyMu`) | FIPS 204 §6.2 | 🔲 Planned |
 | Ed25519 | RFC 8032 | 🔲 Under review |
 | PKCS#8 / SPKI key formats | RFC 5208 / RFC 5280 | 🔲 Planned with X.509 support |
 

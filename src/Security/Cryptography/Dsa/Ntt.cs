@@ -17,7 +17,7 @@ using System.Runtime.CompilerServices;
 internal static class Ntt
 {
     /// <summary>q = 8380417.</summary>
-    private const int Q = MlDsaParams.Q;
+    private const int Q = MLDsaParams.Q;
 
     /// <summary>q⁻¹ mod 2³². Used in Montgomery reduction.</summary>
     private const uint QInv = 58728449;
@@ -43,7 +43,7 @@ internal static class Ntt
         int k = 0;
         for (int len = 128; len > 0; len >>= 1)
         {
-            for (int start = 0; start < MlDsaParams.N; start += 2 * len)
+            for (int start = 0; start < MLDsaParams.N; start += 2 * len)
             {
                 int zeta = Zetas[++k];
                 for (int j = start; j < start + len; j++)
@@ -68,10 +68,10 @@ internal static class Ntt
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Inverse(int[] a)
     {
-        int k = MlDsaParams.N;
-        for (int len = 1; len < MlDsaParams.N; len <<= 1)
+        int k = MLDsaParams.N;
+        for (int len = 1; len < MLDsaParams.N; len <<= 1)
         {
-            for (int start = 0; start < MlDsaParams.N; start += 2 * len)
+            for (int start = 0; start < MLDsaParams.N; start += 2 * len)
             {
                 int zeta = -Zetas[--k];
                 for (int j = start; j < start + len; j++)
@@ -84,7 +84,7 @@ internal static class Ntt
             }
         }
 
-        for (int j = 0; j < MlDsaParams.N; j++)
+        for (int j = 0; j < MLDsaParams.N; j++)
         {
             a[j] = MontgomeryMultiply(InverseScale, a[j]);
         }
@@ -138,8 +138,8 @@ internal static class Ntt
         // ζ = 1753 is a primitive 512th root of unity mod q (FIPS 204 §7.5).
         // Zetas[i] = ζ^BitRev₈(i) · R mod q, normalized to the signed range (−q/2, q/2].
         long r = (1L << 32) % Q;
-        var zetas = new int[MlDsaParams.N];
-        for (int i = 0; i < MlDsaParams.N; i++)
+        var zetas = new int[MLDsaParams.N];
+        for (int i = 0; i < MLDsaParams.N; i++)
         {
             int exp = BitReverse8(i);
             long value = ModPow(1753, exp) * r % Q;

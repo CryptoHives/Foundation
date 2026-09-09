@@ -18,7 +18,7 @@ internal static class Sampling
     /// <param name="p">The parameter set.</param>
     /// <param name="rho">The 32-byte public seed ρ.</param>
     /// <returns>The matrix Â.</returns>
-    public static int[][][] ExpandA(MlDsaParams p, ReadOnlySpan<byte> rho)
+    public static int[][][] ExpandA(MLDsaParams p, ReadOnlySpan<byte> rho)
     {
         var matrix = new int[p.K][][];
         Span<byte> seed = stackalloc byte[34];
@@ -29,7 +29,7 @@ internal static class Sampling
             matrix[r] = new int[p.L][];
             for (int s = 0; s < p.L; s++)
             {
-                matrix[r][s] = new int[MlDsaParams.N];
+                matrix[r][s] = new int[MLDsaParams.N];
                 seed[32] = (byte)s;
                 seed[33] = (byte)r;
                 RejNttPoly(seed, matrix[r][s]);
@@ -54,13 +54,13 @@ internal static class Sampling
         int count = 0;
         Span<byte> buf = stackalloc byte[504];
 
-        while (count < MlDsaParams.N)
+        while (count < MLDsaParams.N)
         {
             xof.Squeeze(buf);
-            for (int i = 0; i + 2 < buf.Length && count < MlDsaParams.N; i += 3)
+            for (int i = 0; i + 2 < buf.Length && count < MLDsaParams.N; i += 3)
             {
                 int d = (buf[i] | (buf[i + 1] << 8) | (buf[i + 2] << 16)) & 0x7FFFFF;
-                if (d < MlDsaParams.Q)
+                if (d < MLDsaParams.Q)
                 {
                     coeffs[count++] = d;
                 }
@@ -75,7 +75,7 @@ internal static class Sampling
     /// <param name="rhoPrime">The 64-byte private seed ρ′.</param>
     /// <param name="s1">Output: ℓ polynomials with coefficients in [−η, η].</param>
     /// <param name="s2">Output: k polynomials with coefficients in [−η, η].</param>
-    public static void ExpandS(MlDsaParams p, ReadOnlySpan<byte> rhoPrime, int[][] s1, int[][] s2)
+    public static void ExpandS(MLDsaParams p, ReadOnlySpan<byte> rhoPrime, int[][] s1, int[][] s2)
     {
         for (int r = 0; r < p.L; r++)
         {
@@ -109,16 +109,16 @@ internal static class Sampling
         int count = 0;
         Span<byte> buf = stackalloc byte[136];
 
-        while (count < MlDsaParams.N)
+        while (count < MLDsaParams.N)
         {
             xof.Squeeze(buf);
-            for (int i = 0; i < buf.Length && count < MlDsaParams.N; i++)
+            for (int i = 0; i < buf.Length && count < MLDsaParams.N; i++)
             {
                 int z0 = buf[i] & 0x0F;
                 int z1 = buf[i] >> 4;
 
                 count = TryAcceptEta(z0, eta, coeffs, count);
-                if (count < MlDsaParams.N)
+                if (count < MLDsaParams.N)
                 {
                     count = TryAcceptEta(z1, eta, coeffs, count);
                 }
@@ -136,7 +136,7 @@ internal static class Sampling
     /// <param name="rhoDoublePrime">The 64-byte per-message seed ρ″.</param>
     /// <param name="kappa">The rejection-loop counter κ.</param>
     /// <param name="y">Output: ℓ polynomials.</param>
-    public static void ExpandMask(MlDsaParams p, ReadOnlySpan<byte> rhoDoublePrime, int kappa, int[][] y)
+    public static void ExpandMask(MLDsaParams p, ReadOnlySpan<byte> rhoDoublePrime, int kappa, int[][] y)
     {
         int bytes = 32 * p.ZBits;
         byte[] v = new byte[bytes];
@@ -166,9 +166,9 @@ internal static class Sampling
     /// <param name="p">The parameter set.</param>
     /// <param name="cTilde">The commitment hash c̃ (λ/4 bytes).</param>
     /// <param name="c">The 256-element output polynomial.</param>
-    public static void SampleInBall(MlDsaParams p, ReadOnlySpan<byte> cTilde, int[] c)
+    public static void SampleInBall(MLDsaParams p, ReadOnlySpan<byte> cTilde, int[] c)
     {
-        Array.Clear(c, 0, MlDsaParams.N);
+        Array.Clear(c, 0, MLDsaParams.N);
 
         using var xof = Shake256.Create(136);
         xof.Absorb(cTilde.Slice(0, p.CTildeBytes));
@@ -182,7 +182,7 @@ internal static class Sampling
         }
 
         Span<byte> one = stackalloc byte[1];
-        for (int i = MlDsaParams.N - p.Tau; i < MlDsaParams.N; i++)
+        for (int i = MLDsaParams.N - p.Tau; i < MLDsaParams.N; i++)
         {
             int j;
             do
