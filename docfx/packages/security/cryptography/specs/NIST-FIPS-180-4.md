@@ -16,8 +16,8 @@ Federal Information Processing Standards Publication 180-4 specifies the Secure 
 
 - **Document:** NIST FIPS 180-4
 - **Title:** Secure Hash Standard (SHS)
-- **URL:** https://csrc.nist.gov/pubs/fips/180-4/upd1/final
-- **PDF:** https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+- **URL:** [csrc.nist.gov/pubs/fips/180-4/upd1/final](https://csrc.nist.gov/pubs/fips/180-4/upd1/final)
+- **PDF:** [nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
 
 ## Implementation Status
 
@@ -235,7 +235,7 @@ All SHA algorithms use the same padding scheme:
 
 ## References
 
-1. NIST FIPS 180-4: https://doi.org/10.6028/NIST.FIPS.180-4
-2. SHA-1 Examples: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf
-3. SHA-256 Examples: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf
-4. SHA-512 Examples: https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512.pdf
+1. [NIST FIPS 180-4](https://doi.org/10.6028/NIST.FIPS.180-4)
+2. [SHA-1 Examples](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf)
+3. [SHA-256 Examples](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf)
+4. [SHA-512 Examples](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512.pdf)

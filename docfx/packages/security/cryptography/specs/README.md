@@ -376,7 +376,7 @@ official sources.
 Official test vectors and examples with intermediate values are available from:
 
 - **NIST Cryptographic Standards and Guidelines Example Values**:
-  https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
+  [csrc.nist.gov/…/example-values](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values)
 
 #### SHA-1 and SHA-2 Family (FIPS 180-4)
 
@@ -444,18 +444,18 @@ The official RFC 7693 specification is available from IETF:
 - [RFC 7693](https://www.rfc-editor.org/rfc/rfc7693) - The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC)
 
 Additional BLAKE2 resources:
-- https://www.blake2.net/
-- https://github.com/BLAKE2/BLAKE2
+- [www.blake2.net](https://www.blake2.net/)
+- [github.com/BLAKE2/BLAKE2](https://github.com/BLAKE2/BLAKE2)
 
 ### BLAKE3
 
 BLAKE3 test vectors are from the official BLAKE3 specification:
-- https://github.com/BLAKE3-team/BLAKE3
+- [github.com/BLAKE3-team/BLAKE3](https://github.com/BLAKE3-team/BLAKE3)
 
 ### RIPEMD-160
 
 - **[RIPEMD-160-vectors.md](RIPEMD-160-vectors.md)** - Test vectors
-- Original specification: https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
+- [Original specification](https://homes.esat.kuleuven.be/~bosselae/ripemd160.html)
 
 ### SM3 (GB/T 32905-2016)
 
@@ -467,28 +467,28 @@ BLAKE3 test vectors are from the official BLAKE3 specification:
 
 - **[Whirlpool-vectors.md](Whirlpool-vectors.md)** - Test vectors
 - ISO/IEC 10118-3:2004
-- https://www.larc.usp.br/~pbarreto/WhirlpoolPage.html
+- [www.larc.usp.br/~pbarreto/WhirlpoolPage.html](https://www.larc.usp.br/~pbarreto/WhirlpoolPage.html)
 
 ### Streebog (GOST R 34.11-2012)
 
 - **[Streebog-vectors.md](Streebog-vectors.md)** - Test vectors
-- RFC 6986: https://www.rfc-editor.org/rfc/rfc6986
+- [RFC 6986](https://www.rfc-editor.org/rfc/rfc6986)
 
 ### Kupyna (DSTU 7564:2014)
 
 - **[Kupyna-vectors.md](Kupyna-vectors.md)** - Test vectors
-- IACR ePrint 2015/885: https://eprint.iacr.org/2015/885.pdf
-- Reference implementation: https://github.com/Roman-Oliynykov/Kupyna-reference
+- [IACR ePrint 2015/885](https://eprint.iacr.org/2015/885.pdf)
+- [Reference implementation](https://github.com/Roman-Oliynykov/Kupyna-reference)
 
 ### LSH (KS X 3262)
 
 - KS X 3262 specification (Korean standard)
-- Reference implementation: https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do
+- [Reference implementation](https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do)
 
 ### MD5 (RFC 1321)
 
 MD5 is defined in RFC 1321:
-- https://www.ietf.org/rfc/rfc1321.txt
+- [www.ietf.org/rfc/rfc1321.txt](https://www.ietf.org/rfc/rfc1321.txt)
 
 ### AES (FIPS 197)
 

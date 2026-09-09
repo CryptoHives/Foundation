@@ -15,8 +15,8 @@ Federal Information Processing Standards Publication 202 specifies the SHA-3 fam
 
 - **Document:** NIST FIPS 202
 - **Title:** SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions
-- **URL:** https://csrc.nist.gov/pubs/fips/202/final
-- **PDF:** https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+- **URL:** [csrc.nist.gov/pubs/fips/202/final](https://csrc.nist.gov/pubs/fips/202/final)
+- **PDF:** [nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf)
 
 ## Implementation Status
 
@@ -251,7 +251,7 @@ SHA-3 provides defense-in-depth as an alternative to SHA-2, using a completely d
 
 ## References
 
-1. NIST FIPS 202: https://doi.org/10.6028/NIST.FIPS.202
-2. Keccak Team: https://keccak.team/
-3. SHA-3 Examples: https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
-4. Keccak Reference: https://keccak.team/keccak_specs_summary.html
+1. [NIST FIPS 202](https://doi.org/10.6028/NIST.FIPS.202)
+2. [Keccak Team](https://keccak.team/)
+3. [SHA-3 Examples](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values)
+4. [Keccak Reference](https://keccak.team/keccak_specs_summary.html)

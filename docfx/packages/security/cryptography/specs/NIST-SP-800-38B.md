@@ -8,15 +8,15 @@ NIST Special Publication 800-38B specifies the CMAC (Cipher-based Message Authen
 
 - **Document:** NIST SP 800-38B
 - **Title:** Recommendation for Block Cipher Modes of Operation: The CMAC Mode for Authentication
-- **URL:** https://csrc.nist.gov/pubs/sp/800-38b/upd1/final
-- **PDF:** https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38B.pdf
+- **URL:** [csrc.nist.gov/pubs/sp/800-38b/upd1/final](https://csrc.nist.gov/pubs/sp/800-38b/upd1/final)
+- **PDF:** [nvlpubs.nist.gov/…/NIST.SP.800-38B.pdf](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38B.pdf)
 
 ### Related Standards
 
 - **RFC 4493:** The AES-CMAC Algorithm
-  - URL: https://www.rfc-editor.org/rfc/rfc4493
+  - URL: [www.rfc-editor.org/rfc/rfc4493](https://www.rfc-editor.org/rfc/rfc4493)
 - **RFC 4494:** The AES-CMAC-96 Algorithm and Its Use with IPsec
-  - URL: https://www.rfc-editor.org/rfc/rfc4494
+  - URL: [www.rfc-editor.org/rfc/rfc4494](https://www.rfc-editor.org/rfc/rfc4494)
 
 ## Implementation Status
 
@@ -103,13 +103,13 @@ GMAC(K, IV, AAD) = AES-GCM(K, IV, plaintext = ∅, AAD).Tag
 
 - **Document:** NIST SP 800-38D
 - **Title:** Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC
-- **URL:** https://csrc.nist.gov/pubs/sp/800-38d/final
+- **URL:** [csrc.nist.gov/pubs/sp/800-38d/final](https://csrc.nist.gov/pubs/sp/800-38d/final)
 
 ---
 
 ## References
 
-1. NIST SP 800-38B: https://doi.org/10.6028/NIST.SP.800-38B
-2. RFC 4493: https://www.rfc-editor.org/rfc/rfc4493
-3. NIST SP 800-38D: https://doi.org/10.6028/NIST.SP.800-38D
-4. RFC 4494: https://www.rfc-editor.org/rfc/rfc4494
+1. [NIST SP 800-38B](https://doi.org/10.6028/NIST.SP.800-38B)
+2. [RFC 4493](https://www.rfc-editor.org/rfc/rfc4493)
+3. [NIST SP 800-38D](https://doi.org/10.6028/NIST.SP.800-38D)
+4. [RFC 4494](https://www.rfc-editor.org/rfc/rfc4494)
