@@ -18,8 +18,7 @@ internal static class PreHashTestUtil
     /// </summary>
     public static (byte[] Digest, string Oid) ComputeDigest(string acvpHashAlg, byte[] message)
     {
-        (Func<HashAlgorithm> factory, int size, string oid) = acvpHashAlg switch
-        {
+        (Func<HashAlgorithm> factory, int size, string oid) = acvpHashAlg switch {
             "SHA2-224" => ((Func<HashAlgorithm>)(() => SHA224.Create()), 28, "2.16.840.1.101.3.4.2.4"),
             "SHA2-256" => (() => SHA256.Create(), 32, "2.16.840.1.101.3.4.2.1"),
             "SHA2-384" => (() => SHA384.Create(), 48, "2.16.840.1.101.3.4.2.2"),
@@ -41,24 +40,21 @@ internal static class PreHashTestUtil
         return (digest, oid);
     }
 
-    public static MLDsaParams MLDsaParamsFor(string parameterSet) => parameterSet switch
-    {
+    public static MLDsaParams MLDsaParamsFor(string parameterSet) => parameterSet switch {
         "ML-DSA-44" => MLDsaParams.MLDsa44,
         "ML-DSA-65" => MLDsaParams.MLDsa65,
         "ML-DSA-87" => MLDsaParams.MLDsa87,
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    public static MLDsaAlgorithm MLDsaAlgorithmFor(string parameterSet) => parameterSet switch
-    {
+    public static MLDsaAlgorithm MLDsaAlgorithmFor(string parameterSet) => parameterSet switch {
         "ML-DSA-44" => MLDsaAlgorithm.MLDsa44,
         "ML-DSA-65" => MLDsaAlgorithm.MLDsa65,
         "ML-DSA-87" => MLDsaAlgorithm.MLDsa87,
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    public static SlhDsaParams SlhDsaParamsFor(string parameterSet) => parameterSet switch
-    {
+    public static SlhDsaParams SlhDsaParamsFor(string parameterSet) => parameterSet switch {
         "SLH-DSA-SHA2-128s" => SlhDsaParams.Sha2_128s,
         "SLH-DSA-SHAKE-128s" => SlhDsaParams.Shake128s,
         "SLH-DSA-SHA2-128f" => SlhDsaParams.Sha2_128f,
@@ -74,8 +70,7 @@ internal static class PreHashTestUtil
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    public static SlhDsaAlgorithm SlhDsaAlgorithmFor(string parameterSet) => parameterSet switch
-    {
+    public static SlhDsaAlgorithm SlhDsaAlgorithmFor(string parameterSet) => parameterSet switch {
         "SLH-DSA-SHA2-128s" => SlhDsaAlgorithm.SlhDsaSha2_128s,
         "SLH-DSA-SHAKE-128s" => SlhDsaAlgorithm.SlhDsaShake128s,
         "SLH-DSA-SHA2-128f" => SlhDsaAlgorithm.SlhDsaSha2_128f,

@@ -22,8 +22,7 @@ internal static class PreHash
     /// and their digest lengths in bytes. SHAKE128 and SHAKE256 use 32- and 64-byte
     /// outputs respectively, per FIPS 204/205.
     /// </summary>
-    private static readonly Dictionary<string, int> KnownDigests = new()
-    {
+    private static readonly Dictionary<string, int> KnownDigests = new() {
         ["2.16.840.1.101.3.4.2.1"] = 32,  // SHA-256
         ["2.16.840.1.101.3.4.2.2"] = 48,  // SHA-384
         ["2.16.840.1.101.3.4.2.3"] = 64,  // SHA-512
