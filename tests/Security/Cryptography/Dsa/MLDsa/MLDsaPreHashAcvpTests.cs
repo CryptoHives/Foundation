@@ -46,7 +46,7 @@ public class MLDsaPreHashAcvpTests
     public void SigGenPreHashDeterministic_MatchesAcvpVector(string parameterSet, int tcId, string hashAlg,
         string skHex, string messageHex, string contextHex, string signatureHex)
     {
-        MLDsaParams p = PreHashTestUtil.MlDsaParamsFor(parameterSet);
+        MLDsaParams p = PreHashTestUtil.MLDsaParamsFor(parameterSet);
         (byte[] digest, string oid) = PreHashTestUtil.ComputeDigest(hashAlg, FromHex(messageHex));
 
         byte[] prefix = new byte[PreHash.MaxPrefixBytes];
@@ -66,7 +66,7 @@ public class MLDsaPreHashAcvpTests
     public void SigGenPreHashHedged_MatchesAcvpVector(string parameterSet, int tcId, string hashAlg,
         string skHex, string messageHex, string contextHex, string rndHex, string signatureHex)
     {
-        MLDsaParams p = PreHashTestUtil.MlDsaParamsFor(parameterSet);
+        MLDsaParams p = PreHashTestUtil.MLDsaParamsFor(parameterSet);
         (byte[] digest, string oid) = PreHashTestUtil.ComputeDigest(hashAlg, FromHex(messageHex));
 
         byte[] prefix = new byte[PreHash.MaxPrefixBytes];
@@ -91,7 +91,7 @@ public class MLDsaPreHashAcvpTests
         // public surface — is verify the ACVP one and round-trip its own, which is what the two
         // assertions below check. Byte-exactness is covered by the two tests above.
         using var dsa = CH.MLDsa.ImportMLDsaPrivateKey(
-            PreHashTestUtil.MlDsaAlgorithmFor(parameterSet), FromHex(skHex));
+            PreHashTestUtil.MLDsaAlgorithmFor(parameterSet), FromHex(skHex));
 
         (byte[] digest, string oid) = PreHashTestUtil.ComputeDigest(hashAlg, FromHex(messageHex));
         byte[] context = FromHex(contextHex);
@@ -116,7 +116,7 @@ public class MLDsaPreHashAcvpTests
     public void SigVerPreHash_MatchesAcvpVector(string parameterSet, int tcId, string hashAlg, string reason,
         bool expectedValid, string pkHex, string messageHex, string contextHex, string signatureHex)
     {
-        MLDsaParams p = PreHashTestUtil.MlDsaParamsFor(parameterSet);
+        MLDsaParams p = PreHashTestUtil.MLDsaParamsFor(parameterSet);
         (byte[] digest, string oid) = PreHashTestUtil.ComputeDigest(hashAlg, FromHex(messageHex));
 
         byte[] prefix = new byte[PreHash.MaxPrefixBytes];
@@ -139,7 +139,7 @@ public class MLDsaPreHashAcvpTests
         bool expectedValid, string pkHex, string messageHex, string contextHex, string signatureHex)
     {
         using var dsa = CH.MLDsa.ImportMLDsaPublicKey(
-            PreHashTestUtil.MlDsaAlgorithmFor(parameterSet), FromHex(pkHex));
+            PreHashTestUtil.MLDsaAlgorithmFor(parameterSet), FromHex(pkHex));
 
         (byte[] digest, string oid) = PreHashTestUtil.ComputeDigest(hashAlg, FromHex(messageHex));
 

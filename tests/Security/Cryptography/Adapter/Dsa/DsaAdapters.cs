@@ -295,7 +295,7 @@ public sealed class MLDsaStatelessAdapter : IDsaRunner
         _performPairwiseConsistencyTest = pairwiseConsistencyTest;
         _keyGenPublicKey = new byte[dsa.PublicKeySizeBytes];
         _keyGenPrivateKey = new byte[dsa.SecretKeySizeBytes];
-        _parameters = Cryptography.Tests.Dsa.PreHashTestUtil.MlDsaParamsFor(family);
+        _parameters = Cryptography.Tests.Dsa.PreHashTestUtil.MLDsaParamsFor(family);
         _preHashOid = DsaPreHash.OidFor(family);
     }
 

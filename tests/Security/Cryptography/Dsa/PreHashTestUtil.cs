@@ -41,7 +41,7 @@ internal static class PreHashTestUtil
         return (digest, oid);
     }
 
-    public static MLDsaParams MlDsaParamsFor(string parameterSet) => parameterSet switch
+    public static MLDsaParams MLDsaParamsFor(string parameterSet) => parameterSet switch
     {
         "ML-DSA-44" => MLDsaParams.MLDsa44,
         "ML-DSA-65" => MLDsaParams.MLDsa65,
@@ -49,7 +49,7 @@ internal static class PreHashTestUtil
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    public static MLDsaAlgorithm MlDsaAlgorithmFor(string parameterSet) => parameterSet switch
+    public static MLDsaAlgorithm MLDsaAlgorithmFor(string parameterSet) => parameterSet switch
     {
         "ML-DSA-44" => MLDsaAlgorithm.MLDsa44,
         "ML-DSA-65" => MLDsaAlgorithm.MLDsa65,

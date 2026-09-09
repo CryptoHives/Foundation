@@ -340,7 +340,7 @@ official sources.
 | ML-DSA-44 | 2 | ✅ Implemented | `MLDsa44`, `MLDsa` |
 | ML-DSA-65 | 3 | ✅ Implemented | `MLDsa65`, `MLDsa` |
 | ML-DSA-87 | 5 | ✅ Implemented | `MLDsa87`, `MLDsa` |
-| HashML-DSA (pre-hash) | - | ✅ Implemented | `MlDsa.SignPreHash`/`VerifyPreHash` |
+| HashML-DSA (pre-hash) | - | ✅ Implemented | `MLDsa.SignPreHash`/`VerifyPreHash` |
 
 > **Note:** Validated against official NIST ACVP vectors (key generation, deterministic
 > and hedged signing with byte-exact signatures, and verification including modified
