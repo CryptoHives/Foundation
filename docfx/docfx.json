@@ -33,6 +33,7 @@
         "files": [
           "images/**",
           "googled2fe7d86cf779a1b.html",
+          "7c2e1cbd9afe450880c3e3e3d0b35728.txt",
           "packages/security/cryptography/benchmark-trends/**",
           "packages/threading/benchmark-trends/**"
         ]

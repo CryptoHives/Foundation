@@ -7,9 +7,18 @@ NIST ACVP (Automated Cryptographic Validation Protocol) validation vector sets f
 - **ML-KEM-keyGen-FIPS203** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-KEM-keyGen-FIPS203
 - **ML-KEM-encapDecap-FIPS203** — https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-KEM-encapDecap-FIPS203
 
-The curated vectors are embedded as hex constants in
-`tests/Security/Cryptography/Kem/MLKem/MLKemAcvpTests.cs`; each test case references the
-`tcId` of the original ACVP vector file so it can be traced back to the NIST source.
+The vectors are stored in **NIST's own ACVP JSON schema** in
+`tests/Security/Cryptography/TestData/mlkem-acvp-fips203.json.gz`, and read at run time by
+`MLKemAcvpVectors` with `System.Text.Json`. Nothing is filtered — every ML-KEM group has an
+implementation to test — so the file holds the upstream keyGen and encapDecap documents verbatim,
+behind a small envelope recording provenance. Every NUnit case is named after its parameter set
+and the `tcId` of the original ACVP vector file, so a failure traces straight back to the NIST
+source.
+
+It is a data file rather than C# literals because ML-KEM-1024 alone carries ~9.6 KB of hex per key
+generation case, and gzipped because the JSON is ~2 MB, compressing to ~815 KB. Regenerate it with
+`scripts/fetch-mlkem-acvp-vectors.py`, which zeroes the gzip mtime so regenerating unchanged
+vectors produces a byte-identical file rather than a spurious diff.
 
 ---
 
@@ -38,7 +47,7 @@ In addition to the ACVP known-answer tests, `MLKemTests`/`MLKemInteropTests` cro
 
 ## Sample Vectors
 
-Complete vectors are thousands of hex characters; the samples below show the short values in full and truncate keys/ciphertexts (lengths noted). Full data: `MLKemAcvpTests.cs` or the ACVP repository.
+Complete vectors are thousands of hex characters; the samples below show the short values in full and truncate keys/ciphertexts (lengths noted). Full data: `tests/Security/Cryptography/TestData/mlkem-acvp-fips203.json.gz` or the ACVP repository.
 
 ### Key Generation (ML-KEM-512, ACVP keyGen tcId 1)
 
@@ -71,9 +80,17 @@ The expected k for a modified ciphertext is the implicit-rejection output K̄ = 
 
 ## Regenerating / Extending the Vectors
 
-1. Download `internalProjection.json` from the ACVP vector folders listed above (it contains both prompts and expected results).
-2. Curate the desired test cases (the shipped set uses 2 keyGen and 2 encapsulation AFT vectors, 2 valid + 2 modified-ciphertext decapsulation VAL vectors, and 1 valid + 2 invalid key-check vectors per parameter set).
-3. Keep the ACVP `tcId` in the generated comment so vectors remain traceable.
+```bash
+python scripts/fetch-mlkem-acvp-vectors.py
+```
+
+The script downloads `internalProjection.json` from the ACVP folders listed above (it contains both
+prompts and expected results) and writes the gzipped result. Running it against unchanged upstream
+vectors produces a byte-identical file, so a real diff means NIST published new vectors.
+
+Pass `--limit N` to cap the cases per group — useful when iterating locally, but the committed file
+is the complete set. Because the stored schema is NIST's own, `MLKemAcvpVectors` reads any field the
+ACVP files carry; surfacing a new one is a change to the loader alone.
 
 ## Usage
 

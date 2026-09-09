@@ -6,31 +6,26 @@ namespace Cryptography.Tests.Kem.MLKem;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
+using System.Text.Json;
 
 /// <summary>
 /// Loads the NIST ACVP conformance vectors for ML-KEM (FIPS 203) from the embedded
-/// <c>mlkem-acvp-fips203.txt</c> resource.
+/// <c>mlkem-acvp-fips203.json.gz</c> resource.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The vectors are the complete ACVP-Server set -- 25 key generation and 25 encapsulation
-/// cases per parameter set, plus 10 each of decapsulation, encapsulation key check and
-/// decapsulation key check -- rather than a curated handful. They live in a data file rather
-/// than in C# literals because ML-KEM-1024 alone carries roughly 9.6 KB of hex per key
-/// generation case; inline they would dominate the test source.
+/// The file holds NIST's own ACVP JSON, in its own schema: an envelope carrying provenance plus
+/// the upstream keyGen and encapDecap documents, each with its <c>testGroups</c> and
+/// <c>tests</c> arrays exactly as published. Nothing is filtered — every ML-KEM group has an
+/// implementation to test — so the stored documents are the upstream ones verbatim.
 /// </para>
 /// <para>
-/// The file is pipe-delimited rather than JSON so it parses with <c>String.Split</c> on every
-/// target framework: the test project also targets net48, where <c>System.Text.Json</c> would
-/// need an extra package reference. It is gzip-compressed because the flattened vectors are
-/// about 1.7 MB of hex, which compresses to roughly 770 KB. Regenerate it with
-/// <c>scripts/fetch-mlkem-acvp-vectors.py</c>, which zeroes the gzip mtime so unchanged
-/// vectors round-trip to a byte-identical file; the decompressed header records its
-/// provenance.
+/// That is the complete ACVP-Server set: 25 key generation and 25 encapsulation cases per
+/// parameter set, plus 10 each of decapsulation, encapsulation key check and decapsulation key
+/// check.
 /// </para>
 /// </remarks>
 public static class MLKemAcvpVectors
@@ -38,7 +33,7 @@ public static class MLKemAcvpVectors
     /// <summary>
     /// Name of the embedded resource holding the vectors.
     /// </summary>
-    private const string ResourceName = "Cryptography.Tests.TestData.mlkem-acvp-fips203.txt.gz";
+    private const string ResourceName = "Cryptography.Tests.TestData.mlkem-acvp-fips203.json.gz";
 
     private static readonly Lazy<Records> Loaded = new(Load);
 
@@ -115,38 +110,61 @@ public static class MLKemAcvpVectors
                 + string.Join(", ", assembly.GetManifestResourceNames()));
 
         using var decompressed = new GZipStream(stream, CompressionMode.Decompress);
-        using var reader = new StreamReader(decompressed);
+        using JsonDocument json = JsonDocument.Parse(decompressed);
 
-        string? line;
-        while ((line = reader.ReadLine()) is not null)
+        foreach (JsonElement document in json.RootElement.GetProperty("documents").EnumerateArray())
         {
-            if (line.Length == 0 || line[0] == '#')
-            {
-                continue;
-            }
+            // Each document is an upstream ACVP file and names its own mode.
+            string mode = document.GetProperty("mode").GetString()!;
 
-            string[] f = line.Split('|');
-            switch (f[0])
+            foreach (JsonElement group in document.GetProperty("testGroups").EnumerateArray())
             {
-                case "K":
-                    records.KeyGen.Add([f[1], int.Parse(f[2], CultureInfo.InvariantCulture), f[3], f[4], f[5], f[6]]);
-                    break;
-                case "E":
-                    records.Encaps.Add([f[1], int.Parse(f[2], CultureInfo.InvariantCulture), f[3], f[4], f[5], f[6], f[7]]);
-                    break;
-                case "D":
-                    records.Decaps.Add([f[1], int.Parse(f[2], CultureInfo.InvariantCulture), f[3], f[4], f[5], f[6]]);
-                    break;
-                case "X":
-                    records.EncapsulationKeyCheck.Add(
-                        [f[1], int.Parse(f[2], CultureInfo.InvariantCulture), bool.Parse(f[3]), f[4], f[5]]);
-                    break;
-                case "Y":
-                    records.DecapsulationKeyCheck.Add(
-                        [f[1], int.Parse(f[2], CultureInfo.InvariantCulture), bool.Parse(f[3]), f[4], f[5]]);
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unknown record kind '{f[0]}'.");
+                string parameterSet = group.GetProperty("parameterSet").GetString()!;
+
+                // keyGen groups carry no function; encapDecap groups say which of the four.
+                string function = mode == "keyGen" ? "keyGen" : Text(group, "function");
+
+                foreach (JsonElement test in group.GetProperty("tests").EnumerateArray())
+                {
+                    int tcId = test.GetProperty("tcId").GetInt32();
+
+                    switch (function)
+                    {
+                        case "keyGen":
+                            records.KeyGen.Add([
+                                parameterSet, tcId,
+                                Text(test, "d"), Text(test, "z"), Text(test, "ek"), Text(test, "dk")]);
+                            break;
+
+                        case "encapsulation":
+                            records.Encaps.Add([
+                                parameterSet, tcId,
+                                Text(test, "ek"), Text(test, "dk"), Text(test, "m"),
+                                Text(test, "c"), Text(test, "k")]);
+                            break;
+
+                        case "decapsulation":
+                            records.Decaps.Add([
+                                parameterSet, tcId, Text(test, "reason"),
+                                Text(test, "dk"), Text(test, "c"), Text(test, "k")]);
+                            break;
+
+                        case "encapsulationKeyCheck":
+                            records.EncapsulationKeyCheck.Add([
+                                parameterSet, tcId, test.GetProperty("testPassed").GetBoolean(),
+                                Text(test, "reason"), Text(test, "ek")]);
+                            break;
+
+                        case "decapsulationKeyCheck":
+                            records.DecapsulationKeyCheck.Add([
+                                parameterSet, tcId, test.GetProperty("testPassed").GetBoolean(),
+                                Text(test, "reason"), Text(test, "dk")]);
+                            break;
+
+                        default:
+                            throw new InvalidOperationException($"Unknown ACVP function '{function}'.");
+                    }
+                }
             }
         }
 
@@ -157,6 +175,19 @@ public static class MLKemAcvpVectors
 
         return records;
     }
+
+    /// <summary>
+    /// Reads a string property, treating an absent one as empty.
+    /// </summary>
+    /// <remarks>
+    /// ACVP omits fields that do not apply rather than emitting them empty — most visibly
+    /// <c>reason</c>, which is present only on the cases that are expected to fail.
+    /// </remarks>
+    /// <param name="element">The object to read from.</param>
+    /// <param name="name">The property name.</param>
+    /// <returns>The value, or an empty string when absent or null.</returns>
+    private static string Text(JsonElement element, string name)
+        => element.TryGetProperty(name, out JsonElement value) ? value.GetString() ?? string.Empty : string.Empty;
 
     /// <summary>
     /// The parsed vector file.
