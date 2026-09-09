@@ -17,6 +17,7 @@ using CryptoHives.Foundation.Security.Cryptography.Dsa;
 | [ML-DSA-44](#ml-dsa-fips-204) | FIPS 204 | 2 | Constrained environments, high signing volume |
 | [ML-DSA-65](#ml-dsa-fips-204) | FIPS 204 | 3 | **Recommended default** |
 | [ML-DSA-87](#ml-dsa-fips-204) | FIPS 204 | 5 | Maximum security margin |
+| [SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f}](#slh-dsa-fips-205) | FIPS 205 | 1/3/5 | Conservative hash-based option: roots of trust, firmware/code signing |
 
 ### Why Post-Quantum Signatures
 
@@ -154,6 +155,66 @@ vectors and derived-key schemes.
 
 ---
 
+## SLH-DSA (FIPS 205)
+
+SLH-DSA is specified in [FIPS 205](https://csrc.nist.gov/pubs/fips/205/final) (final, August 2024), derived from SPHINCS+. It is a **stateless hash-based** signature scheme: security rests only on the underlying hash functions — the most conservative assumption available — making it the preferred choice where lattice assumptions are distrusted: long-lived roots of trust, firmware and code signing, CA keys.
+
+### Choosing a Parameter Set
+
+Twelve sets: SHA2 or SHAKE instantiation × security category 1/3/5 × **s** (small) / **f** (fast):
+
+| Trade-off | s (small) | f (fast) |
+|-----------|-----------|----------|
+| Signature size | ~2× smaller (7.9–29.8 KB) | larger (17.1–49.9 KB) |
+| Signing speed | slow (~10⁶–10⁷ hash calls; seconds) | ~10× faster |
+| Key generation | slower (larger top trees) | fast |
+| Verification | fast | fast |
+
+**Guidance:** prefer the `f` sets unless minimal signature size matters more than signing time (e.g. verification-heavy firmware distribution). Public keys are tiny for every set (32–64 bytes). If signing throughput matters at all, use [ML-DSA](#ml-dsa-fips-204) instead — SLH-DSA is the conservative fallback, not the general-purpose choice.
+
+### Usage
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
+
+using var signer = SlhDsa.GenerateKey(SlhDsaAlgorithm.SlhDsaShake128f);
+byte[] publicKey = signer.ExportSlhDsaPublicKey();   // 32 bytes
+byte[] signature = signer.SignData(message);         // 17,088 bytes, hedged
+
+using var verifier = SlhDsa.ImportSlhDsaPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, publicKey);
+bool valid = verifier.VerifyData(message, signature);
+```
+
+The member names are the in-box ones, so `SlhDsa` is a drop-in for `System.Security.Cryptography.SlhDsa` — change the `using` and the code compiles unchanged, on .NET Framework 4.6.2 upward. `IsSupported` is always `true` here, which is the practical difference: no shipping Windows exposes SLH-DSA through CNG, so the in-box type is unavailable on most platforms today.
+
+Context strings (≤ 255 bytes) work exactly as with ML-DSA. The 4n-byte private key is itself the compact storage form (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root); there is no separate private seed. Key generation includes a sign/verify pairwise consistency test (FIPS 140-3), which for `s` sets makes `GenerateKey` take seconds by design — `GenerateKey(algorithm, pairwiseConsistencyTest: false)` opts out where that matters.
+
+#### Methods (`SlhDsa`)
+
+| Method | Description |
+|--------|-------------|
+| `IsSupported` | Always `true` — fully managed, never OS-dependent |
+| `GenerateKey(SlhDsaAlgorithm)` | Generate a fresh key pair |
+| `GenerateKey(SlhDsaAlgorithm, bool)` | As above, optionally skipping the pairwise consistency test |
+| `ImportSlhDsaPrivateKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 4n-byte private key (embedded public key is extracted) |
+| `ImportSlhDsaPublicKey(SlhDsaAlgorithm, ReadOnlySpan<byte>)` | Import a 2n-byte public key (verify-only instance) |
+| `SignData(data, context)` / `SignData(data, destination, context)` | Hedged (randomized) signing |
+| `VerifyData(data, signature, context)` | Verification; wrong-length signatures return false |
+| `ExportSlhDsaPublicKey()` / `ExportSlhDsaPrivateKey()` | Key export (span overloads available) |
+| `Dispose()` | Zeroize the private key |
+
+Every import, export, `SignData` and `VerifyData` has a `byte[]` overload beside the span one, matching the in-box type. Note the inherited hazard that comes with that: `SignData(byte[], byte[])` binds the **second argument as the context string**, not as a destination buffer. To sign into a buffer you own, use the span overload explicitly.
+
+PKCS#8, SPKI and PEM import/export, and the `HashSLH-DSA` pre-hash variants, are not implemented yet — they land in one batch across ML-KEM, ML-DSA and SLH-DSA.
+
+### Validation
+
+Same three-way playbook as ML-KEM/ML-DSA (see [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md)): NIST ACVP known-answer tests (keyGen for all 12 sets — byte-exact keys through the full hypertree; byte-exact deterministic and hedged signatures; sigVer including modified R/SIGFORS/SIGHT/message and wrong-length rejections), BouncyCastle interop in both directions, and .NET 10 `SlhDsa` cross-checks where the OS supports it.
+
+Unlike ML-KEM and ML-DSA, the embedded vector file is a **stratified selection** rather than everything runnable: SLH-DSA signatures are 7,856–49,856 bytes each, so the full set is 11.8 MB gzipped. The committed 180 cases still cover every parameter set, and a weekly CI job downloads and runs the complete 456-case set. See [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md) for the rule and for how to run the full set locally.
+
+---
+
 ## Security Properties
 
 - **Hedged signing by default** — each signature mixes fresh randomness into ρ″ per FIPS 204 Algorithm 2.
@@ -201,9 +262,9 @@ gain them together.
 | Algorithm | Standard | Status |
 |-----------|----------|--------|
 | ML-DSA-44/65/87 (pure) | FIPS 204 | ✅ Implemented |
-| HashML-DSA (pre-hash variants) | FIPS 204 §5.4 | 🔲 Planned |
+| SLH-DSA, all 12 parameter sets (pure) | FIPS 205 | ✅ Implemented |
+| HashML-DSA / HashSLH-DSA (pre-hash variants) | FIPS 204 §5.4 / FIPS 205 §10.2 | 🔲 Planned |
 | External-μ signing (`SignMu`/`VerifyMu`) | FIPS 204 §6.2 | 🔲 Planned |
-| SLH-DSA (stateless hash-based) | FIPS 205 | 🔲 Planned |
 | Ed25519 | RFC 8032 | 🔲 Under review |
 | PKCS#8 / SPKI key formats | RFC 5208 / RFC 5280 | 🔲 Planned with X.509 support |
 
@@ -212,9 +273,9 @@ gain them together.
 ## See Also
 
 - [KEM Algorithms](kem-algorithms.md) — ML-KEM, the key-establishment half of the PQC pair
-- [Hash Algorithms](hash-algorithms.md) — the SHAKE128/256 XOFs underlying ML-DSA
-- [FIPS 204 Reference](specs/NIST-FIPS-204.md)
-- [ML-DSA Test Vectors](specs/ML-DSA-vectors.md)
+- [Hash Algorithms](hash-algorithms.md) — the SHA-2 and SHAKE cores underlying ML-DSA and SLH-DSA
+- [FIPS 204 Reference](specs/NIST-FIPS-204.md) / [FIPS 205 Reference](specs/NIST-FIPS-205.md)
+- [ML-DSA Test Vectors](specs/ML-DSA-vectors.md) / [SLH-DSA Test Vectors](specs/SLH-DSA-vectors.md)
 - [Cryptography Package Overview](index.md)
 
 ---

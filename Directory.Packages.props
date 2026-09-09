@@ -7,17 +7,17 @@
     Referenced by src/*.csproj: real dependencies of the published NuGet packages.
   -->
   <ItemGroup Label="Packages">
-    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
-    <PackageVersion Include="Microsoft.Bcl.Numerics" Version="10.0.11" />    
-    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Bcl.Numerics" Version="10.0.12" />    
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="10.0.12" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />
-    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.11" />
-    <PackageVersion Include="System.Formats.Asn1" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.12" />
+    <PackageVersion Include="System.Formats.Asn1" Version="10.0.12" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>
@@ -43,7 +43,7 @@
     <PackageVersion Include="KyberNET" Version="1.0.3" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.4" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading" Version="18.7.23" />
     <PackageVersion Include="NaCl.Core" Version="2.2.0" />
     <PackageVersion Include="NeoSmart.AsyncLock" Version="3.3.0-preview1" />
@@ -59,13 +59,13 @@
     <PackageVersion Include="OpenGost.Security.Cryptography" Version="0.3.0" />
     <PackageVersion Include="ProtoPromise" Version="3.5.1" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.11" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.12" />
   </ItemGroup>
   <!--
     Repo-wide build tooling, pulled in via common.props/version.props <- Directory.Build.props. 
   -->
   <ItemGroup Label="Nuget">
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.401" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.91" />
   </ItemGroup>
   <!-- Activate with /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>  -->

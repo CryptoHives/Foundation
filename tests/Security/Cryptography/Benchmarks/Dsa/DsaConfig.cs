@@ -173,14 +173,31 @@ public class DsaConfig : ManualConfig
         };
 
         /// <summary>
-        /// Orders the parameter sets by security category, which for ML-DSA happens to agree
-        /// with alphabetical order but is stated explicitly to match the KEM config and to
-        /// survive a fourth parameter set.
+        /// Orders the parameter sets by security category, then — for SLH-DSA — small before
+        /// fast and SHA2 before SHAKE.
         /// </summary>
+        /// <remarks>
+        /// Stated explicitly rather than left to alphabetical order, which agrees for ML-DSA but
+        /// would interleave the twelve SLH-DSA sets by hash function instead of by category.
+        /// ML-DSA sorts ahead of SLH-DSA so a combined run reads lattice first, hash-based
+        /// second, matching how the documentation presents them.
+        /// </remarks>
         private static int ParameterSetRank(string parameterSet) => parameterSet switch {
             "ML-DSA-44" => 0,
             "ML-DSA-65" => 1,
             "ML-DSA-87" => 2,
+            "SLH-DSA-SHA2-128s" => 10,
+            "SLH-DSA-SHAKE-128s" => 11,
+            "SLH-DSA-SHA2-128f" => 12,
+            "SLH-DSA-SHAKE-128f" => 13,
+            "SLH-DSA-SHA2-192s" => 14,
+            "SLH-DSA-SHAKE-192s" => 15,
+            "SLH-DSA-SHA2-192f" => 16,
+            "SLH-DSA-SHAKE-192f" => 17,
+            "SLH-DSA-SHA2-256s" => 18,
+            "SLH-DSA-SHAKE-256s" => 19,
+            "SLH-DSA-SHA2-256f" => 20,
+            "SLH-DSA-SHAKE-256f" => 21,
             _ => int.MaxValue,
         };
 
