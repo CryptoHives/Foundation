@@ -3,14 +3,20 @@ name: ACVP Full Vector Sets
 # Runs the post-quantum conformance suites against the *complete* NIST ACVP vector sets, rather
 # than the selections the repository embeds.
 #
-# ML-KEM and ML-DSA embed everything they can run. SLH-DSA cannot: its signatures are 7,856 to
-# 49,856 bytes each, so the runnable set is 11.8 MB gzipped even after filtering out the pre-hash
-# and internal-interface groups. The repository therefore carries a stratified 180-case selection
-# (~2.15 MB) that still covers every parameter set, and this workflow downloads the full 456-case
-# set weekly so nothing is only ever checked in the small file.
+# ML-KEM and the pure ML-DSA set embed everything they can run. Three sets cannot be embedded
+# whole:
 #
-# See scripts/fetch-slhdsa-acvp-vectors.py for the stratification rule, and SlhDsaAcvpVectors for
-# how CRYPTOHIVES_SLHDSA_ACVP_VECTORS overrides the embedded resource.
+#   SLH-DSA, pure      456 cases, 11.8 MB gzipped   -> 180 committed (~2.15 MB)
+#   SLH-DSA, pre-hash  456 cases, 15.9 MB gzipped   ->  37 committed (~1.38 MB)
+#   ML-DSA,  pre-hash  135 cases,  2.11 MB gzipped  ->  57 committed (~0.88 MB)
+#
+# SLH-DSA signatures are 7,856 to 49,856 bytes each, and the pre-hash sets multiply the case count
+# by the twelve approved pre-hash functions. The repository therefore carries stratified selections
+# that still cover every parameter set — and, for the pre-hash sets, every pre-hash function — and
+# this workflow downloads the full sets weekly so nothing is only ever checked in the small files.
+#
+# See the two fetch scripts for the stratification rules, and the *AcvpVectors classes for how the
+# CRYPTOHIVES_*_ACVP_VECTORS variables override the embedded resources.
 
 on:
   schedule:
@@ -62,7 +68,7 @@ jobs:
       run: >
         dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj
         -c Release --framework net10.0
-        --filter "FullyQualifiedName~SlhDsaAcvp"
+        --filter "FullyQualifiedName~SlhDsaAcvpTests"
         --logger "console;verbosity=normal"
 
     - name: Confirm the committed selection still regenerates byte-identically
@@ -73,3 +79,45 @@ jobs:
       run: |
         python scripts/fetch-slhdsa-acvp-vectors.py --profile stratified
         git diff --exit-code -- tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.json.gz
+
+  pre-hash:
+    name: HashML-DSA and HashSLH-DSA, full ACVP sets
+    runs-on: ubuntu-latest
+    # Same reason as above, and the pre-hash sigGen set signs with all twelve parameter sets under
+    # all twelve pre-hash functions.
+    timeout-minutes: 180
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.ref }}
+
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.x'
+
+    - name: Fetch the complete pre-hash vector sets
+      run: |
+        python scripts/fetch-mldsa-acvp-vectors.py --profile prehash-full
+        python scripts/fetch-slhdsa-acvp-vectors.py --profile prehash-full
+
+    - name: Run the pre-hash conformance suites
+      env:
+        CRYPTOHIVES_MLDSA_PREHASH_ACVP_VECTORS: tests/Security/Cryptography/TestData/mldsa-prehash-acvp-fips204.full.json.gz
+        CRYPTOHIVES_SLHDSA_PREHASH_ACVP_VECTORS: tests/Security/Cryptography/TestData/slhdsa-prehash-acvp-fips205.full.json.gz
+      run: >
+        dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj
+        -c Release --framework net10.0
+        --filter "FullyQualifiedName~PreHashAcvpTests"
+        --logger "console;verbosity=normal"
+
+    - name: Confirm the committed selections still regenerate byte-identically
+      run: |
+        python scripts/fetch-mldsa-acvp-vectors.py --profile prehash
+        python scripts/fetch-slhdsa-acvp-vectors.py --profile prehash
+        git diff --exit-code -- tests/Security/Cryptography/TestData/mldsa-prehash-acvp-fips204.json.gz
+        git diff --exit-code -- tests/Security/Cryptography/TestData/slhdsa-prehash-acvp-fips205.json.gz

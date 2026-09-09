@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Dsa;
@@ -41,19 +41,19 @@ internal static class PreHashTestUtil
         return (digest, oid);
     }
 
-    public static MlDsaParams MlDsaParamsFor(string parameterSet) => parameterSet switch
+    public static MLDsaParams MlDsaParamsFor(string parameterSet) => parameterSet switch
     {
-        "ML-DSA-44" => MlDsaParams.MlDsa44,
-        "ML-DSA-65" => MlDsaParams.MlDsa65,
-        "ML-DSA-87" => MlDsaParams.MlDsa87,
+        "ML-DSA-44" => MLDsaParams.MLDsa44,
+        "ML-DSA-65" => MLDsaParams.MLDsa65,
+        "ML-DSA-87" => MLDsaParams.MLDsa87,
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 
-    public static MlDsaAlgorithm MlDsaAlgorithmFor(string parameterSet) => parameterSet switch
+    public static MLDsaAlgorithm MlDsaAlgorithmFor(string parameterSet) => parameterSet switch
     {
-        "ML-DSA-44" => MlDsaAlgorithm.MlDsa44,
-        "ML-DSA-65" => MlDsaAlgorithm.MlDsa65,
-        "ML-DSA-87" => MlDsaAlgorithm.MlDsa87,
+        "ML-DSA-44" => MLDsaAlgorithm.MLDsa44,
+        "ML-DSA-65" => MLDsaAlgorithm.MLDsa65,
+        "ML-DSA-87" => MLDsaAlgorithm.MLDsa87,
         _ => throw new ArgumentException($"Unknown parameter set: {parameterSet}", nameof(parameterSet)),
     };
 

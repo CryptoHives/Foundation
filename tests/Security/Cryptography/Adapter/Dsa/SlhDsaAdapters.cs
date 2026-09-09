@@ -24,6 +24,7 @@ public sealed class SlhDsaAdapter : IDsaRunner
 {
     private readonly CH.SlhDsaAlgorithm _algorithm;
     private readonly bool _performPairwiseConsistencyTest;
+    private readonly string _preHashOid;
     private CH.SlhDsa? _signer;
     private CH.SlhDsa? _verifier;
 
@@ -43,6 +44,7 @@ public sealed class SlhDsaAdapter : IDsaRunner
     {
         _algorithm = algorithm;
         _performPairwiseConsistencyTest = pairwiseConsistencyTest;
+        _preHashOid = DsaPreHash.OidFor(algorithm.Name);
     }
 
     /// <inheritdoc/>
@@ -82,6 +84,19 @@ public sealed class SlhDsaAdapter : IDsaRunner
         => _verifier!.VerifyData(new ReadOnlySpan<byte>(message), new ReadOnlySpan<byte>(signature));
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The spans are explicit for the same reason as on <see cref="Sign"/>, and one more: the
+    /// span overload of <c>SignPreHash</c> takes the destination second, so passing two arrays
+    /// would bind to the <c>byte[]</c> overload whose second parameter is the OID.
+    /// </remarks>
+    public void SignPreHash(byte[] message, byte[] digest, byte[] signature)
+        => _signer!.SignPreHash(new ReadOnlySpan<byte>(digest), new Span<byte>(signature), _preHashOid);
+
+    /// <inheritdoc/>
+    public bool VerifyPreHash(byte[] message, byte[] digest, byte[] signature)
+        => _verifier!.VerifyPreHash(new ReadOnlySpan<byte>(digest), new ReadOnlySpan<byte>(signature), _preHashOid);
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         _signer?.Dispose();
@@ -101,10 +116,13 @@ public sealed class SlhDsaAdapter : IDsaRunner
 public sealed class BouncyCastleSlhDsaAdapter : IDsaRunner
 {
     private readonly SlhDsaParameters _parameters;
+    private readonly SlhDsaParameters _preHashParameters;
     private readonly SecureRandom _random = new();
     private readonly SlhDsaKeyPairGenerator _generator = new();
     private SlhDsaSigner? _signer;
     private SlhDsaSigner? _verifier;
+    private HashSlhDsaSigner? _preHashSigner;
+    private HashSlhDsaSigner? _preHashVerifier;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BouncyCastleSlhDsaAdapter"/> class.
@@ -113,10 +131,13 @@ public sealed class BouncyCastleSlhDsaAdapter : IDsaRunner
     /// <param name="publicKeySizeBytes">The FIPS 205 public key size for this parameter set.</param>
     /// <param name="privateKeySizeBytes">The FIPS 205 private key size for this parameter set.</param>
     /// <param name="signatureSizeBytes">The FIPS 205 signature size for this parameter set.</param>
+    /// <param name="preHashParameters">The BouncyCastle parameter set with the pre-hash function bound in.</param>
     public BouncyCastleSlhDsaAdapter(SlhDsaParameters parameters, int publicKeySizeBytes,
-                                     int privateKeySizeBytes, int signatureSizeBytes)
+                                     int privateKeySizeBytes, int signatureSizeBytes,
+                                     SlhDsaParameters preHashParameters)
     {
         _parameters = parameters;
+        _preHashParameters = preHashParameters;
         PublicKeySizeBytes = publicKeySizeBytes;
         PrivateKeySizeBytes = privateKeySizeBytes;
         SignatureSizeBytes = signatureSizeBytes;
@@ -140,6 +161,17 @@ public sealed class BouncyCastleSlhDsaAdapter : IDsaRunner
 
         _verifier = new SlhDsaSigner(_parameters, deterministic: false);
         _verifier.Init(forSigning: false, SlhDsaPublicKeyParameters.FromEncoding(_parameters, publicKey));
+
+        // The pre-hash signers take the parameter set with the hash bound into it, and the key
+        // has to be re-encoded under that set: BouncyCastle treats slh_dsa_sha2_128f and
+        // slh_dsa_sha2_128f_with_sha256 as different parameter objects.
+        _preHashSigner = new HashSlhDsaSigner(_preHashParameters, deterministic: false);
+        _preHashSigner.Init(forSigning: true,
+            SlhDsaPrivateKeyParameters.FromEncoding(_preHashParameters, privateKey));
+
+        _preHashVerifier = new HashSlhDsaSigner(_preHashParameters, deterministic: false);
+        _preHashVerifier.Init(forSigning: false,
+            SlhDsaPublicKeyParameters.FromEncoding(_preHashParameters, publicKey));
     }
 
     /// <inheritdoc/>
@@ -158,6 +190,25 @@ public sealed class BouncyCastleSlhDsaAdapter : IDsaRunner
     {
         _verifier!.BlockUpdate(message, 0, message.Length);
         return _verifier.VerifySignature(signature);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Takes the raw message, not the digest: <c>HashSlhDsaSigner</c> hashes internally and has
+    /// no digest-input overload, so this row carries the message-hashing cost the others do not.
+    /// </remarks>
+    public void SignPreHash(byte[] message, byte[] digest, byte[] signature)
+    {
+        _preHashSigner!.BlockUpdate(message, 0, message.Length);
+        byte[] produced = _preHashSigner.GenerateSignature();
+        produced.CopyTo(signature, 0);
+    }
+
+    /// <inheritdoc/>
+    public bool VerifyPreHash(byte[] message, byte[] digest, byte[] signature)
+    {
+        _preHashVerifier!.BlockUpdate(message, 0, message.Length);
+        return _preHashVerifier.VerifySignature(signature);
     }
 
     /// <inheritdoc/>
@@ -182,6 +233,7 @@ public sealed class BouncyCastleSlhDsaAdapter : IDsaRunner
 public sealed class OSSlhDsaAdapter : IDsaRunner
 {
     private readonly System.Security.Cryptography.SlhDsaAlgorithm _algorithm;
+    private readonly string _preHashOid;
     private System.Security.Cryptography.SlhDsa? _signer;
     private System.Security.Cryptography.SlhDsa? _verifier;
 
@@ -189,7 +241,11 @@ public sealed class OSSlhDsaAdapter : IDsaRunner
     /// Initializes a new instance of the <see cref="OSSlhDsaAdapter"/> class.
     /// </summary>
     /// <param name="algorithm">The parameter set.</param>
-    public OSSlhDsaAdapter(System.Security.Cryptography.SlhDsaAlgorithm algorithm) => _algorithm = algorithm;
+    public OSSlhDsaAdapter(System.Security.Cryptography.SlhDsaAlgorithm algorithm)
+    {
+        _algorithm = algorithm;
+        _preHashOid = DsaPreHash.OidFor(algorithm.Name);
+    }
 
     /// <inheritdoc/>
     public int PublicKeySizeBytes => _algorithm.PublicKeySizeInBytes;
@@ -221,6 +277,18 @@ public sealed class OSSlhDsaAdapter : IDsaRunner
     /// <inheritdoc/>
     public bool Verify(byte[] message, byte[] signature)
         => _verifier!.VerifyData(new ReadOnlySpan<byte>(message), new ReadOnlySpan<byte>(signature));
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Spans are explicit here for the reason described on <see cref="SlhDsaAdapter.SignPreHash"/>:
+    /// the span overload takes the destination second, the array overload takes the OID.
+    /// </remarks>
+    public void SignPreHash(byte[] message, byte[] digest, byte[] signature)
+        => _signer!.SignPreHash(new ReadOnlySpan<byte>(digest), new Span<byte>(signature), _preHashOid);
+
+    /// <inheritdoc/>
+    public bool VerifyPreHash(byte[] message, byte[] digest, byte[] signature)
+        => _verifier!.VerifyPreHash(new ReadOnlySpan<byte>(digest), new ReadOnlySpan<byte>(signature), _preHashOid);
 
     /// <inheritdoc/>
     public void Dispose()
