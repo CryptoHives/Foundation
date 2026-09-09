@@ -62,7 +62,7 @@
     Repo-wide build tooling, pulled in via common.props/version.props <- Directory.Build.props. 
   -->
   <ItemGroup Label="Nuget">
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.401" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.91" />
   </ItemGroup>
   <!-- Activate with /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>  -->
