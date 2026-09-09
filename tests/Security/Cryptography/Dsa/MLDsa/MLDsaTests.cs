@@ -144,7 +144,7 @@ public class MLDsaTests
     [Test]
     public void InvalidSizes_Throw()
     {
-        using IDsa dsa = MLDsa44.Create();
+        using var dsa = MLDsa44.Create();
         byte[] pk = new byte[MLDsa44.PublicKeySizeBytesConst];
         byte[] sk = new byte[MLDsa44.SecretKeySizeBytesConst];
         byte[] sig = new byte[MLDsa44.SignatureSizeBytesConst];
