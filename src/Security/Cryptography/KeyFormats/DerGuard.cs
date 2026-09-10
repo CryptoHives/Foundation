@@ -10,10 +10,7 @@ using OS = System.Security.Cryptography;
 /// Shared strictness checks for the key-format readers.
 /// </summary>
 /// <remarks>
-/// These are the rules the in-box types enforce, gathered in one place so that every reader in this
-/// folder applies them the same way. Being strict here matters: a decoder that silently ignores
-/// trailing data or unexpected algorithm parameters will happily accept a structure that another
-/// implementation reads differently, which is how format confusion bugs start.
+/// These are the rules the in-box types enforce, unified for every reader in this folder.
 /// </remarks>
 internal static class DerGuard
 {
