@@ -33,6 +33,17 @@
     <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
   </PropertyGroup>
 
+  <!--
+    Key-format members that move a password or a plaintext private key through an immutable string
+    are kept in the tree under #if SECURITY_REVIEW so a reviewer can diff them against the erasable
+    implementations that replaced them. They are never part of a shipped assembly or package; the
+    only way to build them is to opt in here with /p:EnableSecurityReviewApi=true.
+    See docfx/packages/security/cryptography/erasable-memory.md.
+  -->
+  <PropertyGroup Condition="'$(EnableSecurityReviewApi)' == 'true'">
+    <DefineConstants>$(DefineConstants);SECURITY_REVIEW</DefineConstants>
+  </PropertyGroup>
+
   <Choose>
     <When Condition="'$(TargetFramework)' == 'netstandard2.0'">
       <ItemGroup>

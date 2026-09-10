@@ -3,8 +3,8 @@
 
 namespace Cryptography.Tests.KeyFormats;
 
-using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using CryptoHives.Foundation.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -103,7 +103,8 @@ public class MLDsaKeyFormatTests
         using var key = MLDsa.GenerateKey(algorithm);
 
         string publicPem = key.ExportSubjectPublicKeyInfoPem();
-        string privatePem = key.ExportPkcs8PrivateKeyPem();
+        string privatePem = KeyFormatAssert.PrivateKeyPem(
+            key.GetPkcs8PrivateKeyPemSize(), key.TryExportPkcs8PrivateKeyPem);
 
         KeyFormatAssert.IsPem(publicPem, "PUBLIC KEY");
         KeyFormatAssert.IsPem(privatePem, "PRIVATE KEY");
@@ -125,7 +126,7 @@ public class MLDsaKeyFormatTests
         _ = oid;
         using var key = MLDsa.GenerateKey(algorithm);
 
-        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("hunter2", Pbe);
+        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("hunter2".AsSpan(), Pbe);
         KeyFormatAssert.IsPbes2(encrypted);
 
         using var imported = MLDsa.ImportEncryptedPkcs8PrivateKey("hunter2".AsSpan(), encrypted);
@@ -139,10 +140,10 @@ public class MLDsaKeyFormatTests
         _ = oid;
         using var key = MLDsa.GenerateKey(algorithm);
 
-        string pem = key.ExportEncryptedPkcs8PrivateKeyPem("hunter2", Pbe);
+        string pem = key.ExportEncryptedPkcs8PrivateKeyPem("hunter2".AsSpan(), Pbe);
         KeyFormatAssert.IsPem(pem, "ENCRYPTED PRIVATE KEY");
 
-        using var imported = MLDsa.ImportFromEncryptedPem(pem, "hunter2");
+        using var imported = MLDsa.ImportFromEncryptedPem(pem.AsSpan(), "hunter2".AsSpan());
         Assert.That(imported.ExportMLDsaPrivateSeed(), Is.EqualTo(key.ExportMLDsaPrivateSeed()));
     }
 
@@ -192,10 +193,10 @@ public class MLDsaKeyFormatTests
 
         // The salt and IV are fresh per call, so the length is stable but the bytes are not;
         // decrypting is the check that the buffer holds a usable structure.
-        int length = key.ExportEncryptedPkcs8PrivateKey("pw", Pbe).Length;
+        int length = key.ExportEncryptedPkcs8PrivateKey("pw".AsSpan(), Pbe).Length;
         byte[] buffer = new byte[length];
 
-        Assert.That(key.TryExportEncryptedPkcs8PrivateKey("pw", Pbe, buffer, out int written), Is.True);
+        Assert.That(key.TryExportEncryptedPkcs8PrivateKey("pw".AsSpan(), Pbe, buffer, out int written), Is.True);
         Assert.That(written, Is.EqualTo(length));
 
         using var imported = MLDsa.ImportEncryptedPkcs8PrivateKey("pw".AsSpan(), buffer);
@@ -215,7 +216,7 @@ public class MLDsaKeyFormatTests
     public void WrongPassword_Throws()
     {
         using var key = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa44);
-        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("right", Pbe);
+        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("right".AsSpan(), Pbe);
 
         Assert.That(
             () => MLDsa.ImportEncryptedPkcs8PrivateKey("wrong".AsSpan(), encrypted),
@@ -281,9 +282,11 @@ public class MLDsaKeyFormatTests
     public void ImportFromPem_RejectsTwoRecognizedBlocks()
     {
         using var key = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa44);
-        string doubled = key.ExportSubjectPublicKeyInfoPem() + "\n" + key.ExportPkcs8PrivateKeyPem();
+        string doubled = key.ExportSubjectPublicKeyInfoPem() + "\n"
+            + KeyFormatAssert.PrivateKeyPem(
+                key.GetPkcs8PrivateKeyPemSize(), key.TryExportPkcs8PrivateKeyPem);
 
-        Assert.That(() => MLDsa.ImportFromPem(doubled), Throws.InstanceOf<ArgumentException>());
+        Assert.That(() => MLDsa.ImportFromPem(doubled.AsSpan()), Throws.InstanceOf<ArgumentException>());
     }
 
     [Test]
@@ -294,7 +297,7 @@ public class MLDsaKeyFormatTests
             "-----BEGIN CERTIFICATE-----\nZm9v\n-----END CERTIFICATE-----\n"
             + key.ExportSubjectPublicKeyInfoPem();
 
-        using var imported = MLDsa.ImportFromPem(document);
+        using var imported = MLDsa.ImportFromPem(document.AsSpan());
         Assert.That(imported.ExportMLDsaPublicKey(), Is.EqualTo(key.ExportMLDsaPublicKey()));
     }
 
@@ -312,7 +315,7 @@ public class MLDsaKeyFormatTests
         using var key = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa44);
 
         Assert.That(
-            () => MLDsa.ImportFromPem(key.ExportEncryptedPkcs8PrivateKeyPem("pw", Pbe)),
+            () => MLDsa.ImportFromPem(key.ExportEncryptedPkcs8PrivateKeyPem("pw".AsSpan(), Pbe).AsSpan()),
             Throws.InstanceOf<ArgumentException>().With.Message.Contains("ImportFromEncryptedPem"));
     }
 
@@ -325,8 +328,8 @@ public class MLDsaKeyFormatTests
         {
             Assert.That(() => MLDsa.ImportPkcs8PrivateKey((byte[])null!), Throws.InstanceOf<ArgumentNullException>());
             Assert.That(() => MLDsa.ImportSubjectPublicKeyInfo((byte[])null!), Throws.InstanceOf<ArgumentNullException>());
-            Assert.That(() => MLDsa.ImportFromPem((string)null!), Throws.InstanceOf<ArgumentNullException>());
-            Assert.That(() => key.ExportEncryptedPkcs8PrivateKey((string)null!, Pbe), Throws.InstanceOf<ArgumentNullException>());
+            Assert.That(() => MLDsa.ImportFromEncryptedPem("x", (byte[])null!), Throws.InstanceOf<ArgumentNullException>());
+            Assert.That(() => MLDsa.ImportFromEncryptedPem((string)null!, Array.Empty<byte>()), Throws.InstanceOf<ArgumentNullException>());
         }
     }
 }

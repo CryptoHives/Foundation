@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.KeyFormats;
@@ -18,6 +18,38 @@ using System.Formats.Asn1;
 /// </remarks>
 internal static class KeyFormatAssert
 {
+    /// <summary>
+    /// A <c>TryExportPkcs8PrivateKeyPem</c> as the three key types expose it.
+    /// </summary>
+    /// <param name="destination">The buffer to receive the text.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="true"/> when the buffer was large enough.</returns>
+    internal delegate bool TryExportPem(Span<char> destination, out int charsWritten);
+
+    /// <summary>
+    /// Runs the erasable plaintext-PEM export and materializes the result for comparison.
+    /// </summary>
+    /// <param name="size">The size the key reported, from <c>GetPkcs8PrivateKeyPemSize</c>.</param>
+    /// <param name="tryExport">The export to run.</param>
+    /// <returns>The PEM text.</returns>
+    /// <remarks>
+    /// The library refuses to build this string because it cannot erase it. A test can: the whole
+    /// point of the assertions here is to read the bytes, and the process is about to exit. Keeping
+    /// the conversion in one place also means every fixture exercises the reported size rather than
+    /// a buffer someone guessed.
+    /// </remarks>
+    public static string PrivateKeyPem(int size, TryExportPem tryExport)
+    {
+        char[] buffer = new char[size];
+
+        Assert.That(tryExport(buffer, out int charsWritten), Is.True,
+            "the buffer sized by GetPkcs8PrivateKeyPemSize must be large enough");
+        Assert.That(charsWritten, Is.EqualTo(size),
+            "GetPkcs8PrivateKeyPemSize must report exactly what the export writes");
+
+        return new string(buffer, 0, charsWritten);
+    }
+
     /// <summary>
     /// Asserts that <paramref name="der"/> is a SubjectPublicKeyInfo for the expected algorithm and
     /// key, with no algorithm parameters and no trailing data.

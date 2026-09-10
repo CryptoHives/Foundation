@@ -3,8 +3,8 @@
 
 namespace Cryptography.Tests.KeyFormats;
 
-using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using CryptoHives.Foundation.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -108,7 +108,8 @@ public class SlhDsaKeyFormatTests
         using var key = Generate(algorithm);
 
         string publicPem = key.ExportSubjectPublicKeyInfoPem();
-        string privatePem = key.ExportPkcs8PrivateKeyPem();
+        string privatePem = KeyFormatAssert.PrivateKeyPem(
+            key.GetPkcs8PrivateKeyPemSize(), key.TryExportPkcs8PrivateKeyPem);
 
         KeyFormatAssert.IsPem(publicPem, "PUBLIC KEY");
         KeyFormatAssert.IsPem(privatePem, "PRIVATE KEY");
@@ -130,7 +131,7 @@ public class SlhDsaKeyFormatTests
         _ = oid;
         using var key = Generate(algorithm);
 
-        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("hunter2", Pbe);
+        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("hunter2".AsSpan(), Pbe);
         KeyFormatAssert.IsPbes2(encrypted);
 
         using var imported = SlhDsa.ImportEncryptedPkcs8PrivateKey("hunter2".AsSpan(), encrypted);
@@ -144,10 +145,10 @@ public class SlhDsaKeyFormatTests
         _ = oid;
         using var key = Generate(algorithm);
 
-        string pem = key.ExportEncryptedPkcs8PrivateKeyPem("hunter2", Pbe);
+        string pem = key.ExportEncryptedPkcs8PrivateKeyPem("hunter2".AsSpan(), Pbe);
         KeyFormatAssert.IsPem(pem, "ENCRYPTED PRIVATE KEY");
 
-        using var imported = SlhDsa.ImportFromEncryptedPem(pem, "hunter2");
+        using var imported = SlhDsa.ImportFromEncryptedPem(pem.AsSpan(), "hunter2".AsSpan());
         Assert.That(imported.ExportSlhDsaPrivateKey(), Is.EqualTo(key.ExportSlhDsaPrivateKey()));
     }
 
@@ -158,7 +159,9 @@ public class SlhDsaKeyFormatTests
         // One f set is enough: this is about the key surviving the encoding, not about signing,
         // and an s-set signature would dominate the run for no extra coverage.
         using var key = Generate(SlhDsaAlgorithm.SlhDsaShake128f);
-        using var imported = SlhDsa.ImportFromPem(key.ExportPkcs8PrivateKeyPem());
+        using var imported = SlhDsa.ImportFromPem(
+            KeyFormatAssert.PrivateKeyPem(
+                key.GetPkcs8PrivateKeyPemSize(), key.TryExportPkcs8PrivateKeyPem).AsSpan());
 
         byte[] message = [4, 8, 15, 16, 23, 42];
         Assert.That(key.VerifyData(message, imported.SignData(message)), Is.True);
@@ -217,7 +220,7 @@ public class SlhDsaKeyFormatTests
     public void WrongPassword_Throws()
     {
         using var key = Generate(SlhDsaAlgorithm.SlhDsaShake128f);
-        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("right", Pbe);
+        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("right".AsSpan(), Pbe);
 
         Assert.That(
             () => SlhDsa.ImportEncryptedPkcs8PrivateKey("wrong".AsSpan(), encrypted),

@@ -271,23 +271,50 @@ ML-DSA-65/87. The API shape mirrors .NET 10's `SignPreHash`/`VerifyPreHash` memb
 
 ## Key Import and Export
 
-`MLDsa` and `SlhDsa` — and [`MLKem`](kem-algorithms.md) — carry the same twenty-eight-member key
-format block the in-box types define, on every target framework down to .NET Framework 4.6.2.
+`MLDsa` and `SlhDsa` — and [`MLKem`](kem-algorithms.md) — carry the key format block the in-box
+types define, on every target framework down to .NET Framework 4.6.2. Twenty-seven members: the
+in-box signatures, minus the ones that would have moved a secret through a `string`, plus the
+`Span<char>` PEM exports `AsymmetricAlgorithm` has and the in-box PQC types do not — see
+[Erasable Memory](erasable-memory.md).
 
 ```csharp
 using var signer = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
 
-// PKCS#8, SubjectPublicKeyInfo, and the PEM form of each.
+// PKCS#8 and SubjectPublicKeyInfo, plus the PEM form of the public half.
 byte[] pkcs8 = signer.ExportPkcs8PrivateKey();
 byte[] spki  = signer.ExportSubjectPublicKeyInfo();
-string pem   = signer.ExportPkcs8PrivateKeyPem();
+string pem   = signer.ExportSubjectPublicKeyInfoPem();
 
 // Password-protected, PBES2 with PBKDF2-HMAC-SHA256 and AES-256-CBC.
 var pbe = new PbeOptions(PbeEncryptionAlgorithm.Aes256Cbc, Pbkdf2Prf.HmacSha256, 600_000);
-string encrypted = signer.ExportEncryptedPkcs8PrivateKeyPem("correct horse", pbe);
 
-using var restored = MLDsa.ImportFromEncryptedPem(encrypted, "correct horse");
+// Characters are text: the scheme encodes them before the key derivation function sees
+// them - UTF-8 here, big-endian UTF-16 for the legacy PKCS#12 schemes. This is what a
+// password a human typed should use. Hold it in storage you own so you can clear it.
+char[] typed = ReadPassword();
+
+try
+{
+    string encrypted = signer.ExportEncryptedPkcs8PrivateKeyPem(typed, pbe);
+    using var restored = MLDsa.ImportFromEncryptedPem(encrypted.AsSpan(), typed);
+}
+finally
+{
+    Array.Clear(typed, 0, typed.Length);
+}
+
+// Bytes are not text: they are the key derivation input, verbatim, with no encoding step.
+// Reach for this only to reproduce a derivation this library would not otherwise produce.
+// A UTF-8 literal is the one spelling of a fixed password that never creates a String -
+// though it is compiled into the assembly, so it is no more erasable than a literal was.
+ReadOnlySpan<byte> exactBytes = "correct horse"u8;
+byte[] alsoEncrypted = signer.ExportEncryptedPkcs8PrivateKey(exactBytes, pbe);
 ```
+
+Under PBES2 the character encoding *is* UTF-8, so the two agree for any text — they part company only
+on a legacy PKCS#12 file, where characters become big-endian UTF-16, or on byte inputs that are not
+valid UTF-8. See
+[Erasable Memory](erasable-memory.md#characters-and-bytes-carry-different-things).
 
 ### The private key is written as a seed when there is one
 
@@ -322,9 +349,46 @@ Passwords are taken as characters or as raw bytes, and the two are not interchan
 password is UTF-8 encoded for PBES2 and big-endian UTF-16 for the PKCS#12 schemes, while a byte
 password is fed to the key derivation function exactly as given.
 
+### Erasable memory only
+
+No member here takes a password, or returns a plaintext private key, as a `string`. A `string`
+cannot be overwritten, so a secret placed in one survives on the heap until the collector reuses the
+memory. Passwords are `ReadOnlySpan<char>` or `ReadOnlySpan<byte>`, and the plaintext-PEM export
+writes into a buffer you own:
+
+```csharp
+int size = key.GetPkcs8PrivateKeyPemSize();
+char[] pem = ArrayPool<char>.Shared.Rent(size);
+
+try
+{
+    key.TryExportPkcs8PrivateKeyPem(pem, out int charsWritten);
+    // ... use pem.AsSpan(0, charsWritten) ...
+}
+finally
+{
+    Array.Clear(pem, 0, size);
+    ArrayPool<char>.Shared.Return(pem);
+}
+```
+
+`CryptographicOperations.ZeroMemory` is not available here: this library keeps its copy internal, and
+the in-box one takes only a `Span<byte>` — there is no `char` overload on any .NET version. `Array.Clear`
+is the portable option, with the caveat that a compiler is free to elide a store nothing reads back.
+
+`string` survives on exactly two members, whose content is public by construction:
+`ExportSubjectPublicKeyInfoPem` (a public key) and `ExportEncryptedPkcs8PrivateKeyPem` (ciphertext).
+
+This is closer to the in-box shape than it may look. `AsymmetricAlgorithm` — the base `RSA`, `ECDsa`
+and `DSA` inherit — has never had a `string` password overload either, and has always offered the
+`Span<char>` PEM exports. It is the newer in-box `MLDsa`/`MLKem`/`SlhDsa` that departed from that,
+because they are standalone classes whose key-format block was written fresh rather than inherited.
+[Erasable Memory](erasable-memory.md) has the comparison, the reasoning, and how to port each of the
+twenty-one members this replaces.
+
 ### `PbeOptions`: the one deliberate divergence
 
-The nine encrypted-export members take a `PbeOptions` where the in-box types take a `PbeParameters`.
+The six encrypted-export members take a `PbeOptions` where the in-box types take a `PbeParameters`.
 It is the only place the key-format surface differs, and it is a considered trade rather than an
 omission:
 

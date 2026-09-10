@@ -100,7 +100,8 @@ public class KeyFormatInteropTests
                 Is.EqualTo(reference.ExportPkcs8PrivateKey()), "PKCS#8, seed arm");
             Assert.That(key.ExportSubjectPublicKeyInfoPem(),
                 Is.EqualTo(reference.ExportSubjectPublicKeyInfoPem()), "SubjectPublicKeyInfo PEM");
-            Assert.That(key.ExportPkcs8PrivateKeyPem(),
+            Assert.That(KeyFormatAssert.PrivateKeyPem(
+                    key.GetPkcs8PrivateKeyPemSize(), key.TryExportPkcs8PrivateKeyPem),
                 Is.EqualTo(reference.ExportPkcs8PrivateKeyPem()), "PKCS#8 PEM");
         }
     }
@@ -139,7 +140,7 @@ public class KeyFormatInteropTests
         using var mineFromTheirs = CHD.MLDsa.ImportPkcs8PrivateKey(reference.ExportPkcs8PrivateKey());
         using var mineFromTheirSpki = CHD.MLDsa.ImportSubjectPublicKeyInfo(
             reference.ExportSubjectPublicKeyInfo());
-        using var mineFromTheirPem = CHD.MLDsa.ImportFromPem(reference.ExportPkcs8PrivateKeyPem());
+        using var mineFromTheirPem = CHD.MLDsa.ImportFromPem(reference.ExportPkcs8PrivateKeyPem().AsSpan());
 
         using (Assert.EnterMultipleScope())
         {
@@ -166,9 +167,9 @@ public class KeyFormatInteropTests
         using var reference = System.Security.Cryptography.MLDsa.GenerateKey(theirs);
 
         using var theirsFromMine = System.Security.Cryptography.MLDsa.ImportEncryptedPkcs8PrivateKey(
-            "pw", mine.ExportEncryptedPkcs8PrivateKey("pw", OurPbe));
+            "pw", mine.ExportEncryptedPkcs8PrivateKey("pw".AsSpan(), OurPbe));
         using var mineFromTheirs = CHD.MLDsa.ImportFromEncryptedPem(
-            reference.ExportEncryptedPkcs8PrivateKeyPem("pw", InBoxPbe), "pw");
+            reference.ExportEncryptedPkcs8PrivateKeyPem("pw".AsSpan(), InBoxPbe), "pw");
 
         using (Assert.EnterMultipleScope())
         {
@@ -203,7 +204,9 @@ public class KeyFormatInteropTests
                 Is.EqualTo(reference.ExportPkcs8PrivateKey()), "PKCS#8, seed arm");
             Assert.That(key.ExportSubjectPublicKeyInfoPem(),
                 Is.EqualTo(reference.ExportSubjectPublicKeyInfoPem()), "SubjectPublicKeyInfo PEM");
-            Assert.That(key.ExportPkcs8PrivateKeyPem(),
+            Assert.That(
+                KeyFormatAssert.PrivateKeyPem(
+                    key.GetPkcs8PrivateKeyPemSize(), key.TryExportPkcs8PrivateKeyPem),
                 Is.EqualTo(reference.ExportPkcs8PrivateKeyPem()), "PKCS#8 PEM");
         }
     }

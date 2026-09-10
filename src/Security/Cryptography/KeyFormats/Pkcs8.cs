@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.KeyFormats;
@@ -63,9 +63,14 @@ internal static class Pkcs8
     /// algorithm parameters, or is followed by trailing data.</exception>
     public static byte[] Read(ReadOnlySpan<byte> source, out string algorithmOid)
     {
+        // AsnReader needs a ReadOnlyMemory<byte>, which a span cannot supply, so the whole
+        // PrivateKeyInfo - private key included - has to be copied. Clear the copy on the way out
+        // rather than leaving it for the collector.
+        byte[] copy = source.ToArray();
+
         try
         {
-            var reader = new AsnReader(source.ToArray(), AsnEncodingRules.DER);
+            var reader = new AsnReader(copy, AsnEncodingRules.DER);
             AsnReader info = reader.ReadSequence();
             DerGuard.NoTrailingData(reader);
 
@@ -94,6 +99,10 @@ internal static class Pkcs8
         catch (AsnContentException e)
         {
             throw new OS.CryptographicException("The PKCS#8 PrivateKeyInfo structure is malformed.", e);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(copy);
         }
     }
 }

@@ -3,8 +3,8 @@
 
 namespace Cryptography.Tests.KeyFormats;
 
-using CryptoHives.Foundation.Security.Cryptography.Kem;
 using CryptoHives.Foundation.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography.Kem;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -103,7 +103,8 @@ public class MLKemKeyFormatTests
         using var key = MLKem.GenerateKey(algorithm);
 
         string publicPem = key.ExportSubjectPublicKeyInfoPem();
-        string privatePem = key.ExportPkcs8PrivateKeyPem();
+        string privatePem = KeyFormatAssert.PrivateKeyPem(
+            key.GetPkcs8PrivateKeyPemSize(), key.TryExportPkcs8PrivateKeyPem);
 
         KeyFormatAssert.IsPem(publicPem, "PUBLIC KEY");
         KeyFormatAssert.IsPem(privatePem, "PRIVATE KEY");
@@ -125,7 +126,7 @@ public class MLKemKeyFormatTests
         _ = oid;
         using var key = MLKem.GenerateKey(algorithm);
 
-        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("hunter2", Pbe);
+        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("hunter2".AsSpan(), Pbe);
         KeyFormatAssert.IsPbes2(encrypted);
 
         using var imported = MLKem.ImportEncryptedPkcs8PrivateKey("hunter2".AsSpan(), encrypted);
@@ -139,10 +140,10 @@ public class MLKemKeyFormatTests
         _ = oid;
         using var key = MLKem.GenerateKey(algorithm);
 
-        string pem = key.ExportEncryptedPkcs8PrivateKeyPem("hunter2", Pbe);
+        string pem = key.ExportEncryptedPkcs8PrivateKeyPem("hunter2".AsSpan(), Pbe);
         KeyFormatAssert.IsPem(pem, "ENCRYPTED PRIVATE KEY");
 
-        using var imported = MLKem.ImportFromEncryptedPem(pem, "hunter2");
+        using var imported = MLKem.ImportFromEncryptedPem(pem.AsSpan(), "hunter2".AsSpan());
         Assert.That(imported.ExportPrivateSeed(), Is.EqualTo(key.ExportPrivateSeed()));
     }
 
@@ -192,7 +193,7 @@ public class MLKemKeyFormatTests
     public void WrongPassword_Throws()
     {
         using var key = MLKem.GenerateKey(MLKemAlgorithm.MLKem512);
-        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("right", Pbe);
+        byte[] encrypted = key.ExportEncryptedPkcs8PrivateKey("right".AsSpan(), Pbe);
 
         Assert.That(
             () => MLKem.ImportEncryptedPkcs8PrivateKey("wrong".AsSpan(), encrypted),

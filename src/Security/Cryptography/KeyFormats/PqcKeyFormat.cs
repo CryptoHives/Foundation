@@ -12,7 +12,9 @@ using OS = System.Security.Cryptography;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The in-box types define the same twenty-eight-member key-format block on all three algorithms.
+/// The in-box types define the same key-format block on all three algorithms, and so do these -
+/// twenty-seven members: the in-box shape minus the ones that moved a secret through a string, plus
+/// the Span&lt;char&gt; PEM exports AsymmetricAlgorithm has and the in-box PQC types dropped.
 /// C# has no mixins, so each type still has to <i>declare</i> those members - but none of them
 /// implements anything: every one is a single call into this class, and the DER, PEM and
 /// password-based encryption logic exists once.
@@ -51,7 +53,7 @@ internal static class PqcKeyFormat
     /// <param name="publicKey">The raw public key.</param>
     /// <returns>The PEM text.</returns>
     public static string ExportSpkiPem(string algorithmOid, ReadOnlySpan<byte> publicKey)
-        => PemFormat.Encode(Spki.Write(algorithmOid, publicKey), PemLabels.PublicKey);
+        => PemFormat.EncodePublic(Spki.Write(algorithmOid, publicKey), PemLabels.PublicKey);
 
     /// <summary>Attempts to export a public key as a SubjectPublicKeyInfo.</summary>
     /// <param name="algorithmOid">The algorithm OID.</param>
@@ -65,6 +67,29 @@ internal static class PqcKeyFormat
         Span<byte> destination,
         out int bytesWritten)
         => TryWrite(Spki.Write(algorithmOid, publicKey), destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the exact number of characters <see cref="TryExportSpkiPem"/> writes.
+    /// </summary>
+    /// <param name="algorithmOid">The algorithm OID.</param>
+    /// <param name="publicKey">The raw public key.</param>
+    /// <returns>The encoded length in characters.</returns>
+    public static int GetSpkiPemSize(string algorithmOid, ReadOnlySpan<byte> publicKey)
+        => PemFormat.GetEncodedSize(Spki.Write(algorithmOid, publicKey).Length, PemLabels.PublicKey);
+
+    /// <summary>Attempts to export a public key as a PEM-encoded SubjectPublicKeyInfo.</summary>
+    /// <param name="algorithmOid">The algorithm OID.</param>
+    /// <param name="publicKey">The raw public key.</param>
+    /// <param name="destination">The buffer to receive the text.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="true"/> when the buffer was large enough.</returns>
+    public static bool TryExportSpkiPem(
+        string algorithmOid,
+        ReadOnlySpan<byte> publicKey,
+        Span<char> destination,
+        out int charsWritten)
+        => PemFormat.TryEncode(
+            Spki.Write(algorithmOid, publicKey), PemLabels.PublicKey, destination, out charsWritten);
 
     /// <summary>Imports a SubjectPublicKeyInfo.</summary>
     /// <typeparam name="T">The key type.</typeparam>
@@ -88,12 +113,76 @@ internal static class PqcKeyFormat
     public static byte[] ExportPkcs8(string algorithmOid, ReadOnlySpan<byte> privateKeyBlob)
         => Pkcs8.Write(algorithmOid, privateKeyBlob);
 
+    // Dropped from the shipping surface: a PEM-encoded plaintext private key in a string cannot be
+    // overwritten.
+    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
+#if SECURITY_REVIEW
     /// <summary>Exports a private key blob as a PEM-encoded PKCS#8 PrivateKeyInfo.</summary>
     /// <param name="algorithmOid">The algorithm OID.</param>
     /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>
     /// <returns>The PEM text.</returns>
+    /// <remarks>
+    /// The returned string is the plaintext private key and cannot be overwritten; compare against
+    /// <see cref="TryExportPkcs8Pem"/>.
+    /// </remarks>
     public static string ExportPkcs8Pem(string algorithmOid, ReadOnlySpan<byte> privateKeyBlob)
         => PemFormat.EncodeAndClear(Pkcs8.Write(algorithmOid, privateKeyBlob), PemLabels.Pkcs8PrivateKey);
+#endif
+
+    /// <summary>
+    /// Computes the exact number of characters <see cref="TryExportPkcs8Pem"/> writes.
+    /// </summary>
+    /// <param name="algorithmOid">The algorithm OID.</param>
+    /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>
+    /// <returns>The encoded length in characters.</returns>
+    /// <remarks>
+    /// The PKCS#8 encoding has to be built to be measured, so it is built and immediately cleared.
+    /// That is one extra encode per call, which is the price of never handing the caller a length
+    /// they have to discover by growing a buffer until an export succeeds.
+    /// </remarks>
+    public static int GetPkcs8PemSize(string algorithmOid, ReadOnlySpan<byte> privateKeyBlob)
+    {
+        byte[] encoded = Pkcs8.Write(algorithmOid, privateKeyBlob);
+
+        try
+        {
+            return PemFormat.GetEncodedSize(encoded.Length, PemLabels.Pkcs8PrivateKey);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(encoded);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to export a private key blob as a PEM-encoded PKCS#8 PrivateKeyInfo.
+    /// </summary>
+    /// <param name="algorithmOid">The algorithm OID.</param>
+    /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>
+    /// <param name="destination">The buffer to receive the text.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="true"/> when the buffer was large enough.</returns>
+    /// <remarks>
+    /// There is deliberately no allocating counterpart. A PEM-encoded plaintext private key is the
+    /// private key, and a <see cref="string"/> holding one cannot be erased.
+    /// </remarks>
+    public static bool TryExportPkcs8Pem(
+        string algorithmOid,
+        ReadOnlySpan<byte> privateKeyBlob,
+        Span<char> destination,
+        out int charsWritten)
+    {
+        byte[] encoded = Pkcs8.Write(algorithmOid, privateKeyBlob);
+
+        try
+        {
+            return PemFormat.TryEncode(encoded, PemLabels.Pkcs8PrivateKey, destination, out charsWritten);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(encoded);
+        }
+    }
 
     /// <summary>Attempts to export a private key blob as a PKCS#8 PrivateKeyInfo.</summary>
     /// <param name="algorithmOid">The algorithm OID.</param>
@@ -179,9 +268,9 @@ internal static class PqcKeyFormat
         PbePassword password,
         PbeOptions pbeOptions)
     {
-        // The ciphertext is not secret, but encode-and-clear keeps one rule for every private-key
-        // PEM export rather than two.
-        return PemFormat.EncodeAndClear(
+        // The payload here is ciphertext, so a string is safe: this is one of exactly two PEM
+        // exports whose content is public by construction.
+        return PemFormat.EncodePublic(
             ExportEncryptedPkcs8(algorithmOid, privateKeyBlob, password, pbeOptions),
             PemLabels.EncryptedPkcs8PrivateKey);
     }
@@ -205,6 +294,36 @@ internal static class PqcKeyFormat
             ExportEncryptedPkcs8(algorithmOid, privateKeyBlob, password, pbeOptions),
             destination,
             out bytesWritten);
+
+    /// <summary>
+    /// Attempts to export a private key blob as a PEM-encoded encrypted PKCS#8 structure.
+    /// </summary>
+    /// <param name="algorithmOid">The algorithm OID.</param>
+    /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>
+    /// <param name="password">The password.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
+    /// <param name="destination">The buffer to receive the text.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="true"/> when the buffer was large enough.</returns>
+    /// <remarks>
+    /// There is deliberately no <c>GetEncryptedPkcs8PemSize</c>. Measuring the output means running
+    /// the key derivation function, and at a realistic iteration count that is the entire cost of
+    /// the export - a caller who sized a buffer and then exported would pay it twice. Use the
+    /// allocating <see cref="ExportEncryptedPkcs8Pem"/>, which is safe here because the payload is
+    /// ciphertext, or grow a buffer until this returns <see langword="true"/>.
+    /// </remarks>
+    public static bool TryExportEncryptedPkcs8Pem(
+        string algorithmOid,
+        ReadOnlySpan<byte> privateKeyBlob,
+        PbePassword password,
+        PbeOptions pbeOptions,
+        Span<char> destination,
+        out int charsWritten)
+    {
+        byte[] encrypted = ExportEncryptedPkcs8(algorithmOid, privateKeyBlob, password, pbeOptions);
+        return PemFormat.TryEncode(
+            encrypted, PemLabels.EncryptedPkcs8PrivateKey, destination, out charsWritten);
+    }
 
     /// <summary>Imports an encrypted PKCS#8 structure.</summary>
     /// <typeparam name="T">The key type.</typeparam>
@@ -253,46 +372,45 @@ internal static class PqcKeyFormat
     public static T ImportFromPem<T>(ReadOnlySpan<char> pem, KeyFactory<T> factory)
     {
         PemBlock found = default;
-        bool haveOne = false;
+        int position = 0;
 
-        foreach (PemBlock block in PemFormat.EnumerateBlocks(pem.ToString()))
+        while (PemFormat.TryFindBlock(pem, ref position, out PemBlock block))
         {
-            if (block.Label is not (PemLabels.PublicKey or PemLabels.Pkcs8PrivateKey
-                or PemLabels.EncryptedPkcs8PrivateKey))
+            if (!block.LabelIs(pem, PemLabels.PublicKey)
+                && !block.LabelIs(pem, PemLabels.Pkcs8PrivateKey)
+                && !block.LabelIs(pem, PemLabels.EncryptedPkcs8PrivateKey))
             {
                 continue;
             }
 
-            if (haveOne)
+            if (found.Found)
             {
                 throw new ArgumentException(
                     "The PEM data contains more than one key with a recognized label.", nameof(pem));
             }
 
             found = block;
-            haveOne = true;
         }
 
-        if (!haveOne)
+        if (!found.Found)
         {
             throw new ArgumentException(
                 "The PEM data does not contain a key with a recognized label.", nameof(pem));
         }
 
-        if (found.Label == PemLabels.EncryptedPkcs8PrivateKey)
+        if (found.LabelIs(pem, PemLabels.EncryptedPkcs8PrivateKey))
         {
             throw new ArgumentException(
                 "The PEM data contains an encrypted private key; use ImportFromEncryptedPem.",
                 nameof(pem));
         }
 
-        byte[] der = DecodeOrThrow(found, nameof(pem));
+        bool isPublic = found.LabelIs(pem, PemLabels.PublicKey);
+        byte[] der = DecodeOrThrow(pem, found, nameof(pem));
 
         try
         {
-            return found.Label == PemLabels.PublicKey
-                ? ImportSpki(der, factory)
-                : ImportPkcs8(der, factory);
+            return isPublic ? ImportSpki(der, factory) : ImportPkcs8(der, factory);
         }
         finally
         {
@@ -317,40 +435,39 @@ internal static class PqcKeyFormat
         KeyFactory<T> factory)
     {
         PemBlock found = default;
-        bool haveOne = false;
+        int position = 0;
 
-        foreach (PemBlock block in PemFormat.EnumerateBlocks(pem.ToString()))
+        while (PemFormat.TryFindBlock(pem, ref position, out PemBlock block))
         {
-            if (block.Label != PemLabels.EncryptedPkcs8PrivateKey)
+            if (!block.LabelIs(pem, PemLabels.EncryptedPkcs8PrivateKey))
             {
                 continue;
             }
 
-            if (haveOne)
+            if (found.Found)
             {
                 throw new ArgumentException(
                     "The PEM data contains more than one encrypted private key.", nameof(pem));
             }
 
             found = block;
-            haveOne = true;
         }
 
-        if (!haveOne)
+        if (!found.Found)
         {
             throw new ArgumentException(
                 "The PEM data does not contain an encrypted private key.", nameof(pem));
         }
 
-        byte[] der = DecodeOrThrow(found, nameof(pem));
+        byte[] der = DecodeOrThrow(pem, found, nameof(pem));
         return ImportEncryptedPkcs8(password, der, factory);
     }
 
-    private static byte[] DecodeOrThrow(PemBlock block, string parameterName)
+    private static byte[] DecodeOrThrow(ReadOnlySpan<char> pem, PemBlock block, string parameterName)
     {
         try
         {
-            return PemFormat.Decode(block);
+            return PemFormat.Decode(pem, block);
         }
         catch (FormatException e)
         {

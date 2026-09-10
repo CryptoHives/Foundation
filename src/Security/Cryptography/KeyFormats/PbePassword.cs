@@ -1,9 +1,10 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.KeyFormats;
 
 using System;
+using System.Buffers;
 using System.Text;
 
 /// <summary>
@@ -73,7 +74,21 @@ internal readonly ref struct PbePassword
         Encoding.UTF8.GetBytes(_chars, bytes);
         return bytes;
 #else
-        return Encoding.UTF8.GetBytes(_chars.ToArray());
+        // Encoding has no span overloads downlevel, so the password characters have to be an
+        // array. Rent it and clear it rather than letting _chars.ToArray() leave an unerasable
+        // copy of the password on the heap.
+        char[] chars = ArrayPool<char>.Shared.Rent(_chars.Length);
+
+        try
+        {
+            _chars.CopyTo(chars);
+            return Encoding.UTF8.GetBytes(chars, 0, _chars.Length);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(chars.AsSpan(0, _chars.Length));
+            ArrayPool<char>.Shared.Return(chars);
+        }
 #endif
     }
 

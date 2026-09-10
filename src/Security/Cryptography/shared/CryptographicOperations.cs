@@ -35,6 +35,34 @@ internal static class CryptographicOperations
     }
 
     /// <summary>
+    /// Fills a character span with zeros in a way that's not subject to compiler optimizations.
+    /// </summary>
+    /// <param name="buffer">The buffer to clear.</param>
+    /// <remarks>
+    /// Character buffers reach cryptographic code as passwords and as PEM text carrying private
+    /// keys. Both are secret, and both are erasable only because they are <see langword="char"/>
+    /// storage rather than a <see cref="string"/>.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    public static void ZeroMemory(Span<char> buffer)
+    {
+        buffer.Clear();
+    }
+
+    /// <summary>
+    /// Fills a character array with zeros in a way that's not subject to compiler optimizations.
+    /// </summary>
+    /// <param name="buffer">The buffer to clear.</param>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    public static void ZeroMemory(char[] buffer)
+    {
+        if (buffer != null)
+        {
+            Array.Clear(buffer, 0, buffer.Length);
+        }
+    }
+
+    /// <summary>
     /// Compares two byte spans in constant time to prevent timing attacks.
     /// </summary>
     /// <param name="left">First span to compare.</param>

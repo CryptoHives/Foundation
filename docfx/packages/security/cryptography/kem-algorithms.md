@@ -1,4 +1,4 @@
-# Key Encapsulation Mechanisms (KEM) Reference
+﻿# Key Encapsulation Mechanisms (KEM) Reference
 
 This page provides detailed documentation for the Key Encapsulation Mechanisms (KEMs) implemented in the CryptoHives.Foundation.Security.Cryptography package.
 
@@ -172,6 +172,11 @@ See [Key Import and Export](signature-algorithms.md#key-import-and-export) for t
 `CHOICE`, the password-based encryption rules, and why the encrypted-export members take a
 `PbeOptions` rather than the in-box `PbeParameters`.
 
+No member takes a password, or returns a plaintext private key, as a `string` — a `string` cannot be
+overwritten once created. Passwords are `ReadOnlySpan<char>` or `ReadOnlySpan<byte>`, and the
+plaintext-PEM export writes into a buffer you own, sized by `GetPkcs8PrivateKeyPemSize()`. See
+[Erasable Memory](erasable-memory.md) for what changed and how to port each call.
+
 ---
 
 ## Security Properties
@@ -235,35 +240,11 @@ The implementation is validated on every target framework by three independent m
 | Algorithm | Standard | Status |
 |-----------|----------|--------|
 | ML-KEM-512/768/1024 | FIPS 203 | ✅ Implemented |
-| ML-DSA (signatures) | FIPS 204 | 🔲 Planned |
+| ML-DSA-44/65/87 (signatures) | FIPS 204 | ✅ Implemented |
+| SLH-DSA, all 12 parameter sets (signatures) | FIPS 205 | ✅ Implemented |
 | HPKE | RFC 9180 | 🔲 Under review |
 | X-Wing (hybrid X25519 + ML-KEM-768) | draft-connolly-cfrg-xwing-kem | 🔲 Under review |
 | PKCS#8 / SPKI / PEM key formats | RFC 5958 / RFC 5280 / RFC 7468 | ✅ Implemented |
-
-#### Deferred: key-format import/export
-
-Raw key and seed import/export is complete; the encoded key formats are the one remaining gap
-against the in-box `MLKem` surface. Deferred members:
-
-| Direction | Members |
-|-----------|---------|
-| Import (static) | `ImportPkcs8PrivateKey`, `ImportSubjectPublicKeyInfo`, `ImportFromPem`, `ImportEncryptedPkcs8PrivateKey`, `ImportFromEncryptedPem` |
-| Export (instance) | `ExportPkcs8PrivateKey`, `ExportPkcs8PrivateKeyPem`, `ExportSubjectPublicKeyInfo`, `ExportSubjectPublicKeyInfoPem`, `ExportEncryptedPkcs8PrivateKey`, `ExportEncryptedPkcs8PrivateKeyPem`, `TryExportPkcs8PrivateKey`, `TryExportSubjectPublicKeyInfo`, `TryExportEncryptedPkcs8PrivateKey` |
-
-Notes for whoever picks this up:
-
-- The in-box `MLKem` derives the SPKI and PKCS#8 members from `ExportEncapsulationKeyCore` /
-  `TryExportPkcs8PrivateKeyCore` in its abstract base. Because this implementation is a standalone
-  sealed class rather than a subclass of the BCL type, **none of that is inherited** — every member
-  above has to be written here, including the static importers.
-- ASN.1 encoding needs `System.Formats.Asn1` (it ships netstandard2.0 assets, so it works on every
-  target framework in the matrix).
-- Private-key wire format is the ML-KEM `PrivateKey` CHOICE:
-  `seed [0] OCTET STRING (SIZE(64))`, `expandedKey OCTET STRING`, or `both SEQUENCE`, under the
-  algorithm OIDs `2.16.840.1.101.3.4.4.1` (ML-KEM-512), `.2` (768) and `.3` (1024).
-- The encoding must be byte-compatible with the in-box implementation. Add a net10.0 test that
-  round-trips our PKCS#8 and SPKI output through `System.Security.Cryptography.MLKem` and back,
-  alongside the existing interop tests in `MLKemInteropTests.cs`.
 
 ---
 

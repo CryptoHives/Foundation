@@ -158,11 +158,16 @@ implicit rejection, and all three parameter sets are verified against the offici
 NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
 
 PKCS#8, SubjectPublicKeyInfo and PEM import/export are available on every target framework,
-including password-protected PKCS#8 (PBES2). The nine encrypted-export members take a `PbeOptions`
-rather than the in-box `PbeParameters`, which does not exist below .NET Standard 2.1; that is the
-only place the key-format surface diverges, and the
+including password-protected PKCS#8 (PBES2). Two things differ from the in-box surface. The
+encrypted-export members take a `PbeOptions` rather than the in-box `PbeParameters`, which does not
+exist below .NET Standard 2.1; the
 [signature algorithms reference](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html)
-explains why.
+explains why. And **no member takes a password, or returns a plaintext private key, as a `string`** —
+a `string` cannot be overwritten once created, so passwords are `ReadOnlySpan<char>` or
+`ReadOnlySpan<byte>` and the plaintext-PEM export writes into a caller-owned buffer sized by
+`GetPkcs8PrivateKeyPemSize()`. The
+[erasable memory reference](https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html)
+lists the twenty-one members this replaces and how to port each.
 
 ### Post-Quantum Signatures (`ML-DSA`)
 

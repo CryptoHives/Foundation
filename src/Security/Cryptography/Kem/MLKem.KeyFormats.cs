@@ -83,6 +83,36 @@ public sealed partial class MLKem
         return PqcKeyFormat.TryExportSpki(AlgorithmOid, _encapsulationKey, destination, out bytesWritten);
     }
 
+
+    /// <summary>
+    /// Gets the exact number of characters <see cref="TryExportSubjectPublicKeyInfoPem"/> writes.
+    /// </summary>
+    /// <returns>The required buffer length, in characters.</returns>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public int GetSubjectPublicKeyInfoPemSize()
+    {
+        ThrowIfDisposed();
+        return PqcKeyFormat.GetSpkiPemSize(AlgorithmOid, _encapsulationKey);
+    }
+
+    /// <summary>
+    /// Attempts to export this key as a PEM-encoded SubjectPublicKeyInfo.
+    /// </summary>
+    /// <param name="destination">The buffer to receive the text, labelled <c>PUBLIC KEY</c>.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="false"/> when <paramref name="destination"/> is too small.</returns>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <remarks>
+    /// A public key is not secret, so <see cref="ExportSubjectPublicKeyInfoPem"/> remains available
+    /// and is usually the simpler call. This overload exists for parity with
+    /// <c>AsymmetricAlgorithm</c>, which offers the same pair, and for callers avoiding allocation.
+    /// </remarks>
+    public bool TryExportSubjectPublicKeyInfoPem(Span<char> destination, out int charsWritten)
+    {
+        ThrowIfDisposed();
+        return PqcKeyFormat.TryExportSpkiPem(AlgorithmOid, _encapsulationKey, destination, out charsWritten);
+    }
+
     // ========================================================================
     // PKCS#8 PrivateKeyInfo
     // ========================================================================
@@ -133,6 +163,9 @@ public sealed partial class MLKem
         }
     }
 
+    // Dropped from the shipping surface: a PEM-encoded plaintext private key in a string cannot be overwritten.
+    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
+#if SECURITY_REVIEW
     /// <summary>
     /// Exports this key in a PEM-encoded PKCS#8 PrivateKeyInfo.
     /// </summary>
@@ -152,6 +185,68 @@ public sealed partial class MLKem
             CryptographicOperations.ZeroMemory(blob);
         }
     }
+#endif
+
+    /// <summary>
+    /// Gets the exact number of characters <see cref="TryExportPkcs8PrivateKeyPem"/> writes for
+    /// this key.
+    /// </summary>
+    /// <returns>The required buffer length, in characters.</returns>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    /// <remarks>
+    /// The counterpart of <c>System.Security.Cryptography.PemEncoding.GetEncodedSize</c>, which is
+    /// not available on every target framework this library supports. Rent a buffer of this size,
+    /// call <see cref="TryExportPkcs8PrivateKeyPem"/>, and clear the buffer when finished.
+    /// </remarks>
+    public int GetPkcs8PrivateKeyPemSize()
+    {
+        byte[] blob = BuildPrivateKeyBlob();
+
+        try
+        {
+            return PqcKeyFormat.GetPkcs8PemSize(AlgorithmOid, blob);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(blob);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to export this key as a PEM-encoded PKCS#8 PrivateKeyInfo, writing into a buffer
+    /// the caller owns and can erase.
+    /// </summary>
+    /// <param name="destination">The buffer to receive the text, labelled <c>PRIVATE KEY</c>.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="false"/> when <paramref name="destination"/> is too small.</returns>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    /// <remarks>
+    /// <para>
+    /// There is no allocating <c>ExportPkcs8PrivateKeyPem()</c>. The text this produces <i>is</i>
+    /// the private key, and a <see cref="string"/> holding it could never be erased - so the only
+    /// export this type offers is one that writes where the caller can clear it afterwards. Size
+    /// the buffer with <see cref="GetPkcs8PrivateKeyPemSize"/>.
+    /// </para>
+    /// <para>
+    /// When the buffer is too small nothing is written and <paramref name="charsWritten"/> is zero.
+    /// </para>
+    /// </remarks>
+    public bool TryExportPkcs8PrivateKeyPem(Span<char> destination, out int charsWritten)
+    {
+        byte[] blob = BuildPrivateKeyBlob();
+
+        try
+        {
+            return PqcKeyFormat.TryExportPkcs8Pem(AlgorithmOid, blob, destination, out charsWritten);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(blob);
+        }
+    }
+
 
     /// <summary>
     /// Attempts to export this key in the PKCS#8 PrivateKeyInfo format.
@@ -207,6 +302,9 @@ public sealed partial class MLKem
         ReadOnlySpan<byte> source)
         => PqcKeyFormat.ImportEncryptedPkcs8(PbePassword.FromChars(password), source, FromPkcs8Blob);
 
+    // Dropped from the shipping surface: a string password cannot be overwritten once created.
+    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
+#if SECURITY_REVIEW
     /// <summary>
     /// Imports an ML-KEM private key from a PKCS#8 EncryptedPrivateKeyInfo structure.
     /// </summary>
@@ -233,6 +331,7 @@ public sealed partial class MLKem
 
         return ImportEncryptedPkcs8PrivateKey(password.AsSpan(), new ReadOnlySpan<byte>(source));
     }
+#endif
 
     /// <summary>
     /// Exports this key in the PKCS#8 EncryptedPrivateKeyInfo format.
@@ -260,6 +359,9 @@ public sealed partial class MLKem
         PbeOptions pbeOptions)
         => ExportEncrypted(PbePassword.FromChars(password), pbeOptions);
 
+    // Dropped from the shipping surface: a string password cannot be overwritten once created.
+    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
+#if SECURITY_REVIEW
     /// <summary>
     /// Exports this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
@@ -278,6 +380,7 @@ public sealed partial class MLKem
 
         return ExportEncrypted(PbePassword.FromChars(password.AsSpan()), pbeOptions);
     }
+#endif
 
     /// <summary>
     /// Exports this key in a PEM-encoded PKCS#8 EncryptedPrivateKeyInfo.
@@ -305,6 +408,9 @@ public sealed partial class MLKem
         PbeOptions pbeOptions)
         => ExportEncryptedPem(PbePassword.FromChars(password), pbeOptions);
 
+    // Dropped from the shipping surface: a string password cannot be overwritten once created.
+    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
+#if SECURITY_REVIEW
     /// <summary>
     /// Exports this key in a PEM-encoded PKCS#8 EncryptedPrivateKeyInfo.
     /// </summary>
@@ -323,6 +429,7 @@ public sealed partial class MLKem
 
         return ExportEncryptedPem(PbePassword.FromChars(password.AsSpan()), pbeOptions);
     }
+#endif
 
     /// <summary>
     /// Attempts to export this key in the PKCS#8 EncryptedPrivateKeyInfo format.
@@ -358,6 +465,9 @@ public sealed partial class MLKem
         out int bytesWritten)
         => TryExportEncrypted(PbePassword.FromChars(password), pbeOptions, destination, out bytesWritten);
 
+    // Dropped from the shipping surface: a string password cannot be overwritten once created.
+    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
+#if SECURITY_REVIEW
     /// <summary>
     /// Attempts to export this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
@@ -383,6 +493,48 @@ public sealed partial class MLKem
         return TryExportEncrypted(
             PbePassword.FromChars(password.AsSpan()), pbeOptions, destination, out bytesWritten);
     }
+#endif
+
+
+    /// <summary>
+    /// Attempts to export this key as a PEM-encoded PKCS#8 EncryptedPrivateKeyInfo.
+    /// </summary>
+    /// <param name="password">The password, used verbatim as the key derivation input.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
+    /// <param name="destination">The buffer to receive the text.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="false"/> when <paramref name="destination"/> is too small.</returns>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    public bool TryExportEncryptedPkcs8PrivateKeyPem(
+        ReadOnlySpan<byte> password,
+        PbeOptions pbeOptions,
+        Span<char> destination,
+        out int charsWritten)
+        => TryExportEncryptedPem(PbePassword.FromBytes(password), pbeOptions, destination, out charsWritten);
+
+    /// <summary>
+    /// Attempts to export this key as a PEM-encoded PKCS#8 EncryptedPrivateKeyInfo.
+    /// </summary>
+    /// <param name="password">The password, encoded per the scheme being written.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
+    /// <param name="destination">The buffer to receive the text.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="false"/> when <paramref name="destination"/> is too small.</returns>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    /// <remarks>
+    /// There is no size helper for this member: measuring the output means running the key
+    /// derivation function, which at a realistic iteration count is the whole cost of the export.
+    /// Use <see cref="ExportEncryptedPkcs8PrivateKeyPem(ReadOnlySpan{char}, PbeOptions)"/> - safe,
+    /// because the payload is ciphertext - or grow a buffer until this succeeds.
+    /// </remarks>
+    public bool TryExportEncryptedPkcs8PrivateKeyPem(
+        ReadOnlySpan<char> password,
+        PbeOptions pbeOptions,
+        Span<char> destination,
+        out int charsWritten)
+        => TryExportEncryptedPem(PbePassword.FromChars(password), pbeOptions, destination, out charsWritten);
 
     // ========================================================================
     // PEM
@@ -399,6 +551,9 @@ public sealed partial class MLKem
     public static MLKem ImportFromPem(ReadOnlySpan<char> source)
         => PqcKeyFormat.ImportFromPem(source, FromPemBlob);
 
+    // Dropped from the shipping surface: a PEM-encoded plaintext private key in a string cannot be overwritten.
+    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
+#if SECURITY_REVIEW
     /// <summary>
     /// Imports an ML-KEM key from an RFC 7468 PEM-encoded string.
     /// </summary>
@@ -417,6 +572,7 @@ public sealed partial class MLKem
 
         return ImportFromPem(source.AsSpan());
     }
+#endif
 
     /// <summary>
     /// Imports an ML-KEM key from an encrypted RFC 7468 PEM-encoded string.
@@ -442,6 +598,9 @@ public sealed partial class MLKem
     public static MLKem ImportFromEncryptedPem(ReadOnlySpan<char> source, ReadOnlySpan<byte> passwordBytes)
         => PqcKeyFormat.ImportFromEncryptedPem(source, PbePassword.FromBytes(passwordBytes), FromPkcs8Blob);
 
+    // Dropped from the shipping surface: a string password cannot be overwritten once created.
+    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
+#if SECURITY_REVIEW
     /// <summary>
     /// Imports an ML-KEM key from an encrypted RFC 7468 PEM-encoded string.
     /// </summary>
@@ -466,6 +625,7 @@ public sealed partial class MLKem
 
         return ImportFromEncryptedPem(source.AsSpan(), password.AsSpan());
     }
+#endif
 
     /// <summary>
     /// Imports an ML-KEM key from an encrypted RFC 7468 PEM-encoded string.
@@ -549,6 +709,33 @@ public sealed partial class MLKem
         try
         {
             return PqcKeyFormat.ExportEncryptedPkcs8Pem(AlgorithmOid, blob, password, pbeOptions);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(blob);
+        }
+    }
+
+    /// <summary>
+    /// Shared body of the two <c>TryExportEncryptedPkcs8PrivateKeyPem</c> overloads.
+    /// </summary>
+    /// <param name="password">The password.</param>
+    /// <param name="pbeOptions">The password-based encryption options.</param>
+    /// <param name="destination">The buffer to receive the text.</param>
+    /// <param name="charsWritten">The number of characters written.</param>
+    /// <returns><see langword="true"/> when the buffer was large enough.</returns>
+    private bool TryExportEncryptedPem(
+        PbePassword password,
+        PbeOptions pbeOptions,
+        Span<char> destination,
+        out int charsWritten)
+    {
+        byte[] blob = BuildPrivateKeyBlob();
+
+        try
+        {
+            return PqcKeyFormat.TryExportEncryptedPkcs8Pem(
+                AlgorithmOid, blob, password, pbeOptions, destination, out charsWritten);
         }
         finally
         {
