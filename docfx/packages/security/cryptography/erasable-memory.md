@@ -1,4 +1,4 @@
-# Erasable Memory and the Dropped `string` API
+﻿# Erasable Memory and the Dropped `string` API
 
 The PQC key-format surface on `MLKem`, `MLDsa` and `SlhDsa` follows one rule: **no member takes a
 password, or returns a plaintext private key, as a `string`.**
@@ -277,14 +277,14 @@ next use of the pooled array. It is recorded here rather than silently accepted.
 
 ## Reviewing the removed implementations
 
-The dropped members were not deleted. Each sits under `#if SECURITY_REVIEW`, with a comment above the
-fence — visible whether or not the symbol is defined — naming why it went, so the unerasable
-implementation can be diffed against the one that replaced it:
+The dropped members were not deleted. Each sits under `#if OBSOLETE_SECRET_AS_STRING_API`, with a
+comment above the fence — visible whether or not the symbol is defined — naming why it went, so the
+unerasable implementation can be diffed against the one that replaced it:
 
 ```csharp
     // Dropped from the shipping surface: a string password cannot be overwritten once created.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     public static MLDsa ImportEncryptedPkcs8PrivateKey(string password, byte[] source)
 #endif
 ```
@@ -292,7 +292,7 @@ implementation can be diffed against the one that replaced it:
 No shipping build defines that symbol; opting in is explicit:
 
 ```powershell
-dotnet build src/Security/Cryptography/Cryptography.csproj -p:EnableSecurityReviewApi=true
+dotnet build src/Security/Cryptography/Cryptography.csproj -p:EnableObsoleteSecretAsStringApi=true
 ```
 
 Nothing built that way should be shipped or packed.

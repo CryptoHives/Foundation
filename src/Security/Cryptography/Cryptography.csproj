@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -35,13 +35,14 @@
 
   <!--
     Key-format members that move a password or a plaintext private key through an immutable string
-    are kept in the tree under #if SECURITY_REVIEW so a reviewer can diff them against the erasable
-    implementations that replaced them. They are never part of a shipped assembly or package; the
-    only way to build them is to opt in here with /p:EnableSecurityReviewApi=true.
+    are kept in the tree under #if OBSOLETE_SECRET_AS_STRING_API, so a reviewer can diff them
+    against the erasable implementations that replaced them. They are never part of a shipped
+    assembly or package; the only way to build them is to opt in with
+    /p:EnableObsoleteSecretAsStringApi=true.
     See docfx/packages/security/cryptography/erasable-memory.md.
   -->
-  <PropertyGroup Condition="'$(EnableSecurityReviewApi)' == 'true'">
-    <DefineConstants>$(DefineConstants);SECURITY_REVIEW</DefineConstants>
+  <PropertyGroup Condition="'$(EnableObsoleteSecretAsStringApi)' == 'true'">
+    <DefineConstants>$(DefineConstants);OBSOLETE_SECRET_AS_STRING_API</DefineConstants>
   </PropertyGroup>
 
   <Choose>
@@ -73,13 +74,6 @@
     <PackageReference Include="Microsoft.Extensions.ObjectPool" />
   </ItemGroup>
 
-  <!--
-    System.Formats.Asn1 lets the PQC key formats read and write DER through one shared
-    implementation instead of a hand-rolled encoder per target. It ships a lib/ for every framework
-    this project targets, but it is also part of the shared framework from .NET 5 onward - so on
-    net8.0 and net10.0 the reference is redundant and NU1510 rejects it. Reference it only where the
-    framework does not already carry it.
-  -->
   <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net5.0'))">
     <PackageReference Include="System.Formats.Asn1" />
   </ItemGroup>

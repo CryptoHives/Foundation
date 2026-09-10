@@ -12,6 +12,15 @@
     <NoWarn>$(NoWarn);CS0618</NoWarn>
   </PropertyGroup>
 
+  <!--
+    Mirrors the opt-in in Cryptography.csproj. A reviewer building with
+    /p:EnableObsoleteSecretAsStringApi=true gets the dropped members compiled back in, so the three
+    tests that assert those members are absent have to compile out for that build alone.
+  -->
+  <PropertyGroup Condition="'$(EnableObsoleteSecretAsStringApi)' == 'true'">
+    <DefineConstants>$(DefineConstants);OBSOLETE_SECRET_AS_STRING_API</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="BouncyCastle.Cryptography" />

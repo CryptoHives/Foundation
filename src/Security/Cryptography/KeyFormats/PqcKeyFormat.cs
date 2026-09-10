@@ -116,7 +116,7 @@ internal static class PqcKeyFormat
     // Dropped from the shipping surface: a PEM-encoded plaintext private key in a string cannot be
     // overwritten.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>Exports a private key blob as a PEM-encoded PKCS#8 PrivateKeyInfo.</summary>
     /// <param name="algorithmOid">The algorithm OID.</param>
     /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>

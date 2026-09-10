@@ -165,7 +165,7 @@ public sealed partial class MLDsa
 
     // Dropped from the shipping surface: a PEM-encoded plaintext private key in a string cannot be overwritten.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>
     /// Exports this key in a PEM-encoded PKCS#8 PrivateKeyInfo.
     /// </summary>
@@ -304,7 +304,7 @@ public sealed partial class MLDsa
 
     // Dropped from the shipping surface: a string password cannot be overwritten once created.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>
     /// Imports an ML-DSA private key from a PKCS#8 EncryptedPrivateKeyInfo structure.
     /// </summary>
@@ -361,7 +361,7 @@ public sealed partial class MLDsa
 
     // Dropped from the shipping surface: a string password cannot be overwritten once created.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>
     /// Exports this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
@@ -410,7 +410,7 @@ public sealed partial class MLDsa
 
     // Dropped from the shipping surface: a string password cannot be overwritten once created.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>
     /// Exports this key in a PEM-encoded PKCS#8 EncryptedPrivateKeyInfo.
     /// </summary>
@@ -467,7 +467,7 @@ public sealed partial class MLDsa
 
     // Dropped from the shipping surface: a string password cannot be overwritten once created.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>
     /// Attempts to export this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
@@ -553,7 +553,7 @@ public sealed partial class MLDsa
 
     // Dropped from the shipping surface: a PEM-encoded plaintext private key in a string cannot be overwritten.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>
     /// Imports an ML-DSA key from an RFC 7468 PEM-encoded string.
     /// </summary>
@@ -600,7 +600,7 @@ public sealed partial class MLDsa
 
     // Dropped from the shipping surface: a string password cannot be overwritten once created.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>
     /// Imports an ML-DSA key from an encrypted RFC 7468 PEM-encoded string.
     /// </summary>

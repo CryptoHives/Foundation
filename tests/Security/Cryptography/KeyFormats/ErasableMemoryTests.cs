@@ -28,9 +28,9 @@ using System.Reflection;
 /// </para>
 /// <para>
 /// The members that broke the rule were not deleted - they are in the tree under
-/// <c>#if SECURITY_REVIEW</c>, which no shipping build defines. The reflection test below is what
-/// proves those fences are actually inactive: if one were dropped, or a new <see cref="string"/>
-/// overload were added for convenience, the assembly would grow a member this test names and
+/// <c>#if OBSOLETE_SECRET_AS_STRING_API</c>, which no shipping build defines. The reflection tests
+/// below are what prove those fences are actually inactive: if one were dropped, or a new
+/// <see cref="string"/> overload were added for convenience, the assembly would grow a member and
 /// fails on.
 /// </para>
 /// </remarks>
@@ -51,6 +51,10 @@ public class ErasableMemoryTests
         "ExportEncryptedPkcs8PrivateKeyPem",
     ];
 
+    // These three assert the dropped members are absent, which is only true of a shipping build.
+    // An OBSOLETE_SECRET_AS_STRING_API build deliberately compiles them back in for review, so the
+    // rule they enforce does not apply to it.
+#if !OBSOLETE_SECRET_AS_STRING_API
     [Test]
     public void NoPublicMemberTakesAPasswordAsAString()
     {
@@ -83,6 +87,7 @@ public class ErasableMemoryTests
             AssertPlaintextPemSurface<SlhDsa>();
         }
     }
+#endif
 
     [Test]
     public void GetPkcs8PrivateKeyPemSize_MatchesWhatTheExportWrites()

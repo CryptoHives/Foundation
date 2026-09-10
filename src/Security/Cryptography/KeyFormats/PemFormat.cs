@@ -233,7 +233,7 @@ internal static class PemFormat
     // Dropped from the shipping surface: clearing the DER accomplishes nothing while the string
     // this returns still holds the same bytes in base64 and can never be overwritten.
     // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if SECURITY_REVIEW
+#if OBSOLETE_SECRET_AS_STRING_API
     /// <summary>
     /// Produces a PEM block as a string and clears the intermediate DER buffer.
     /// </summary>
