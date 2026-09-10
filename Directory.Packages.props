@@ -15,6 +15,13 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.12" />
+    <!--
+      ASN.1 DER reader/writer for the PQC key formats (PKCS#8, SubjectPublicKeyInfo,
+      EncryptedPrivateKeyInfo). Ships lib/ for net462, netstandard2.0, netstandard2.1, net8.0
+      and net10.0 - every framework in CryptolibTargetFrameworks - so the encoders are shared
+      rather than hand-rolled per target.
+    -->
+    <PackageVersion Include="System.Formats.Asn1" Version="10.0.12" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>

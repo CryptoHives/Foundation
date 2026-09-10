@@ -60,6 +60,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.ObjectPool" />
+    <!--
+      Unconditional: System.Formats.Asn1 has a lib/ for every framework this project targets,
+      so the PQC key formats read and write DER through one shared implementation instead of a
+      hand-rolled encoder per target.
+    -->
+    <PackageReference Include="System.Formats.Asn1" />
   </ItemGroup>
 
   <ItemGroup>
