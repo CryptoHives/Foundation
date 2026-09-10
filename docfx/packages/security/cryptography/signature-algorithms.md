@@ -331,8 +331,13 @@ the same type the caller already holds.
 
 > On those three frameworks, referencing both this package and **`Microsoft.Bcl.Cryptography`**
 > produces `CS0433`, because that package defines the same two types. It is the only package that
-> does — `System.Security.Cryptography.Pkcs` does not define them downlevel. Resolve it with an
-> `extern alias` on one of the two references.
+> does — `System.Security.Cryptography.Pkcs` does not define them downlevel.
+>
+> Resolve it by aliasing the other reference, which needs no change to your code:
+>
+> ```xml
+> <PackageReference Include="Microsoft.Bcl.Cryptography" Version="10.0.10" Aliases="BclCrypto" />
+> ```
 
 ---
 

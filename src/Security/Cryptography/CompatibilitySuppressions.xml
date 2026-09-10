@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  Both entries are the same deliberate asymmetry, and neither is an API break for a consumer.
+
+  PbeParameters and PbeEncryptionAlgorithm appear in nine public signatures on MLKem, MLDsa and
+  SlhDsa, but the base class library only gained them in netstandard2.1. This package therefore
+  ships them itself on net462, net472 and netstandard2.0, and does not on netstandard2.1 and above,
+  where the platform provides them.
+
+  Package validation compares assets pairwise and sees two types present on netstandard2.0 that are
+  missing from netstandard2.1. From a consumer's point of view they are present on both - one comes
+  from us, the other from the framework - so the members that use them resolve identically either
+  way. Regenerate with -p:ApiCompatGenerateSuppressionFile=true if the shim's targets change.
+-->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:System.Security.Cryptography.PbeEncryptionAlgorithm</Target>
+    <Left>lib/netstandard2.0/CryptoHives.Foundation.Security.Cryptography.dll</Left>
+    <Right>lib/netstandard2.1/CryptoHives.Foundation.Security.Cryptography.dll</Right>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:System.Security.Cryptography.PbeParameters</Target>
+    <Left>lib/netstandard2.0/CryptoHives.Foundation.Security.Cryptography.dll</Left>
+    <Right>lib/netstandard2.1/CryptoHives.Foundation.Security.Cryptography.dll</Right>
+  </Suppression>
+</Suppressions>
