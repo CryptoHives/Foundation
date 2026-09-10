@@ -235,7 +235,7 @@ public class ErasableMemoryTests
             Assert.That(viaBytes.ExportMLDsaPrivateSeed(), Is.EqualTo(key.ExportMLDsaPrivateSeed()));
 
             Assert.That(
-                () => MLDsa.ImportEncryptedPkcs8PrivateKey(" ÿ".AsSpan(), encrypted),
+                () => MLDsa.ImportEncryptedPkcs8PrivateKey("\u0000\u00ff\u0010".AsSpan(), encrypted),
                 Throws.InstanceOf<System.Security.Cryptography.CryptographicException>(),
                 "the closest character password must not open it");
         }
