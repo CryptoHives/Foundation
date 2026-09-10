@@ -47,7 +47,7 @@ using OS = System.Security.Cryptography;
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class MLKem : IDisposable
+public sealed partial class MLKem : IDisposable
 {
     private readonly byte[]? _seed;
     private readonly byte[]? _decapsulationKey;
