@@ -1,4 +1,4 @@
-## 🛡️ CryptoHives Open Source Initiative 🐝
+﻿## 🛡️ CryptoHives Open Source Initiative 🐝
 
 An open, community-driven collection of cryptography and performance libraries for the .NET ecosystem, maintained by **The Keepers of the CryptoHives**.
 
@@ -157,10 +157,11 @@ Keys are validated on import per FIPS 203 §7.2/§7.3, decapsulation uses consta
 implicit rejection, and all three parameter sets are verified against the official
 NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
 
-> **Not yet implemented:** the PKCS#8, SubjectPublicKeyInfo and PEM import/export members
-> (`ImportPkcs8PrivateKey`, `ExportSubjectPublicKeyInfo`, `ImportFromPem`, …). Raw key and
-> seed import/export is complete. See the
-> [KEM roadmap](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html).
+PKCS#8, SubjectPublicKeyInfo and PEM import/export are available on every target framework,
+including password-protected PKCS#8 (PBES2). On `net462`, `net472` and `netstandard2.0` this
+package supplies `PbeParameters` and `PbeEncryptionAlgorithm`, which those frameworks lack; see
+the [signature algorithms reference](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html)
+for the one package that conflicts with that and how to resolve it.
 
 ### Post-Quantum Signatures (`ML-DSA`)
 

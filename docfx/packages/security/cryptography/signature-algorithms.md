@@ -108,6 +108,11 @@ between the two is a `using` swap.
 | `SignPreHash(hash, oid, context)` / `SignPreHash(hash, destination, oid, context)` | HashML-DSA signing over a caller-supplied digest |
 | `VerifyPreHash(hash, signature, oid, context)` | HashML-DSA verification |
 | `ExportMLDsaPrivateSeed()` / `ExportMLDsaPublicKey()` / `ExportMLDsaPrivateKey()` | Key export (span overloads available) |
+| `ImportPkcs8PrivateKey` / `ImportSubjectPublicKeyInfo` | Import from DER, with `byte[]` and span overloads |
+| `ImportEncryptedPkcs8PrivateKey` | Import a password-protected key |
+| `ImportFromPem` / `ImportFromEncryptedPem` | Import from RFC 7468 text |
+| `ExportPkcs8PrivateKey` / `ExportSubjectPublicKeyInfo` | Export to DER, with `TryExport…` and `…Pem` forms |
+| `ExportEncryptedPkcs8PrivateKey` | Export password-protected, PBES2 |
 | `Dispose()` | Zeroize the private seed and private key |
 
 Every import takes a `byte[]` as well as a `ReadOnlySpan<byte>`, and `SignData`/`VerifyData`/
@@ -207,11 +212,16 @@ Context strings (≤ 255 bytes) work exactly as with ML-DSA. The 4n-byte private
 | `SignPreHash(hash, oid, context)` / `SignPreHash(hash, destination, oid, context)` | HashSLH-DSA signing over a caller-supplied digest |
 | `VerifyPreHash(hash, signature, oid, context)` | HashSLH-DSA verification |
 | `ExportSlhDsaPublicKey()` / `ExportSlhDsaPrivateKey()` | Key export (span overloads available) |
+| `ImportPkcs8PrivateKey` / `ImportSubjectPublicKeyInfo` | Import from DER, with `byte[]` and span overloads |
+| `ImportEncryptedPkcs8PrivateKey` | Import a password-protected key |
+| `ImportFromPem` / `ImportFromEncryptedPem` | Import from RFC 7468 text |
+| `ExportPkcs8PrivateKey` / `ExportSubjectPublicKeyInfo` | Export to DER, with `TryExport…` and `…Pem` forms |
+| `ExportEncryptedPkcs8PrivateKey` | Export password-protected, PBES2 |
 | `Dispose()` | Zeroize the private key |
 
 Every import, export, `SignData`, `VerifyData`, `SignPreHash` and `VerifyPreHash` has a `byte[]` overload beside the span one, matching the in-box type. Note the inherited hazard that comes with that: `SignData(byte[], byte[])` binds the **second argument as the context string**, not as a destination buffer, and `SignPreHash`'s span overload takes the destination second while its `byte[]` overload takes the OID second. To sign into a buffer you own, spell the spans out.
 
-PKCS#8, SPKI and PEM import/export are not implemented yet — they land in one batch across ML-KEM, ML-DSA and SLH-DSA.
+PKCS#8, SubjectPublicKeyInfo and PEM import/export are implemented; see [Key Import and Export](#key-import-and-export).
 
 ### Validation
 
@@ -259,6 +269,73 @@ ML-DSA-65/87. The API shape mirrors .NET 10's `SignPreHash`/`VerifyPreHash` memb
 
 ---
 
+## Key Import and Export
+
+`MLDsa` and `SlhDsa` — and [`MLKem`](kem-algorithms.md) — carry the same twenty-eight-member key
+format block the in-box types define, on every target framework down to .NET Framework 4.6.2.
+
+```csharp
+using var signer = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
+
+// PKCS#8, SubjectPublicKeyInfo, and the PEM form of each.
+byte[] pkcs8 = signer.ExportPkcs8PrivateKey();
+byte[] spki  = signer.ExportSubjectPublicKeyInfo();
+string pem   = signer.ExportPkcs8PrivateKeyPem();
+
+// Password-protected, PBES2 with PBKDF2-HMAC-SHA256 and AES-256-CBC.
+var pbe = new PbeParameters(PbeEncryptionAlgorithm.Aes256Cbc, HashAlgorithmName.SHA256, 600_000);
+string encrypted = signer.ExportEncryptedPkcs8PrivateKeyPem("correct horse", pbe);
+
+using var restored = MLDsa.ImportFromEncryptedPem(encrypted, "correct horse");
+```
+
+### The private key is written as a seed when there is one
+
+ML-KEM and ML-DSA private keys are an ASN.1 `CHOICE` of a seed, an expanded key, or both. A key
+that still holds its seed — one that was generated, or imported from a seed — exports the **seed**
+arm; a key imported from expanded bytes exports the **expanded** arm. This matches .NET 10 byte
+for byte, and it means a seed survives a PKCS#8 round trip rather than being silently traded for
+2.5–4.9 KB of expanded key:
+
+```csharp
+using var generated = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa65);
+using var restored  = MLDsa.ImportPkcs8PrivateKey(generated.ExportPkcs8PrivateKey());
+
+// 34 bytes of privateKey, and the seed is still there.
+byte[] seed = restored.ExportMLDsaPrivateSeed();
+```
+
+SLH-DSA has no seed and no `CHOICE`: FIPS 205 private keys are the raw 4n bytes
+SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root, and the PKCS#8 `privateKey` OCTET STRING carries them
+directly.
+
+### Password-based encryption
+
+Exports always use **PBES2** (PBKDF2 + AES-128/192/256-CBC), which is what .NET 10 writes.
+Imports additionally accept the legacy **PKCS#12** schemes, because that is what older OpenSSL and
+Windows tooling emitted and a reader that rejects them cannot open real files. Those need TripleDES
+or RC2 — ciphers this library deliberately does not implement — so that path alone delegates to the
+platform, and `PbeEncryptionAlgorithm.TripleDes3KeyPkcs12` is accepted on import but rejected on
+export. RC2 is Windows-only on modern .NET and reports that rather than failing obscurely.
+
+Passwords are taken as characters or as raw bytes, and the two are not interchangeable: a character
+password is UTF-8 encoded for PBES2 and big-endian UTF-16 for the PKCS#12 schemes, while a byte
+password is fed to the key derivation function exactly as given.
+
+### `PbeParameters` on .NET Framework and .NET Standard 2.0
+
+`PbeParameters` and `PbeEncryptionAlgorithm` arrived in .NET Standard 2.1, so this package supplies
+them on `net462`, `net472` and `netstandard2.0`. They are the only types it places in the
+`System.Security.Cryptography` namespace, and it does so because a drop-in replacement has to accept
+the same type the caller already holds.
+
+> On those three frameworks, referencing both this package and **`Microsoft.Bcl.Cryptography`**
+> produces `CS0433`, because that package defines the same two types. It is the only package that
+> does — `System.Security.Cryptography.Pkcs` does not define them downlevel. Resolve it with an
+> `extern alias` on one of the two references.
+
+---
+
 ## Security Properties
 
 - **Hedged signing by default** — each signature mixes fresh randomness into ρ″ per FIPS 204 Algorithm 2.
@@ -293,11 +370,10 @@ The implementation is validated on every target framework by three independent m
 | Pairwise consistency test opt-out | ✅ | ❌ |
 | HashML-DSA (pre-hash) | ✅ | ✅ |
 | External-μ signing (`SignMu`/`VerifyMu`) | 🔲 Planned | ✅ |
-| PKCS#8 / SPKI / PEM | 🔲 Planned (with X.509 support) | ✅ |
+| PKCS#8 / SPKI / PEM | ✅ | ✅ |
 
-The two deferred rows are held back deliberately: external-μ signing and the ASN.1 key formats
-land as one batch once the post-quantum algorithm set is complete, so ML-KEM, ML-DSA and SLH-DSA
-gain them together.
+The one deferred row is held back deliberately: external-μ signing lands on its own, after the
+key formats that the whole post-quantum set needed first.
 
 ---
 
@@ -310,7 +386,7 @@ gain them together.
 | HashML-DSA / HashSLH-DSA (pre-hash variants) | FIPS 204 §5.4 / FIPS 205 §10.2 | ✅ Implemented |
 | External-μ signing (`SignMu`/`VerifyMu`) | FIPS 204 §6.2 | 🔲 Planned |
 | Ed25519 | RFC 8032 | 🔲 Under review |
-| PKCS#8 / SPKI key formats | RFC 5208 / RFC 5280 | 🔲 Planned with X.509 support |
+| PKCS#8 / SPKI / PEM key formats | RFC 5958 / RFC 5280 / RFC 7468 | ✅ Implemented |
 
 ---
 

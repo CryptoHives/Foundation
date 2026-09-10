@@ -122,6 +122,11 @@ Keys imported from an expanded decapsulation key (`ImportDecapsulationKey`) hold
 | `ExportPrivateSeed()` / `ExportPrivateSeed(Span<byte>)` | Export the 64-byte seed (seed-created keys only) |
 | `ExportEncapsulationKey()` / `ExportEncapsulationKey(Span<byte>)` | Export the public key |
 | `ExportDecapsulationKey()` / `ExportDecapsulationKey(Span<byte>)` | Export the expanded private key |
+| `ImportPkcs8PrivateKey` / `ImportSubjectPublicKeyInfo` | Import from DER, with `byte[]` and span overloads |
+| `ImportEncryptedPkcs8PrivateKey` | Import a password-protected key |
+| `ImportFromPem` / `ImportFromEncryptedPem` | Import from RFC 7468 text |
+| `ExportPkcs8PrivateKey` / `ExportSubjectPublicKeyInfo` | Export to DER, with `TryExport…` and `…Pem` forms |
+| `ExportEncryptedPkcs8PrivateKey` | Export password-protected, PBES2 |
 | `Dispose()` | Zeroize the private seed and decapsulation key |
 
 This is the complete `System.Security.Cryptography.MLKem` surface apart from the key-format
@@ -153,6 +158,19 @@ kem.Decapsulate(dk, ct, ss2);
 ```
 
 Deterministic overloads (`GenerateKeyPair(seed, …)`, `Encapsulate(ek, seed, …)`) exist for test vectors and derived-key schemes; do **not** use fixed seeds in production.
+
+---
+
+## Key Import and Export
+
+PKCS#8, SubjectPublicKeyInfo and PEM work exactly as they do for the signature algorithms, sharing
+one implementation. A generated key exports the **seed** arm of the ML-KEM private key `CHOICE`, so
+a 64-byte seed survives a PKCS#8 round trip rather than becoming a 1.6–3.2 KB decapsulation key; a
+key imported from a decapsulation key exports the expanded arm. Both match .NET 10 byte for byte.
+
+See [Key Import and Export](signature-algorithms.md#key-import-and-export) for the private-key
+`CHOICE`, the password-based encryption rules, and the `PbeParameters` note for .NET Framework and
+.NET Standard 2.0.
 
 ---
 
@@ -207,7 +225,7 @@ The implementation is validated on every target framework by three independent m
 | `byte[]` and `Span<byte>` overloads | ✅ | ✅ |
 | §7.2 / §7.3 import checks | ✅ | ✅ |
 | `MLKemAlgorithm` value equality | ✅ | ✅ |
-| PKCS#8 / SPKI / PEM | 🔲 Planned (with X.509 support) | ✅ |
+| PKCS#8 / SPKI / PEM | ✅ | ✅ |
 | Extensible base class (`MLKemCng`, `MLKemOpenSsl`) | ❌ sealed, single managed implementation | ✅ abstract |
 
 ---
@@ -220,7 +238,7 @@ The implementation is validated on every target framework by three independent m
 | ML-DSA (signatures) | FIPS 204 | 🔲 Planned |
 | HPKE | RFC 9180 | 🔲 Under review |
 | X-Wing (hybrid X25519 + ML-KEM-768) | draft-connolly-cfrg-xwing-kem | 🔲 Under review |
-| PKCS#8 / SPKI key formats | RFC 5208 / RFC 5280 | 🔲 Planned with X.509 support |
+| PKCS#8 / SPKI / PEM key formats | RFC 5958 / RFC 5280 / RFC 7468 | ✅ Implemented |
 
 #### Deferred: key-format import/export
 
