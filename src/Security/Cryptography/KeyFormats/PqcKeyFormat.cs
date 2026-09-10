@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace CryptoHives.Foundation.Security.Cryptography.KeyFormats;
@@ -147,19 +147,19 @@ internal static class PqcKeyFormat
     /// <param name="algorithmOid">The algorithm OID.</param>
     /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The DER encoding.</returns>
     public static byte[] ExportEncryptedPkcs8(
         string algorithmOid,
         ReadOnlySpan<byte> privateKeyBlob,
         PbePassword password,
-        OS.PbeParameters pbeParameters)
+        PbeOptions pbeOptions)
     {
         byte[] pkcs8 = Pkcs8.Write(algorithmOid, privateKeyBlob);
 
         try
         {
-            return EncryptedPkcs8.Write(pkcs8, password, pbeParameters);
+            return EncryptedPkcs8.Write(pkcs8, password, pbeOptions);
         }
         finally
         {
@@ -171,18 +171,18 @@ internal static class PqcKeyFormat
     /// <param name="algorithmOid">The algorithm OID.</param>
     /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The PEM text.</returns>
     public static string ExportEncryptedPkcs8Pem(
         string algorithmOid,
         ReadOnlySpan<byte> privateKeyBlob,
         PbePassword password,
-        OS.PbeParameters pbeParameters)
+        PbeOptions pbeOptions)
     {
         // The ciphertext is not secret, but encode-and-clear keeps one rule for every private-key
         // PEM export rather than two.
         return PemFormat.EncodeAndClear(
-            ExportEncryptedPkcs8(algorithmOid, privateKeyBlob, password, pbeParameters),
+            ExportEncryptedPkcs8(algorithmOid, privateKeyBlob, password, pbeOptions),
             PemLabels.EncryptedPkcs8PrivateKey);
     }
 
@@ -190,7 +190,7 @@ internal static class PqcKeyFormat
     /// <param name="algorithmOid">The algorithm OID.</param>
     /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <param name="destination">The buffer to receive the encoding.</param>
     /// <param name="bytesWritten">The number of bytes written.</param>
     /// <returns><see langword="true"/> when the buffer was large enough.</returns>
@@ -198,11 +198,11 @@ internal static class PqcKeyFormat
         string algorithmOid,
         ReadOnlySpan<byte> privateKeyBlob,
         PbePassword password,
-        OS.PbeParameters pbeParameters,
+        PbeOptions pbeOptions,
         Span<byte> destination,
         out int bytesWritten)
         => TryWrite(
-            ExportEncryptedPkcs8(algorithmOid, privateKeyBlob, password, pbeParameters),
+            ExportEncryptedPkcs8(algorithmOid, privateKeyBlob, password, pbeOptions),
             destination,
             out bytesWritten);
 

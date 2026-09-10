@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.KeyFormats;
@@ -32,7 +32,21 @@ public class KeyFormatInteropTests
 #if NET10_0_OR_GREATER
 #pragma warning disable SYSLIB5006 // Post-quantum cryptography APIs may be experimental.
 
-    private static readonly System.Security.Cryptography.PbeParameters Pbe =
+    /// <summary>
+    /// The same PBES2 settings expressed in each library's own parameter type.
+    /// </summary>
+    /// <remarks>
+    /// The two APIs no longer share a parameter class - ours takes <c>PbeOptions</c> with a closed
+    /// PRF enum, the in-box one takes <c>PbeParameters</c> - which makes the cross-decryption tests
+    /// below sharper rather than weaker: they now prove the two agree on the <i>encoding</i>
+    /// without sharing any type that could paper over a disagreement.
+    /// </remarks>
+    private static readonly CryptoHives.Foundation.Security.Cryptography.PbeOptions OurPbe =
+        new(CryptoHives.Foundation.Security.Cryptography.PbeEncryptionAlgorithm.Aes256Cbc,
+            CryptoHives.Foundation.Security.Cryptography.Pbkdf2Prf.HmacSha256,
+            2048);
+
+    private static readonly System.Security.Cryptography.PbeParameters InBoxPbe =
         new(System.Security.Cryptography.PbeEncryptionAlgorithm.Aes256Cbc,
             System.Security.Cryptography.HashAlgorithmName.SHA256,
             2048);
@@ -152,9 +166,9 @@ public class KeyFormatInteropTests
         using var reference = System.Security.Cryptography.MLDsa.GenerateKey(theirs);
 
         using var theirsFromMine = System.Security.Cryptography.MLDsa.ImportEncryptedPkcs8PrivateKey(
-            "pw", mine.ExportEncryptedPkcs8PrivateKey("pw", Pbe));
+            "pw", mine.ExportEncryptedPkcs8PrivateKey("pw", OurPbe));
         using var mineFromTheirs = CHD.MLDsa.ImportFromEncryptedPem(
-            reference.ExportEncryptedPkcs8PrivateKeyPem("pw", Pbe), "pw");
+            reference.ExportEncryptedPkcs8PrivateKeyPem("pw", InBoxPbe), "pw");
 
         using (Assert.EnterMultipleScope())
         {

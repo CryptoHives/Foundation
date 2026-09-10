@@ -4,6 +4,7 @@
 namespace Cryptography.Tests.KeyFormats;
 
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
+using CryptoHives.Foundation.Security.Cryptography;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -21,8 +22,8 @@ using OS = System.Security.Cryptography;
 [Parallelizable(ParallelScope.All)]
 public class MLDsaKeyFormatTests
 {
-    private static readonly OS.PbeParameters Pbe =
-        new(OS.PbeEncryptionAlgorithm.Aes256Cbc, OS.HashAlgorithmName.SHA256, 2048);
+    private static readonly PbeOptions Pbe =
+        new(PbeEncryptionAlgorithm.Aes256Cbc, Pbkdf2Prf.HmacSha256, 2048);
 
     /// <summary>Gets the parameter sets with their CSOR object identifiers.</summary>
     public static IEnumerable<TestCaseData> Algorithms()

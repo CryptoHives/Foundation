@@ -25,8 +25,9 @@ using OS = System.Security.Cryptography;
 /// <b>Writing</b> always produces PBES2 (RFC 8018 §6.2) with PBKDF2 and AES-CBC, which is what
 /// .NET 10 emits. <b>Reading</b> additionally accepts the legacy PKCS#12 password-based schemes
 /// (RFC 7292 Appendix C), because that is what older OpenSSL and Windows tooling wrote and the
-/// in-box readers still open them. <see cref="OS.PbeEncryptionAlgorithm.TripleDes3KeyPkcs12"/> is
-/// therefore accepted on import but rejected on export.
+/// in-box readers still open them. Those schemes are reachable only by reading a file that uses
+/// one - <see cref="PbeEncryptionAlgorithm"/> does not offer them, so writing one is not something
+/// a caller can ask for.
 /// </para>
 /// <para>
 /// Passwords arrive as <see cref="PbePassword"/>, which owns the encoding difference between the
@@ -45,33 +46,28 @@ internal static class EncryptedPkcs8
     /// </summary>
     /// <param name="pkcs8">The plaintext PKCS#8 encoding.</param>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The PBE parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The DER encoding.</returns>
-    /// <exception cref="OS.CryptographicException">
-    /// The requested encryption algorithm cannot be written.
-    /// </exception>
+    /// <exception cref="ArgumentNullException"><paramref name="pbeOptions"/> is null.</exception>
     public static byte[] Write(
         ReadOnlySpan<byte> pkcs8,
         PbePassword password,
-        OS.PbeParameters pbeParameters)
+        PbeOptions pbeOptions)
     {
-        if (pbeParameters is null)
+        if (pbeOptions is null)
         {
-            throw new ArgumentNullException(nameof(pbeParameters));
+            throw new ArgumentNullException(nameof(pbeOptions));
         }
 
-        (string cipherOid, int keyLength) = pbeParameters.EncryptionAlgorithm switch {
-            OS.PbeEncryptionAlgorithm.Aes128Cbc => (PbeOids.Aes128Cbc, 16),
-            OS.PbeEncryptionAlgorithm.Aes192Cbc => (PbeOids.Aes192Cbc, 24),
-            OS.PbeEncryptionAlgorithm.Aes256Cbc => (PbeOids.Aes256Cbc, 32),
-            OS.PbeEncryptionAlgorithm.TripleDes3KeyPkcs12 => throw new OS.CryptographicException(
-                "TripleDes3KeyPkcs12 is accepted when reading legacy files but is not written; "
-                + "choose an AES-CBC algorithm."),
-            _ => throw new OS.CryptographicException(
-                $"Unknown password-based encryption algorithm: {pbeParameters.EncryptionAlgorithm}."),
+        // Both switches are total. PbeOptions validates its enums in its constructor, so there is
+        // no unrepresentable combination left to reject here.
+        (string cipherOid, int keyLength) = pbeOptions.EncryptionAlgorithm switch {
+            PbeEncryptionAlgorithm.Aes128Cbc => (PbeOids.Aes128Cbc, 16),
+            PbeEncryptionAlgorithm.Aes192Cbc => (PbeOids.Aes192Cbc, 24),
+            _ => (PbeOids.Aes256Cbc, 32),
         };
 
-        string prfOid = PrfOidFor(pbeParameters.HashAlgorithm);
+        string prfOid = PrfOidFor(pbeOptions.Prf);
 
         byte[] salt = new byte[SaltLength];
         byte[] iv = new byte[AesBlockLength];
@@ -84,13 +80,13 @@ internal static class EncryptedPkcs8
 
         try
         {
-            Pbkdf2.DeriveKey(HmacFactoryFor(prfOid), passwordBytes, salt, pbeParameters.IterationCount, key);
+            Pbkdf2.DeriveKey(HmacFactoryFor(prfOid), passwordBytes, salt, pbeOptions.IterationCount, key);
             byte[] ciphertext = AesCbcEncrypt(key, iv, pkcs8);
 
             var writer = new AsnWriter(AsnEncodingRules.DER);
             using (writer.PushSequence())
             {
-                WritePbes2AlgorithmIdentifier(writer, salt, pbeParameters.IterationCount, prfOid, cipherOid, iv);
+                WritePbes2AlgorithmIdentifier(writer, salt, pbeOptions.IterationCount, prfOid, cipherOid, iv);
                 writer.WriteOctetString(ciphertext);
             }
 
@@ -417,31 +413,19 @@ internal static class EncryptedPkcs8
         }
     }
 
-    private static string PrfOidFor(OS.HashAlgorithmName hash)
-    {
-        if (hash == OS.HashAlgorithmName.SHA256)
-        {
-            return PbeOids.HmacWithSha256;
-        }
-
-        if (hash == OS.HashAlgorithmName.SHA384)
-        {
-            return PbeOids.HmacWithSha384;
-        }
-
-        if (hash == OS.HashAlgorithmName.SHA512)
-        {
-            return PbeOids.HmacWithSha512;
-        }
-
-        if (hash == OS.HashAlgorithmName.SHA1)
-        {
-            return PbeOids.HmacWithSha1;
-        }
-
-        throw new OS.CryptographicException(
-            $"Unsupported PBKDF2 pseudorandom function: {hash.Name}.");
-    }
+    /// <summary>
+    /// Maps a pseudorandom function to the OID PBES2 records for it.
+    /// </summary>
+    /// <remarks>
+    /// Total by construction: <see cref="PbeOptions"/> only admits values that have an OID, which
+    /// is the whole reason it takes an enum rather than a hash name.
+    /// </remarks>
+    private static string PrfOidFor(Pbkdf2Prf prf) => prf switch {
+        Pbkdf2Prf.HmacSha1 => PbeOids.HmacWithSha1,
+        Pbkdf2Prf.HmacSha384 => PbeOids.HmacWithSha384,
+        Pbkdf2Prf.HmacSha512 => PbeOids.HmacWithSha512,
+        _ => PbeOids.HmacWithSha256,
+    };
 
     private static HmacFactory HmacFactoryFor(string prfOid) => prfOid switch {
 #pragma warning disable CS0618 // HMAC-SHA-1 is the RFC 8018 default PRF; legacy files rely on it.

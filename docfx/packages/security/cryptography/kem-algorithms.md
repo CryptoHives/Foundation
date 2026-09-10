@@ -169,8 +169,8 @@ a 64-byte seed survives a PKCS#8 round trip rather than becoming a 1.6–3.2 KB 
 key imported from a decapsulation key exports the expanded arm. Both match .NET 10 byte for byte.
 
 See [Key Import and Export](signature-algorithms.md#key-import-and-export) for the private-key
-`CHOICE`, the password-based encryption rules, and the `PbeParameters` note for .NET Framework and
-.NET Standard 2.0.
+`CHOICE`, the password-based encryption rules, and why the encrypted-export members take a
+`PbeOptions` rather than the in-box `PbeParameters`.
 
 ---
 

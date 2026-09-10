@@ -283,7 +283,7 @@ byte[] spki  = signer.ExportSubjectPublicKeyInfo();
 string pem   = signer.ExportPkcs8PrivateKeyPem();
 
 // Password-protected, PBES2 with PBKDF2-HMAC-SHA256 and AES-256-CBC.
-var pbe = new PbeParameters(PbeEncryptionAlgorithm.Aes256Cbc, HashAlgorithmName.SHA256, 600_000);
+var pbe = new PbeOptions(PbeEncryptionAlgorithm.Aes256Cbc, Pbkdf2Prf.HmacSha256, 600_000);
 string encrypted = signer.ExportEncryptedPkcs8PrivateKeyPem("correct horse", pbe);
 
 using var restored = MLDsa.ImportFromEncryptedPem(encrypted, "correct horse");
@@ -315,29 +315,41 @@ Exports always use **PBES2** (PBKDF2 + AES-128/192/256-CBC), which is what .NET 
 Imports additionally accept the legacy **PKCS#12** schemes, because that is what older OpenSSL and
 Windows tooling emitted and a reader that rejects them cannot open real files. Those need TripleDES
 or RC2 — ciphers this library deliberately does not implement — so that path alone delegates to the
-platform, and `PbeEncryptionAlgorithm.TripleDes3KeyPkcs12` is accepted on import but rejected on
-export. RC2 is Windows-only on modern .NET and reports that rather than failing obscurely.
+platform. They are readable but not selectable: `PbeEncryptionAlgorithm` does not offer them. RC2 is
+Windows-only on modern .NET and reports that rather than failing obscurely.
 
 Passwords are taken as characters or as raw bytes, and the two are not interchangeable: a character
 password is UTF-8 encoded for PBES2 and big-endian UTF-16 for the PKCS#12 schemes, while a byte
 password is fed to the key derivation function exactly as given.
 
-### `PbeParameters` on .NET Framework and .NET Standard 2.0
+### `PbeOptions`: the one deliberate divergence
 
-`PbeParameters` and `PbeEncryptionAlgorithm` arrived in .NET Standard 2.1, so this package supplies
-them on `net462`, `net472` and `netstandard2.0`. They are the only types it places in the
-`System.Security.Cryptography` namespace, and it does so because a drop-in replacement has to accept
-the same type the caller already holds.
+The nine encrypted-export members take a `PbeOptions` where the in-box types take a `PbeParameters`.
+It is the only place the key-format surface differs, and it is a considered trade rather than an
+omission:
 
-> On those three frameworks, referencing both this package and **`Microsoft.Bcl.Cryptography`**
-> produces `CS0433`, because that package defines the same two types. It is the only package that
-> does — `System.Security.Cryptography.Pkcs` does not define them downlevel.
->
-> Resolve it by aliasing the other reference, which needs no change to your code:
->
-> ```xml
-> <PackageReference Include="Microsoft.Bcl.Cryptography" Version="10.0.10" Aliases="BclCrypto" />
-> ```
+- **`PbeParameters` arrived in .NET Standard 2.1**, and this library targets .NET Framework 4.6.2
+  upward. Supplying the type ourselves would mean defining it in the `System.Security.Cryptography`
+  namespace, which collides — a hard `CS0433` — with any consumer that also references a package
+  defining it. This package declares nothing outside its own namespace.
+- **`PbeParameters` names its pseudorandom function with `HashAlgorithmName`**, a strongly-typed
+  string that accepts anything. PBES2 does not: it records the function as an OID, and RFC 8018
+  assigns those to a fixed handful. `Pbkdf2Prf` is an enum of exactly the ones that can be written,
+  so an unencodable choice fails to compile instead of throwing at export.
+
+Porting therefore needs an edit at those call sites and nowhere else — every import path, and the
+plain PKCS#8, SubjectPublicKeyInfo and PEM members, keep their in-box signatures:
+
+```csharp
+// System.Security.Cryptography
+var pbe = new PbeParameters(PbeEncryptionAlgorithm.Aes256Cbc, HashAlgorithmName.SHA256, 600_000);
+
+// CryptoHives.Foundation.Security.Cryptography
+var pbe = new PbeOptions(PbeEncryptionAlgorithm.Aes256Cbc, Pbkdf2Prf.HmacSha256, 600_000);
+```
+
+Reading is not restricted to that set. A key written elsewhere with, say, HMAC-SHA-224 still opens:
+the import path maps whatever OID the file carries.
 
 ---
 

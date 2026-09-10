@@ -158,10 +158,11 @@ implicit rejection, and all three parameter sets are verified against the offici
 NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
 
 PKCS#8, SubjectPublicKeyInfo and PEM import/export are available on every target framework,
-including password-protected PKCS#8 (PBES2). On `net462`, `net472` and `netstandard2.0` this
-package supplies `PbeParameters` and `PbeEncryptionAlgorithm`, which those frameworks lack; see
-the [signature algorithms reference](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html)
-for the one package that conflicts with that and how to resolve it.
+including password-protected PKCS#8 (PBES2). The nine encrypted-export members take a `PbeOptions`
+rather than the in-box `PbeParameters`, which does not exist below .NET Standard 2.1; that is the
+only place the key-format surface diverges, and the
+[signature algorithms reference](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html)
+explains why.
 
 ### Post-Quantum Signatures (`ML-DSA`)
 

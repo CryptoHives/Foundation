@@ -238,97 +238,97 @@ public sealed partial class MLKem
     /// Exports this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
     /// <param name="password">The password, used verbatim as the key derivation input.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The DER encoding.</returns>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public byte[] ExportEncryptedPkcs8PrivateKey(
         ReadOnlySpan<byte> password,
-        OS.PbeParameters pbeParameters)
-        => ExportEncrypted(PbePassword.FromBytes(password), pbeParameters);
+        PbeOptions pbeOptions)
+        => ExportEncrypted(PbePassword.FromBytes(password), pbeOptions);
 
     /// <summary>
     /// Exports this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The DER encoding.</returns>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public byte[] ExportEncryptedPkcs8PrivateKey(
         ReadOnlySpan<char> password,
-        OS.PbeParameters pbeParameters)
-        => ExportEncrypted(PbePassword.FromChars(password), pbeParameters);
+        PbeOptions pbeOptions)
+        => ExportEncrypted(PbePassword.FromChars(password), pbeOptions);
 
     /// <summary>
     /// Exports this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The DER encoding.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="password"/> is null.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
-    public byte[] ExportEncryptedPkcs8PrivateKey(string password, OS.PbeParameters pbeParameters)
+    public byte[] ExportEncryptedPkcs8PrivateKey(string password, PbeOptions pbeOptions)
     {
         if (password is null)
         {
             throw new ArgumentNullException(nameof(password));
         }
 
-        return ExportEncrypted(PbePassword.FromChars(password.AsSpan()), pbeParameters);
+        return ExportEncrypted(PbePassword.FromChars(password.AsSpan()), pbeOptions);
     }
 
     /// <summary>
     /// Exports this key in a PEM-encoded PKCS#8 EncryptedPrivateKeyInfo.
     /// </summary>
     /// <param name="password">The password, used verbatim as the key derivation input.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The PEM text, labelled <c>ENCRYPTED PRIVATE KEY</c>.</returns>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public string ExportEncryptedPkcs8PrivateKeyPem(
         ReadOnlySpan<byte> password,
-        OS.PbeParameters pbeParameters)
-        => ExportEncryptedPem(PbePassword.FromBytes(password), pbeParameters);
+        PbeOptions pbeOptions)
+        => ExportEncryptedPem(PbePassword.FromBytes(password), pbeOptions);
 
     /// <summary>
     /// Exports this key in a PEM-encoded PKCS#8 EncryptedPrivateKeyInfo.
     /// </summary>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The PEM text, labelled <c>ENCRYPTED PRIVATE KEY</c>.</returns>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public string ExportEncryptedPkcs8PrivateKeyPem(
         ReadOnlySpan<char> password,
-        OS.PbeParameters pbeParameters)
-        => ExportEncryptedPem(PbePassword.FromChars(password), pbeParameters);
+        PbeOptions pbeOptions)
+        => ExportEncryptedPem(PbePassword.FromChars(password), pbeOptions);
 
     /// <summary>
     /// Exports this key in a PEM-encoded PKCS#8 EncryptedPrivateKeyInfo.
     /// </summary>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <returns>The PEM text, labelled <c>ENCRYPTED PRIVATE KEY</c>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="password"/> is null.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
-    public string ExportEncryptedPkcs8PrivateKeyPem(string password, OS.PbeParameters pbeParameters)
+    public string ExportEncryptedPkcs8PrivateKeyPem(string password, PbeOptions pbeOptions)
     {
         if (password is null)
         {
             throw new ArgumentNullException(nameof(password));
         }
 
-        return ExportEncryptedPem(PbePassword.FromChars(password.AsSpan()), pbeParameters);
+        return ExportEncryptedPem(PbePassword.FromChars(password.AsSpan()), pbeOptions);
     }
 
     /// <summary>
     /// Attempts to export this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
     /// <param name="password">The password, used verbatim as the key derivation input.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <param name="destination">The buffer to receive the encoding.</param>
     /// <param name="bytesWritten">The number of bytes written.</param>
     /// <returns><see langword="false"/> when <paramref name="destination"/> is too small.</returns>
@@ -336,16 +336,16 @@ public sealed partial class MLKem
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public bool TryExportEncryptedPkcs8PrivateKey(
         ReadOnlySpan<byte> password,
-        OS.PbeParameters pbeParameters,
+        PbeOptions pbeOptions,
         Span<byte> destination,
         out int bytesWritten)
-        => TryExportEncrypted(PbePassword.FromBytes(password), pbeParameters, destination, out bytesWritten);
+        => TryExportEncrypted(PbePassword.FromBytes(password), pbeOptions, destination, out bytesWritten);
 
     /// <summary>
     /// Attempts to export this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <param name="destination">The buffer to receive the encoding.</param>
     /// <param name="bytesWritten">The number of bytes written.</param>
     /// <returns><see langword="false"/> when <paramref name="destination"/> is too small.</returns>
@@ -353,16 +353,16 @@ public sealed partial class MLKem
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public bool TryExportEncryptedPkcs8PrivateKey(
         ReadOnlySpan<char> password,
-        OS.PbeParameters pbeParameters,
+        PbeOptions pbeOptions,
         Span<byte> destination,
         out int bytesWritten)
-        => TryExportEncrypted(PbePassword.FromChars(password), pbeParameters, destination, out bytesWritten);
+        => TryExportEncrypted(PbePassword.FromChars(password), pbeOptions, destination, out bytesWritten);
 
     /// <summary>
     /// Attempts to export this key in the PKCS#8 EncryptedPrivateKeyInfo format.
     /// </summary>
     /// <param name="password">The password.</param>
-    /// <param name="pbeParameters">The password-based encryption parameters.</param>
+    /// <param name="pbeOptions">Selects the cipher, pseudorandom function and iteration count.</param>
     /// <param name="destination">The buffer to receive the encoding.</param>
     /// <param name="bytesWritten">The number of bytes written.</param>
     /// <returns><see langword="false"/> when <paramref name="destination"/> is too small.</returns>
@@ -371,7 +371,7 @@ public sealed partial class MLKem
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
     public bool TryExportEncryptedPkcs8PrivateKey(
         string password,
-        OS.PbeParameters pbeParameters,
+        PbeOptions pbeOptions,
         Span<byte> destination,
         out int bytesWritten)
     {
@@ -381,7 +381,7 @@ public sealed partial class MLKem
         }
 
         return TryExportEncrypted(
-            PbePassword.FromChars(password.AsSpan()), pbeParameters, destination, out bytesWritten);
+            PbePassword.FromChars(password.AsSpan()), pbeOptions, destination, out bytesWritten);
     }
 
     // ========================================================================
@@ -528,13 +528,13 @@ public sealed partial class MLKem
             "The instance holds only an encapsulation key and cannot export a private key.");
     }
 
-    private byte[] ExportEncrypted(PbePassword password, OS.PbeParameters pbeParameters)
+    private byte[] ExportEncrypted(PbePassword password, PbeOptions pbeOptions)
     {
         byte[] blob = BuildPrivateKeyBlob();
 
         try
         {
-            return PqcKeyFormat.ExportEncryptedPkcs8(AlgorithmOid, blob, password, pbeParameters);
+            return PqcKeyFormat.ExportEncryptedPkcs8(AlgorithmOid, blob, password, pbeOptions);
         }
         finally
         {
@@ -542,13 +542,13 @@ public sealed partial class MLKem
         }
     }
 
-    private string ExportEncryptedPem(PbePassword password, OS.PbeParameters pbeParameters)
+    private string ExportEncryptedPem(PbePassword password, PbeOptions pbeOptions)
     {
         byte[] blob = BuildPrivateKeyBlob();
 
         try
         {
-            return PqcKeyFormat.ExportEncryptedPkcs8Pem(AlgorithmOid, blob, password, pbeParameters);
+            return PqcKeyFormat.ExportEncryptedPkcs8Pem(AlgorithmOid, blob, password, pbeOptions);
         }
         finally
         {
@@ -558,7 +558,7 @@ public sealed partial class MLKem
 
     private bool TryExportEncrypted(
         PbePassword password,
-        OS.PbeParameters pbeParameters,
+        PbeOptions pbeOptions,
         Span<byte> destination,
         out int bytesWritten)
     {
@@ -567,7 +567,7 @@ public sealed partial class MLKem
         try
         {
             return PqcKeyFormat.TryExportEncryptedPkcs8(
-                AlgorithmOid, blob, password, pbeParameters, destination, out bytesWritten);
+                AlgorithmOid, blob, password, pbeOptions, destination, out bytesWritten);
         }
         finally
         {
