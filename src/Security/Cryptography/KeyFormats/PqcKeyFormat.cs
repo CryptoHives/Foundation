@@ -126,7 +126,18 @@ internal static class PqcKeyFormat
     /// <see cref="TryExportPkcs8Pem"/>.
     /// </remarks>
     public static string ExportPkcs8Pem(string algorithmOid, ReadOnlySpan<byte> privateKeyBlob)
-        => PemFormat.EncodeAndClear(Pkcs8.Write(algorithmOid, privateKeyBlob), PemLabels.Pkcs8PrivateKey);
+    {
+        byte[] encoded = Pkcs8.Write(algorithmOid, privateKeyBlob);
+
+        try
+        {
+            return PemFormat.EncodePublic(encoded, PemLabels.Pkcs8PrivateKey);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(encoded);
+        }
+    }
 #endif
 
     /// <summary>

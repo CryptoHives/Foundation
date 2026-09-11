@@ -135,7 +135,7 @@ public class ErasableMemoryTests
         }
         finally
         {
-            Array.Clear(buffer, 0, buffer.Length);
+            CryptographicOperations.ZeroMemory(buffer);
         }
     }
 
@@ -175,7 +175,7 @@ public class ErasableMemoryTests
 
         // Overwrite the password the way a caller is expected to. The import below must then fail
         // on content alone, with nothing recoverable from the buffer that held it.
-        Array.Clear(password, 0, password.Length);
+        CryptographicOperations.ZeroMemory(password);
 
         using (Assert.EnterMultipleScope())
         {
@@ -197,7 +197,7 @@ public class ErasableMemoryTests
 
         Assert.That(imported.ExportMLDsaPrivateSeed(), Is.EqualTo(key.ExportMLDsaPrivateSeed()));
 
-        Array.Clear(password, 0, password.Length);
+        CryptographicOperations.ZeroMemory(password);
         Assert.That(password, Is.All.EqualTo('\0'),
             "the caller owns the password storage and can clear it - the point of the span overloads");
     }
@@ -284,7 +284,7 @@ public class ErasableMemoryTests
             Assert.That(fromBytes.ExportMLDsaPrivateSeed(), Is.EqualTo(key.ExportMLDsaPrivateSeed()));
         }
 
-        Array.Clear(password, 0, password.Length);
+        CryptographicOperations.ZeroMemory(password);
     }
 
     [Test]
@@ -403,7 +403,7 @@ public class ErasableMemoryTests
         }
         finally
         {
-            Array.Clear(buffer, 0, buffer.Length);
+            CryptographicOperations.ZeroMemory(buffer);
         }
     }
 }

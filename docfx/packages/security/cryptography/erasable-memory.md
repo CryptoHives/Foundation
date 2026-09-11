@@ -196,15 +196,20 @@ try
 }
 finally
 {
-    Array.Clear(password, 0, password.Length);
+    CryptographicOperations.ZeroMemory(password);
 }
 ```
 
-`CryptographicOperations.ZeroMemory` is deliberately not offered for this: this library keeps its copy
-internal, and the in-box one takes only a `Span<byte>` — there is no `char` overload on any .NET
-version. `Array.Clear` is the portable option. Be aware a compiler may legally elide a store that
-nothing reads back; avoiding that is the reason the in-box helper exists at all, and it is a gap on
-the character path rather than something this library can close for you.
+**Use `CryptographicOperations.ZeroMemory` rather than `Array.Clear` or `Span<T>.Clear()`.**
+Clearing a buffer you are about to discard is a dead store - nothing reads the zeros back - so a
+compiler or JIT is free to delete the write and leave the secret in memory. `ZeroMemory` is marked
+`NoInlining | NoOptimization`, which removes that liberty. This library exposes its own because the
+in-box type does not exist below .NET Standard 2.1 and, on every version that has it, still takes
+only a `Span<byte>`: there is no character overload in the box on any .NET version.
+
+If a file imports both `CryptoHives.Foundation.Security.Cryptography` and
+`System.Security.Cryptography`, the two type names collide (`CS0104`) - alias one side, e.g.
+`using Bcl = System.Security.Cryptography;`.
 
 ### When the password genuinely is a constant
 
@@ -237,7 +242,7 @@ try
 }
 finally
 {
-    Array.Clear(pem, 0, size);
+    CryptographicOperations.ZeroMemory(pem.AsSpan(0, size));
     ArrayPool<char>.Shared.Return(pem);
 }
 ```

@@ -300,7 +300,7 @@ try
 }
 finally
 {
-    Array.Clear(typed, 0, typed.Length);
+    CryptographicOperations.ZeroMemory(typed);
 }
 
 // Bytes are not text: they are the key derivation input, verbatim, with no encoding step.
@@ -367,14 +367,21 @@ try
 }
 finally
 {
-    Array.Clear(pem, 0, size);
+    CryptographicOperations.ZeroMemory(pem.AsSpan(0, size));
     ArrayPool<char>.Shared.Return(pem);
 }
 ```
 
-`CryptographicOperations.ZeroMemory` is not available here: this library keeps its copy internal, and
-the in-box one takes only a `Span<byte>` — there is no `char` overload on any .NET version. `Array.Clear`
-is the portable option, with the caveat that a compiler is free to elide a store nothing reads back.
+**Use `CryptographicOperations.ZeroMemory` rather than `Array.Clear` or `Span<T>.Clear()`.**
+Clearing a buffer you are about to discard is a dead store - nothing reads the zeros back - so a
+compiler or JIT is free to delete the write and leave the secret in memory. `ZeroMemory` is marked
+`NoInlining | NoOptimization`, which removes that liberty. This library exposes its own because the
+in-box type does not exist below .NET Standard 2.1 and, on every version that has it, still takes
+only a `Span<byte>`: there is no character overload in the box on any .NET version.
+
+If a file imports both `CryptoHives.Foundation.Security.Cryptography` and
+`System.Security.Cryptography`, the two type names collide (`CS0104`) - alias one side, e.g.
+`using Bcl = System.Security.Cryptography;`.
 
 `string` survives on exactly two members, whose content is public by construction:
 `ExportSubjectPublicKeyInfoPem` (a public key) and `ExportEncryptedPkcs8PrivateKeyPem` (ciphertext).

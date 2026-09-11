@@ -7,12 +7,20 @@ using System;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// Cryptographic utility methods.
+/// Erases secret data from memory in a way a compiler is not permitted to remove.
 /// </summary>
-internal static class CryptographicOperations
+/// <remarks>
+/// <para>
+/// <b>Prefer this over <see cref="Array.Clear(Array, int, int)"/> or <c>Span&lt;T&gt;.Clear()</c>
+/// for anything secret.</b> Clearing a buffer you are about to discard is a <i>dead store</i>: nothing
+/// reads the zeros back, so a compiler or JIT is entitled to delete the write entirely and leave
+/// the key, password or plaintext sitting in memory.
+/// </para>
+/// </remarks>
+public static class CryptographicOperations
 {
     /// <summary>
-    /// Fills a span with zeros in a way that's not subject to compiler optimizations.
+    /// Fills a span with zeros in a way that is not subject to compiler optimizations.
     /// </summary>
     /// <param name="buffer">The buffer to clear.</param>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
@@ -22,9 +30,9 @@ internal static class CryptographicOperations
     }
 
     /// <summary>
-    /// Fills an array with zeros in a way that's not subject to compiler optimizations.
+    /// Fills an array with zeros in a way that is not subject to compiler optimizations.
     /// </summary>
-    /// <param name="buffer">The buffer to clear.</param>
+    /// <param name="buffer">The buffer to clear. A <see langword="null"/> array is ignored.</param>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     public static void ZeroMemory(byte[] buffer)
     {
@@ -35,7 +43,7 @@ internal static class CryptographicOperations
     }
 
     /// <summary>
-    /// Fills a character span with zeros in a way that's not subject to compiler optimizations.
+    /// Fills a character span with zeros in a way that is not subject to compiler optimizations.
     /// </summary>
     /// <param name="buffer">The buffer to clear.</param>
     /// <remarks>
@@ -50,9 +58,9 @@ internal static class CryptographicOperations
     }
 
     /// <summary>
-    /// Fills a character array with zeros in a way that's not subject to compiler optimizations.
+    /// Fills a character array with zeros in a way that is not subject to compiler optimizations.
     /// </summary>
-    /// <param name="buffer">The buffer to clear.</param>
+    /// <param name="buffer">The buffer to clear. A <see langword="null"/> array is ignored.</param>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     public static void ZeroMemory(char[] buffer)
     {
@@ -73,7 +81,7 @@ internal static class CryptographicOperations
     /// preventing timing-based side-channel attacks.
     /// </remarks>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-    public static bool FixedTimeEquals(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
+    internal static bool FixedTimeEquals(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
     {
         if (left.Length != right.Length)
         {
@@ -101,7 +109,7 @@ internal static class CryptographicOperations
     /// reintroduce a secret-dependent branch.
     /// </remarks>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-    public static int FixedTimeEqualsMask(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
+    internal static int FixedTimeEqualsMask(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
     {
         if (left.Length != right.Length)
         {

@@ -454,6 +454,39 @@ do not "upgrade" it silently.
 
 ---
 
+## 4.7 Post-quantum: ML-KEM, ML-DSA, SLH-DSA
+
+`MLKem` (`.Kem`), `MLDsa` and `SlhDsa` (`.Dsa`) mirror the names and signatures of the .NET 10
+in-box types, so the algorithm operations port as a `using` swap and `IsSupported` is always
+`true` — down to net462, with no CNG or OpenSSL dependency.
+
+**The key-format members are where a port needs attention.** Three differences are deliberate, and
+each is a compile error rather than a silent behaviour change:
+
+- **No password is taken as a `string`.** `ImportEncryptedPkcs8PrivateKey(string, byte[])` and the
+  four other `string`-password overloads do not exist. A `string` cannot be overwritten, so
+  passwords are `ReadOnlySpan<char>` or `ReadOnlySpan<byte>` and the caller owns storage it can
+  clear. `"pw"` → `"pw".AsSpan()` compiles; holding the password in a `char[]` you clear in a
+  `finally` is the actual port.
+- **Character and byte passwords are not interchangeable, and confusing them does not throw** — it
+  derives a different key and looks like a wrong password much later. Characters are encoded by the
+  scheme (UTF-8 for PBES2, big-endian UTF-16 for the legacy PKCS#12 reads); bytes are the KDF input
+  verbatim.
+- **`PbeOptions` replaces `PbeParameters`**, and `string ExportPkcs8PrivateKeyPem()` is replaced by
+  `GetPkcs8PrivateKeyPemSize()` + `TryExportPkcs8PrivateKeyPem(Span<char>, out int)`.
+
+Erase those buffers with **`CryptographicOperations.ZeroMemory`**, not `Array.Clear` or
+`Span<T>.Clear()` — a clear on a buffer nothing reads again is a dead store a compiler may delete.
+The package exposes its own (`CryptoHives.Foundation.Security.Cryptography`) because the in-box type
+does not exist below .NET Standard 2.1 and has no character overload on any .NET version.
+
+Full member lists, the porting table and the reasoning:
+[package porting guide](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography#readme-body-tab)
+and
+[Erasable Memory](packages/security/cryptography/erasable-memory.md).
+
+---
+
 ## 5. Procedure & verification
 
 Work phase by phase; build + test after each:
@@ -462,6 +495,9 @@ Work phase by phase; build + test after each:
 2. **Async** (§2): swap primitives, add the analyzer, drive CHT0xx to zero.
 3. **Memory** (§3): swap buffer/stream/pool patterns; verify every new type is `using`-scoped.
 4. **Hashing** (§4): swap hash implementations; confirm identical digests.
+5. **Post-quantum** (§4.7), if present: swap the algorithm types, then fix the key-format call
+   sites the compiler flags — passwords to spans, `PbeParameters` to `PbeOptions`, the plaintext
+   PEM export to its `TryExport` form.
 
 Verification checklist:
 - [ ] Solution builds clean under `TreatWarningsAsErrors=true`.
