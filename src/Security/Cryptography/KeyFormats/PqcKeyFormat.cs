@@ -136,9 +136,7 @@ internal static class PqcKeyFormat
     /// <param name="privateKeyBlob">The contents of the privateKey OCTET STRING.</param>
     /// <returns>The encoded length in characters.</returns>
     /// <remarks>
-    /// The PKCS#8 encoding has to be built to be measured, so it is built and immediately cleared.
-    /// That is one extra encode per call, which is the price of never handing the caller a length
-    /// they have to discover by growing a buffer until an export succeeds.
+    /// The trade off is that the PKCS#8 encoding has to be built to be measured.
     /// </remarks>
     public static int GetPkcs8PemSize(string algorithmOid, ReadOnlySpan<byte> privateKeyBlob)
     {
@@ -163,8 +161,9 @@ internal static class PqcKeyFormat
     /// <param name="charsWritten">The number of characters written.</param>
     /// <returns><see langword="true"/> when the buffer was large enough.</returns>
     /// <remarks>
-    /// There is deliberately no allocating counterpart. A PEM-encoded plaintext private key is the
-    /// private key, and a <see cref="string"/> holding one cannot be erased.
+    /// There is deliberately no allocating counterpart since a PEM-encoded plaintext private key
+    /// is not erasable. Use <see cref="GetPkcs8PemSize"/> to detrmine the buffer size, then call
+    /// this method to fill it. The buffer is not modified when it is too small.
     /// </remarks>
     public static bool TryExportPkcs8Pem(
         string algorithmOid,
@@ -268,8 +267,7 @@ internal static class PqcKeyFormat
         PbePassword password,
         PbeOptions pbeOptions)
     {
-        // The payload here is ciphertext, so a string is safe: this is one of exactly two PEM
-        // exports whose content is public by construction.
+        // The payload here is ciphertext, so returning a string is safe.
         return PemFormat.EncodePublic(
             ExportEncryptedPkcs8(algorithmOid, privateKeyBlob, password, pbeOptions),
             PemLabels.EncryptedPkcs8PrivateKey);

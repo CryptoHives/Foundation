@@ -8,16 +8,17 @@ using System.Buffers;
 using System.Text;
 
 /// <summary>
-/// A password supplied either as characters or as raw bytes, together with the encoding rule each
-/// password-based scheme applies to it.
+/// A wrapper class which enforces proper determination of the password encoding.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The public API takes passwords both ways, and the two are <b>not</b> interchangeable. A
-/// character password is encoded before use — UTF-8 for PBES2 (RFC 8018), big-endian UTF-16 with a
+/// The constructor enforces proper determination of the password encoding by using
+/// either <see cref="FromChars"/> or <see cref="FromBytes"/>.
+/// </para>
+/// <para>
+/// A character password is encoded before use — UTF-8 for PBES2 (RFC 8018), big-endian UTF-16 with a
 /// NUL terminator for the PKCS#12 schemes (RFC 7292) — while a byte password is fed to the key
-/// derivation function exactly as given, which is the whole point of that overload: it lets a
-/// caller reproduce a password encoding this library would not otherwise produce.
+/// derivation function exactly as given.
 /// </para>
 /// <para>
 /// Getting this wrong does not throw. It silently derives a different key and surfaces as "the

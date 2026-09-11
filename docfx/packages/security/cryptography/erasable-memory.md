@@ -1,18 +1,16 @@
-﻿# Erasable Memory and the Dropped `string` API
+# Erasable Memory and the Dropped `string` API
 
 The PQC key-format surface on `MLKem`, `MLDsa` and `SlhDsa` follows one rule: **no member takes a
 password, or returns a plaintext private key, as a `string`.**
 
-A `string` is immutable. Once a password or a PEM-encoded private key is inside one, nothing — not
-the caller, not this library, not `Dispose` — can overwrite it. It sits on the managed heap until the
-garbage collector happens to reuse that memory, which may be after a process dump, a page to disk, or
-a crash report.
+A `string` is immutable. Once a password or a PEM-encoded private key is inside one, nothing can 
+overwrite it until the garbage collector cleans it up.
 
-## This is the BCL's rule, not ours
+## This is a BCL convenience rule where we rather enforce secure defaults
 
-It would be easy to read the section above as a deliberate divergence from .NET. It is the opposite.
+The BCL PQC APIs diverged from prior .NET security implementations.
 `System.Security.Cryptography.AsymmetricAlgorithm` — the base that `RSA`, `ECDsa` and `DSA` inherit,
-and the most heavily reviewed key-format surface Microsoft ships — **has never had a `string`
+and the most heavily reviewed key-format surface .NET ships — **has never had a `string`
 password overload**, and it has offered `Span<char>` PEM exports since they were introduced:
 
 | | `AsymmetricAlgorithm`<br/>(RSA, ECDsa, DSA) | in-box `MLDsa`/`MLKem`/`SlhDsa`<br/>(.NET 10) | this library |

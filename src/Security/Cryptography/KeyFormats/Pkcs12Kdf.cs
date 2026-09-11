@@ -12,12 +12,10 @@ using System;
 /// <remarks>
 /// <para>
 /// Needed only on the <b>import</b> path, to open <c>EncryptedPrivateKeyInfo</c> structures written
-/// by older OpenSSL and Windows tooling. Nothing in this library writes it: exports always use
-/// PBES2, matching what .NET 10 emits.
+/// by older OpenSSL and Windows tooling.
 /// </para>
 /// <para>
-/// The password is encoded as big-endian UTF-16 with a trailing two-byte NUL terminator, which is
-/// the detail this KDF is most often got wrong on.
+/// The password is encoded as big-endian UTF-16 with a trailing two-byte NUL terminator.
 /// </para>
 /// </remarks>
 internal static class Pkcs12Kdf

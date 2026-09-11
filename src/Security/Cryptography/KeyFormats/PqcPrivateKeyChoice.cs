@@ -84,16 +84,13 @@ internal static class PqcPrivateKeyChoice
     /// <returns>Which arm was present.</returns>
     /// <exception cref="OS.CryptographicException">The structure is malformed.</exception>
     public static PqcPrivateKeyForm Read(
-        ReadOnlySpan<byte> source,
+        ReadOnlyMemory<byte> source,
         out byte[]? seed,
         out byte[]? expandedKey)
     {
-        // The same copy AsnReader forces on Pkcs8.Read, holding the seed or the expanded key.
-        byte[] copy = source.ToArray();
-
         try
         {
-            var reader = new AsnReader(copy, AsnEncodingRules.DER);
+            var reader = new AsnReader(source, AsnEncodingRules.DER);
             Asn1Tag tag = reader.PeekTag();
 
             if (tag.TagClass == TagClass.ContextSpecific && tag.TagValue == 0)
@@ -128,10 +125,6 @@ internal static class PqcPrivateKeyChoice
         catch (AsnContentException e)
         {
             throw new OS.CryptographicException("The private key structure is malformed.", e);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(copy);
         }
     }
 }

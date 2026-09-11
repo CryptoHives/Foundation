@@ -309,6 +309,51 @@ public class MLDsaKeyFormatTests
             Throws.InstanceOf<ArgumentException>());
     }
 
+    /// <summary>Gets payloads a recognized PEM block must not decode.</summary>
+    public static IEnumerable<TestCaseData> MalformedPayloads()
+    {
+        yield return new TestCaseData("!!!!").SetName("characters outside the base64 alphabet");
+        yield return new TestCaseData("Zm9vYg").SetName("length not a multiple of four");
+        yield return new TestCaseData("Zm9=Yg==").SetName("padding in the middle");
+        yield return new TestCaseData("Zm9ÿ").SetName("non-ASCII character");
+        yield return new TestCaseData("Zm9Ā").SetName("character above the byte range");
+
+        // U+0141 truncates to 0x41, which is 'A' - a perfectly valid base64 character. Narrowing
+        // without a range check would decode this to real bytes instead of rejecting it, so this
+        // is the case that makes the check load-bearing rather than defensive.
+        yield return new TestCaseData("Zm9Ł").SetName("non-ASCII that would narrow onto a valid character");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(MalformedPayloads))]
+    public void ImportFromPem_RejectsAMalformedPayload(string payload)
+    {
+        // The decoder narrows the payload to bytes before decoding, so a character outside ASCII
+        // must be rejected rather than truncated onto one that is inside the base64 alphabet.
+        string document = $"-----BEGIN PRIVATE KEY-----\n{payload}\n-----END PRIVATE KEY-----";
+
+        Assert.That(
+            () => MLDsa.ImportFromPem(document.AsSpan()),
+            Throws.InstanceOf<ArgumentException>().With.Message.Contains("base64"));
+    }
+
+    [Test]
+    [TestCase("\n", TestName = "LF")]
+    [TestCase("\r\n", TestName = "CRLF")]
+    [TestCase("\n\n  \t\n", TestName = "blank lines, spaces and tabs")]
+    public void ImportFromPem_IgnoresWhitespaceInThePayload(string separator)
+    {
+        // RFC 7468 lets the payload be wrapped however the writer likes; the decoder strips
+        // whitespace while narrowing, so every one of these has to reach the same key.
+        using var key = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa44);
+        string pem = key.ExportSubjectPublicKeyInfoPem();
+
+        string rewrapped = pem.Replace("\n", separator);
+
+        using var imported = MLDsa.ImportFromPem(rewrapped.AsSpan());
+        Assert.That(imported.ExportMLDsaPublicKey(), Is.EqualTo(key.ExportMLDsaPublicKey()));
+    }
+
     [Test]
     public void ImportFromPem_PointsAnEncryptedBlockAtTheRightMethod()
     {

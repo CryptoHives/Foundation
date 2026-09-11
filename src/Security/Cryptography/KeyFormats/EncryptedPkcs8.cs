@@ -71,9 +71,9 @@ internal static class EncryptedPkcs8
 
         byte[] salt = new byte[SaltLength];
         byte[] iv = new byte[AesBlockLength];
-        // Same helper the key generators use, so the RNG story is identical across the library.
-        Dsa.MLDsaCore.GenerateRandomSeed(salt);
-        Dsa.MLDsaCore.GenerateRandomSeed(iv);
+
+        Rng.RandomNumberGenerator.Fill(salt);
+        Rng.RandomNumberGenerator.Fill(iv);
 
         byte[] passwordBytes = password.ForPbkdf2();
         byte[] key = new byte[keyLength];

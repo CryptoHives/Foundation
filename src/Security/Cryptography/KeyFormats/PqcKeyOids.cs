@@ -13,7 +13,7 @@ using System;
 /// <para>
 /// Every value here was read out of a generated structure rather than transcribed: the ML-KEM and
 /// ML-DSA arcs from the SubjectPublicKeyInfo that .NET 10's in-box types emit, and all eighteen
-/// cross-checked against BouncyCastle 2.7.0. The two agree.
+/// cross-checked against the latest BouncyCastle. The two agree.
 /// </para>
 /// <para>
 /// The signature arc is 2.16.840.1.101.3.4.3 (id-ml-dsa-* at 17-19, id-slh-dsa-* at 20-31) and the

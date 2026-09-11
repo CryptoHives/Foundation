@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.KeyFormats;
 
 using System;
 using System.Buffers;
+using System.Buffers.Text;
 
 /// <summary>
 /// The PEM labels the PQC key types recognize.
@@ -88,8 +89,7 @@ internal readonly struct PemBlock
 }
 
 /// <summary>
-/// RFC 7468 textual encoding, on every target framework, without putting key material in a
-/// <see cref="string"/>.
+/// RFC 7468 textual encoding which keeps key material in the original buffer.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -102,8 +102,11 @@ internal readonly struct PemBlock
 /// Everything here works in spans. The encoder writes into a caller-owned buffer and the reader
 /// returns index ranges into the caller's document, so a private key never passes through an
 /// immutable <see cref="string"/>, a <c>StringBuilder</c> or a <c>Substring</c>. The one
-/// intermediate that cannot be avoided - base64 needs somewhere to put its output before it is
-/// laid out into lines - is rented and zeroed.
+/// intermediate that cannot be avoided - base64 needs somewhere to go before it is laid out into
+/// lines, or stripped of whitespace before it is decoded - is rented and zeroed.
+/// </para>
+/// <para>
+/// For efficiency, the intermediate is a <see cref="byte"/> buffer rather than a <see cref="char"/> one.
 /// </para>
 /// <para>
 /// The reader is deliberately a scanner rather than a single <c>IndexOf</c> for the first block:
@@ -124,12 +127,6 @@ internal static class PemFormat
     /// <param name="derLength">The number of DER bytes to encode.</param>
     /// <param name="label">The PEM label.</param>
     /// <returns>The encoded length in characters.</returns>
-    /// <remarks>
-    /// The counterpart of <c>System.Security.Cryptography.PemEncoding.GetEncodedSize</c>, which
-    /// only exists on .NET Core 3.0 and later. Without it a <c>TryExport</c> caller has no way to
-    /// size a buffer other than guessing and growing - and the guess most people would make, 4096,
-    /// is too small for an ML-DSA-87 expanded key.
-    /// </remarks>
     public static int GetEncodedSize(int derLength, string label)
     {
         checked
@@ -171,7 +168,7 @@ internal static class PemFormat
         }
 
         int base64Length = ((der.Length + 2) / 3) * 4;
-        char[] base64 = ArrayPool<char>.Shared.Rent(Math.Max(base64Length, 1));
+        byte[] base64 = ArrayPool<byte>.Shared.Rent(Math.Max(base64Length, 1));
 
         try
         {
@@ -186,7 +183,8 @@ internal static class PemFormat
             for (int i = 0; i < base64Length; i += CharsPerLine)
             {
                 int take = Math.Min(CharsPerLine, base64Length - i);
-                written += Append(destination, written, base64.AsSpan(i, take));
+                Widen(base64.AsSpan(i, take), destination.Slice(written));
+                written += take;
                 destination[written++] = '\n';
             }
 
@@ -199,9 +197,9 @@ internal static class PemFormat
         }
         finally
         {
-            // The payload is the private key in base64. Clear it before the array goes back.
-            CryptographicOperations.ZeroMemory(base64.AsSpan(0, Math.Min(base64Length, base64.Length)));
-            ArrayPool<char>.Shared.Return(base64);
+            // Clear key material before the array goes back.
+            CryptographicOperations.ZeroMemory(base64);
+            ArrayPool<byte>.Shared.Return(base64);
         }
     }
 
@@ -229,33 +227,6 @@ internal static class PemFormat
 
         return new string(buffer, 0, written);
     }
-
-    // Dropped from the shipping surface: clearing the DER accomplishes nothing while the string
-    // this returns still holds the same bytes in base64 and can never be overwritten.
-    // Retained unbuilt for review; see docfx/packages/security/cryptography/erasable-memory.md.
-#if OBSOLETE_SECRET_AS_STRING_API
-    /// <summary>
-    /// Produces a PEM block as a string and clears the intermediate DER buffer.
-    /// </summary>
-    /// <param name="der">The DER-encoded data; zeroed before returning.</param>
-    /// <param name="label">The PEM label.</param>
-    /// <returns>The PEM text.</returns>
-    /// <remarks>
-    /// The string this returns holds the private key in base64 and can never be erased, which is
-    /// why it is not in the shipping surface.
-    /// </remarks>
-    public static string EncodeAndClear(byte[] der, string label)
-    {
-        try
-        {
-            return EncodePublic(der, label);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(der);
-        }
-    }
-#endif
 
     /// <summary>
     /// Scans forward for the next well-formed PEM block.
@@ -323,28 +294,52 @@ internal static class PemFormat
     /// <param name="block">The block.</param>
     /// <returns>The DER bytes.</returns>
     /// <exception cref="FormatException">The payload is not valid base64.</exception>
+    /// <remarks>
+    /// The scratch buffer is bytes, not characters: base64 is ASCII, so narrowing is exact, and the
+    /// buffer that holds a private key on its way in is half the size it would otherwise be.
+    /// <c>Base64.DecodeFromUtf8InPlace</c> then writes the DER over the encoded form in that same
+    /// buffer, so the decode costs no second allocation and leaves one buffer to clear rather than
+    /// two.
+    /// </remarks>
     public static byte[] Decode(ReadOnlySpan<char> pem, PemBlock block)
     {
         ReadOnlySpan<char> payload = block.Base64(pem);
-        char[] cleaned = ArrayPool<char>.Shared.Rent(Math.Max(payload.Length, 1));
+        byte[] cleaned = ArrayPool<byte>.Shared.Rent(Math.Max(payload.Length, 1));
         int length = 0;
 
         try
         {
             foreach (char c in payload)
             {
-                if (!char.IsWhiteSpace(c))
+                if (char.IsWhiteSpace(c))
                 {
-                    cleaned[length++] = c;
+                    continue;
                 }
+
+                // Anything outside ASCII cannot be base64, and narrowing it would silently fold it
+                // onto a character that is. Reject it here rather than decode something else.
+                if (c > 0x7F)
+                {
+                    throw new FormatException("The PEM payload contains a non-base64 character.");
+                }
+
+                cleaned[length++] = (byte)c;
             }
 
-            return Convert.FromBase64CharArray(cleaned, 0, length);
+            OperationStatus status = Base64.DecodeFromUtf8InPlace(
+                cleaned.AsSpan(0, length), out int decoded);
+
+            if (status != OperationStatus.Done)
+            {
+                throw new FormatException("The PEM payload is not valid base64.");
+            }
+
+            return cleaned.AsSpan(0, decoded).ToArray();
         }
         finally
         {
             CryptographicOperations.ZeroMemory(cleaned.AsSpan(0, length));
-            ArrayPool<char>.Shared.Return(cleaned);
+            ArrayPool<byte>.Shared.Return(cleaned);
         }
     }
 
@@ -354,34 +349,50 @@ internal static class PemFormat
         return value.Length;
     }
 
-    private static void EncodeBase64(ReadOnlySpan<byte> der, char[] destination, int base64Length)
+    /// <summary>
+    /// Base64-encodes the DER into a scratch buffer, as UTF-8 rather than UTF-16.
+    /// </summary>
+    /// <param name="der">The DER-encoded data.</param>
+    /// <param name="destination">The scratch buffer, at least <paramref name="base64Length"/> long.</param>
+    /// <param name="base64Length">The expected encoded length.</param>
+    /// <remarks>
+    /// <para>
+    /// Base64 output is ASCII, so a byte per character is exact and can be cleared afterwards.
+    /// The caller widens the bytes to characters when laying them out into lines.
+    /// Avoids additional allocations by using <c>Base64.EncodeToUtf8</c> which takes a span on every
+    /// target framework.
+    /// </para>
+    /// </remarks>
+    private static void EncodeBase64(ReadOnlySpan<byte> der, Span<byte> destination, int base64Length)
     {
         if (base64Length == 0)
         {
             return;
         }
 
-#if NETSTANDARD2_1_OR_GREATER || NET
-        if (!Convert.TryToBase64Chars(der, destination, out _))
+        OperationStatus status = Base64.EncodeToUtf8(der, destination, out _, out int written);
+
+        if (status != OperationStatus.Done || written != base64Length)
         {
             throw new InvalidOperationException("The base64 scratch buffer was too small.");
         }
-#else
-        // Convert has no span-based encoder downlevel, so the DER has to be an array. It carries
-        // the private key, so it is rented and cleared rather than left to the collector.
-        byte[] bytes = ArrayPool<byte>.Shared.Rent(der.Length);
+    }
 
-        try
+    /// <summary>
+    /// Widens ASCII bytes to characters.
+    /// </summary>
+    /// <param name="source">The ASCII bytes.</param>
+    /// <param name="destination">The buffer to receive the characters.</param>
+    /// <remarks>
+    /// Only ever called on base64 output, which RFC 4648 confines to the ASCII range, so this is a
+    /// straight zero-extension with nothing to validate.
+    /// </remarks>
+    private static void Widen(ReadOnlySpan<byte> source, Span<char> destination)
+    {
+        for (int i = 0; i < source.Length; i++)
         {
-            der.CopyTo(bytes);
-            Convert.ToBase64CharArray(bytes, 0, der.Length, destination, 0);
+            destination[i] = (char)source[i];
         }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(bytes.AsSpan(0, der.Length));
-            ArrayPool<byte>.Shared.Return(bytes);
-        }
-#endif
     }
 
     private static int IndexOf(ReadOnlySpan<char> pem, int start, string value)

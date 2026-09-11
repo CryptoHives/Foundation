@@ -33,7 +33,7 @@ internal static class Pkcs8
     /// The contents of the <c>privateKey</c> OCTET STRING. For ML-KEM and ML-DSA this is itself a
     /// DER-encoded CHOICE (see <see cref="PqcPrivateKeyChoice"/>); for SLH-DSA it is the raw key.
     /// </param>
-    /// <returns>The DER encoding.</returns>
+    /// <returns>The DER encoding. Should be erased after use.</returns>
     public static byte[] Write(string algorithmOid, ReadOnlySpan<byte> privateKey)
     {
         var writer = new AsnWriter(AsnEncodingRules.DER);
@@ -63,9 +63,7 @@ internal static class Pkcs8
     /// algorithm parameters, or is followed by trailing data.</exception>
     public static byte[] Read(ReadOnlySpan<byte> source, out string algorithmOid)
     {
-        // AsnReader needs a ReadOnlyMemory<byte>, which a span cannot supply, so the whole
-        // PrivateKeyInfo - private key included - has to be copied. Clear the copy on the way out
-        // rather than leaving it for the collector.
+        // AsnReader needs a ReadOnlyMemory<byte>
         byte[] copy = source.ToArray();
 
         try
