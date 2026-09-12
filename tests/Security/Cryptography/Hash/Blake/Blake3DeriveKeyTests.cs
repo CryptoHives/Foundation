@@ -336,8 +336,10 @@ public class Blake3DeriveKeyTests
     /// <param name="inputLength">The key-material length.</param>
     [TestCase(0)]
     [TestCase(1024)]
+    [TestCase(2048)]
     [TestCase(8192)]
     [TestCase(8193)]
+    [TestCase(10240)]
     [TestCase(16384)]
     [TestCase(31744)]
     public void Avx2MatchesScalar(int inputLength)
@@ -356,8 +358,10 @@ public class Blake3DeriveKeyTests
     /// <param name="inputLength">The key-material length.</param>
     [TestCase(0)]
     [TestCase(1024)]
+    [TestCase(2048)]
     [TestCase(8192)]
     [TestCase(8193)]
+    [TestCase(10240)]
     [TestCase(16384)]
     [TestCase(31744)]
     public void Avx512MatchesScalar(int inputLength)
@@ -376,8 +380,10 @@ public class Blake3DeriveKeyTests
     /// <param name="inputLength">The key-material length.</param>
     [TestCase(0)]
     [TestCase(1024)]
+    [TestCase(2048)]
     [TestCase(8192)]
     [TestCase(8193)]
+    [TestCase(10240)]
     [TestCase(16384)]
     [TestCase(31744)]
     public void NeonMatchesScalar(int inputLength)
