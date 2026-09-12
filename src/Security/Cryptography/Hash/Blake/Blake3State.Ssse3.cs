@@ -546,80 +546,75 @@ internal unsafe partial struct Blake3State
         ref Vector128<uint> v12, ref Vector128<uint> v13, ref Vector128<uint> v14, ref Vector128<uint> v15,
         Vector128<uint>* m)
     {
-        var m0 = m[0]; var m1 = m[1]; var m2 = m[2]; var m3 = m[3];
-        var m4 = m[4]; var m5 = m[5]; var m6 = m[6]; var m7 = m[7];
-        var m8 = m[8]; var m9 = m[9]; var m10 = m[10]; var m11 = m[11];
-        var m12 = m[12]; var m13 = m[13]; var m14 = m[14]; var m15 = m[15];
-
         // Round 1
-        GRound128(ref v0, ref v4, ref v8, ref v12, m0, m1);
-        GRound128(ref v1, ref v5, ref v9, ref v13, m2, m3);
-        GRound128(ref v2, ref v6, ref v10, ref v14, m4, m5);
-        GRound128(ref v3, ref v7, ref v11, ref v15, m6, m7);
-        GRound128(ref v0, ref v5, ref v10, ref v15, m8, m9);
-        GRound128(ref v1, ref v6, ref v11, ref v12, m10, m11);
-        GRound128(ref v2, ref v7, ref v8, ref v13, m12, m13);
-        GRound128(ref v3, ref v4, ref v9, ref v14, m14, m15);
+        GRound128(ref v0, ref v4, ref v8, ref v12, m[0], m[1]);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m[2], m[3]);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m[4], m[5]);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m[6], m[7]);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m[8], m[9]);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m[10], m[11]);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m[12], m[13]);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m[14], m[15]);
 
         // Round 2
-        GRound128(ref v0, ref v4, ref v8, ref v12, m2, m6);
-        GRound128(ref v1, ref v5, ref v9, ref v13, m3, m10);
-        GRound128(ref v2, ref v6, ref v10, ref v14, m7, m0);
-        GRound128(ref v3, ref v7, ref v11, ref v15, m4, m13);
-        GRound128(ref v0, ref v5, ref v10, ref v15, m1, m11);
-        GRound128(ref v1, ref v6, ref v11, ref v12, m12, m5);
-        GRound128(ref v2, ref v7, ref v8, ref v13, m9, m14);
-        GRound128(ref v3, ref v4, ref v9, ref v14, m15, m8);
+        GRound128(ref v0, ref v4, ref v8, ref v12, m[2], m[6]);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m[3], m[10]);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m[7], m[0]);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m[4], m[13]);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m[1], m[11]);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m[12], m[5]);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m[9], m[14]);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m[15], m[8]);
 
         // Round 3
-        GRound128(ref v0, ref v4, ref v8, ref v12, m3, m4);
-        GRound128(ref v1, ref v5, ref v9, ref v13, m10, m12);
-        GRound128(ref v2, ref v6, ref v10, ref v14, m13, m2);
-        GRound128(ref v3, ref v7, ref v11, ref v15, m7, m14);
-        GRound128(ref v0, ref v5, ref v10, ref v15, m6, m5);
-        GRound128(ref v1, ref v6, ref v11, ref v12, m9, m0);
-        GRound128(ref v2, ref v7, ref v8, ref v13, m11, m15);
-        GRound128(ref v3, ref v4, ref v9, ref v14, m8, m1);
+        GRound128(ref v0, ref v4, ref v8, ref v12, m[3], m[4]);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m[10], m[12]);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m[13], m[2]);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m[7], m[14]);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m[6], m[5]);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m[9], m[0]);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m[11], m[15]);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m[8], m[1]);
 
         // Round 4
-        GRound128(ref v0, ref v4, ref v8, ref v12, m10, m7);
-        GRound128(ref v1, ref v5, ref v9, ref v13, m12, m9);
-        GRound128(ref v2, ref v6, ref v10, ref v14, m14, m3);
-        GRound128(ref v3, ref v7, ref v11, ref v15, m13, m15);
-        GRound128(ref v0, ref v5, ref v10, ref v15, m4, m0);
-        GRound128(ref v1, ref v6, ref v11, ref v12, m11, m2);
-        GRound128(ref v2, ref v7, ref v8, ref v13, m5, m8);
-        GRound128(ref v3, ref v4, ref v9, ref v14, m1, m6);
+        GRound128(ref v0, ref v4, ref v8, ref v12, m[10], m[7]);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m[12], m[9]);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m[14], m[3]);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m[13], m[15]);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m[4], m[0]);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m[11], m[2]);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m[5], m[8]);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m[1], m[6]);
 
         // Round 5
-        GRound128(ref v0, ref v4, ref v8, ref v12, m12, m13);
-        GRound128(ref v1, ref v5, ref v9, ref v13, m9, m11);
-        GRound128(ref v2, ref v6, ref v10, ref v14, m15, m10);
-        GRound128(ref v3, ref v7, ref v11, ref v15, m14, m8);
-        GRound128(ref v0, ref v5, ref v10, ref v15, m7, m2);
-        GRound128(ref v1, ref v6, ref v11, ref v12, m5, m3);
-        GRound128(ref v2, ref v7, ref v8, ref v13, m0, m1);
-        GRound128(ref v3, ref v4, ref v9, ref v14, m6, m4);
+        GRound128(ref v0, ref v4, ref v8, ref v12, m[12], m[13]);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m[9], m[11]);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m[15], m[10]);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m[14], m[8]);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m[7], m[2]);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m[5], m[3]);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m[0], m[1]);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m[6], m[4]);
 
         // Round 6
-        GRound128(ref v0, ref v4, ref v8, ref v12, m9, m14);
-        GRound128(ref v1, ref v5, ref v9, ref v13, m11, m5);
-        GRound128(ref v2, ref v6, ref v10, ref v14, m8, m12);
-        GRound128(ref v3, ref v7, ref v11, ref v15, m15, m1);
-        GRound128(ref v0, ref v5, ref v10, ref v15, m13, m3);
-        GRound128(ref v1, ref v6, ref v11, ref v12, m0, m10);
-        GRound128(ref v2, ref v7, ref v8, ref v13, m2, m6);
-        GRound128(ref v3, ref v4, ref v9, ref v14, m4, m7);
+        GRound128(ref v0, ref v4, ref v8, ref v12, m[9], m[14]);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m[11], m[5]);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m[8], m[12]);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m[15], m[1]);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m[13], m[3]);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m[0], m[10]);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m[2], m[6]);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m[4], m[7]);
 
         // Round 7
-        GRound128(ref v0, ref v4, ref v8, ref v12, m11, m15);
-        GRound128(ref v1, ref v5, ref v9, ref v13, m5, m0);
-        GRound128(ref v2, ref v6, ref v10, ref v14, m1, m9);
-        GRound128(ref v3, ref v7, ref v11, ref v15, m8, m6);
-        GRound128(ref v0, ref v5, ref v10, ref v15, m14, m10);
-        GRound128(ref v1, ref v6, ref v11, ref v12, m2, m12);
-        GRound128(ref v2, ref v7, ref v8, ref v13, m3, m4);
-        GRound128(ref v3, ref v4, ref v9, ref v14, m7, m13);
+        GRound128(ref v0, ref v4, ref v8, ref v12, m[11], m[15]);
+        GRound128(ref v1, ref v5, ref v9, ref v13, m[5], m[0]);
+        GRound128(ref v2, ref v6, ref v10, ref v14, m[1], m[9]);
+        GRound128(ref v3, ref v7, ref v11, ref v15, m[8], m[6]);
+        GRound128(ref v0, ref v5, ref v10, ref v15, m[14], m[10]);
+        GRound128(ref v1, ref v6, ref v11, ref v12, m[2], m[12]);
+        GRound128(ref v2, ref v7, ref v8, ref v13, m[3], m[4]);
+        GRound128(ref v3, ref v4, ref v9, ref v14, m[7], m[13]);
     }
 
     /// <summary>
