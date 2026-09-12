@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 #if NET8_0_OR_GREATER
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -113,8 +114,130 @@ internal unsafe partial struct Blake3State
 
         m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
         m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
+
         Transpose8x8(m);
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
+        {
+            Avx.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
+        }
+    }
+
+    /// <summary>
+    /// Compresses exactly 8 independent, full (1024-byte) chunks with the
+    /// 8-way kernel — the fully-unrolled counterpart of
+    /// <see cref="CompressChunksPartialAvx2"/> for the always-full-width case.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="CompressChunksPartialAvx2"/> loads message words through a
+    /// <c>for (int j = 0; j &lt; chunkCount; j++)</c> loop so one method body
+    /// can serve both the always-8 batch loop and the 5–7-chunk partial tail.
+    /// Because <c>chunkCount</c> is a runtime parameter there, the JIT cannot
+    /// unroll that loop or promote the loaded (pre-transpose) vectors to
+    /// registers — they round-trip through the <c>m</c> stackalloc buffer
+    /// instead. This method exists purely to give the hot always-8 callers
+    /// (the main batch loop and <see cref="CompressSubtreeGroup"/>, both of
+    /// which never call the partial kernel with anything but exactly 8) a
+    /// body with no runtime-variable trip count at all: every load is a named
+    /// local at a compile-time-constant offset, transposed directly from
+    /// those locals with no intermediate store. Dissimilis/Blake3.Managed's
+    /// own 1.5.2 performance notes hit this exact regression from the other
+    /// direction — adding variable lane offsets to their fixed 8-chunk kernel
+    /// regressed 8 KB inputs — and fixed it by keeping the two kernels
+    /// separate, which is what this split mirrors.
+    /// </para>
+    /// <para>
+    /// <paramref name="chunkCount"/> exists only so this matches the
+    /// tier-kernel function-pointer signature <see cref="CommitPartialBatch"/>
+    /// and <see cref="CompressSubtreeGroup"/> dispatch through; it is always 8
+    /// and is otherwise unused.
+    /// </para>
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void CompressChunks8Avx2(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
+    {
+        Debug.Assert(chunkCount == ChunksPerAvx2Batch, "the fixed-8 kernel compresses exactly eight chunks");
+
+        var counterLow = Vector256.Create(
+            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3),
+            (uint)(baseCounter + 4), (uint)(baseCounter + 5), (uint)(baseCounter + 6), (uint)(baseCounter + 7));
+        var counterHigh = Vector256.Create(
+            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32),
+            (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32),
+            (uint)((baseCounter + 4) >> 32), (uint)((baseCounter + 5) >> 32),
+            (uint)((baseCounter + 6) >> 32), (uint)((baseCounter + 7) >> 32));
+        var blockLenVec = Vector256.Create((uint)BlockSizeBytes);
+
+        Vector256<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
+        cv0 = Vector256.Create(key[0]);
+        cv1 = Vector256.Create(key[1]);
+        cv2 = Vector256.Create(key[2]);
+        cv3 = Vector256.Create(key[3]);
+        cv4 = Vector256.Create(key[4]);
+        cv5 = Vector256.Create(key[5]);
+        cv6 = Vector256.Create(key[6]);
+        cv7 = Vector256.Create(key[7]);
+
+        var m = stackalloc Vector256<uint>[16];
+        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        {
+            byte* blockBase = source + blockIdx * BlockSizeBytes;
+
+            // Eight named loads per half, at compile-time-constant offsets —
+            // no runtime trip count, so the JIT can keep r0..r7 in registers
+            // straight through the inlined transpose below instead of
+            // round-tripping them through the m buffer first.
+            var r0 = Avx.LoadVector256((uint*)(blockBase + 0 * ChunkSizeBytes));
+            var r1 = Avx.LoadVector256((uint*)(blockBase + 1 * ChunkSizeBytes));
+            var r2 = Avx.LoadVector256((uint*)(blockBase + 2 * ChunkSizeBytes));
+            var r3 = Avx.LoadVector256((uint*)(blockBase + 3 * ChunkSizeBytes));
+            var r4 = Avx.LoadVector256((uint*)(blockBase + 4 * ChunkSizeBytes));
+            var r5 = Avx.LoadVector256((uint*)(blockBase + 5 * ChunkSizeBytes));
+            var r6 = Avx.LoadVector256((uint*)(blockBase + 6 * ChunkSizeBytes));
+            var r7 = Avx.LoadVector256((uint*)(blockBase + 7 * ChunkSizeBytes));
+            Transpose8x8Into(r0, r1, r2, r3, r4, r5, r6, r7, m);
+
+            r0 = Avx.LoadVector256((uint*)(blockBase + 0 * ChunkSizeBytes + (BlockSizeBytes / 2)));
+            r1 = Avx.LoadVector256((uint*)(blockBase + 1 * ChunkSizeBytes + (BlockSizeBytes / 2)));
+            r2 = Avx.LoadVector256((uint*)(blockBase + 2 * ChunkSizeBytes + (BlockSizeBytes / 2)));
+            r3 = Avx.LoadVector256((uint*)(blockBase + 3 * ChunkSizeBytes + (BlockSizeBytes / 2)));
+            r4 = Avx.LoadVector256((uint*)(blockBase + 4 * ChunkSizeBytes + (BlockSizeBytes / 2)));
+            r5 = Avx.LoadVector256((uint*)(blockBase + 5 * ChunkSizeBytes + (BlockSizeBytes / 2)));
+            r6 = Avx.LoadVector256((uint*)(blockBase + 6 * ChunkSizeBytes + (BlockSizeBytes / 2)));
+            r7 = Avx.LoadVector256((uint*)(blockBase + 7 * ChunkSizeBytes + (BlockSizeBytes / 2)));
+            Transpose8x8Into(r0, r1, r2, r3, r4, r5, r6, r7, m + 8);
+
+            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
+
+            var v0 = cv0; var v1 = cv1; var v2 = cv2; var v3 = cv3;
+            var v4 = cv4; var v5 = cv5; var v6 = cv6; var v7 = cv7;
+            var v8 = Vector256.Create(IV0); var v9 = Vector256.Create(IV1);
+            var v10 = Vector256.Create(IV2); var v11 = Vector256.Create(IV3);
+            var v12 = counterLow;
+            var v13 = counterHigh;
+            var v14 = blockLenVec;
+            var v15 = Vector256.Create(flags);
+
+            CompressVector256(
+                ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+                ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+                m);
+
+            cv0 = Avx2.Xor(v0, v8);
+            cv1 = Avx2.Xor(v1, v9);
+            cv2 = Avx2.Xor(v2, v10);
+            cv3 = Avx2.Xor(v3, v11);
+            cv4 = Avx2.Xor(v4, v12);
+            cv5 = Avx2.Xor(v5, v13);
+            cv6 = Avx2.Xor(v6, v14);
+            cv7 = Avx2.Xor(v7, v15);
+        }
+
+        m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
+        m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
+        Transpose8x8(m);
+        for (int chunkIdx = 0; chunkIdx < ChunksPerAvx2Batch; chunkIdx++)
         {
             Avx.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
         }
@@ -424,17 +547,23 @@ internal unsafe partial struct Blake3State
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void Transpose8x8(Vector256<uint>* vecs)
-    {
-        var v0 = vecs[0];
-        var v1 = vecs[1];
-        var v2 = vecs[2];
-        var v3 = vecs[3];
-        var v4 = vecs[4];
-        var v5 = vecs[5];
-        var v6 = vecs[6];
-        var v7 = vecs[7];
+    private static void Transpose8x8(Vector256<uint>* vecs) =>
+        Transpose8x8Into(vecs[0], vecs[1], vecs[2], vecs[3], vecs[4], vecs[5], vecs[6], vecs[7], vecs);
 
+    /// <summary>
+    /// Same transpose as <see cref="Transpose8x8"/>, but taking the eight
+    /// input rows by value instead of reading them from <paramref name="dst"/>
+    /// first. Lets a caller that already has <c>v0..v7</c> as named locals —
+    /// straight out of eight <c>Avx.LoadVector256</c> calls, say — feed them
+    /// in directly, so the JIT never has to prove a stackalloc round-trip is
+    /// redundant: there isn't one.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void Transpose8x8Into(
+        Vector256<uint> v0, Vector256<uint> v1, Vector256<uint> v2, Vector256<uint> v3,
+        Vector256<uint> v4, Vector256<uint> v5, Vector256<uint> v6, Vector256<uint> v7,
+        Vector256<uint>* dst)
+    {
         // Interleave 32-bit words of row pairs.
         var ab0145 = Avx2.UnpackLow(v0, v1);
         var ab2367 = Avx2.UnpackHigh(v0, v1);
@@ -456,14 +585,14 @@ internal unsafe partial struct Blake3State
         var efgh37 = Avx2.UnpackHigh(ef2367.AsUInt64(), gh2367.AsUInt64());
 
         // Recombine 128-bit lanes: 0x20 = low halves, 0x31 = high halves.
-        vecs[0] = Avx2.Permute2x128(abcd04, efgh04, 0x20).AsUInt32();
-        vecs[1] = Avx2.Permute2x128(abcd15, efgh15, 0x20).AsUInt32();
-        vecs[2] = Avx2.Permute2x128(abcd26, efgh26, 0x20).AsUInt32();
-        vecs[3] = Avx2.Permute2x128(abcd37, efgh37, 0x20).AsUInt32();
-        vecs[4] = Avx2.Permute2x128(abcd04, efgh04, 0x31).AsUInt32();
-        vecs[5] = Avx2.Permute2x128(abcd15, efgh15, 0x31).AsUInt32();
-        vecs[6] = Avx2.Permute2x128(abcd26, efgh26, 0x31).AsUInt32();
-        vecs[7] = Avx2.Permute2x128(abcd37, efgh37, 0x31).AsUInt32();
+        dst[0] = Avx2.Permute2x128(abcd04, efgh04, 0x20).AsUInt32();
+        dst[1] = Avx2.Permute2x128(abcd15, efgh15, 0x20).AsUInt32();
+        dst[2] = Avx2.Permute2x128(abcd26, efgh26, 0x20).AsUInt32();
+        dst[3] = Avx2.Permute2x128(abcd37, efgh37, 0x20).AsUInt32();
+        dst[4] = Avx2.Permute2x128(abcd04, efgh04, 0x31).AsUInt32();
+        dst[5] = Avx2.Permute2x128(abcd15, efgh15, 0x31).AsUInt32();
+        dst[6] = Avx2.Permute2x128(abcd26, efgh26, 0x31).AsUInt32();
+        dst[7] = Avx2.Permute2x128(abcd37, efgh37, 0x31).AsUInt32();
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]

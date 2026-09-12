@@ -529,12 +529,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx2Batch,
-                                Avx2BatchSizeBytes, batchCvs, &CompressChunksPartialAvx2);
+                                Avx2BatchSizeBytes, batchCvs, &CompressChunks8Avx2);
                         }
 
                         while (length - offset >= Avx2BatchSizeBytes)
                         {
-                            CompressChunksPartialAvx2(
+                            CompressChunks8Avx2(
                                 srcPtr + offset,
                                 ChunksPerAvx2Batch,
                                 core->_keyWords,
