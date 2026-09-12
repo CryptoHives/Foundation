@@ -6,7 +6,8 @@ against the shipped source. Do not invent members. Human-oriented docs live in `
 - **Package:** `CryptoHives.Foundation.Security.Cryptography` (0.x — the API is pre-1.0
   and may still change between minor versions)
 - **Root namespace:** `CryptoHives.Foundation.Security.Cryptography` with sub-namespaces
-  `.Hash`, `.Mac`, `.Kdf`, `.Cipher`, `.Kem`, `.Dsa`
+  `.Hash`, `.Mac`, `.Kdf`, `.Cipher`, `.Kem`, `.Dsa`. The root namespace itself holds
+  `CryptographicOperations` (`ZeroMemory`, `FixedTimeEquals`) and the `PbeOptions` family
 - **What it is:** fully managed, deterministic, cross-platform implementations of hashes,
   MACs, KDFs, ciphers, and post-quantum KEMs and signatures. Hash and cipher types **extend the
   `System.Security.Cryptography` base types**, and `.Kem` / `.Dsa` **mirror their names and
@@ -388,6 +389,43 @@ forbid one.
 
 Full reference, including the per-member porting table:
 <https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html>
+
+---
+
+## Secret handling — `CryptographicOperations`
+
+`using CryptoHives.Foundation.Security.Cryptography;`  (root namespace, not a sub-namespace)
+
+Two operations a compiler is not allowed to optimize away. Both apply across hashing, MAC, KDF,
+cipher and key-format code, so they are listed once here rather than in each section.
+
+```csharp
+CryptographicOperations.ZeroMemory(Span<byte> | byte[] | Span<char> | char[]);
+bool CryptographicOperations.FixedTimeEquals(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right);
+```
+
+**Replace these during a port:**
+
+| Source pattern | Replace with | Why |
+|---|---|---|
+| `Array.Clear(key, 0, key.Length)` on a key, password, PRK or plaintext | `CryptographicOperations.ZeroMemory(key)` | A clear on a buffer nothing reads again is a dead store; a compiler may delete it |
+| `expected.SequenceEqual(actual)` / `==` / a loop that returns early, on a MAC or tag | `CryptographicOperations.FixedTimeEquals(expected, actual)` | An early-exit compare leaks how many leading bytes matched, which recovers the tag one byte at a time |
+| `System.Security.Cryptography.CryptographicOperations.*` | the same call, this namespace | The in-box type does not exist below netstandard2.1, so the original does not compile on net462/net472/netstandard2.0 |
+
+**Two things to know.**
+
+The in-box `ZeroMemory` takes only a `Span<byte>` on **every** .NET version — there has never been a
+`char` overload. A password or a PEM document held in `char` storage has no in-box eraser at all,
+which is the main reason this type exists.
+
+Importing both this namespace and `System.Security.Cryptography` in one file is `CS0104` on the
+shared type name, the same as for `MLKem`/`MLDsa`/`SlhDsa`. Alias one side:
+`using Bcl = System.Security.Cryptography;`.
+
+**Do not invent these — not implemented:** `FixedTimeEqualsMask` exists but is internal;
+there is no `ZeroMemory` overload for other element types, and no `HashData`-style helper here.
+Zeroing cannot reach what you do not own: a `string` can never be erased, and a buffer the runtime
+already copied (an encoding step, a grown `List<T>` or `MemoryStream`) leaves the old copy behind.
 
 ---
 

@@ -7,14 +7,17 @@ using System;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// Erases secret data from memory in a way a compiler is not permitted to remove.
+/// Operations on secret data that a compiler is not permitted to optimize: erasing a buffer,
+/// and comparing two in constant time.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Prefer this over <see cref="Array.Clear(Array, int, int)"/> or <c>Span&lt;T&gt;.Clear()</c>
-/// for anything secret.</b> Clearing a buffer you are about to discard is a <i>dead store</i>: nothing
-/// reads the zeros back, so a compiler or JIT is entitled to delete the write entirely and leave
-/// the key, password or plaintext sitting in memory.
+/// <b>Prefer <see cref="ZeroMemory(Span{byte})"/> over <see cref="Array.Clear(Array, int, int)"/>
+/// or <c>Span&lt;T&gt;.Clear()</c> for anything secret.</b> Clearing a buffer you are about to
+/// discard is a <i>dead store</i>: nothing reads the zeros back, so a compiler or JIT is entitled
+/// to delete the write entirely and leave the key, password or plaintext sitting in memory.
+/// Likewise prefer <see cref="FixedTimeEquals"/> over <c>SequenceEqual</c> when checking a MAC or
+/// a tag, so the comparison cannot leak how many leading bytes matched.
 /// </para>
 /// </remarks>
 public static class CryptographicOperations
@@ -71,17 +74,13 @@ public static class CryptographicOperations
     }
 
     /// <summary>
-    /// Compares two byte spans in constant time to prevent timing attacks.
+    /// Compares two byte spans in constant time, to prevent timing attacks.
     /// </summary>
     /// <param name="left">First span to compare.</param>
     /// <param name="right">Second span to compare.</param>
-    /// <returns>True if the spans are equal, false otherwise.</returns>
-    /// <remarks>
-    /// This method always compares all bytes regardless of where differences occur,
-    /// preventing timing-based side-channel attacks.
-    /// </remarks>
+    /// <returns><see langword="true"/> if the spans are equal, <see langword="false"/> otherwise.</returns>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-    internal static bool FixedTimeEquals(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
+    public static bool FixedTimeEquals(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
     {
         if (left.Length != right.Length)
         {
@@ -104,9 +103,16 @@ public static class CryptographicOperations
     /// <param name="right">Second span to compare. Must have the same length as <paramref name="left"/>.</param>
     /// <returns>-1 (all bits set) if the spans are equal, 0 otherwise.</returns>
     /// <remarks>
+    /// <para>
     /// Unlike <see cref="FixedTimeEquals"/>, the result is a branchless mask suitable for
     /// constant-time selection without converting to <see cref="bool"/>, which would
     /// reintroduce a secret-dependent branch.
+    /// </para>
+    /// <para>
+    /// Internal on purpose: it exists for ML-KEM implicit rejection and similar
+    /// select-without-branching needs inside this library. A caller who wants "are these equal"
+    /// wants <see cref="FixedTimeEquals"/>, which is public.
+    /// </para>
     /// </remarks>
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     internal static int FixedTimeEqualsMask(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
