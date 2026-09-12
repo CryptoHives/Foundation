@@ -32,31 +32,6 @@ of that ratio across every algorithm a library was benchmarked against.
 
 [Open the speed differences page in its own page →](benchmark-trends/speed-diff.html)
 
-## One caveat: thread counts are not uniform
-
-Every CryptoHives implementation in these charts is single-threaded, and so is almost every
-library measured beside it. One is not. `Blake3.Managed` splits a one-shot hash into subtrees
-and hashes them on the thread pool once the input passes roughly 72 KiB, so on a 16-thread
-machine its large-input BLAKE3 rows are several times faster than any single-threaded row —
-that gap is core count, not kernel quality, and it disappears at smaller sizes.
-
-The comparison therefore carries **two** rows for that library:
-
-| Row | What it measures |
-|---|---|
-| `Blake3.Managed` | its default one-shot API — multi-threaded above ~72 KiB |
-| `Blake3.Managed (1 thread)` | the same API with `Hasher.MaxDegreeOfParallelism = 1` |
-
-Read the second against the CryptoHives rows when you want to compare implementations; read
-the first when you want to know what the library does out of the box. Its XOF rows have no
-such pair — that path is single-threaded at every output length.
-
-`CryptoHives.Foundation.Security.Cryptography` deliberately does not do this. A
-<xref:System.Security.Cryptography.HashAlgorithm> that quietly occupies thread-pool threads is
-surprising in a library, and it would have to be conditionally compiled away on the .NET
-Framework and netstandard2.0 targets. Callers who want the parallelism have the input in hand
-and can split it themselves.
-
 ## Memory Footprint
 
 The following tables show the per-instance memory footprint (internal state + buffers) and any
@@ -110,6 +85,17 @@ block by block - those are marked *+ input* and are the only ones whose footprin
 | SHA-1 | 404 B | 64 B | — | uint[5] state + uint[80] W + byte[64] |
 | MD5 | 80 B | 64 B | 768 B | uint[4] state + byte[64] buffer; K/S/G tables |
 | IncrementalParallelHash | 40 B + input | configurable | 3.6 KB | buffers the message in a `MemoryStream`; the underlying SHAKE is created at finalize |
+
+>Every CryptoHives implementation in these charts is single-threaded, and so is almost every
+>library measured beside it. Currently one is not. `Blake3.Managed` splits a one-shot hash into subtrees
+>and hashes them on the thread pool once the input passes roughly 72 KiB.
+>
+>The comparison therefore carries **two** rows for that library:
+>
+>| Row | What it measures |
+>|---|---|
+>| `Blake3.Managed` | its default one-shot API — multi-threaded above ~72 KiB |
+>| `Blake3.Managed (1 thread)` | the same API with `Hasher.MaxDegreeOfParallelism = 1` |
 
 ### Cipher Algorithms
 
