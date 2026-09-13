@@ -4,7 +4,6 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
-using System.Buffers;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -69,14 +68,18 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// </summary>
     private const int BlockSizeWords = BlockSizeBytes / sizeof(uint);
 
+#if NET8_0_OR_GREATER
     /// <summary>
     /// The number of 64-byte compression blocks in one 1024-byte chunk.
     /// </summary>
     /// <remarks>
     /// Every chunk kernel walks exactly this many blocks, with the first carrying
-    /// <see cref="FlagChunkStart"/> and the last <see cref="FlagChunkEnd"/>.
+    /// <see cref="FlagChunkStart"/> and the last <see cref="FlagChunkEnd"/>. Guarded
+    /// because only the SIMD kernels count blocks this way; the scalar path below
+    /// walks the chunk buffer by length instead.
     /// </remarks>
     private const int BlocksPerChunk = ChunkSizeBytes / BlockSizeBytes;
+#endif
 
     // BLAKE3 flags
     internal const uint FlagChunkStart = 1 << 0;
@@ -441,15 +444,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     public void Append<T>(ReadOnlySpan<T> input) where T : struct
     {
         Append(MemoryMarshal.AsBytes(input));
-    }
-
-    /// <inheritdoc/>
-    public void Append<T>(ReadOnlySequence<T> input) where T : struct
-    {
-        foreach (var segment in input)
-        {
-            Append(MemoryMarshal.AsBytes(segment.Span));
-        }
     }
 
     /// <inheritdoc/>

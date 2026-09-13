@@ -4,7 +4,6 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
-using System.Buffers;
 
 /// <summary>
 /// Defines the contract for an incremental hash computation over arbitrary value types.
@@ -67,29 +66,6 @@ internal interface IIncrementalHash<TR> : IDisposable
     /// <exception cref="NotSupportedException">
     /// </exception>
     void Append(ReadOnlySpan<byte> input);
-
-    /// <summary>
-    /// Appends the bytes of all values in <paramref name="input"/> to the hash state,
-    /// iterating over each segment of the sequence in order.
-    /// </summary>
-    /// <typeparam name="T">
-    /// The element type. Must be a value type and must not contain any reference-type fields.
-    /// </typeparam>
-    /// <param name="input">
-    /// The (possibly multi-segment) sequence of values whose memory representation is to be
-    /// appended. Each segment is processed in order; the result is identical to calling
-    /// <see cref="Append{T}(ReadOnlySpan{T})"/> once per segment.
-    /// </param>
-    /// <remarks>
-    /// For a single-segment sequence this is equivalent to calling
-    /// <see cref="Append{T}(ReadOnlySpan{T})"/> directly with
-    /// <see cref="ReadOnlySequence{T}.First"/>.
-    /// Values are read in memory-layout order, including any struct padding bytes.
-    /// Use <see cref="byte"/> when cross-platform or cross-architecture digest equivalence
-    /// is required.
-    /// </remarks>
-    /// <inheritdoc cref="Append{T}(ReadOnlySpan{T})" path="/exception"/>
-    void Append<T>(ReadOnlySequence<T> input) where T : struct;
 
     /// <summary>
     /// Copies the current hash digest into <paramref name="destination"/> without

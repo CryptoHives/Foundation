@@ -124,6 +124,14 @@ internal static class HashAlgorithmPool<T>
         T hasher = _pool.Get();
         try
         {
+            // A single-segment sequence is just a span, and TryComputeHash is virtual:
+            // routing it through AppendData/TryGetHashAndReset would skip whatever
+            // one-shot fast path the algorithm overrides it with (see Blake3).
+            if (source.IsSingleSegment)
+            {
+                return hasher.TryComputeHash(source.First.Span, destination, out bytesWritten);
+            }
+
             hasher.AppendData(source);
             return hasher.TryGetHashAndReset(destination, out bytesWritten);
         }
@@ -145,6 +153,15 @@ internal static class HashAlgorithmPool<T>
         {
             int hashBytes = hasher.HashSize / 8;
             byte[] result = new byte[hashBytes];
+            // A single-segment sequence is just a span, and TryComputeHash is virtual:
+            // routing it through AppendData/TryGetHashAndReset would skip whatever
+            // one-shot fast path the algorithm overrides it with (see Blake3).
+            if (source.IsSingleSegment)
+            {
+                hasher.TryComputeHash(source.First.Span, result, out _);
+                return result;
+            }
+
             hasher.AppendData(source);
             hasher.TryGetHashAndReset(result, out _);
             return result;
@@ -250,6 +267,14 @@ internal static class HashAlgorithmPool
         T hasher = pool.Get();
         try
         {
+            // A single-segment sequence is just a span, and TryComputeHash is virtual:
+            // routing it through AppendData/TryGetHashAndReset would skip whatever
+            // one-shot fast path the algorithm overrides it with (see Blake3).
+            if (source.IsSingleSegment)
+            {
+                return hasher.TryComputeHash(source.First.Span, destination, out bytesWritten);
+            }
+
             hasher.AppendData(source);
             return hasher.TryGetHashAndReset(destination, out bytesWritten);
         }
@@ -275,6 +300,15 @@ internal static class HashAlgorithmPool
         {
             int hashBytes = hasher.HashSize / 8;
             byte[] result = new byte[hashBytes];
+            // A single-segment sequence is just a span, and TryComputeHash is virtual:
+            // routing it through AppendData/TryGetHashAndReset would skip whatever
+            // one-shot fast path the algorithm overrides it with (see Blake3).
+            if (source.IsSingleSegment)
+            {
+                hasher.TryComputeHash(source.First.Span, result, out _);
+                return result;
+            }
+
             hasher.AppendData(source);
             hasher.TryGetHashAndReset(result, out _);
             return result;

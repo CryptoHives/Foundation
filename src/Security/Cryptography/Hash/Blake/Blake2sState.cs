@@ -7,7 +7,6 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
-using System.Buffers;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -114,15 +113,6 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
     public void Append<T>(ReadOnlySpan<T> input) where T : struct
     {
         Append(MemoryMarshal.AsBytes(input));
-    }
-
-    /// <inheritdoc/>
-    public void Append<T>(ReadOnlySequence<T> input) where T : struct
-    {
-        foreach (var segment in input)
-        {
-            Append(segment.Span);
-        }
     }
 
     /// <inheritdoc/>
