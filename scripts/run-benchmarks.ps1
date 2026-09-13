@@ -118,9 +118,9 @@ param(
     [ValidateSet("AVX512", "AVX2", "SSE42", "SSSE3", "AES", "AdvSimd")]
     [string[]]$DisableIsa,
 
-    [Parameter(HelpMessage = "Pin the benchmark process to a single logical CPU (0-based). Windows/Linux only; ignored on macOS")]
-    [ValidateRange(-1, 63)]
-    [int]$PinToCore = -1,
+    [Parameter(HelpMessage = "Pin the benchmark process to these logical CPUs (0-based, comma-separated, e.g. -PinToCore 4,6). Windows/Linux only; ignored on macOS")]
+    [ValidateRange(0, 30)]
+    [int[]]$PinToCore,
 
     [Parameter(HelpMessage = "Power plan for the run: UserPowerPlan (keep the active one), Balanced, PowerSaver, HighPerformance, UltimatePerformance, or a plan GUID. Windows only")]
     [string]$PowerPlan
@@ -153,7 +153,7 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
     Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
     Write-Host "   - DisableIsa — AVX512 | AVX2 | SSE42 | SSSE3 | AES | AdvSimd (comma list) — none  "
-    Write-Host "   - PinToCore — int logical CPU to pin the benchmark process to — -1 (unpinned)  "
+    Write-Host "   - PinToCore — one or more 0-based logical CPUs (e.g. 4 or 4,6) — none (unpinned)  "
     Write-Host "   - PowerPlan — UserPowerPlan | Balanced | PowerSaver | HighPerformance | UltimatePerformance | GUID — none (BDN forces HighPerformance)  "
     Write-Host ""
     exit 0
@@ -647,14 +647,27 @@ if ($PowerPlan) {
 # Affinity is passed to BenchmarkDotNet rather than set on this process, so it lands on
 # the benchmark child processes and is recorded as a job column in the report.
 $affinityMask = $null
-if ($PinToCore -ge 0) {
+if ($PinToCore -and $PinToCore.Count -gt 0) {
     if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6 -and -not $IsLinux) {
         Write-Host "WARNING: -PinToCore is Windows/Linux-only; ignoring." -ForegroundColor Yellow
     }
     else {
-        $affinityMask = [int]([math]::Pow(2, $PinToCore))
-        Write-Host "Pinning the benchmark process to logical CPU $PinToCore (affinity mask $affinityMask)." -ForegroundColor Yellow
-        Write-Host "  This does not reduce throttling - it makes it repeatable, which is what an A/B needs." -ForegroundColor DarkGray
+        # The affinity mask is a bitmask, one bit per logical CPU, so any set of cores can
+        # be expressed. BenchmarkDotNet takes it as a signed 32-bit int, hence cores 0-30.
+        $cores = @($PinToCore | Sort-Object -Unique)
+        $affinityMask = 0
+        foreach ($core in $cores) {
+            $affinityMask = $affinityMask -bor (1 -shl $core)
+        }
+
+        $coreList = $cores -join ', '
+        Write-Host "Pinning the benchmark process to logical CPU $coreList (affinity mask $affinityMask = 0x$('{0:X}' -f $affinityMask))." -ForegroundColor Yellow
+        Write-Host "  Pinning does not reduce throttling - it concentrates it - but it makes it" -ForegroundColor DarkGray
+        Write-Host "  repeatable, which is what an interleaved A/B needs." -ForegroundColor DarkGray
+        if ($cores.Count -eq 1) {
+            Write-Host "  One core also hosts the GC, finalizer and BDN's own engine threads, which then" -ForegroundColor DarkGray
+            Write-Host "  contend with the benchmark. Two cores often measure more cleanly - try -PinToCore $($cores[0]),$($cores[0] + 2)." -ForegroundColor DarkGray
+        }
         Write-Host ""
     }
 }
