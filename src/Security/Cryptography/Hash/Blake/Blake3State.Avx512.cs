@@ -35,6 +35,49 @@ internal unsafe partial struct Blake3State
     internal const int Avx512BatchSizeBytes = ChunksPerAvx512Batch * ChunkSizeBytes;
 
     /// <summary>
+    /// Runs every complete 64-chunk subtree group the remaining input allows, using this
+    /// tier's 16-wide chunk kernel, and returns the advanced offset. See
+    /// <see cref="CompressSubtreeGroupsAvx2"/> for why this is specialised per tier and
+    /// why the loop tests length alone.
+    /// </summary>
+    /// <remarks>
+    /// The reduction is the <em>8</em>-lane <see cref="ReduceChunkCvsToSubtreeCvAvx2"/>,
+    /// not a 16-lane one: reduction width follows the widest available *parent* kernel,
+    /// and there is no <c>CompressParents16Avx512</c>. The two widths are independent.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the first group starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
+    /// <returns><paramref name="offset"/> advanced past every group compressed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CompressSubtreeGroupsAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        do
+        {
+            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerAvx512Batch; b++)
+            {
+                CompressChunksPartialAvx512(
+                    srcPtr + offset,
+                    ChunksPerAvx512Batch,
+                    core->_keyWords,
+                    batchCvs + b * ChunksPerAvx512Batch * KeySizeWords,
+                    _chunkCounter + (ulong)(b * ChunksPerAvx512Batch),
+                    _baseFlags);
+                offset += Avx512BatchSizeBytes;
+            }
+
+            ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+            PushSubtreeCv(core, batchCvs, 6);
+            _chunkCounter += ChunksPerSubtreeGroup;
+        }
+        while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
+
+        return offset;
+    }
+
+    /// <summary>
     /// Compresses <paramref name="chunkCount"/> (9..16) independent, full
     /// (1024-byte) chunks with the 16-way kernel by ignoring the surplus lanes
     /// (lane <c>j</c> is only loaded, and its output only stored, when
@@ -50,6 +93,7 @@ internal unsafe partial struct Blake3State
     /// partial-batch call for the remainder — two 8-wide kernel calls (two
     /// transposes, two reduction passes) instead of the one 16-wide call here.
     /// </remarks>
+
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialAvx512(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)

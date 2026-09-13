@@ -136,7 +136,7 @@ internal unsafe partial struct Blake3State
     /// unroll that loop or promote the loaded (pre-transpose) vectors to
     /// registers — they round-trip through the <c>m</c> stackalloc buffer
     /// instead. This method exists purely to give the hot always-8 callers
-    /// (the main batch loop and <see cref="CompressSubtreeGroup"/>, both of
+    /// (the main batch loop and each tier's <c>CompressSubtreeGroups*</c>, both of
     /// which never call the partial kernel with anything but exactly 8) a
     /// body with no runtime-variable trip count at all: every load is a named
     /// local at a compile-time-constant offset, transposed directly from
@@ -149,7 +149,7 @@ internal unsafe partial struct Blake3State
     /// <para>
     /// <paramref name="chunkCount"/> exists only so this matches the
     /// tier-kernel function-pointer signature <see cref="CommitPartialBatch"/>
-    /// and <see cref="CompressSubtreeGroup"/> dispatch through; it is always 8
+    /// and each tier's <c>CompressSubtreeGroups*</c> dispatch through; it is always 8
     /// and is otherwise unused.
     /// </para>
     /// </remarks>
@@ -413,6 +413,59 @@ internal unsafe partial struct Blake3State
     internal const int ChunksPerSubtreeGroup = 64;
 
     /// <summary>
+    /// Runs every complete 64-chunk subtree group the remaining input allows, using this
+    /// tier's 8-wide chunk kernel and 8-lane parent reduction, and returns the advanced
+    /// offset.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Specialised per tier rather than parameterised on the kernel: with the kernel, the
+    /// reduction and the batch width all fixed here, the batch loop has a constant trip
+    /// count (<c>64 / 8</c>), the byte stride is a constant, and both calls are direct.
+    /// The previous shared version took the kernel and the reduction as function pointers,
+    /// which leaves the trip count opaque and the calls indirect.
+    /// </para>
+    /// <para>
+    /// The caller's entry guard tests 64-chunk counter alignment *and* remaining length,
+    /// but only the length can change while looping: adding exactly
+    /// <see cref="ChunksPerSubtreeGroup"/> to a counter that is already a multiple of it
+    /// leaves it one. So the alignment test belongs outside as a one-time <c>if</c>, and
+    /// the loop here re-tests length alone.
+    /// </para>
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the first group starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
+    /// <returns><paramref name="offset"/> advanced past every group compressed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CompressSubtreeGroupsAvx2(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        do
+        {
+            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerAvx2Batch; b++)
+            {
+                CompressChunks8Avx2(
+                    srcPtr + offset,
+                    ChunksPerAvx2Batch,
+                    core->_keyWords,
+                    batchCvs + b * ChunksPerAvx2Batch * KeySizeWords,
+                    _chunkCounter + (ulong)(b * ChunksPerAvx2Batch),
+                    _baseFlags);
+                offset += Avx2BatchSizeBytes;
+            }
+
+            ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+            PushSubtreeCv(core, batchCvs, 6);
+            _chunkCounter += ChunksPerSubtreeGroup;
+        }
+        while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
+
+        return offset;
+    }
+
+    /// <summary>
     /// Reduces <paramref name="chunkCount"/> (a power of two: 8, 16 or 64)
     /// contiguous chunk CVs to a single subtree CV at <paramref name="cvs"/>[0..8)
     /// using wide parent compressions. Levels with at least 8 parents use fully
@@ -426,6 +479,7 @@ internal unsafe partial struct Blake3State
     /// writes CV slots [g·8, g·8+8) while reading child slots [g·16, g·16+16),
     /// which never overlap for g ≥ 1, and g = 0 loads everything before storing.
     /// </remarks>
+
     /// <param name="core">Pointer to the instance; only the final 2 → 1 merge needs it.</param>
     /// <param name="cvs">The chunk CVs to reduce, in place; receives the subtree CV at [0..8).</param>
     /// <param name="key">The 8-word key/IV words for this hash.</param>

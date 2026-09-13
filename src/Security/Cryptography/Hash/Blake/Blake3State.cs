@@ -456,12 +456,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         // 64-chunk subtree groups: 4 batches reduce to one CV,
                         // one tree push per 64 KB. Strictly-greater guard keeps
                         // the group clear of the message tail.
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                        // Alignment is loop-invariant once true (adding exactly 64 to a
+                        // multiple of 64 leaves one), so it is tested once here and the
+                        // loop over further groups lives inside.
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                             length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx512Batch,
-                                Avx512BatchSizeBytes, batchCvs, &CompressChunksPartialAvx512,
-                                &ReduceChunkCvsToSubtreeCvAvx2);
+                            offset = CompressSubtreeGroupsAvx512(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Avx512BatchSizeBytes)
@@ -524,12 +525,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     if (length - offset >= Avx2BatchSizeBytes)
                     {
                         // 64-chunk subtree groups 
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                               length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx2Batch,
-                                Avx2BatchSizeBytes, batchCvs, &CompressChunks8Avx2,
-                                &ReduceChunkCvsToSubtreeCvAvx2);
+                            offset = CompressSubtreeGroupsAvx2(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Avx2BatchSizeBytes)
@@ -596,12 +595,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     {
                         // 64-chunk subtree groups: 16 batches reduce to one CV,
                         // so the tree only sees one push per 64 KB instead of 64.
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                             length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerSsse3Batch,
-                                Ssse3BatchSizeBytes, batchCvs, &CompressChunksPartial4Ssse3,
-                                &ReduceChunkCvsToSubtreeCvSsse3);
+                            offset = CompressSubtreeGroupsSsse3(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Ssse3BatchSizeBytes)
@@ -656,12 +653,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     if (length - offset >= NeonBatchSizeBytes)
                     {
                         // 64-chunk subtree groups
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                               length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerNeonBatch,
-                                NeonBatchSizeBytes, batchCvs, &CompressChunksPartialNeon,
-                                &ReduceChunkCvsToSubtreeCvNeon);
+                            offset = CompressSubtreeGroupsNeon(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= NeonBatchSizeBytes)
@@ -810,7 +805,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <summary>
     /// Copies a reduced subtree CV onto the tree stack and pushes it —
     /// the shared tail of every "aligned subtree" branch across the SIMD
-    /// batch loops and <see cref="CompressSubtreeGroup"/>.
+    /// batch loops and each tier's <c>CompressSubtreeGroups*</c>.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void PushSubtreeCv(Blake3State* core, uint* cvs, int level)
@@ -820,55 +815,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             cvs,
             KeySizeWords * (uint)sizeof(uint));
         AddSubtreeToTree(core, level);
-    }
-
-    /// <summary>
-    /// Shared body for every SIMD tier's 64-chunk subtree-group loop: runs
-    /// <c>ChunksPerSubtreeGroup / batchWidth</c> kernel batches into
-    /// <paramref name="batchCvs"/>, reduces all 64 CVs to one subtree CV, and
-    /// pushes it — so the reduction and tree push are paid once per 64 KB.
-    /// </summary>
-    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
-    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
-    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the group starts.</param>
-    /// <param name="batchWidth">The tier's chunk-parallel width (4, 8, or 16).</param>
-    /// <param name="batchSizeBytes"><c>batchWidth * ChunkSizeBytes</c>.</param>
-    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
-    /// <param name="kernel">The tier-specific partial-batch compression kernel to call.</param>
-    /// <param name="reduce">
-    /// The tier-specific 64 → 1 CV reduction. Passed in rather than derived here: every
-    /// caller already knows its own tier from the <paramref name="kernel"/> it supplies, so
-    /// re-deriving it from <c>_simdSupport</c> was both a redundant runtime branch and an
-    /// invisible coupling — the AVX-512 caller, for instance, pairs a 16-wide kernel with the
-    /// 8-lane reduce, which was correct but impossible to see at the call site. Note the two
-    /// widths need not match: the reduce width is a property of the widest *parent* kernel
-    /// the tier has, not of the chunk kernel.
-    /// </param>
-    /// <returns><paramref name="offset"/> advanced by <c>ChunksPerSubtreeGroup * ChunkSizeBytes</c>.</returns>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private int CompressSubtreeGroup(
-        Blake3State* core, byte* srcPtr, int offset, int batchWidth, int batchSizeBytes,
-        uint* batchCvs,
-        delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel,
-        delegate*<Blake3State*, uint*, uint*, int, uint, void> reduce)
-    {
-        for (int b = 0; b < ChunksPerSubtreeGroup / batchWidth; b++)
-        {
-            kernel(
-                srcPtr + offset,
-                batchWidth,
-                core->_keyWords,
-                batchCvs + b * batchWidth * KeySizeWords,
-                _chunkCounter + (ulong)(b * batchWidth),
-                _baseFlags);
-            offset += batchSizeBytes;
-        }
-
-        reduce(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-
-        PushSubtreeCv(core, batchCvs, 6);
-        _chunkCounter += ChunksPerSubtreeGroup;
-        return offset;
     }
 #endif
 

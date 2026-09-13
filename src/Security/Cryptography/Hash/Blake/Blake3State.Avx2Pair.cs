@@ -56,7 +56,7 @@ internal unsafe partial struct Blake3State
     /// </summary>
     /// <param name="source">The two chunks, contiguous: chunk A at offset 0, chunk B at 1024.</param>
     /// <param name="chunkCount">Always 2; present so this matches the tier-kernel function-pointer
-    /// signature <see cref="CommitPartialBatch"/> and <see cref="CompressSubtreeGroup"/> dispatch through.</param>
+    /// signature <see cref="CommitPartialBatch"/> and each tier's <c>CompressSubtreeGroups*</c> dispatch through.</param>
     /// <param name="key">The 8-word key/IV words for this hash.</param>
     /// <param name="outCvs">Receives two 8-word CVs, chunk-major.</param>
     /// <param name="baseCounter">Chunk counter of chunk A; chunk B is <paramref name="baseCounter"/> + 1.</param>

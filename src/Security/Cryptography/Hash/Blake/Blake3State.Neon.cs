@@ -313,6 +313,44 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
+    /// Runs every complete 64-chunk subtree group the remaining input allows, using this
+    /// tier's 4-wide chunk kernel and 4-lane parent reduction, and returns the advanced
+    /// offset. See <see cref="CompressSubtreeGroupsAvx2"/> for why this is specialised per
+    /// tier and why the loop tests length alone.
+    /// </summary>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the first group starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
+    /// <returns><paramref name="offset"/> advanced past every group compressed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CompressSubtreeGroupsNeon(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        do
+        {
+            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerNeonBatch; b++)
+            {
+                CompressChunksPartialNeon(
+                    srcPtr + offset,
+                    ChunksPerNeonBatch,
+                    core->_keyWords,
+                    batchCvs + b * ChunksPerNeonBatch * KeySizeWords,
+                    _chunkCounter + (ulong)(b * ChunksPerNeonBatch),
+                    _baseFlags);
+                offset += NeonBatchSizeBytes;
+            }
+
+            ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+            PushSubtreeCv(core, batchCvs, 6);
+            _chunkCounter += ChunksPerSubtreeGroup;
+        }
+        while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
+
+        return offset;
+    }
+
+    /// <summary>
     /// Reduces <paramref name="chunkCount"/> (a power of two: 4, 16 or 64)
     /// contiguous chunk CVs to a single subtree CV at <paramref name="cvs"/>[0..8)
     /// using wide parent compressions, at NEON's 4-lane width. Mirrors
@@ -323,6 +361,7 @@ internal unsafe partial struct Blake3State
     /// <paramref name="chunkCount"/> — see <see cref="CompressParents4Neon"/>
     /// on surplus lanes.
     /// </remarks>
+
     /// <param name="core">Pointer to the instance; only the final 2 → 1 merge needs it.</param>
     /// <param name="cvs">The chunk CVs to reduce, in place; receives the subtree CV at [0..8).</param>
     /// <param name="key">The 8-word key/IV words for this hash.</param>
