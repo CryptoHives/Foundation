@@ -323,7 +323,13 @@ internal unsafe partial struct Blake3State
     /// <paramref name="chunkCount"/> — see <see cref="CompressParents4Neon"/>
     /// on surplus lanes.
     /// </remarks>
-    private void ReduceChunkCvsToSubtreeCvNeon(uint* cvs, uint* key, int chunkCount, uint baseFlags)
+    /// <param name="core">Pointer to the instance; only the final 2 → 1 merge needs it.</param>
+    /// <param name="cvs">The chunk CVs to reduce, in place; receives the subtree CV at [0..8).</param>
+    /// <param name="key">The 8-word key/IV words for this hash.</param>
+    /// <param name="chunkCount">Number of chunk CVs to reduce; a power of two.</param>
+    /// <param name="baseFlags">Mode flags for the parent compressions.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void ReduceChunkCvsToSubtreeCvNeon(Blake3State* core, uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
         // Full-width levels: every 4-parent group is fully populated.
         while (chunkCount >= 8)
@@ -338,7 +344,7 @@ internal unsafe partial struct Blake3State
         }
 
         CompressParents4Neon(cvs, key, cvs, baseFlags);   // 4 -> 2 (upper 2 lanes ignored)
-        ComputeParentCv(cvs, key, cvs);                    // 2 -> 1
+        core->ComputeParentCv(cvs, key, cvs);             // 2 -> 1
     }
 
     // Mirrors Blake3State.Compress(uint*, uint*) exactly (same message schedule,

@@ -460,7 +460,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx512Batch,
-                                Avx512BatchSizeBytes, batchCvs, &CompressChunksPartialAvx512);
+                                Avx512BatchSizeBytes, batchCvs, &CompressChunksPartialAvx512,
+                                &ReduceChunkCvsToSubtreeCvAvx2);
                         }
 
                         while (length - offset >= Avx512BatchSizeBytes)
@@ -474,7 +475,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 // Complete, aligned 16-chunk subtree, not the
                                 // tail: reduce and push one tree node instead
                                 // of 16 serial single-chunk commits.
-                                ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
+                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, 4);
                                 _chunkCounter += ChunksPerAvx512Batch;
                             }
@@ -489,7 +490,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                     // them wide; only the last 7 commit serially. The
                                     // in-place reduction never writes past the first
                                     // 8 CV slots, so CVs 8..15 stay intact.
-                                    ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
+                                    ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
                                     PushSubtreeCv(core, batchCvs, 3);
                                     _chunkCounter += ChunksPerAvx2Batch;
                                     firstChunk = ChunksPerAvx2Batch;
@@ -527,7 +528,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx2Batch,
-                                Avx2BatchSizeBytes, batchCvs, &CompressChunks8Avx2);
+                                Avx2BatchSizeBytes, batchCvs, &CompressChunks8Avx2,
+                                &ReduceChunkCvsToSubtreeCvAvx2);
                         }
 
                         while (length - offset >= Avx2BatchSizeBytes)
@@ -545,7 +547,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx2Batch - 1)) == 0)
                             {
                                 // Complete aligned 8-chunk subtree, not the tail.
-                                ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
+                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, 3);
                                 _chunkCounter += ChunksPerAvx2Batch;
                             }
@@ -598,7 +600,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerSsse3Batch,
-                                Ssse3BatchSizeBytes, batchCvs, &CompressChunksPartial4Ssse3);
+                                Ssse3BatchSizeBytes, batchCvs, &CompressChunksPartial4Ssse3,
+                                &ReduceChunkCvsToSubtreeCvSsse3);
                         }
 
                         while (length - offset >= Ssse3BatchSizeBytes)
@@ -617,7 +620,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             {
                                 // Complete aligned 4-chunk subtree, not the tail:
                                 // fold the four CVs into one before pushing.
-                                ReduceChunkCvsToSubtreeCvSsse3(batchCvs, core->_keyWords, ChunksPerSsse3Batch, _baseFlags);
+                                ReduceChunkCvsToSubtreeCvSsse3(core, batchCvs, core->_keyWords, ChunksPerSsse3Batch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, 2);
                                 _chunkCounter += ChunksPerSsse3Batch;
                                 offset += Ssse3BatchSizeBytes;
@@ -657,7 +660,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerNeonBatch,
-                                NeonBatchSizeBytes, batchCvs, &CompressChunksPartialNeon);
+                                NeonBatchSizeBytes, batchCvs, &CompressChunksPartialNeon,
+                                &ReduceChunkCvsToSubtreeCvNeon);
                         }
 
                         while (length - offset >= NeonBatchSizeBytes)
@@ -669,7 +673,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerNeonBatch - 1)) == 0)
                             {
                                 // Complete aligned 4-chunk subtree, not the tail.
-                                ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
+                                ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, 2);
                                 _chunkCounter += ChunksPerNeonBatch;
                             }
@@ -831,11 +835,22 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <param name="batchSizeBytes"><c>batchWidth * ChunkSizeBytes</c>.</param>
     /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
     /// <param name="kernel">The tier-specific partial-batch compression kernel to call.</param>
+    /// <param name="reduce">
+    /// The tier-specific 64 → 1 CV reduction. Passed in rather than derived here: every
+    /// caller already knows its own tier from the <paramref name="kernel"/> it supplies, so
+    /// re-deriving it from <c>_simdSupport</c> was both a redundant runtime branch and an
+    /// invisible coupling — the AVX-512 caller, for instance, pairs a 16-wide kernel with the
+    /// 8-lane reduce, which was correct but impossible to see at the call site. Note the two
+    /// widths need not match: the reduce width is a property of the widest *parent* kernel
+    /// the tier has, not of the chunk kernel.
+    /// </param>
     /// <returns><paramref name="offset"/> advanced by <c>ChunksPerSubtreeGroup * ChunkSizeBytes</c>.</returns>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private int CompressSubtreeGroup(
         Blake3State* core, byte* srcPtr, int offset, int batchWidth, int batchSizeBytes,
-        uint* batchCvs, delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel)
+        uint* batchCvs,
+        delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel,
+        delegate*<Blake3State*, uint*, uint*, int, uint, void> reduce)
     {
         for (int b = 0; b < ChunksPerSubtreeGroup / batchWidth; b++)
         {
@@ -849,22 +864,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             offset += batchSizeBytes;
         }
 
-        // hardcoding, so the JIT can remove
-        if (AdvSimd.Arm64.IsSupported)
-        {
-            ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-        }
-        else if (Ssse3.IsSupported && (_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) == 0)
-        {
-            // SSSE3 tier: the 8-lane reduce needs Vector256, so use the 4-lane
-            // one. Runs once per 64-chunk group (64 KB of input), so the extra
-            // runtime check here is far below the noise floor.
-            ReduceChunkCvsToSubtreeCvSsse3(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-        }
-        else
-        {
-            ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-        }
+        reduce(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
 
         PushSubtreeCv(core, batchCvs, 6);
         _chunkCounter += ChunksPerSubtreeGroup;

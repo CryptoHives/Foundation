@@ -426,8 +426,13 @@ internal unsafe partial struct Blake3State
     /// writes CV slots [g·8, g·8+8) while reading child slots [g·16, g·16+16),
     /// which never overlap for g ≥ 1, and g = 0 loads everything before storing.
     /// </remarks>
+    /// <param name="core">Pointer to the instance; only the final 2 → 1 merge needs it.</param>
+    /// <param name="cvs">The chunk CVs to reduce, in place; receives the subtree CV at [0..8).</param>
+    /// <param name="key">The 8-word key/IV words for this hash.</param>
+    /// <param name="chunkCount">Number of chunk CVs to reduce; a power of two.</param>
+    /// <param name="baseFlags">Mode flags for the parent compressions.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void ReduceChunkCvsToSubtreeCvAvx2(uint* cvs, uint* key, int chunkCount, uint baseFlags)
+    private static void ReduceChunkCvsToSubtreeCvAvx2(Blake3State* core, uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
         // Full-width levels: every 8-parent group is fully populated.
         while (chunkCount >= 16)
@@ -443,7 +448,7 @@ internal unsafe partial struct Blake3State
 
         CompressParents8Avx2(cvs, key, cvs, baseFlags);        // 8 -> 4 (upper 4 lanes ignored)
         CompressParents8Avx2(cvs, key, cvs, baseFlags);        // 4 -> 2 (upper 6 lanes ignored)
-        ComputeParentCv(cvs, key, cvs);                        // 2 -> 1
+        core->ComputeParentCv(cvs, key, cvs);                  // 2 -> 1
     }
 
     // Mirrors Blake3State.Compress(uint*, uint*) exactly (same message schedule,
