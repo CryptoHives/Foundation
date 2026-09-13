@@ -446,13 +446,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             if (_chunkBufferLength == 0)
             {
                 // Helps to not JIT this branch on Arm
-                if (Avx512F.IsSupported)
+                if (Avx512F.IsSupported && ((_simdSupport & SimdSupport.Avx512F) != 0))
                 {
                     // Groups of 16 independent chunks compressed together. A
                     // batch that exactly drains the input holds back its last
                     // chunk as pending instead of committing it (see FinalizeRoot).
-                    if ((_simdSupport & SimdSupport.Avx512F) != 0 &&
-                        length - offset >= Avx512BatchSizeBytes)
+                    if (length - offset >= Avx512BatchSizeBytes)
                     {
                         // 64-chunk subtree groups: 4 batches reduce to one CV,
                         // one tree push per 64 KB. Strictly-greater guard keeps
@@ -510,19 +509,18 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     }
 
                     // AVX-512 partial batch: 9..15 chunks via the 16-way kernel
-                    if ((_simdSupport & SimdSupport.Avx512F) != 0 &&
-                        length - offset >= (ChunksPerAvx2Batch + 1) * ChunkSizeBytes)
+                    if (length - offset >= (ChunksPerAvx2Batch + 1) * ChunkSizeBytes)
                     {
                         offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialAvx512);
                     }
                 }
 
                 // Helps to not JIT this branch if unsupported
-                if (Avx2.IsSupported || Avx512F.IsSupported)
+                if ((Avx2.IsSupported || Avx512F.IsSupported) &&
+                    (_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
                 {
                     // AVX2 8-chunk batches: primary path on AVX2-only hardware
-                    if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
-                        length - offset >= Avx2BatchSizeBytes)
+                    if (length - offset >= Avx2BatchSizeBytes)
                     {
                         // 64-chunk subtree groups 
                         while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
@@ -569,8 +567,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // Partial batch: 2..7 chunks via the widest kernel that does not
                     // waste more lanes than it fills. Counters may be unaligned here,
                     // so CVs commit per-chunk.
-                    if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
-                        length - offset >= 2 * ChunkSizeBytes)
+                    if (length - offset >= 2 * ChunkSizeBytes)
                     {
                         // At most 7 chunks remain. Exactly 2 goes to the row-oriented
                         // pair kernel — a transposed kernel run half-empty is no faster
@@ -586,15 +583,14 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 }
 
                 // Helps to not JIT this branch where SSSE3 is unavailable
-                if (Ssse3.IsSupported)
+                if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
                 {
                     // SSSE3 4-chunk batches.
                     //
                     // Unlike AVX2 and NEON this tier reduces four CVs per subtree
                     // rather than eight, using CompressParents4Ssse3 — the 8-lane
                     // reduce needs Vector256 and is unavailable here.
-                    if ((_simdSupport & SimdSupport.Ssse3) != 0 &&
-                        length - offset >= Ssse3BatchSizeBytes)
+                    if (length - offset >= Ssse3BatchSizeBytes)
                     {
                         // 64-chunk subtree groups: 16 batches reduce to one CV,
                         // so the tree only sees one push per 64 KB instead of 64.
@@ -643,20 +639,18 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // SSSE3 partial batch: exactly 3 chunks via the 4-way kernel with
                     // one ignored lane, mirroring the NEON tier's threshold (2 chunks
                     // did not repay the transpose cost there either).
-                    if ((_simdSupport & SimdSupport.Ssse3) != 0 &&
-                        length - offset >= 3 * ChunkSizeBytes)
+                    if (length - offset >= 3 * ChunkSizeBytes)
                     {
                         offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartial4Ssse3);
                     }
                 }
 
-                // Helps to not JIT this branch on Arm
-                if (AdvSimd.Arm64.IsSupported)
+                // Helps to not JIT this branch on x64
+                if (AdvSimd.Arm64.IsSupported && ((_simdSupport & SimdSupport.Neon) != 0))
                 {
                     // NEON 4-chunk batches: same subtree-group strategy as AVX2
                     // above, one register width down (4 lanes vs. 8).
-                    if ((_simdSupport & SimdSupport.Neon) != 0 &&
-                        length - offset >= NeonBatchSizeBytes)
+                    if (length - offset >= NeonBatchSizeBytes)
                     {
                         // 64-chunk subtree groups
                         while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
@@ -698,8 +692,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // with one ignored lane. The 2-chunk case benchmarked
                     // slower than scalar (fixed transpose/spill cost not repaid
                     // by 2 chunks), so it falls through to the scalar loop instead.
-                    if ((_simdSupport & SimdSupport.Neon) != 0 &&
-                        length - offset >= 3 * ChunkSizeBytes)
+                    if (length - offset >= 3 * ChunkSizeBytes)
                     {
                         // At most 3 chunks remain here (3,072..4,095 bytes).
                         offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialNeon);
