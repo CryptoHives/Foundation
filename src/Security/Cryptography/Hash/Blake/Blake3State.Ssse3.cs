@@ -172,15 +172,17 @@ internal unsafe partial struct Blake3State
             (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32));
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
 
-        Vector128<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
-        cv0 = Vector128.Create(key[0]);
-        cv1 = Vector128.Create(key[1]);
-        cv2 = Vector128.Create(key[2]);
-        cv3 = Vector128.Create(key[3]);
-        cv4 = Vector128.Create(key[4]);
-        cv5 = Vector128.Create(key[5]);
-        cv6 = Vector128.Create(key[6]);
-        cv7 = Vector128.Create(key[7]);
+        // v0..v7 *are* the running chaining value — see CompressChunks8Avx2 for
+        // why the separate cv bank is pure shuttling. It matters most here: with
+        // only 16 XMM registers the bank was spilled and reloaded every block.
+        var v0 = Vector128.Create(key[0]);
+        var v1 = Vector128.Create(key[1]);
+        var v2 = Vector128.Create(key[2]);
+        var v3 = Vector128.Create(key[3]);
+        var v4 = Vector128.Create(key[4]);
+        var v5 = Vector128.Create(key[5]);
+        var v6 = Vector128.Create(key[6]);
+        var v7 = Vector128.Create(key[7]);
 
         var m = stackalloc Vector128<uint>[16];
         for (int blockIdx = 0; blockIdx < 16; blockIdx++)
@@ -202,8 +204,6 @@ internal unsafe partial struct Blake3State
 
             uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
 
-            var v0 = cv0; var v1 = cv1; var v2 = cv2; var v3 = cv3;
-            var v4 = cv4; var v5 = cv5; var v6 = cv6; var v7 = cv7;
             var v8 = Vector128.Create(IV0); var v9 = Vector128.Create(IV1);
             var v10 = Vector128.Create(IV2); var v11 = Vector128.Create(IV3);
             var v12 = counterLow;
@@ -216,14 +216,14 @@ internal unsafe partial struct Blake3State
                 ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
                 m);
 
-            cv0 = Sse2.Xor(v0, v8);
-            cv1 = Sse2.Xor(v1, v9);
-            cv2 = Sse2.Xor(v2, v10);
-            cv3 = Sse2.Xor(v3, v11);
-            cv4 = Sse2.Xor(v4, v12);
-            cv5 = Sse2.Xor(v5, v13);
-            cv6 = Sse2.Xor(v6, v14);
-            cv7 = Sse2.Xor(v7, v15);
+            v0 = Sse2.Xor(v0, v8);
+            v1 = Sse2.Xor(v1, v9);
+            v2 = Sse2.Xor(v2, v10);
+            v3 = Sse2.Xor(v3, v11);
+            v4 = Sse2.Xor(v4, v12);
+            v5 = Sse2.Xor(v5, v13);
+            v6 = Sse2.Xor(v6, v14);
+            v7 = Sse2.Xor(v7, v15);
         }
 
         // Un-transpose the CVs (word-major -> chunk-major); transpose is its
@@ -231,10 +231,10 @@ internal unsafe partial struct Blake3State
         // converted the message loads to word-major restores chunk-major
         // here, in two 4-word halves (cv0-3, cv4-7) instead of the 8-lane
         // kernel's single 8-word transpose.
-        m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
-        Transpose4x4(m);
-        m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
-        Transpose4x4(m + 4);
+        Transpose4x4(ref v0, ref v1, ref v2, ref v3);
+        Transpose4x4(ref v4, ref v5, ref v6, ref v7);
+        m[0] = v0; m[1] = v1; m[2] = v2; m[3] = v3;
+        m[4] = v4; m[5] = v5; m[6] = v6; m[7] = v7;
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
         {
             Sse2.Store(outCvs + chunkIdx * 8, m[chunkIdx]);

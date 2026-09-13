@@ -63,15 +63,16 @@ internal unsafe partial struct Blake3State
             (uint)((baseCounter + 6) >> 32), (uint)((baseCounter + 7) >> 32));
         var blockLenVec = Vector256.Create((uint)BlockSizeBytes);
 
-        Vector256<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
-        cv0 = Vector256.Create(key[0]);
-        cv1 = Vector256.Create(key[1]);
-        cv2 = Vector256.Create(key[2]);
-        cv3 = Vector256.Create(key[3]);
-        cv4 = Vector256.Create(key[4]);
-        cv5 = Vector256.Create(key[5]);
-        cv6 = Vector256.Create(key[6]);
-        cv7 = Vector256.Create(key[7]);
+        // v0..v7 *are* the running chaining value — see CompressChunks8Avx2 for
+        // why the separate cv bank is pure shuttling.
+        var v0 = Vector256.Create(key[0]);
+        var v1 = Vector256.Create(key[1]);
+        var v2 = Vector256.Create(key[2]);
+        var v3 = Vector256.Create(key[3]);
+        var v4 = Vector256.Create(key[4]);
+        var v5 = Vector256.Create(key[5]);
+        var v6 = Vector256.Create(key[6]);
+        var v7 = Vector256.Create(key[7]);
 
         var m = stackalloc Vector256<uint>[16];
         for (int blockIdx = 0; blockIdx < 16; blockIdx++)
@@ -88,8 +89,6 @@ internal unsafe partial struct Blake3State
             Transpose8x8(m + 8);
             uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
 
-            var v0 = cv0; var v1 = cv1; var v2 = cv2; var v3 = cv3;
-            var v4 = cv4; var v5 = cv5; var v6 = cv6; var v7 = cv7;
             var v8 = Vector256.Create(IV0); var v9 = Vector256.Create(IV1);
             var v10 = Vector256.Create(IV2); var v11 = Vector256.Create(IV3);
             var v12 = counterLow;
@@ -102,20 +101,21 @@ internal unsafe partial struct Blake3State
                 ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
                 m);
 
-            cv0 = Avx2.Xor(v0, v8);
-            cv1 = Avx2.Xor(v1, v9);
-            cv2 = Avx2.Xor(v2, v10);
-            cv3 = Avx2.Xor(v3, v11);
-            cv4 = Avx2.Xor(v4, v12);
-            cv5 = Avx2.Xor(v5, v13);
-            cv6 = Avx2.Xor(v6, v14);
-            cv7 = Avx2.Xor(v7, v15);
+            v0 = Avx2.Xor(v0, v8);
+            v1 = Avx2.Xor(v1, v9);
+            v2 = Avx2.Xor(v2, v10);
+            v3 = Avx2.Xor(v3, v11);
+            v4 = Avx2.Xor(v4, v12);
+            v5 = Avx2.Xor(v5, v13);
+            v6 = Avx2.Xor(v6, v14);
+            v7 = Avx2.Xor(v7, v15);
         }
 
-        m[0] = cv0; m[1] = cv1; m[2] = cv2; m[3] = cv3;
-        m[4] = cv4; m[5] = cv5; m[6] = cv6; m[7] = cv7;
-
-        Transpose8x8(m);
+        // Un-transpose straight out of the registers. Unlike the fixed-8 kernel
+        // this cannot write dst directly: only chunkCount of the eight lanes
+        // hold real chunks, so the transposed CVs still land in m and the
+        // bounded loop copies out just the live ones.
+        Transpose8x8Into(v0, v1, v2, v3, v4, v5, v6, v7, m);
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
         {
             Avx.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
