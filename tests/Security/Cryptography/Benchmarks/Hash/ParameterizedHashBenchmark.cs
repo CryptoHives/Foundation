@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 
 /// <summary>
 /// Base class for parameterized hash algorithm benchmarks.
@@ -24,6 +25,16 @@ using System.Security.Cryptography;
 /// </remarks>
 public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
 {
+    // HashAlgorithm is System.Security.Cryptography.HashAlgorithm, because eight registry
+    // rows are in-box implementations and several third-party adapters derive from it
+    // directly. Its TryComputeHash is NOT virtual and always runs the streaming
+    // HashCore/HashFinal path, so calling it through that type would measure every
+    // implementation's slow path - including Blake3.Managed's, whose multi-threaded
+    // one-shot then never runs. Only CH.Hash.HashAlgorithm exposes the virtual that
+    // implementations override with their best single-call API, so it is resolved once
+    // here; rows that are not ours fall back to the in-box method, which is all they have.
+    private CH.Hash.HashAlgorithm? _cryptoHivesHash;
+
     [ParamsSource(nameof(Sizes))]
     public DataSize TestDataSize { get; set; } = DataSize.K8;
 
@@ -44,6 +55,7 @@ public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
     {
         Bytes = TestDataSize.Bytes;
         HashAlgorithm = TestHashAlgorithm.Create();
+        _cryptoHivesHash = HashAlgorithm as CH.Hash.HashAlgorithm;
         base.GlobalSetup();
     }
 
@@ -76,7 +88,11 @@ public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
 #if NET5_0_OR_GREATER
     public void TryComputeHash()
     {
-        if (HashAlgorithm.TryComputeHash(_inputData, _outputData, out int bytesWritten))
+        bool written = _cryptoHivesHash is not null
+            ? _cryptoHivesHash.TryComputeHash(_inputData, _outputData, out int bytesWritten)
+            : HashAlgorithm.TryComputeHash(_inputData, _outputData, out bytesWritten);
+
+        if (written)
         {
             _outputSize = bytesWritten;
         }
