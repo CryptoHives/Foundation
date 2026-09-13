@@ -36,6 +36,13 @@ internal unsafe partial struct Blake3State
     internal const int Avx512BatchSizeBytes = ChunksPerAvx512Batch * ChunkSizeBytes;
 
     /// <summary>
+    /// Tree level of one aligned 16-chunk batch: a subtree of 2^level chunks, which is what
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="ChunksPerAvx512Batch"/>).
+    /// </summary>
+    internal const int Avx512BatchLevel = 4;
+
+
+    /// <summary>
     /// Runs every complete 64-chunk subtree group the remaining input allows, using this
     /// tier's 16-wide chunk kernel, and returns the advanced offset. See
     /// <see cref="CompressSubtreeGroupsAvx2"/> for why this is specialised per tier and
@@ -70,7 +77,7 @@ internal unsafe partial struct Blake3State
             }
 
             ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-            PushSubtreeCv(core, batchCvs, 6);
+            PushSubtreeCv(core, batchCvs, SubtreeGroupLevel);
             _chunkCounter += ChunksPerSubtreeGroup;
         }
         while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
@@ -129,10 +136,13 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialAvx512(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        var scratch = stackalloc Vector512<uint>[26];
+        // One allocation laid out as three regions: BlockSizeWords message vectors,
+        // KeySizeWords chaining-value vectors, then the low/high counter pair.
+        const int CounterVectors = 2;
+        var scratch = stackalloc Vector512<uint>[BlockSizeWords + KeySizeWords + CounterVectors];
         Vector512<uint>* m = scratch;
-        Vector512<uint>* cv = scratch + 16;
-        Vector512<uint>* counters = scratch + 24;
+        Vector512<uint>* cv = scratch + BlockSizeWords;
+        Vector512<uint>* counters = scratch + BlockSizeWords + KeySizeWords;
 
         counters[0] = Vector512.Create(
             (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3),
@@ -145,7 +155,7 @@ internal unsafe partial struct Blake3State
             (uint)((baseCounter + 8) >> 32), (uint)((baseCounter + 9) >> 32), (uint)((baseCounter + 10) >> 32), (uint)((baseCounter + 11) >> 32),
             (uint)((baseCounter + 12) >> 32), (uint)((baseCounter + 13) >> 32), (uint)((baseCounter + 14) >> 32), (uint)((baseCounter + 15) >> 32));
 
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < KeySizeWords; i++)
         {
             cv[i] = Vector512.Create(key[i]);
         }
@@ -154,7 +164,7 @@ internal unsafe partial struct Blake3State
         uint startFlags = baseFlags | FlagChunkStart;
         uint endFlags = baseFlags | FlagChunkEnd;
 
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
             byte* blockBase = source + blockIdx * BlockSizeBytes;
 
@@ -165,11 +175,11 @@ internal unsafe partial struct Blake3State
 
             Transpose16x16(m);
 
-            uint flags = blockIdx == 0 ? startFlags : (blockIdx == 15 ? endFlags : middleFlags);
+            uint flags = blockIdx == 0 ? startFlags : (blockIdx == BlocksPerChunk - 1 ? endFlags : middleFlags);
             CompressVector512(cv, m, counters, flags);
         }
 
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < KeySizeWords; i++)
         {
             m[i] = cv[i];
         }
@@ -177,7 +187,7 @@ internal unsafe partial struct Blake3State
         Transpose16x16(m);
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
         {
-            Avx.Store(outCvs + chunkIdx * 8, m[chunkIdx].GetLower());
+            Avx.Store(outCvs + chunkIdx * KeySizeWords, m[chunkIdx].GetLower());
         }
     }
 

@@ -62,6 +62,13 @@ internal unsafe partial struct Blake3State
     internal const int Ssse3BatchSizeBytes = ChunksPerSsse3Batch * ChunkSizeBytes;
 
     /// <summary>
+    /// Tree level of one aligned 4-chunk batch: a subtree of 2^level chunks, which is what
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="ChunksPerSsse3Batch"/>).
+    /// </summary>
+    internal const int Ssse3BatchLevel = 2;
+
+
+    /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
     /// </summary>
     internal static SimdSupport SimdSupport
@@ -187,8 +194,8 @@ internal unsafe partial struct Blake3State
         var v6 = Vector128.Create(key[6]);
         var v7 = Vector128.Create(key[7]);
 
-        var m = stackalloc Vector128<uint>[16];
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        var m = stackalloc Vector128<uint>[BlockSizeWords];
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
             byte* blockBase = source + blockIdx * BlockSizeBytes;
 
@@ -205,7 +212,7 @@ internal unsafe partial struct Blake3State
             Transpose4x4(m + 8);
             Transpose4x4(m + 12);
 
-            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
+            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == BlocksPerChunk - 1 ? baseFlags | FlagChunkEnd : baseFlags);
 
             var v8 = Vector128.Create(IV0); var v9 = Vector128.Create(IV1);
             var v10 = Vector128.Create(IV2); var v11 = Vector128.Create(IV3);
@@ -240,8 +247,8 @@ internal unsafe partial struct Blake3State
         m[4] = v4; m[5] = v5; m[6] = v6; m[7] = v7;
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
         {
-            Sse2.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
-            Sse2.Store(outCvs + chunkIdx * 8 + 4, m[4 + chunkIdx]);
+            Sse2.Store(outCvs + chunkIdx * KeySizeWords, m[chunkIdx]);
+            Sse2.Store(outCvs + chunkIdx * KeySizeWords + 4, m[4 + chunkIdx]);
         }
     }
 
@@ -461,13 +468,13 @@ internal unsafe partial struct Blake3State
 
         // Each parent's 64-byte block is its two child CVs, so the eight child
         // CVs transpose into the 16 message words exactly as chunk blocks do.
-        var m = stackalloc Vector128<uint>[16];
+        var m = stackalloc Vector128<uint>[BlockSizeWords];
         for (int j = 0; j < ChunksPerSsse3Batch; j++)
         {
-            m[j] = Sse2.LoadVector128(childCvs + j * 16);
-            m[j + 4] = Sse2.LoadVector128(childCvs + j * 16 + 4);
-            m[j + 8] = Sse2.LoadVector128(childCvs + j * 16 + 8);
-            m[j + 12] = Sse2.LoadVector128(childCvs + j * 16 + 12);
+            m[j] = Sse2.LoadVector128(childCvs + j * 2 * KeySizeWords);
+            m[j + 4] = Sse2.LoadVector128(childCvs + j * 2 * KeySizeWords + 4);
+            m[j + 8] = Sse2.LoadVector128(childCvs + j * 2 * KeySizeWords + 8);
+            m[j + 12] = Sse2.LoadVector128(childCvs + j * 2 * KeySizeWords + 12);
         }
 
         Transpose4x4(m);
@@ -531,7 +538,7 @@ internal unsafe partial struct Blake3State
             }
 
             ReduceChunkCvsToSubtreeCvSsse3(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-            PushSubtreeCv(core, batchCvs, 6);
+            PushSubtreeCv(core, batchCvs, SubtreeGroupLevel);
             _chunkCounter += ChunksPerSubtreeGroup;
         }
         while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
@@ -594,7 +601,7 @@ internal unsafe partial struct Blake3State
             int parents = chunkCount >> 1;
             for (int g = 0; g < parents; g += ChunksPerSsse3Batch)
             {
-                CompressParents4Ssse3(cvs + g * 16, key, cvs + g * 8, baseFlags);
+                CompressParents4Ssse3(cvs + g * 2 * KeySizeWords, key, cvs + g * KeySizeWords, baseFlags);
             }
 
             chunkCount = parents;

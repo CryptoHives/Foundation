@@ -40,6 +40,12 @@ internal unsafe partial struct Blake3State
     internal const int Avx2BatchSizeBytes = ChunksPerAvx2Batch * ChunkSizeBytes;
 
     /// <summary>
+    /// Tree level of one aligned 8-chunk batch: a subtree of 2^level chunks, which is what
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="ChunksPerAvx2Batch"/>).
+    /// </summary>
+    internal const int Avx2BatchLevel = 3;
+
+    /// <summary>
     /// Compresses <paramref name="chunkCount"/> (2..8) independent, full
     /// (1024-byte) chunks with the 8-way kernel by ignoring the surplus lanes
     /// </summary>
@@ -74,8 +80,8 @@ internal unsafe partial struct Blake3State
         var v6 = Vector256.Create(key[6]);
         var v7 = Vector256.Create(key[7]);
 
-        var m = stackalloc Vector256<uint>[16];
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        var m = stackalloc Vector256<uint>[BlockSizeWords];
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
             byte* blockBase = source + blockIdx * BlockSizeBytes;
 
@@ -87,7 +93,7 @@ internal unsafe partial struct Blake3State
 
             Transpose8x8(m);
             Transpose8x8(m + 8);
-            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
+            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == BlocksPerChunk - 1 ? baseFlags | FlagChunkEnd : baseFlags);
 
             var v8 = Vector256.Create(IV0); var v9 = Vector256.Create(IV1);
             var v10 = Vector256.Create(IV2); var v11 = Vector256.Create(IV3);
@@ -118,7 +124,7 @@ internal unsafe partial struct Blake3State
         Transpose8x8Into(v0, v1, v2, v3, v4, v5, v6, v7, m);
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
         {
-            Avx.Store(outCvs + chunkIdx * 8, m[chunkIdx]);
+            Avx.Store(outCvs + chunkIdx * KeySizeWords, m[chunkIdx]);
         }
     }
 
@@ -184,8 +190,8 @@ internal unsafe partial struct Blake3State
         var v6 = Vector256.Create(key[6]);
         var v7 = Vector256.Create(key[7]);
 
-        var m = stackalloc Vector256<uint>[16];
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        var m = stackalloc Vector256<uint>[BlockSizeWords];
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
             byte* blockBase = source + blockIdx * BlockSizeBytes;
 
@@ -213,7 +219,7 @@ internal unsafe partial struct Blake3State
             r7 = Avx.LoadVector256((uint*)(blockBase + 7 * ChunkSizeBytes + (BlockSizeBytes / 2)));
             Transpose8x8Into(r0, r1, r2, r3, r4, r5, r6, r7, m + 8);
 
-            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
+            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == BlocksPerChunk - 1 ? baseFlags | FlagChunkEnd : baseFlags);
 
             var v8 = Vector256.Create(IV0); var v9 = Vector256.Create(IV1);
             var v10 = Vector256.Create(IV2); var v11 = Vector256.Create(IV3);
@@ -294,7 +300,7 @@ internal unsafe partial struct Blake3State
 
         // No transpose-in: every lane compresses the same message, so each of
         // the 16 words is simply broadcast rather than gathered per-lane.
-        var m = stackalloc Vector256<uint>[16];
+        var m = stackalloc Vector256<uint>[BlockSizeWords];
         for (int w = 0; w < 16; w++)
         {
             m[w] = Vector256.Create(rootBlock[w]);
@@ -308,7 +314,7 @@ internal unsafe partial struct Blake3State
         // Full 16-word output per block: halves[0..7] = v[i]^v[i+8] (the same
         // fold a chunk CV uses), halves[8..15] = v[i+8]^rootCv[i] (the extra
         // fold only a full squeeze output needs).
-        var halves = stackalloc Vector256<uint>[16];
+        var halves = stackalloc Vector256<uint>[BlockSizeWords];
         halves[0] = Avx2.Xor(v0, v8); halves[8] = Avx2.Xor(v8, cv0);
         halves[1] = Avx2.Xor(v1, v9); halves[9] = Avx2.Xor(v9, cv1);
         halves[2] = Avx2.Xor(v2, v10); halves[10] = Avx2.Xor(v10, cv2);
@@ -328,7 +334,7 @@ internal unsafe partial struct Blake3State
         for (int j = 0; j < ChunksPerAvx2Batch; j++)
         {
             Avx.Store((uint*)(dst + j * BlockSizeBytes), halves[j]);
-            Avx.Store((uint*)(dst + j * BlockSizeBytes + 32), halves[j + 8]);
+            Avx.Store((uint*)(dst + j * BlockSizeBytes + (BlockSizeBytes / 2)), halves[j + 8]);
         }
     }
 
@@ -367,11 +373,11 @@ internal unsafe partial struct Blake3State
         v6 = Vector256.Create(key[6]);
         v7 = Vector256.Create(key[7]);
 
-        var m = stackalloc Vector256<uint>[16];
+        var m = stackalloc Vector256<uint>[BlockSizeWords];
         for (int j = 0; j < 8; j++)
         {
-            m[j] = Avx.LoadVector256(childCvs + j * 16);
-            m[j + 8] = Avx.LoadVector256(childCvs + j * 16 + 8);
+            m[j] = Avx.LoadVector256(childCvs + j * 2 * KeySizeWords);
+            m[j + 8] = Avx.LoadVector256(childCvs + j * 2 * KeySizeWords + KeySizeWords);
         }
 
         Transpose8x8(m);
@@ -400,7 +406,7 @@ internal unsafe partial struct Blake3State
         Transpose8x8(m);
         for (int parentIdx = 0; parentIdx < 8; parentIdx++)
         {
-            Avx.Store(outCvs + parentIdx * 8, m[parentIdx]);
+            Avx.Store(outCvs + parentIdx * KeySizeWords, m[parentIdx]);
         }
     }
 
@@ -411,6 +417,13 @@ internal unsafe partial struct Blake3State
     /// being paid per kernel batch.
     /// </summary>
     internal const int ChunksPerSubtreeGroup = 64;
+
+    /// <summary>
+    /// Tree level of one 64-chunk subtree group: a subtree of 2^level chunks, which is what
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="ChunksPerSubtreeGroup"/>).
+    /// </summary>
+    internal const int SubtreeGroupLevel = 6;
+
 
     /// <summary>
     /// Runs every complete 64-chunk subtree group the remaining input allows, using this
@@ -457,7 +470,7 @@ internal unsafe partial struct Blake3State
             }
 
             ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-            PushSubtreeCv(core, batchCvs, 6);
+            PushSubtreeCv(core, batchCvs, SubtreeGroupLevel);
             _chunkCounter += ChunksPerSubtreeGroup;
         }
         while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
@@ -541,7 +554,7 @@ internal unsafe partial struct Blake3State
             int parents = chunkCount >> 1;
             for (int g = 0; g < parents; g += 8)
             {
-                CompressParents8Avx2(cvs + g * 16, key, cvs + g * 8, baseFlags);
+                CompressParents8Avx2(cvs + g * 2 * KeySizeWords, key, cvs + g * KeySizeWords, baseFlags);
             }
 
             chunkCount = parents;

@@ -33,9 +33,9 @@ using System.Runtime.Intrinsics.X86;
 /// The Keccak state is a 5×5×64 = 1600-bit array organized as 25 64-bit lanes.
 /// </para>
 /// <para>
-/// On platforms with AVX2 support (.NET 8+), an optimized SIMD implementation is used.
-/// However, currently the all SIMD versions are slower than the scalar version on AMD 8945
-/// which is used for benchmarking, so SIMD is disabled by default in release packages.
+/// On platforms with AVX2 support (.NET 8+), a SIMD implementation is prototyped.
+/// However, currently all SIMD versions are slower than the scalar version on all
+/// benchmarked processors, so SIMD is removed by default from release packages.
 /// </para>
 /// </remarks>
 internal unsafe partial struct KeccakCoreState

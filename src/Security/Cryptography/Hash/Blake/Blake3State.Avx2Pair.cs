@@ -87,10 +87,10 @@ internal unsafe partial struct Blake3State
         byte* blockA = source;
         byte* blockB = source + ChunkSizeBytes;
 
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
             var row2 = row2Seed;
-            var row3 = blockIdx == 0 ? row3Start : (blockIdx == 15 ? row3End : row3Mid);
+            var row3 = blockIdx == 0 ? row3Start : (blockIdx == BlocksPerChunk - 1 ? row3End : row3Mid);
 
             GRounds256Pair(blockA, blockB, ref row0, ref row1, ref row2, ref row3);
 

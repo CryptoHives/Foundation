@@ -69,6 +69,15 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// </summary>
     private const int BlockSizeWords = BlockSizeBytes / sizeof(uint);
 
+    /// <summary>
+    /// The number of 64-byte compression blocks in one 1024-byte chunk.
+    /// </summary>
+    /// <remarks>
+    /// Every chunk kernel walks exactly this many blocks, with the first carrying
+    /// <see cref="FlagChunkStart"/> and the last <see cref="FlagChunkEnd"/>.
+    /// </remarks>
+    private const int BlocksPerChunk = ChunkSizeBytes / BlockSizeBytes;
+
     // BLAKE3 flags
     internal const uint FlagChunkStart = 1 << 0;
     internal const uint FlagChunkEnd = 1 << 1;
@@ -138,7 +147,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
     // Bulk buffers (streaming/multi-chunk path only)
     private fixed byte _chunkBuffer[ChunkSizeBytes];
-    private fixed uint _cvStackBuf[MaxStackDepth * 8];
+    private fixed uint _cvStackBuf[MaxStackDepth * KeySizeWords];
 
     // XOF squeeze state (only touched when output exceeds one block)
     private fixed byte _squeezeBuf[BlockSizeBytes];
@@ -428,7 +437,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // bytes prove it wasn't the final chunk, so commit it now.
             if (_hasPendingCv && length > 0)
             {
-                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * 8, core->_pendingCv, KeySizeWords * (uint)sizeof(uint));
+                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * KeySizeWords, core->_pendingCv, KeySizeBytes);
                 AddChunkToTree(core);
                 _chunkCounter++;
                 _hasPendingCv = false;
@@ -477,7 +486,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 // tail: reduce and push one tree node instead
                                 // of 16 serial single-chunk commits.
                                 ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 4);
+                                PushSubtreeCv(core, batchCvs, Avx512BatchLevel);
                                 _chunkCounter += ChunksPerAvx512Batch;
                             }
                             else
@@ -492,7 +501,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                     // in-place reduction never writes past the first
                                     // 8 CV slots, so CVs 8..15 stay intact.
                                     ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
-                                    PushSubtreeCv(core, batchCvs, 3);
+                                    PushSubtreeCv(core, batchCvs, Avx2BatchLevel);
                                     _chunkCounter += ChunksPerAvx2Batch;
                                     firstChunk = ChunksPerAvx2Batch;
                                 }
@@ -547,7 +556,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             {
                                 // Complete aligned 8-chunk subtree, not the tail.
                                 ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 3);
+                                PushSubtreeCv(core, batchCvs, Avx2BatchLevel);
                                 _chunkCounter += ChunksPerAvx2Batch;
                             }
                             else
@@ -609,7 +618,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 // Complete aligned 4-chunk subtree, not the tail:
                                 // fold the four CVs into one before pushing.
                                 ReduceChunkCvsToSubtreeCvSsse3(core, batchCvs, core->_keyWords, ChunksPerSsse3Batch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 2);
+                                PushSubtreeCv(core, batchCvs, Ssse3BatchLevel);
                                 _chunkCounter += ChunksPerSsse3Batch;
                                 offset += Ssse3BatchSizeBytes;
                                 continue;
@@ -660,7 +669,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             {
                                 // Complete aligned 4-chunk subtree, not the tail.
                                 ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 2);
+                                PushSubtreeCv(core, batchCvs, NeonBatchLevel);
                                 _chunkCounter += ChunksPerNeonBatch;
                             }
                             else
@@ -697,13 +706,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 // If chunk buffer is full, finalize the chunk
                 if (_chunkBufferLength == ChunkSizeBytes)
                 {
-                    FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * 8);
+                    FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * KeySizeWords);
 
                     AddChunkToTree(core);
                     _chunkCounter++;
                     _chunkBufferLength = 0;
                     _blocksCompressed = 0;
-                    Unsafe.CopyBlock(core->_cv, core->_keyWords, KeySizeWords * (uint)sizeof(uint));
+                    Unsafe.CopyBlock(core->_cv, core->_keyWords, KeySizeBytes);
 
 #if NET8_0_OR_GREATER
                     // The buffer is empty again and more chunks remain for batching
@@ -743,9 +752,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         for (int i = firstChunk; i < chunksToCommit; i++)
         {
             Unsafe.CopyBlock(
-                core->_cvStackBuf + _cvStackDepth * 8,
+                core->_cvStackBuf + _cvStackDepth * KeySizeWords,
                 batchCvs + i * KeySizeWords,
-                KeySizeWords * (uint)sizeof(uint));
+                KeySizeBytes);
             AddChunkToTree(core);
             _chunkCounter++;
         }
@@ -755,7 +764,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             Unsafe.CopyBlock(
                 core->_pendingCv,
                 batchCvs + chunksToCommit * KeySizeWords,
-                KeySizeWords * (uint)sizeof(uint));
+                KeySizeBytes);
             _hasPendingCv = true;
             return true;
         }
@@ -772,9 +781,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private void PushSubtreeCv(Blake3State* core, uint* cvs, int level)
     {
         Unsafe.CopyBlock(
-            core->_cvStackBuf + _cvStackDepth * 8,
+            core->_cvStackBuf + _cvStackDepth * KeySizeWords,
             cvs,
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         AddSubtreeToTree(core, level);
     }
 #endif
@@ -784,16 +793,16 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     {
         fixed (Blake3State* core = &this)
         {
-            Unsafe.InitBlockUnaligned(core->_keyWords, 0, KeySizeWords * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_cv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_keyWords, 0, KeySizeBytes);
+            Unsafe.InitBlockUnaligned(core->_cv, 0, KeySizeBytes);
             Unsafe.InitBlockUnaligned(core->_chunkBuffer, 0, ChunkSizeBytes);
-            Unsafe.InitBlockUnaligned(core->_cvStackBuf, 0, MaxStackDepth * 8 * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_rootBlock, 0, BlockSizeWords * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_rootCv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_cvStackBuf, 0, MaxStackDepth * KeySizeBytes);
+            Unsafe.InitBlockUnaligned(core->_rootBlock, 0, BlockSizeBytes);
+            Unsafe.InitBlockUnaligned(core->_rootCv, 0, KeySizeBytes);
             Unsafe.InitBlockUnaligned(core->_squeezeBuf, 0, BlockSizeBytes);
             _cvStackDepth = 0;
 #if NET8_0_OR_GREATER
-            Unsafe.InitBlockUnaligned(core->_pendingCv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_pendingCv, 0, KeySizeBytes);
             _hasPendingCv = false;
 #endif
         }
@@ -804,11 +813,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _keyWords[0]),
             ref Unsafe.As<uint, byte>(ref MemoryMarshal.GetReference(IV)),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _cv[0]),
             ref Unsafe.As<uint, byte>(ref MemoryMarshal.GetReference(IV)),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         ResetCommonState();
     }
 
@@ -817,7 +826,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _cv[0]),
             ref Unsafe.As<uint, byte>(ref _keyWords[0]),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         ResetCommonState();
     }
 
@@ -882,7 +891,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
         _blocksCompressed++;
 
-        Unsafe.CopyBlock(destination, core->_cv, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(destination, core->_cv, KeySizeBytes);
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -909,7 +918,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // The two sibling CVs are adjacent stack slots — exactly the
             // contiguous 64-byte parent block ComputeParentCv reads; the
             // merge lands in-place in left's slot.
-            uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * 8;
+            uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * KeySizeWords;
             ComputeParentCv(left, core->_keyWords, left);
 
             _cvStackDepth--;
@@ -933,9 +942,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     {
         uint flags = _baseFlags | FlagParent;
         uint* cv = stackalloc uint[KeySizeWords];
-        Unsafe.CopyBlock(cv, key, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(cv, key, KeySizeBytes);
         CompressBlock(cv, (byte*)children, BlockSizeBytes, 0, flags);
-        Unsafe.CopyBlock(destination, cv, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(destination, cv, KeySizeBytes);
     }
 
     // Single/few-block work (parent merges, one chunk via FinalizeChunk/

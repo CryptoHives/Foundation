@@ -131,41 +131,30 @@ internal unsafe partial struct Blake3State
             // from _chunkBuffer/_cv, which wouldn't hold this chunk's data.
             if (_hasPendingCv)
             {
-                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * 8, core->_pendingCv, KeySizeWords * (uint)sizeof(uint));
+                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * KeySizeWords, core->_pendingCv, KeySizeBytes);
             }
             else
 #endif
             {
-                FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * 8);
+                FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * KeySizeWords);
             }
 
             _cvStackDepth++;
 
             // Merge all CVs in the stack
-            while (_cvStackDepth > 1)
+            while (_cvStackDepth > 2)
             {
-                uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * 8;
-                uint* right = core->_cvStackBuf + (_cvStackDepth - 1) * 8;
-
-                if (_cvStackDepth == 2)
-                {
-                    SaveParentAsRoot(core, left, right);
-                    return;
-                }
-
                 // left/right are adjacent stack slots — the contiguous
                 // 64-byte parent block ComputeParentCv reads directly.
+                uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * KeySizeWords;
                 ComputeParentCv(left, core->_keyWords, left);
 
                 _cvStackDepth--;
             }
 
-            // Single CV remaining — treat as parent root with zero right child
-            if (_cvStackDepth == 1)
-            {
-                uint* zr = stackalloc uint[8];
-                SaveParentAsRoot(core, core->_cvStackBuf, zr);
-            }
+            // _cvStackDepth is exactly 2 here: the else branch is only entered with at
+            // least one chunk already committed, so the push above left at least two.
+            SaveParentAsRoot(core, core->_cvStackBuf, core->_cvStackBuf + KeySizeWords);
         }
     }
 
@@ -284,7 +273,7 @@ internal unsafe partial struct Blake3State
             BinarySpans.ReadUInt32LittleEndian(block, rb, BlockSizeWords);
         }
 
-        Unsafe.CopyBlock(core->_rootCv, core->_cv, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(core->_rootCv, core->_cv, KeySizeBytes);
 
         _rootBlockLen = (uint)lastBlockLen;
         _rootFlags = finalFlags;
@@ -295,10 +284,10 @@ internal unsafe partial struct Blake3State
     /// </summary>
     private void SaveParentAsRoot(Blake3State* core, uint* left, uint* right)
     {
-        // Copy left[8] and right[8] directly into _rootBlock[16]
-        Unsafe.CopyBlock(core->_rootBlock, left, 8 * (uint)sizeof(uint));
-        Unsafe.CopyBlock(&core->_rootBlock[8], right, 8 * (uint)sizeof(uint));
-        Unsafe.CopyBlock(core->_rootCv, core->_keyWords, KeySizeWords * (uint)sizeof(uint));
+        // The two child CVs sit side by side as the parent's 64-byte message block.
+        Unsafe.CopyBlock(core->_rootBlock, left, KeySizeBytes);
+        Unsafe.CopyBlock(&core->_rootBlock[KeySizeWords], right, KeySizeBytes);
+        Unsafe.CopyBlock(core->_rootCv, core->_keyWords, KeySizeBytes);
         _rootBlockLen = BlockSizeBytes;
         _rootFlags = _baseFlags | FlagParent | FlagRoot;
     }
