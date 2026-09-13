@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
+#pragma warning disable CA1857 // A constant is expected for the parameter — false positive due to .NET 8 runtime metadata bug.
+
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 #if NET8_0_OR_GREATER
@@ -286,8 +288,6 @@ internal unsafe partial struct Blake3State
     // Extracts 4 message words from up to 4 source vectors in a single
     // shuffle_ps/shuffle_ps/blend sequence, avoiding scalar loads and
     // GPR-to-XMM inserts.
-    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter",
-        Justification = "False negative due to bug in .NET 8 runtime metadata.")]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> Gather128(
         Vector128<uint> leftA, Vector128<uint> leftB, byte leftControl,
