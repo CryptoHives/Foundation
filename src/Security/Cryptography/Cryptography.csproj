@@ -95,6 +95,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Cryptography.Tests" Key="$(PublicKey)" />
+    <InternalsVisibleTo Include="CryptoHives.Foundation.Security.Certificates" Key="$(PublicKey)" />
+    <InternalsVisibleTo Include="Certificates.Tests" Key="$(PublicKey)" />
   </ItemGroup>
 
   <Target Name="GetPackagingOutputs" />
