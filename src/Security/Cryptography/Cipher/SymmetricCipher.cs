@@ -200,8 +200,7 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
     public override void GenerateKey()
     {
         KeyValue = new byte[KeySizeValue / 8];
-        using var rng = OS.RandomNumberGenerator.Create();
-        rng.GetBytes(KeyValue);
+        Rng.RandomNumberGenerator.Fill(KeyValue);
     }
 
     /// <summary>
@@ -210,8 +209,7 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
     public override void GenerateIV()
     {
         IVValue = new byte[IVSize];
-        using var rng = OS.RandomNumberGenerator.Create();
-        rng.GetBytes(IVValue);
+        Rng.RandomNumberGenerator.Fill(IVValue);
     }
 
     /// <summary>

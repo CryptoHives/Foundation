@@ -566,9 +566,16 @@ try
 }
 finally
 {
-    Array.Clear(prk, 0, prk.Length);
+    CryptographicOperations.ZeroMemory(prk);
 }
 ```
+
+> **Use `CryptographicOperations.ZeroMemory`, not `Array.Clear` or `Span<T>.Clear()`.** A clear on a
+> buffer nothing reads again is a dead store, and a compiler or JIT is entitled to delete it —
+> leaving the key in memory. `ZeroMemory` is marked `NoInlining | NoOptimization` so it cannot be
+> elided. It lives in `CryptoHives.Foundation.Security.Cryptography` and works on every target
+> framework, including those where the in-box type does not exist, and it has `char` overloads the
+> in-box type has never offered.
 
 > **Note:** The span-based `DeriveKey` method automatically clears the intermediate PRK.
 

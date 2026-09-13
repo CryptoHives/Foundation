@@ -416,11 +416,7 @@ internal static class MLDsaCore
 #if NET8_0_OR_GREATER
         OS.RandomNumberGenerator.Fill(output);
 #else
-        byte[] buf = new byte[output.Length];
-        using var rng = OS.RandomNumberGenerator.Create();
-        rng.GetBytes(buf);
-        buf.AsSpan().CopyTo(output);
-        CryptographicOperations.ZeroMemory(buf);
+        Rng.RandomNumberGenerator.Fill(output);
 #endif
     }
 

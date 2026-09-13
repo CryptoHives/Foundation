@@ -719,13 +719,24 @@ using var encKey = Blake3.CreateDeriveKey("MyApp Encryption Key");
 When verifying MACs, use constant-time comparison to prevent timing attacks:
 
 ```csharp
-using System.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography;
 
 bool VerifyMac(byte[] expected, byte[] actual)
 {
     return CryptographicOperations.FixedTimeEquals(expected, actual);
 }
 ```
+
+`CryptographicOperations` here is **this package's**, not `System.Security.Cryptography`'s. The
+in-box type does not exist below .NET Standard 2.1, so on .NET Framework and netstandard2.0 there is
+no in-box constant-time comparison to reach for; this one works on every target framework. Where
+both exist they behave identically - but importing both namespaces in one file gives `CS0104` on
+the shared type name, so alias one side:
+`using Bcl = System.Security.Cryptography;`.
+
+Never verify a MAC with `SequenceEqual`, `==`, or a loop that returns early. Those stop at the first
+differing byte, so the time they take reveals how many leading bytes were right - which is enough to
+recover the whole tag one byte at a time.
 
 ---
 

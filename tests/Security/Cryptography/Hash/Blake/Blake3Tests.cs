@@ -251,9 +251,13 @@ public class Blake3Tests
     [TestCase(8194)]
     [TestCase(9216)]      // 1 batch + 1 full chunk
     [TestCase(10000)]
+    [TestCase(10240)]     // 1 batch + a 2-chunk tail: the pair kernel at a nonzero counter
+    [TestCase(10241)]     // same, with a byte following so both pair CVs commit
+    [TestCase(11263)]     // largest 2-chunk tail before the 3-chunk kernel takes over
     [TestCase(16383)]
     [TestCase(16384)]     // exactly 2 batches
     [TestCase(16385)]     // 2 batches + 1 byte
+    [TestCase(18432)]     // 2 batches + a 2-chunk tail
     [TestCase(24576)]     // exactly 3 batches
     [TestCase(24577)]
     [TestCase(65536)]
@@ -454,6 +458,8 @@ public class Blake3Tests
     [TestCase(16383)]
     [TestCase(16384)]     // exactly 1 batch
     [TestCase(16385)]     // 1 batch + 1 byte
+    [TestCase(18432)]     // 1 batch + a 2-chunk tail: the pair kernel at a nonzero counter
+    [TestCase(18433)]     // same, with a byte following so both pair CVs commit
     [TestCase(24576)]     // 1 batch + 1 AVX2 batch
     [TestCase(24577)]
     [TestCase(32768)]     // exactly 2 batches
@@ -576,7 +582,10 @@ public class Blake3Tests
     [TestCase(1023)]
     [TestCase(1024)]   // exactly one chunk: last size handled by the single-chunk branch
     [TestCase(1025)]   // one byte over: first size handled by the multi-chunk branch
+    [TestCase(2048)]   // exactly two chunks: the AVX2 pair kernel, nothing committable
+    [TestCase(2049)]   // two chunks + 1 byte: both pair CVs commit
     [TestCase(8192)]
+    [TestCase(10240)]  // 1 batch + a 2-chunk tail: the pair kernel at a nonzero counter
     [TestCase(16385)]
     [TestCase(100000)]
     public void TryHashOneShotMatchesScalarReference(int inputLength)
@@ -620,7 +629,9 @@ public class Blake3Tests
     [TestCase(511)]      // 7 full blocks + 63 bytes: largest remainder still with no full group
     [TestCase(512)]      // exactly 8 blocks: exactly one full AVX2 group, zero remainder
     [TestCase(513)]      // one full AVX2 group + 1 byte into a 9th block
-    [TestCase(576)]      // 9 blocks: one full AVX2 group + 1 remainder block
+    [TestCase(576)]      // 9 blocks: one full AVX2 group, zero remainder
+    [TestCase(640)]      // 10 blocks: one full group + a 1-block tail (single-lane branch)
+    [TestCase(704)]      // 11 blocks: one full group + a 2-block tail (smallest wide tail)
     [TestCase(1000)]
     [TestCase(1024)]     // exactly 16 blocks: two full AVX2 groups, zero remainder
     [TestCase(1025)]     // two full AVX2 groups + 1 byte into a 17th block
@@ -680,6 +691,50 @@ public class Blake3Tests
         Assert.That(oneShot.TryHashOneShot(input, actual, out int bytesWritten), Is.True);
         Assert.That(bytesWritten, Is.EqualTo(128));
         Assert.That(actual.ToArray(), Is.EqualTo(expected), $"Multi-block one-shot mismatch at {inputLength} bytes");
+    }
+
+    /// <summary>
+    /// Sweeps the requested output size across the branch boundary inside
+    /// <c>TryHashOneShotSingleChunk</c>: at or below 32 bytes it writes the root fold
+    /// straight out (<c>HashChunkRoot32</c>), above that it stages counter-mode state and
+    /// squeezes. Both must agree with the streaming reference, and a truncated digest must
+    /// be a prefix of a longer one — that prefix property is what makes skipping the
+    /// second half of the output block sound.
+    /// </summary>
+    /// <param name="outputBytes">The requested digest size.</param>
+    [TestCase(1)]
+    [TestCase(16)]
+    [TestCase(31)]
+    [TestCase(32)]    // last size on the direct-root branch
+    [TestCase(33)]    // first size that still needs the counter-mode staging
+    [TestCase(48)]
+    [TestCase(64)]    // exactly one output block
+    [TestCase(65)]    // first size needing a second output block
+    public void TryHashOneShotHonoursOutputSizeAroundTheRootBranch(int outputBytes)
+    {
+        foreach (int inputLength in new[] { 0, 1, 63, 64, 65, 1023, 1024 })
+        {
+            byte[] input = GenerateTestInput(inputLength);
+
+            using var scalar = Blake3.Create(CH.SimdSupport.None, outputBytes);
+            byte[] expected = scalar.ComputeHash(input);
+
+            using var oneShot = Blake3.Create(outputBytes);
+            byte[] actual = new byte[outputBytes];
+            Assert.That(oneShot.TryHashOneShot(input, actual, out int bytesWritten), Is.True);
+            Assert.That(bytesWritten, Is.EqualTo(outputBytes));
+            Assert.That(actual, Is.EqualTo(expected),
+                $"One-shot mismatch at {inputLength} bytes in, {outputBytes} bytes out");
+
+            // A shorter digest is the longer one truncated.
+            using var longer = Blake3.Create(128);
+            byte[] longerHash = new byte[128];
+            Assert.That(longer.TryHashOneShot(input, longerHash, out _), Is.True);
+            // AsSpan().ToArray() rather than a range indexer: array range slicing needs
+            // RuntimeHelpers.GetSubArray, which the net48 leg does not have.
+            Assert.That(actual, Is.EqualTo(longerHash.AsSpan(0, outputBytes).ToArray()),
+                $"Truncation mismatch at {inputLength} bytes in, {outputBytes} bytes out");
+        }
     }
 
     /// <summary>
@@ -781,8 +836,12 @@ public class Blake3Tests
     /// </summary>
     [TestCase(0)]
     [TestCase(1)]
+    [TestCase(63)]
+    [TestCase(64)]
     [TestCase(1024)]
     [TestCase(1025)]
+    [TestCase(2048)]
+    [TestCase(10240)]
     [TestCase(100000)]
     public void TryHashOneShotMatchesScalarReferenceAcrossSimdTiers(int inputLength)
     {

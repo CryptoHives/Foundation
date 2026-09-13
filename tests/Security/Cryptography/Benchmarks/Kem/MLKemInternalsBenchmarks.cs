@@ -66,6 +66,7 @@ public class MLKemInternalsBenchmark
     private byte[] _cbdBuf3 = null!;
     private short[] _cbdCoeffs = null!;
     private short[] _poly = null!;
+    private short[] _nttPoly = null!;
     private short[] _decoded = null!;
     private byte[] _packed = null!;
 
@@ -167,6 +168,17 @@ public class MLKemInternalsBenchmark
         }
 
         _poly = new short[MLKemParams.N];
+
+        // Coefficients in [0, q) for the NTT rows. The transform is in-place and the benchmark
+        // does not restore the buffer between invocations: the work is a fixed 7 x 128 butterfly
+        // schedule with no data-dependent branching, so drifting values change the numbers the
+        // arithmetic runs on but not how much of it there is. NttRoundTripTest uses a fresh
+        // buffer and asserts the inverse recovers it exactly.
+        _nttPoly = new short[MLKemParams.N];
+        for (int i = 0; i < _nttPoly.Length; i++)
+        {
+            _nttPoly[i] = (short)((i * 37) % 3329);
+        }
         _decoded = new short[MLKemParams.N];
         Poly.SampleNtt(_xof, _matrixSeed, _poly);
 
@@ -344,6 +356,63 @@ public class MLKemInternalsBenchmark
     /// </remarks>
     [Benchmark(Description = "Cbd.Eta3 (bit extraction only)")]
     public void CbdEta3() => Cbd.Eta3(_cbdBuf3, _cbdCoeffs);
+
+    [Test]
+    [NonParallelizable]
+    public void NttRoundTripTest()
+    {
+        short[] original = new short[MLKemParams.N];
+        for (int i = 0; i < original.Length; i++)
+        {
+            original[i] = (short)((i * 37) % 3329);
+        }
+
+        short[] work = (short[])original.Clone();
+
+        Ntt.Forward(work);
+        Assert.That(work, Is.Not.EqualTo(original), "the forward transform must actually do something");
+
+        Ntt.Inverse(work);
+
+        // Ntt.Inverse leaves the coefficients in the Montgomery domain: the round trip yields
+        // x.R mod q, not x. That is the library's convention, not a defect - MLKemCore converts
+        // explicitly (PolyVec.ToMontgomery after the matrix multiply). Divide R back out with the
+        // library's own reduction rather than a hard-coded R mod q.
+        for (int i = 0; i < work.Length; i++)
+        {
+            work[i] = Ntt.MontgomeryReduce(work[i]);
+        }
+
+        Poly.Normalize(work);
+
+        Assert.That(work, Is.EqualTo(original),
+            "NTT followed by NTT-1, with the Montgomery factor divided out, must recover the input.");
+    }
+
+    /// <summary>
+    /// Benchmarks the forward NTT alone: seven layers of 128 butterflies, in place.
+    /// </summary>
+    /// <remarks>
+    /// The single hottest kernel in ML-KEM by a wide margin. One key generation runs 2k of these
+    /// - six at ML-KEM-768 - against six CBD calls, so a change here moves the headline numbers in
+    /// <see cref="MLKemBenchmark"/> and a change in <see cref="CbdEta2"/> largely does not.
+    /// Identical figures across parameter sets are expected: the transform is over a fixed
+    /// 256-coefficient polynomial and does not vary with k.
+    /// </remarks>
+    [Benchmark(Description = "Ntt.Forward (7 x 128 butterflies)")]
+    public void NttForward() => Ntt.Forward(_nttPoly);
+
+    /// <summary>
+    /// Benchmarks the inverse NTT alone, including the final multiply by n-1.
+    /// </summary>
+    /// <remarks>
+    /// Slightly more work than <see cref="NttForward"/> - the same butterfly schedule plus a
+    /// 256-coefficient scaling pass - so it should measure a little slower. It measuring
+    /// <i>faster</i> means the buffer state has drifted somewhere that changes the arithmetic
+    /// cost, and the row should be distrusted rather than reported.
+    /// </remarks>
+    [Benchmark(Description = "Ntt.Inverse (butterflies + scaling)")]
+    public void NttInverse() => Ntt.Inverse(_nttPoly);
 
     [Test]
     [NonParallelizable]

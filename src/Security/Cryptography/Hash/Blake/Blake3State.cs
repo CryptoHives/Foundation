@@ -314,8 +314,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// any data first (matching the same precondition as constructing a new
     /// instance). For inputs of at most one chunk, this compresses directly from
     /// <paramref name="source"/> with no <c>_chunkBuffer</c> copy at all — the
-    /// dominant fixed cost of the streaming path at small sizes. Larger inputs
-    /// reuse the existing batched <see cref="Append(ReadOnlySpan{byte})"/>/<see cref="TryGetCurrentHash"/>
+    /// dominant fixed cost of the streaming path at small sizes — and for a
+    /// digest of at most 32 bytes it also skips the counter-mode staging a
+    /// resumable squeeze would need (see <see cref="HashChunkRoot32"/>). Larger
+    /// inputs reuse the existing batched <see cref="Append(ReadOnlySpan{byte})"/>/<see cref="TryGetCurrentHash"/>
     /// machinery, which already amortizes any bookkeeping over many chunks.
     /// </remarks>
     public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
@@ -346,6 +348,19 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     {
         fixed (Blake3State* core = &this)
         {
+            // The overwhelmingly common shape: a plain digest of at most 32 bytes, which
+            // needs neither the counter-mode staging nor the second half of an output
+            // block. See HashChunkRoot32.
+            if (_outputBytes <= DefaultHashSizeBytes)
+            {
+                fixed (byte* srcPtr = source)
+                {
+                    HashChunkRoot32(core, srcPtr, source.Length, destination);
+                }
+
+                return;
+            }
+
             fixed (byte* srcPtr = source)
             {
                 SaveChunkAsRoot(core, srcPtr, source.Length);
@@ -551,18 +566,20 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // Partial batch: 2..7 chunks via the 8-way kernel with surplus
-                    // lanes ignoring real data — beats per-chunk from 2 chunks up.
-                    // Counters may be unaligned here, so CVs commit per-chunk.
+                    // Partial batch: 2..7 chunks via the widest kernel that does not
+                    // waste more lanes than it fills. Counters may be unaligned here,
+                    // so CVs commit per-chunk.
                     if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
                         length - offset >= 2 * ChunkSizeBytes)
                     {
-                        // At most 7 chunks remain. Below 5, the 4-lane kernel
-                        // beats the 8-lane one
-
+                        // At most 7 chunks remain. Exactly 2 goes to the row-oriented
+                        // pair kernel — a transposed kernel run half-empty is no faster
+                        // than compressing the two chunks in sequence. From 3 up the
+                        // transpose pays: below 5 the 4-lane kernel beats the 8-lane one.
                         int fullChunks = (length - offset) / ChunkSizeBytes;
-                        delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel = fullChunks <= 4
-                            ? &CompressChunksPartial4Ssse3
+                        delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel =
+                            fullChunks == ChunksPerAvx2PairBatch ? &CompressChunks2Avx2
+                            : fullChunks <= 4 ? &CompressChunksPartial4Ssse3
                             : &CompressChunksPartialAvx2;
                         offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, kernel);
                     }

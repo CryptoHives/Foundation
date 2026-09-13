@@ -32,7 +32,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 - **XOF streaming** — `IExtendableOutput` (`Absorb` / `Squeeze` / `Reset`) on all XOF algorithms
 - **`HashAlgorithm` compatible** — drop-in for anything consuming `System.Security.Cryptography.HashAlgorithm`
 - **Broad algorithm coverage** — SHA-2/3, Keccak, SHAKE, BLAKE2/3, Ascon, regional ciphers, and more
-
+- 
 ---
 
 ## 🧬 Supported Algorithms
@@ -157,10 +157,17 @@ Keys are validated on import per FIPS 203 §7.2/§7.3, decapsulation uses consta
 implicit rejection, and all three parameter sets are verified against the official
 NIST ACVP test vectors plus BouncyCastle and .NET 10 `MLKem` interop tests.
 
-> **Not yet implemented:** the PKCS#8, SubjectPublicKeyInfo and PEM import/export members
-> (`ImportPkcs8PrivateKey`, `ExportSubjectPublicKeyInfo`, `ImportFromPem`, …). Raw key and
-> seed import/export is complete. See the
-> [KEM roadmap](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html).
+PKCS#8, SubjectPublicKeyInfo and PEM import/export are available on every target framework,
+including password-protected PKCS#8 (PBES2). Two things differ from the in-box surface. The
+encrypted-export members take a `PbeOptions` rather than the in-box `PbeParameters`, which does not
+exist below .NET Standard 2.1; the
+[signature algorithms reference](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html)
+explains why. And **no member takes a password, or returns a plaintext private key, as a `string`** —
+a `string` cannot be overwritten once created, so passwords are `ReadOnlySpan<char>` or
+`ReadOnlySpan<byte>` and the plaintext-PEM export writes into a caller-owned buffer sized by
+`GetPkcs8PrivateKeyPemSize()`. The
+[erasable memory reference](https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html)
+lists the twenty-one members this replaces and how to port each.
 
 ### Post-Quantum Signatures (`ML-DSA`)
 
@@ -217,6 +224,10 @@ cshake.Squeeze(derived);
 | XOF mode guide | [cryptohives.github.io/…/xof-mode](https://cryptohives.github.io/Foundation/packages/security/cryptography/xof-mode.html) |
 | Benchmarks (interactive dashboard) | [cryptohives.github.io/…/benchmarks](https://cryptohives.github.io/Foundation/packages/security/cryptography/benchmarks.html) |
 | MAC algorithms guide | [cryptohives.github.io/…/mac-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/mac-algorithms.html) |
+| KDF algorithms guide | [cryptohives.github.io/…/kdf-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/kdf-algorithms.html) |
+| Post-quantum KEM guide (ML-KEM) | [cryptohives.github.io/…/kem-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html) |
+| Post-quantum signatures guide (ML-DSA, SLH-DSA) | [cryptohives.github.io/…/signature-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html) |
+| Erasable memory and secret handling | [cryptohives.github.io/…/erasable-memory](https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html) |
 | API reference | [cryptohives.github.io/…/api/…Cryptography.Hash](https://cryptohives.github.io/Foundation/api/CryptoHives.Foundation.Security.Cryptography.Hash.html) |
 | Source repository | [github.com/CryptoHives/Foundation](https://github.com/CryptoHives/Foundation) |
 

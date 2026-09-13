@@ -1,4 +1,4 @@
-- name: Overview
+﻿- name: Overview
   href: index.md
 - name: Hash Algorithms
   href: hash-algorithms.md
@@ -12,6 +12,8 @@
   href: kem-algorithms.md
 - name: Signature Algorithms
   href: signature-algorithms.md
+- name: Erasable Memory
+  href: erasable-memory.md
 - name: XOF Mode
   href: xof-mode.md
 - name: Pooled Hash API

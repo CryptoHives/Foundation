@@ -41,7 +41,7 @@ using OS = System.Security.Cryptography;
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class MLDsa : IDisposable
+public sealed partial class MLDsa : IDisposable
 {
     private readonly byte[]? _seed;
     private readonly byte[]? _secretKey;

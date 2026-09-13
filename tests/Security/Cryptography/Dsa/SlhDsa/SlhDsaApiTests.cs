@@ -166,6 +166,14 @@ public class SlhDsaApiTests
     /// currently everywhere on Windows. It still compiles, and compiling is what is being
     /// tested.
     /// </para>
+    /// <para>
+    /// The nine encrypted-PKCS#8 export members are deliberately <b>outside</b> this proof, and
+    /// their absence is not an oversight. They take <c>PbeOptions</c> where the in-box type takes
+    /// <c>PbeParameters</c> — the one place the surface diverges on purpose, because
+    /// <c>PbeParameters</c> does not exist below .NET Standard 2.1 and supplying it would mean
+    /// defining a type in a namespace this library does not own. Everything else here, including
+    /// every import path and the plain PKCS#8, SubjectPublicKeyInfo and PEM members, is covered.
+    /// </para>
     /// </remarks>
     [Test]
     public void ApiSurface_MatchesTheInBoxType()

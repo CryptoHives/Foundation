@@ -1,4 +1,4 @@
-<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project Sdk="Microsoft.NET.Sdk">
 
@@ -19,18 +19,24 @@
     <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
   </PropertyGroup>
 
-  <!-- Tag Cryptography library as beta (pre-release) until API surface is finalized, independent of the repo's overall release version. -->
-  <PropertyGroup Condition="'$(NBGV_PublicRelease)' == 'True'">
-    <Version>$(NBGV_Version)-beta</Version>
-    <PackageVersion>$(NBGV_Version)-beta</PackageVersion>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <PackageId>$(PackageId).Debug</PackageId>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
     <DefineConstants>$(DefineConstants);SIGNASSEMBLY</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    Key-format members that move a password or a plaintext private key through an immutable string
+    are kept in the tree under #if OBSOLETE_SECRET_AS_STRING_API, so a reviewer can diff them
+    against the erasable implementations that replaced them. They are never part of a shipped
+    assembly or package; the only way to build them is to opt in with
+    /p:EnableObsoleteSecretAsStringApi=true.
+    See docfx/packages/security/cryptography/erasable-memory.md.
+  -->
+  <PropertyGroup Condition="'$(EnableObsoleteSecretAsStringApi)' == 'true'">
+    <DefineConstants>$(DefineConstants);OBSOLETE_SECRET_AS_STRING_API</DefineConstants>
   </PropertyGroup>
 
   <Choose>
@@ -60,6 +66,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.ObjectPool" />
+  </ItemGroup>
+
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net5.0'))">
+    <PackageReference Include="System.Formats.Asn1" />
   </ItemGroup>
 
   <ItemGroup>

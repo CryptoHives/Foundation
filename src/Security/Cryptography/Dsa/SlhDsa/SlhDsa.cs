@@ -42,7 +42,7 @@ using OS = System.Security.Cryptography;
 /// </code>
 /// </para>
 /// </remarks>
-public sealed class SlhDsa : IDisposable
+public sealed partial class SlhDsa : IDisposable
 {
     private readonly byte[]? _privateKey;
     private readonly byte[] _publicKey;
