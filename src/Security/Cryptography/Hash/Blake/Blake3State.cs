@@ -513,7 +513,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // AVX-512 partial batch: 9..15 chunks via the 16-way kernel
                     if (length - offset >= (ChunksPerAvx2Batch + 1) * ChunkSizeBytes)
                     {
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialAvx512);
+                        offset += CommitPartialBatchAvx512(core, srcPtr, offset, length, batchCvs);
                     }
                 }
 
@@ -570,16 +570,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // so CVs commit per-chunk.
                     if (length - offset >= 2 * ChunkSizeBytes)
                     {
-                        // At most 7 chunks remain. Exactly 2 goes to the row-oriented
-                        // pair kernel — a transposed kernel run half-empty is no faster
-                        // than compressing the two chunks in sequence. From 3 up the
-                        // transpose pays: below 5 the 4-lane kernel beats the 8-lane one.
-                        int fullChunks = (length - offset) / ChunkSizeBytes;
-                        delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel =
-                            fullChunks == ChunksPerAvx2PairBatch ? &CompressChunks2Avx2
-                            : fullChunks <= 4 ? &CompressChunksPartial4Ssse3
-                            : &CompressChunksPartialAvx2;
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, kernel);
+                        offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs);
                     }
                 }
 
@@ -641,7 +632,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // did not repay the transpose cost there either).
                     if (length - offset >= 3 * ChunkSizeBytes)
                     {
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartial4Ssse3);
+                        offset += CommitPartialBatch3Ssse3(core, srcPtr, offset, length, batchCvs);
                     }
                 }
 
@@ -694,7 +685,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     if (length - offset >= 3 * ChunkSizeBytes)
                     {
                         // At most 3 chunks remain here (3,072..4,095 bytes).
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialNeon);
+                        offset += CommitPartialBatch3Neon(core, srcPtr, offset, length, batchCvs);
                     }
                 }
             }
@@ -735,36 +726,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
 #if NET8_0_OR_GREATER
-    /// <summary>
-    /// Shared tail handling for a SIMD tier's partial batch (fewer full chunks
-    /// remaining than one whole batch, but enough to beat serial per-chunk
-    /// compression): compresses them all via <paramref name="partialKernel"/>,
-    /// commits every chunk but the last, and holds the last back as pending if
-    /// it exactly drains the input (see <see cref="FinalizeRoot"/>).
-    /// </summary>
-    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
-    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
-    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the remaining full chunks start.</param>
-    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
-    /// <param name="scratch">Caller-owned scratch buffer for the partial kernel's output CVs.</param>
-    /// <param name="partialKernel">The tier-specific partial-batch compression kernel to call.</param>
-    /// <returns>The number of bytes consumed (<c>fullChunks * ChunkSizeBytes</c>).</returns>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private int CommitPartialBatch(
-        Blake3State* core, byte* srcPtr, int offset, int length, uint* scratch,
-        delegate*<byte*, int, uint*, uint*, ulong, uint, void> partialKernel)
-    {
-        int fullChunks = (length - offset) / ChunkSizeBytes;
-        bool drainsRemainingInput = offset + fullChunks * ChunkSizeBytes == length;
-
-        uint* partialCvs = scratch;
-        partialKernel(srcPtr + offset, fullChunks, core->_keyWords, partialCvs, _chunkCounter, _baseFlags);
-
-        int chunksToCommit = drainsRemainingInput ? fullChunks - 1 : fullChunks;
-        CommitBatchChunks(core, partialCvs, 0, chunksToCommit, drainsRemainingInput);
-
-        return fullChunks * ChunkSizeBytes;
-    }
 
     /// <summary>
     /// Commits CVs <c>[firstChunk, chunksToCommit)</c> from a compressed batch

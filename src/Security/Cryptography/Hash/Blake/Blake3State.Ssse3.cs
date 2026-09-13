@@ -8,6 +8,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.Arm;
@@ -536,6 +537,37 @@ internal unsafe partial struct Blake3State
         while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
 
         return offset;
+    }
+
+    /// <summary>
+    /// Compresses the exactly-3-chunk tail this tier can still batch, and commits its CVs.
+    /// </summary>
+    /// <remarks>
+    /// The count really is exactly 3, so it is passed as a literal rather than computed:
+    /// the caller's guard requires at least 3 chunks, and fewer than 4 always remain -
+    /// either the 4-chunk batch loop above ran and exited with under 4 chunks left, or it
+    /// was skipped because under 4 chunks were there to begin with. Handing the kernel a
+    /// constant width folds its lane-offset table and its per-lane store guards, which a
+    /// runtime count cannot.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
+    /// <returns>The number of bytes consumed (three chunks).</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CommitPartialBatch3Ssse3(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        const int FullChunks = 3;
+        Debug.Assert((length - offset) / ChunkSizeBytes == FullChunks, "exactly three chunks remain here");
+        bool drainsRemainingInput = offset + (FullChunks * ChunkSizeBytes) == length;
+
+        CompressChunksPartial4Ssse3(
+            srcPtr + offset, FullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+
+        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? FullChunks - 1 : FullChunks, drainsRemainingInput);
+        return FullChunks * ChunkSizeBytes;
     }
 
     /// <summary>

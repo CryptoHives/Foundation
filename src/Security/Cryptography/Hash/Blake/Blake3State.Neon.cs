@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 #if NET8_0_OR_GREATER
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -348,6 +349,32 @@ internal unsafe partial struct Blake3State
         while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
 
         return offset;
+    }
+
+    /// <summary>
+    /// Compresses the exactly-3-chunk tail this tier can still batch, and commits its CVs.
+    /// See <see cref="CommitPartialBatch3Ssse3"/> for why the count is a literal. The
+    /// 2-chunk case is deliberately absent: it benchmarked slower than the scalar loop,
+    /// so it falls through instead.
+    /// </summary>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
+    /// <returns>The number of bytes consumed (three chunks).</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CommitPartialBatch3Neon(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        const int FullChunks = 3;
+        Debug.Assert((length - offset) / ChunkSizeBytes == FullChunks, "exactly three chunks remain here");
+        bool drainsRemainingInput = offset + (FullChunks * ChunkSizeBytes) == length;
+
+        CompressChunksPartialNeon(
+            srcPtr + offset, FullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+
+        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? FullChunks - 1 : FullChunks, drainsRemainingInput);
+        return FullChunks * ChunkSizeBytes;
     }
 
     /// <summary>

@@ -148,7 +148,7 @@ internal unsafe partial struct Blake3State
     /// </para>
     /// <para>
     /// <paramref name="chunkCount"/> exists only so this matches the
-    /// tier-kernel function-pointer signature <see cref="CommitPartialBatch"/>
+    /// tier-kernel function-pointer signature the per-tier <c>CommitPartialBatch*</c> helpers
     /// and each tier's <c>CompressSubtreeGroups*</c> dispatch through; it is always 8
     /// and is otherwise unused.
     /// </para>
@@ -463,6 +463,53 @@ internal unsafe partial struct Blake3State
         while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
 
         return offset;
+    }
+
+    /// <summary>
+    /// Compresses the 2-7 chunk tail left by the 8-chunk batch loop and commits its CVs,
+    /// returning the bytes consumed.
+    /// </summary>
+    /// <remarks>
+    /// Three kernels serve this range, and which one applies is a property of the chunk
+    /// count, so the choice is made here rather than by the caller: exactly 2 goes to the
+    /// row-oriented pair kernel (a transposed kernel run half-empty is no faster than
+    /// compressing the two chunks in sequence), 3-4 to the 4-lane kernel, and 5-7 to the
+    /// 8-lane one - below 5 the 4-lane kernel wastes fewer lanes. Selecting inside keeps
+    /// all three calls direct and lets the exactly-2 branch pass a constant width; the
+    /// previous shared helper took the kernel as a function pointer chosen by the caller.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
+    /// <returns>The number of bytes consumed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CommitPartialBatchAvx2(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        int fullChunks = (length - offset) / ChunkSizeBytes;
+        Debug.Assert(fullChunks >= ChunksPerAvx2PairBatch && fullChunks < ChunksPerAvx2Batch,
+            "the 8-chunk batch loop leaves 2..7 chunks here");
+        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
+
+        if (fullChunks == ChunksPerAvx2PairBatch)
+        {
+            CompressChunks2Avx2(
+                srcPtr + offset, ChunksPerAvx2PairBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+        }
+        else if (fullChunks <= ChunksPerSsse3Batch)
+        {
+            CompressChunksPartial4Ssse3(
+                srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+        }
+        else
+        {
+            CompressChunksPartialAvx2(
+                srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+        }
+
+        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
+        return fullChunks * ChunkSizeBytes;
     }
 
     /// <summary>
