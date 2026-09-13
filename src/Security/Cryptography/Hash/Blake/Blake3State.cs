@@ -127,6 +127,15 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private readonly uint _baseFlags;
     private readonly SimdSupport _simdSupport;
 
+    // Both are read by IsFresh on every TryComputeHash, so they belong in the hot
+    // cluster even though they are only *written* by the XOF and bulk-SIMD paths —
+    // left at their declaration sites they pulled two further cache lines into a
+    // call that otherwise touches only the first.
+    private bool _squeezed;
+#if NET8_0_OR_GREATER
+    private bool _hasPendingCv;
+#endif
+
     private fixed uint _keyWords[KeySizeWords];
     private fixed uint _cv[KeySizeWords];
 
@@ -142,7 +151,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     // chunk (see FinalizeRoot). Distinct from _cv, the in-progress accumulator
     // for a chunk still being buffered byte-by-byte.
     private fixed uint _pendingCv[KeySizeWords];
-    private bool _hasPendingCv;
 #endif
 
     // Bulk buffers (streaming/multi-chunk path only)
@@ -151,7 +159,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
     // XOF squeeze state (only touched when output exceeds one block)
     private fixed byte _squeezeBuf[BlockSizeBytes];
-    private bool _squeezed;
     private ulong _outputCounter;
     private int _squeezeOffset;
 
@@ -261,6 +268,40 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     public bool Squeezed => _squeezed;
+
+    /// <summary>
+    /// Gets whether no input has been absorbed and no output squeezed since the last
+    /// reset — i.e. the state is exactly as <c>ResetCommonState</c> leaves it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the precondition of <see cref="TryHashOneShot"/>, which hashes its
+    /// source as a complete message and cannot continue an in-progress tree.
+    /// </para>
+    /// <para>
+    /// <c>ResetCommonState</c> also clears <c>_outputCounter</c> and
+    /// <c>_squeezeOffset</c>, which are deliberately not tested here: every write that
+    /// makes either non-zero happens inside a squeeze, which sets <c>_squeezed</c>
+    /// first, so <c>!_squeezed</c> already implies both are zero. They sit ~3 KB into
+    /// the struct, past the bulk buffers, and reading them cost this predicate a
+    /// second cache line on every call. A field added to <c>ResetCommonState</c>
+    /// belongs here too unless it is implied this same way.
+    /// </para>
+    /// </remarks>
+    public bool IsFresh
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get =>
+            _chunkBufferLength == 0
+            && _chunkCounter == 0
+            && _blocksCompressed == 0
+            && _cvStackDepth == 0
+            && !_squeezed
+#if NET8_0_OR_GREATER
+            && !_hasPendingCv
+#endif
+            ;
+    }
 
     /// <inheritdoc/>
     public void Reset(bool keyedMode)

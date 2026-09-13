@@ -740,8 +740,8 @@ public class Blake3Tests
     /// <summary>
     /// Verifies <see cref="Blake3.TryHashOneShot"/> can be called repeatedly on the
     /// same instance (it must leave the instance freshly initialized for reuse,
-    /// matching <c>TryComputeHash</c>'s auto-reset contract), since the benchmark's
-    /// <c>Blake3SimdOneShotAdapter</c> reuses one instance across many calls.
+    /// matching <c>TryComputeHash</c>'s auto-reset contract), since
+    /// <c>ParameterizedHashBenchmark</c> reuses one instance across many calls.
     /// </summary>
     [Test]
     public void TryHashOneShotIsReusableAcrossCalls()
@@ -765,6 +765,46 @@ public class Blake3Tests
 
         Assert.That(oneShot.TryHashOneShot(large, actual, out _), Is.True);
         Assert.That(actual.ToArray(), Is.EqualTo(expectedLarge));
+    }
+
+    /// <summary>
+    /// <see cref="Blake3.TryComputeHash"/> takes the <see cref="Blake3.TryHashOneShot"/>
+    /// fast path only from a freshly initialized state. When data has already been
+    /// appended it must fall back to the base streaming implementation and still hash
+    /// the concatenation, exactly as it did before the override existed.
+    /// </summary>
+    [TestCase(1, 1)]
+    [TestCase(100, 100)]
+    [TestCase(1023, 1)]
+    [TestCase(1024, 1024)]
+    [TestCase(5000, 20000)]
+    public void TryComputeHashAfterAppendDataHashesTheConcatenation(int prefixLength, int suffixLength)
+    {
+        byte[] prefix = GenerateTestInput(prefixLength);
+        byte[] suffix = GenerateTestInput(suffixLength);
+
+        byte[] concatenated = new byte[prefixLength + suffixLength];
+        prefix.CopyTo(concatenated, 0);
+        suffix.CopyTo(concatenated, prefixLength);
+
+        using var reference = Blake3.Create(CH.SimdSupport.None, 32);
+        byte[] expected = reference.ComputeHash(concatenated);
+
+        using var hash = Blake3.Create();
+        hash.AppendData(prefix);
+
+        Span<byte> actual = stackalloc byte[32];
+        Assert.That(hash.TryComputeHash(suffix, actual, out int bytesWritten), Is.True);
+        Assert.That(bytesWritten, Is.EqualTo(32));
+        Assert.That(actual.ToArray(), Is.EqualTo(expected),
+            "TryComputeHash after AppendData must continue the stream, not restart it");
+
+        // The auto-reset contract still holds on the fallback path.
+        using var freshReference = Blake3.Create(CH.SimdSupport.None, 32);
+        byte[] suffixOnly = freshReference.ComputeHash(suffix);
+        Assert.That(hash.TryComputeHash(suffix, actual, out _), Is.True);
+        Assert.That(actual.ToArray(), Is.EqualTo(suffixOnly),
+            "instance must be freshly initialized after the fallback path");
     }
 
     /// <summary>
@@ -829,10 +869,10 @@ public class Blake3Tests
 
     /// <summary>
     /// Cross-validates <see cref="Blake3.TryHashOneShot"/> across every SIMD tier
-    /// this platform supports, mirroring how <c>ParameterizedHashBenchmark</c>
-    /// dispatches to it for the "CryptoHives-*" benchmark rows (see
-    /// <c>ParameterizedHashBenchmark.TryComputeHash</c>), so the per-tier fast-path
-    /// wiring is covered by correctness tests just like the streaming path already is.
+    /// this platform supports. <see cref="Blake3.TryComputeHash"/> overrides the base
+    /// streaming implementation to route whole-message hashes here, so this is the path
+    /// the "CryptoHives-*" benchmark rows take — covered by correctness tests just like
+    /// the streaming path already is.
     /// </summary>
     [TestCase(0)]
     [TestCase(1)]

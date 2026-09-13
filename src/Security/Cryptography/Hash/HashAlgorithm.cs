@@ -207,11 +207,19 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// <see cref="TryComputeHash"/> without calling
     /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> first.
     /// </para>
+    /// <para>
+    /// The base implementation feeds <paramref name="source"/> through the streaming
+    /// <c>HashCore</c>/<c>TryHashFinal</c> pair. An algorithm with a dedicated single-call
+    /// path that is faster than streaming — BLAKE3's tree hashing, for instance — should
+    /// override this and dispatch to it. An override must preserve the auto-reset above
+    /// and must still honour data already appended to this instance, falling back to
+    /// <c>base.TryComputeHash</c> when its one-shot path needs a freshly initialized state.
+    /// </para>
     /// </remarks>
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
-    public new bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    public new virtual bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
 #else
-    public bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    public virtual bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
 #endif
     {
         if (destination.Length < HashSizeValue / 8)

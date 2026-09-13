@@ -24,7 +24,7 @@ using CH = CryptoHives.Foundation.Security.Cryptography;
 /// performance, making it an excellent reference for correctness testing.
 /// </para>
 /// </remarks>
-internal sealed class Blake3NativeAdapter : CH.Hash.HashAlgorithm, IOneShotHash
+internal sealed class Blake3NativeAdapter : CH.Hash.HashAlgorithm
 {
     private readonly int _outputBytes;
     private Blake3Native.Hasher _hasher;
@@ -57,9 +57,9 @@ internal sealed class Blake3NativeAdapter : CH.Hash.HashAlgorithm, IOneShotHash
     /// <inheritdoc/>
     /// <remarks>
     /// Uses the library's static one-shot <c>Hasher.Hash(input, output)</c>, which is
-    /// faster than the streaming Update/Finalize path (see <see cref="IOneShotHash"/>).
+    /// faster than the streaming Update/Finalize path (overriding <c>CH.Hash.HashAlgorithm.TryComputeHash</c>, so the benchmarks measure this library's best single-call API rather than its streaming path).
     /// </remarks>
-    bool IOneShotHash.TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < _outputBytes)
         {
