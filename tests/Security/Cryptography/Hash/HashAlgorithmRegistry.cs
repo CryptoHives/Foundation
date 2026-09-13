@@ -54,7 +54,9 @@ public static class HashAlgorithmRegistry
         /// <summary>Blake3 managed (xoofx/Blake3.NET, "Blake3" package) implementation.</summary>
         Blake3Managed,
         /// <summary>Blake3.Managed (Dissimilis/Blake3.Managed package) implementation.</summary>
-        Blake3Dissimilis
+        Blake3Dissimilis,
+        /// <summary>Blake3.Managed with its thread fan-out capped at one thread.</summary>
+        Blake3DissimilisSerial
     }
 
     /// <summary>
@@ -533,6 +535,8 @@ public static class HashAlgorithmRegistry
 #if BLAKE3_DISSIMILIS
         list.Add(new("BLAKE3", "Blake3Dissimilis", 256,
             () => new Blake3DissimilisAdapter(32), Source.Blake3Dissimilis));
+        list.Add(new("BLAKE3", "Blake3DissimilisSerial", 256,
+            () => new Blake3DissimilisSerialAdapter(32), Source.Blake3DissimilisSerial));
 #endif
     }
 

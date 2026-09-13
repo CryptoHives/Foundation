@@ -86,6 +86,17 @@ block by block - those are marked *+ input* and are the only ones whose footprin
 | MD5 | 80 B | 64 B | 768 B | uint[4] state + byte[64] buffer; K/S/G tables |
 | IncrementalParallelHash | 40 B + input | configurable | 3.6 KB | buffers the message in a `MemoryStream`; the underlying SHAKE is created at finalize |
 
+>Every CryptoHives implementation in these charts is single-threaded, and so is almost every
+>library measured beside it. Currently one is not. `Blake3.Managed` splits a one-shot hash into subtrees
+>and hashes them on the thread pool once the input passes roughly 72 KiB.
+>
+>The comparison therefore carries **two** rows for that library:
+>
+>| Row | What it measures |
+>|---|---|
+>| `Blake3.Managed` | its default one-shot API — multi-threaded above ~72 KiB |
+>| `Blake3.Managed (1 thread)` | the same API with `Hasher.MaxDegreeOfParallelism = 1` |
+
 ### Cipher Algorithms
 
 Measured on the transform, which is where the round keys and chaining state live.
