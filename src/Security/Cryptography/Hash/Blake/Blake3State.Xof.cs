@@ -211,11 +211,10 @@ internal unsafe partial struct Blake3State
         }
         else
         {
-            // Partial (or empty) last block: zero-pad the tail explicitly, since
-            // SkipLocalsInit leaves the stack buffer dirty.
+            // zero padded by erasing the whole block avoids a JIT call to memset
             byte* block = stackalloc byte[BlockSizeBytes];
+            Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *block, ref *pEnd, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned(block + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
 
             CompressBlock(core->_cv, block, (uint)lastBlockLen, _chunkCounter, finalFlags);
         }
@@ -262,14 +261,14 @@ internal unsafe partial struct Blake3State
         uint* rb = core->_rootBlock;
         if (BitConverter.IsLittleEndian)
         {
+            Unsafe.InitBlock(rb, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *(byte*)rb, ref *pEnd, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned((byte*)rb + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
         }
         else
         {
             byte* block = stackalloc byte[BlockSizeBytes];
+            Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *block, ref *pEnd, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned(block + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
             BinarySpans.ReadUInt32LittleEndian(block, rb, BlockSizeWords);
         }
 

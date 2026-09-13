@@ -151,7 +151,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
     // XOF squeeze state (only touched when output exceeds one block)
     private fixed byte _squeezeBuf[BlockSizeBytes];
-    public bool _squeezed;
+    private bool _squeezed;
     private ulong _outputCounter;
     private int _squeezeOffset;
 
@@ -883,8 +883,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         {
             // Partial last block: zero-pad the tail explicitly (SkipLocalsInit)
             byte* block = stackalloc byte[BlockSizeBytes];
+            Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *block, ref *p, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned(block + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
 
             CompressBlock(core->_cv, block, (uint)lastBlockLen, _chunkCounter, finalFlags);
         }
