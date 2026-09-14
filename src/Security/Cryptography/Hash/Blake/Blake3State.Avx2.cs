@@ -102,7 +102,7 @@ internal unsafe partial struct Blake3State
             var v14 = blockLenVec;
             var v15 = Vector256.Create(flags);
 
-            CompressVector256ChunkParallel(
+            CompressVector256(
                 ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
                 ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
                 m);
@@ -228,7 +228,7 @@ internal unsafe partial struct Blake3State
             var v14 = blockLenVec;
             var v15 = Vector256.Create(flags);
 
-            CompressVector256ChunkParallel(
+            CompressVector256(
                 ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
                 ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
                 m);
@@ -586,15 +586,23 @@ internal unsafe partial struct Blake3State
     // force-inlined so that, after inlining into the caller's block loop, the
     // state maps onto the 16 YMM registers instead of stack slots.
     //
-    // This is the *hoisting* half of a deliberate pair: the 16 message words are
-    // read into locals once, up front. That is right for a caller that compresses
-    // a single block - SqueezeRootBlocks8Avx2 and CompressParents8Avx2 - where
-    // there is no block loop to amortise the loads over and the registers are
-    // free anyway. The chunk kernels, which run 16 blocks over a resident
-    // v0..v15, use CompressVector256ChunkParallel instead; see its comment for
-    // why hoisting loses there. De-hoisting *both* was measured and is wrong:
-    // it gained 5.6% @6KB on the chunk kernels but cost 5.1% @64KB and 7.5% @1MB
-    // through the parent reduction, which is why the two exist separately.
+    // Reads the 16 message words into locals up front. De-hoisting them - reading
+    // m[..] at each GVec instead, which is what the 128-bit compressor does and
+    // what gained 15% there (3011247) - was tried here and is a regression on
+    // *both* register files, measured pinned to one core:
+    //
+    //            AVX-512 hardware        AVX2-only (DOTNET_EnableAVX512=0)
+    //    8KB        +8.7%                      +17.7%
+    //    64KB       +3.3%                      +14.8%
+    //    128KB      +5.3%                      +43.2%
+    //
+    // On AVX-512 hardware the reason is that this tier already gets vprord for the
+    // rotates, so there are no temporaries competing for the 16 YMM registers and
+    // nothing to buy by moving the messages out. On a real AVX2-only target the
+    // de-hoist does not even remove the spills - they persist either way - it just
+    // adds 112 loads per block, and at 128KB the extra traffic turns the size
+    // scaling superlinear (2.98x for 2x the data, against 1.98x without it).
+    //
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector256(
         ref Vector256<uint> v0, ref Vector256<uint> v1, ref Vector256<uint> v2, ref Vector256<uint> v3,
@@ -677,99 +685,6 @@ internal unsafe partial struct Blake3State
         GVec(ref v1, ref v6, ref v11, ref v12, m2, m12);
         GVec(ref v2, ref v7, ref v8, ref v13, m3, m4);
         GVec(ref v3, ref v4, ref v9, ref v14, m7, m13);
-    }
-
-    // Non-hoisting twin of <see cref="CompressVector256"/>, for the chunk kernels.
-    //
-    // Identical schedule; the only difference is that the message words are read
-    // from m[..] at each GVec call instead of being hoisted into 16 locals first.
-    // That looks like more work and is measurably less: a vpaddd with a memory
-    // operand costs no instruction and, crucially, no register, whereas a hoisted
-    // local costs both. The same change on the 128-bit compressor (3011247) gained
-    // 15% across the SSSE3 tier at every size >= 4KB while the total instruction
-    // count went *up*, because register residency - not instruction count - is what
-    // binds here. A chunk kernel runs this 16 times over a resident v0..v15, so the
-    // 16 message registers are exactly what it cannot spare.
-    //
-    // The hoisting variant is kept for the single-block callers, where there is no
-    // block loop to amortise the loads and no register pressure to relieve.
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void CompressVector256ChunkParallel(
-        ref Vector256<uint> v0, ref Vector256<uint> v1, ref Vector256<uint> v2, ref Vector256<uint> v3,
-        ref Vector256<uint> v4, ref Vector256<uint> v5, ref Vector256<uint> v6, ref Vector256<uint> v7,
-        ref Vector256<uint> v8, ref Vector256<uint> v9, ref Vector256<uint> v10, ref Vector256<uint> v11,
-        ref Vector256<uint> v12, ref Vector256<uint> v13, ref Vector256<uint> v14, ref Vector256<uint> v15,
-        Vector256<uint>* m)
-    {
-        // Round 1
-        GVec(ref v0, ref v4, ref v8, ref v12, m[0], m[1]);
-        GVec(ref v1, ref v5, ref v9, ref v13, m[2], m[3]);
-        GVec(ref v2, ref v6, ref v10, ref v14, m[4], m[5]);
-        GVec(ref v3, ref v7, ref v11, ref v15, m[6], m[7]);
-        GVec(ref v0, ref v5, ref v10, ref v15, m[8], m[9]);
-        GVec(ref v1, ref v6, ref v11, ref v12, m[10], m[11]);
-        GVec(ref v2, ref v7, ref v8, ref v13, m[12], m[13]);
-        GVec(ref v3, ref v4, ref v9, ref v14, m[14], m[15]);
-
-        // Round 2
-        GVec(ref v0, ref v4, ref v8, ref v12, m[2], m[6]);
-        GVec(ref v1, ref v5, ref v9, ref v13, m[3], m[10]);
-        GVec(ref v2, ref v6, ref v10, ref v14, m[7], m[0]);
-        GVec(ref v3, ref v7, ref v11, ref v15, m[4], m[13]);
-        GVec(ref v0, ref v5, ref v10, ref v15, m[1], m[11]);
-        GVec(ref v1, ref v6, ref v11, ref v12, m[12], m[5]);
-        GVec(ref v2, ref v7, ref v8, ref v13, m[9], m[14]);
-        GVec(ref v3, ref v4, ref v9, ref v14, m[15], m[8]);
-
-        // Round 3
-        GVec(ref v0, ref v4, ref v8, ref v12, m[3], m[4]);
-        GVec(ref v1, ref v5, ref v9, ref v13, m[10], m[12]);
-        GVec(ref v2, ref v6, ref v10, ref v14, m[13], m[2]);
-        GVec(ref v3, ref v7, ref v11, ref v15, m[7], m[14]);
-        GVec(ref v0, ref v5, ref v10, ref v15, m[6], m[5]);
-        GVec(ref v1, ref v6, ref v11, ref v12, m[9], m[0]);
-        GVec(ref v2, ref v7, ref v8, ref v13, m[11], m[15]);
-        GVec(ref v3, ref v4, ref v9, ref v14, m[8], m[1]);
-
-        // Round 4
-        GVec(ref v0, ref v4, ref v8, ref v12, m[10], m[7]);
-        GVec(ref v1, ref v5, ref v9, ref v13, m[12], m[9]);
-        GVec(ref v2, ref v6, ref v10, ref v14, m[14], m[3]);
-        GVec(ref v3, ref v7, ref v11, ref v15, m[13], m[15]);
-        GVec(ref v0, ref v5, ref v10, ref v15, m[4], m[0]);
-        GVec(ref v1, ref v6, ref v11, ref v12, m[11], m[2]);
-        GVec(ref v2, ref v7, ref v8, ref v13, m[5], m[8]);
-        GVec(ref v3, ref v4, ref v9, ref v14, m[1], m[6]);
-
-        // Round 5
-        GVec(ref v0, ref v4, ref v8, ref v12, m[12], m[13]);
-        GVec(ref v1, ref v5, ref v9, ref v13, m[9], m[11]);
-        GVec(ref v2, ref v6, ref v10, ref v14, m[15], m[10]);
-        GVec(ref v3, ref v7, ref v11, ref v15, m[14], m[8]);
-        GVec(ref v0, ref v5, ref v10, ref v15, m[7], m[2]);
-        GVec(ref v1, ref v6, ref v11, ref v12, m[5], m[3]);
-        GVec(ref v2, ref v7, ref v8, ref v13, m[0], m[1]);
-        GVec(ref v3, ref v4, ref v9, ref v14, m[6], m[4]);
-
-        // Round 6
-        GVec(ref v0, ref v4, ref v8, ref v12, m[9], m[14]);
-        GVec(ref v1, ref v5, ref v9, ref v13, m[11], m[5]);
-        GVec(ref v2, ref v6, ref v10, ref v14, m[8], m[12]);
-        GVec(ref v3, ref v7, ref v11, ref v15, m[15], m[1]);
-        GVec(ref v0, ref v5, ref v10, ref v15, m[13], m[3]);
-        GVec(ref v1, ref v6, ref v11, ref v12, m[0], m[10]);
-        GVec(ref v2, ref v7, ref v8, ref v13, m[2], m[6]);
-        GVec(ref v3, ref v4, ref v9, ref v14, m[4], m[7]);
-
-        // Round 7
-        GVec(ref v0, ref v4, ref v8, ref v12, m[11], m[15]);
-        GVec(ref v1, ref v5, ref v9, ref v13, m[5], m[0]);
-        GVec(ref v2, ref v6, ref v10, ref v14, m[1], m[9]);
-        GVec(ref v3, ref v7, ref v11, ref v15, m[8], m[6]);
-        GVec(ref v0, ref v5, ref v10, ref v15, m[14], m[10]);
-        GVec(ref v1, ref v6, ref v11, ref v12, m[2], m[12]);
-        GVec(ref v2, ref v7, ref v8, ref v13, m[3], m[4]);
-        GVec(ref v3, ref v4, ref v9, ref v14, m[7], m[13]);
     }
 
     /// <summary>
