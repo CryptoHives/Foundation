@@ -29,8 +29,8 @@ public class HashConfig : ManualConfig
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(
-                maxDepth: 3,
-                printSource: true,
+                maxDepth: 12,
+                printSource: false,
                 exportGithubMarkdown: true,
                 exportCombinedDisassemblyReport: true)));
         }
