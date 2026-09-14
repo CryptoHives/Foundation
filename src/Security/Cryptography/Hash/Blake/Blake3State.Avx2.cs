@@ -102,7 +102,7 @@ internal unsafe partial struct Blake3State
             var v14 = blockLenVec;
             var v15 = Vector256.Create(flags);
 
-            CompressVector256(
+            CompressVector256ChunkParallel(
                 ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
                 ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
                 m);
@@ -228,7 +228,7 @@ internal unsafe partial struct Blake3State
             var v14 = blockLenVec;
             var v15 = Vector256.Create(flags);
 
-            CompressVector256(
+            CompressVector256ChunkParallel(
                 ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
                 ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
                 m);
@@ -373,15 +373,35 @@ internal unsafe partial struct Blake3State
         v6 = Vector256.Create(key[6]);
         v7 = Vector256.Create(key[7]);
 
+        // Each parent's 64-byte message block is its two child CVs side by side, so
+        // lane j needs childCvs[j*16 .. j*16+15]. The loads feed Transpose8x8Into
+        // directly rather than being staged into m and read back: the pointer-form
+        // Transpose8x8 would store 8 vectors and immediately reload them, which is
+        // 16 memory round-trips this can simply skip.
+        const int ParentStrideWords = 2 * KeySizeWords;
         var m = stackalloc Vector256<uint>[BlockSizeWords];
-        for (int j = 0; j < 8; j++)
-        {
-            m[j] = Avx.LoadVector256(childCvs + j * 2 * KeySizeWords);
-            m[j + 8] = Avx.LoadVector256(childCvs + j * 2 * KeySizeWords + KeySizeWords);
-        }
 
-        Transpose8x8(m);
-        Transpose8x8(m + 8);
+        Transpose8x8Into(
+            Avx.LoadVector256(childCvs + 0 * ParentStrideWords),
+            Avx.LoadVector256(childCvs + 1 * ParentStrideWords),
+            Avx.LoadVector256(childCvs + 2 * ParentStrideWords),
+            Avx.LoadVector256(childCvs + 3 * ParentStrideWords),
+            Avx.LoadVector256(childCvs + 4 * ParentStrideWords),
+            Avx.LoadVector256(childCvs + 5 * ParentStrideWords),
+            Avx.LoadVector256(childCvs + 6 * ParentStrideWords),
+            Avx.LoadVector256(childCvs + 7 * ParentStrideWords),
+            m);
+
+        Transpose8x8Into(
+            Avx.LoadVector256(childCvs + 0 * ParentStrideWords + KeySizeWords),
+            Avx.LoadVector256(childCvs + 1 * ParentStrideWords + KeySizeWords),
+            Avx.LoadVector256(childCvs + 2 * ParentStrideWords + KeySizeWords),
+            Avx.LoadVector256(childCvs + 3 * ParentStrideWords + KeySizeWords),
+            Avx.LoadVector256(childCvs + 4 * ParentStrideWords + KeySizeWords),
+            Avx.LoadVector256(childCvs + 5 * ParentStrideWords + KeySizeWords),
+            Avx.LoadVector256(childCvs + 6 * ParentStrideWords + KeySizeWords),
+            Avx.LoadVector256(childCvs + 7 * ParentStrideWords + KeySizeWords),
+            m + 8);
 
         var v8 = iv0; var v9 = iv1; var v10 = iv2; var v11 = iv3;
         var v12 = Vector256<uint>.Zero;   // parent counter is always 0
@@ -394,20 +414,14 @@ internal unsafe partial struct Blake3State
             ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
             m);
 
-        m[0] = Avx2.Xor(v0, v8);
-        m[1] = Avx2.Xor(v1, v9);
-        m[2] = Avx2.Xor(v2, v10);
-        m[3] = Avx2.Xor(v3, v11);
-        m[4] = Avx2.Xor(v4, v12);
-        m[5] = Avx2.Xor(v5, v13);
-        m[6] = Avx2.Xor(v6, v14);
-        m[7] = Avx2.Xor(v7, v15);
-
-        Transpose8x8(m);
-        for (int parentIdx = 0; parentIdx < 8; parentIdx++)
-        {
-            Avx.Store(outCvs + parentIdx * KeySizeWords, m[parentIdx]);
-        }
+        // The fold v[i] ^ v[i+8] goes straight through the transpose into outCvs,
+        // matching CompressChunks8Avx2. Staging it back through m would cost 8
+        // stores, a reload inside the in-place transpose, and a store loop on the
+        // way out, for a result the registers already hold.
+        Transpose8x8Into(
+            Avx2.Xor(v0, v8), Avx2.Xor(v1, v9), Avx2.Xor(v2, v10), Avx2.Xor(v3, v11),
+            Avx2.Xor(v4, v12), Avx2.Xor(v5, v13), Avx2.Xor(v6, v14), Avx2.Xor(v7, v15),
+            (Vector256<uint>*)outCvs);
     }
 
     /// <summary>
@@ -571,6 +585,16 @@ internal unsafe partial struct Blake3State
     // The 16 state words are ref parameters (not an array) and the method is
     // force-inlined so that, after inlining into the caller's block loop, the
     // state maps onto the 16 YMM registers instead of stack slots.
+    //
+    // This is the *hoisting* half of a deliberate pair: the 16 message words are
+    // read into locals once, up front. That is right for a caller that compresses
+    // a single block - SqueezeRootBlocks8Avx2 and CompressParents8Avx2 - where
+    // there is no block loop to amortise the loads over and the registers are
+    // free anyway. The chunk kernels, which run 16 blocks over a resident
+    // v0..v15, use CompressVector256ChunkParallel instead; see its comment for
+    // why hoisting loses there. De-hoisting *both* was measured and is wrong:
+    // it gained 5.6% @6KB on the chunk kernels but cost 5.1% @64KB and 7.5% @1MB
+    // through the parent reduction, which is why the two exist separately.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector256(
         ref Vector256<uint> v0, ref Vector256<uint> v1, ref Vector256<uint> v2, ref Vector256<uint> v3,
@@ -653,6 +677,99 @@ internal unsafe partial struct Blake3State
         GVec(ref v1, ref v6, ref v11, ref v12, m2, m12);
         GVec(ref v2, ref v7, ref v8, ref v13, m3, m4);
         GVec(ref v3, ref v4, ref v9, ref v14, m7, m13);
+    }
+
+    // Non-hoisting twin of <see cref="CompressVector256"/>, for the chunk kernels.
+    //
+    // Identical schedule; the only difference is that the message words are read
+    // from m[..] at each GVec call instead of being hoisted into 16 locals first.
+    // That looks like more work and is measurably less: a vpaddd with a memory
+    // operand costs no instruction and, crucially, no register, whereas a hoisted
+    // local costs both. The same change on the 128-bit compressor (3011247) gained
+    // 15% across the SSSE3 tier at every size >= 4KB while the total instruction
+    // count went *up*, because register residency - not instruction count - is what
+    // binds here. A chunk kernel runs this 16 times over a resident v0..v15, so the
+    // 16 message registers are exactly what it cannot spare.
+    //
+    // The hoisting variant is kept for the single-block callers, where there is no
+    // block loop to amortise the loads and no register pressure to relieve.
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void CompressVector256ChunkParallel(
+        ref Vector256<uint> v0, ref Vector256<uint> v1, ref Vector256<uint> v2, ref Vector256<uint> v3,
+        ref Vector256<uint> v4, ref Vector256<uint> v5, ref Vector256<uint> v6, ref Vector256<uint> v7,
+        ref Vector256<uint> v8, ref Vector256<uint> v9, ref Vector256<uint> v10, ref Vector256<uint> v11,
+        ref Vector256<uint> v12, ref Vector256<uint> v13, ref Vector256<uint> v14, ref Vector256<uint> v15,
+        Vector256<uint>* m)
+    {
+        // Round 1
+        GVec(ref v0, ref v4, ref v8, ref v12, m[0], m[1]);
+        GVec(ref v1, ref v5, ref v9, ref v13, m[2], m[3]);
+        GVec(ref v2, ref v6, ref v10, ref v14, m[4], m[5]);
+        GVec(ref v3, ref v7, ref v11, ref v15, m[6], m[7]);
+        GVec(ref v0, ref v5, ref v10, ref v15, m[8], m[9]);
+        GVec(ref v1, ref v6, ref v11, ref v12, m[10], m[11]);
+        GVec(ref v2, ref v7, ref v8, ref v13, m[12], m[13]);
+        GVec(ref v3, ref v4, ref v9, ref v14, m[14], m[15]);
+
+        // Round 2
+        GVec(ref v0, ref v4, ref v8, ref v12, m[2], m[6]);
+        GVec(ref v1, ref v5, ref v9, ref v13, m[3], m[10]);
+        GVec(ref v2, ref v6, ref v10, ref v14, m[7], m[0]);
+        GVec(ref v3, ref v7, ref v11, ref v15, m[4], m[13]);
+        GVec(ref v0, ref v5, ref v10, ref v15, m[1], m[11]);
+        GVec(ref v1, ref v6, ref v11, ref v12, m[12], m[5]);
+        GVec(ref v2, ref v7, ref v8, ref v13, m[9], m[14]);
+        GVec(ref v3, ref v4, ref v9, ref v14, m[15], m[8]);
+
+        // Round 3
+        GVec(ref v0, ref v4, ref v8, ref v12, m[3], m[4]);
+        GVec(ref v1, ref v5, ref v9, ref v13, m[10], m[12]);
+        GVec(ref v2, ref v6, ref v10, ref v14, m[13], m[2]);
+        GVec(ref v3, ref v7, ref v11, ref v15, m[7], m[14]);
+        GVec(ref v0, ref v5, ref v10, ref v15, m[6], m[5]);
+        GVec(ref v1, ref v6, ref v11, ref v12, m[9], m[0]);
+        GVec(ref v2, ref v7, ref v8, ref v13, m[11], m[15]);
+        GVec(ref v3, ref v4, ref v9, ref v14, m[8], m[1]);
+
+        // Round 4
+        GVec(ref v0, ref v4, ref v8, ref v12, m[10], m[7]);
+        GVec(ref v1, ref v5, ref v9, ref v13, m[12], m[9]);
+        GVec(ref v2, ref v6, ref v10, ref v14, m[14], m[3]);
+        GVec(ref v3, ref v7, ref v11, ref v15, m[13], m[15]);
+        GVec(ref v0, ref v5, ref v10, ref v15, m[4], m[0]);
+        GVec(ref v1, ref v6, ref v11, ref v12, m[11], m[2]);
+        GVec(ref v2, ref v7, ref v8, ref v13, m[5], m[8]);
+        GVec(ref v3, ref v4, ref v9, ref v14, m[1], m[6]);
+
+        // Round 5
+        GVec(ref v0, ref v4, ref v8, ref v12, m[12], m[13]);
+        GVec(ref v1, ref v5, ref v9, ref v13, m[9], m[11]);
+        GVec(ref v2, ref v6, ref v10, ref v14, m[15], m[10]);
+        GVec(ref v3, ref v7, ref v11, ref v15, m[14], m[8]);
+        GVec(ref v0, ref v5, ref v10, ref v15, m[7], m[2]);
+        GVec(ref v1, ref v6, ref v11, ref v12, m[5], m[3]);
+        GVec(ref v2, ref v7, ref v8, ref v13, m[0], m[1]);
+        GVec(ref v3, ref v4, ref v9, ref v14, m[6], m[4]);
+
+        // Round 6
+        GVec(ref v0, ref v4, ref v8, ref v12, m[9], m[14]);
+        GVec(ref v1, ref v5, ref v9, ref v13, m[11], m[5]);
+        GVec(ref v2, ref v6, ref v10, ref v14, m[8], m[12]);
+        GVec(ref v3, ref v7, ref v11, ref v15, m[15], m[1]);
+        GVec(ref v0, ref v5, ref v10, ref v15, m[13], m[3]);
+        GVec(ref v1, ref v6, ref v11, ref v12, m[0], m[10]);
+        GVec(ref v2, ref v7, ref v8, ref v13, m[2], m[6]);
+        GVec(ref v3, ref v4, ref v9, ref v14, m[4], m[7]);
+
+        // Round 7
+        GVec(ref v0, ref v4, ref v8, ref v12, m[11], m[15]);
+        GVec(ref v1, ref v5, ref v9, ref v13, m[5], m[0]);
+        GVec(ref v2, ref v6, ref v10, ref v14, m[1], m[9]);
+        GVec(ref v3, ref v7, ref v11, ref v15, m[8], m[6]);
+        GVec(ref v0, ref v5, ref v10, ref v15, m[14], m[10]);
+        GVec(ref v1, ref v6, ref v11, ref v12, m[2], m[12]);
+        GVec(ref v2, ref v7, ref v8, ref v13, m[3], m[4]);
+        GVec(ref v3, ref v4, ref v9, ref v14, m[7], m[13]);
     }
 
     /// <summary>
