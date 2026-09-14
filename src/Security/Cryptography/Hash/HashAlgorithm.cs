@@ -353,12 +353,34 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// BLAKE3 instance): those return <see langword="false"/> so the pool's policy disposes
     /// the instance — erasing the secret — instead of recycling it for an unrelated caller.
     /// </para>
+    /// <para>
+    /// The reset is skipped when <see cref="IsInitialized"/> already reports the initial state.
+    /// That is the common case for a pooled instance: every helper in
+    /// <c>HashAlgorithmPool&lt;T&gt;</c> finishes with <see cref="TryComputeHash"/> or
+    /// <see cref="TryGetHashAndReset"/>, both of which end in
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> on success, so the
+    /// instance handed back to the pool is already reset and doing it again is pure cost.
+    /// </para>
     /// </remarks>
     public virtual bool TryReset()
     {
-        Initialize();
+        if (!IsInitialized)
+        {
+            Initialize();
+        }
+
         return true;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether this instance is already in the state
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> would produce, so
+    /// <see cref="TryReset"/> can skip resetting it.
+    /// </summary>
+    /// <value>
+    /// <see langword="true"/> if a reset would be a no-op; otherwise, <see langword="false"/>.
+    /// </value>
+    protected virtual bool IsInitialized => false;
 
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.

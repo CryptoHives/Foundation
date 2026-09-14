@@ -431,6 +431,9 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     }
 
     /// <inheritdoc/>
+    protected override bool IsInitialized => !_disposed && _core.IsFresh;
+
+    /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input)
     {
         if (_core.Squeezed) throw new InvalidOperationException("Cannot add data after finalization.");
