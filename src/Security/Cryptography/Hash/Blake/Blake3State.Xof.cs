@@ -331,27 +331,42 @@ internal unsafe partial struct Blake3State
         if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
         {
             int offset = 0;
-            int fullGroups = blocks / ChunksPerAvx2Batch;
-            for (int g = 0; g < fullGroups; g++)
+            int remaining = blocks;
+            ulong counter = startCounter;
+
+            // Widest first: 16 blocks per call where AVX-512 is available, then the
+            // 8-wide kernel for what is left, then the tail. The AVX-512 pass only
+            // takes whole groups of 16 - a short group would gain nothing, since an
+            // over-wide batch costs the same as a full one and the 8-wide kernel
+            // below already handles 2..15 in one call.
+            if ((_simdSupport & SimdSupport.Avx512F) != 0)
             {
-                SqueezeRootBlocks8Avx2(
-                    core,
-                    startCounter + (ulong)(g * ChunksPerAvx2Batch),
-                    dst + offset);
-                offset += ChunksPerAvx2Batch * BlockSizeBytes;
+                while (remaining >= ChunksPerAvx512Batch)
+                {
+                    SqueezeRootBlocks16Avx512(core, counter, dst + offset);
+                    offset += ChunksPerAvx512Batch * BlockSizeBytes;
+                    counter += ChunksPerAvx512Batch;
+                    remaining -= ChunksPerAvx512Batch;
+                }
             }
 
-            int remaining = blocks - fullGroups * ChunksPerAvx2Batch;
-            ulong tailCounter = startCounter + (ulong)(fullGroups * ChunksPerAvx2Batch);
+            while (remaining >= ChunksPerAvx2Batch)
+            {
+                SqueezeRootBlocks8Avx2(core, counter, dst + offset);
+                offset += ChunksPerAvx2Batch * BlockSizeBytes;
+                counter += ChunksPerAvx2Batch;
+                remaining -= ChunksPerAvx2Batch;
+            }
+
             if (remaining >= 2)
             {
                 byte* scratch = stackalloc byte[ChunksPerAvx2Batch * BlockSizeBytes];
-                SqueezeRootBlocks8Avx2(core, tailCounter, scratch);
+                SqueezeRootBlocks8Avx2(core, counter, scratch);
                 Unsafe.CopyBlockUnaligned(dst + offset, scratch, (uint)(remaining * BlockSizeBytes));
             }
             else if (remaining == 1)
             {
-                SqueezeRootBlocksSsse3(core, tailCounter, 1, dst + offset);
+                SqueezeRootBlocksSsse3(core, counter, 1, dst + offset);
             }
         }
         else if ((_simdSupport & SimdSupport.Ssse3) != 0)
