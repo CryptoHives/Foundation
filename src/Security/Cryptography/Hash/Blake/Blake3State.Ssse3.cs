@@ -22,14 +22,26 @@ using System.Runtime.Intrinsics.X86;
 internal unsafe partial struct Blake3State
 {
     // Pre-computed shuffle masks for byte-aligned rotations on 32-bit words.
+    // Expression-bodied properties for the same reason IVLow below is one: as
+    // static readonly fields every use re-tests the class-init byte and loads the
+    // mask indirectly through the GC static base, which showed up in the
+    // disassembly of CompressBlockSsse3 as a guard plus a call to
+    // StaticsHelpers.GetGCStaticBase on the block path. All-const operands
+    // materialise from the constant pool in one RIP-relative load instead.
 
     // Rotate right by 16 bits
-    private static readonly Vector128<byte> RotateMask16 = Vector128.Create(
-        (byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
+    private static Vector128<byte> RotateMask16
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector128.Create((byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
+    }
 
     // Rotate right by 8 bits
-    private static readonly Vector128<byte> RotateMask8 = Vector128.Create(
-        (byte)1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
+    private static Vector128<byte> RotateMask8
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector128.Create((byte)1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
+    }
 
     // Pre-computed IV vector. An expression-bodied property, not a static
     // readonly field: every operand is a const, so each use site materialises the
@@ -41,8 +53,11 @@ internal unsafe partial struct Blake3State
     }
 
     // Selects dwords 1 and 3 from the second operand, 0 and 2 from the first.
-    private static readonly Vector128<uint> BlendMask0101 = Vector128.Create(
-        0u, uint.MaxValue, 0u, uint.MaxValue);
+    private static Vector128<uint> BlendMask0101
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector128.Create(0u, uint.MaxValue, 0u, uint.MaxValue);
+    }
 
     /// <summary>
     /// Number of chunks the SSSE3 tier compresses in parallel.
@@ -339,6 +354,11 @@ internal unsafe partial struct Blake3State
         // Rounds 2-7: BLAKE3's message schedule applies the same fixed
         // permutation every round to the previous round's own output vectors,
         // so the six remaining rounds are textually identical.
+        //
+        // Kept as a loop: fully unrolling it (matching the competitor's
+        // DoRoundsShuffle) was measured and is neutral - 141 -> 414 instructions
+        // and 685 -> 1989 bytes for no time change on either 4B or 1KB, with a
+        // stable control. The per-block gap is not loop overhead.
         for (int i = 1; i < 7; i++)
         {
             q0 = colX; q1 = colY; q2 = diagX; q3 = diagY;
