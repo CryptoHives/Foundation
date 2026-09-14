@@ -427,11 +427,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             }
             else
             {
-                // Prime the squeeze buffer exactly as the (!_squeezed) branch of
-                // Squeeze() would, then mark squeezed so it resumes from here
-                // instead of re-deriving the root from _chunkBuffer.
-                SqueezeRootBlock(core, 0, core->_squeezeBuf);
-
+                // The root is already saved, so mark the state squeezed and let
+                // Squeeze() resume from here instead of re-deriving it from
+                // _chunkBuffer. No block is primed: Squeeze() produces blocks
+                // lazily and buffers one only for a trailing partial read, so
+                // priming here would just compute a block it would recompute.
                 _squeezed = true;
                 _outputCounter = 0;
                 _squeezeOffset = 0;

@@ -673,6 +673,66 @@ public class Blake3Tests
         }
     }
 
+    /// <summary>
+    /// Squeezes in irregular chunk sizes and compares against a single call. The
+    /// byte-at-a-time test above only ever drains one byte per call, so it never
+    /// combines a partial drain, a run of whole blocks, and a fresh partial inside
+    /// one sequence - which is precisely the interaction the buffer-validity
+    /// invariant governs (<c>_squeezeBuf</c> holds block <c>_outputCounter</c> if
+    /// and only if <c>_squeezeOffset &gt; 0</c>). A lazily produced block that is
+    /// skipped, produced twice, or produced with the wrong counter shows up here.
+    /// </summary>
+    /// <param name="chunks">The sequence of squeeze lengths to request.</param>
+    [TestCase(new[] { 1, 63, 1 })]                 // lands exactly on a block boundary, then restarts
+    [TestCase(new[] { 63, 2, 63 })]                // straddles two boundaries
+    [TestCase(new[] { 7, 100, 3 })]                // partial, multi-block, partial
+    [TestCase(new[] { 64, 64, 1 })]                // whole blocks with no buffer, then a partial
+    [TestCase(new[] { 1, 640, 5 })]                // partial, wide batched run, partial
+    [TestCase(new[] { 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5 })]  // repeatedly crossing
+    [TestCase(new[] { 128, 1, 127, 1 })]           // exact multiples interleaved with single bytes
+    public void SqueezeInIrregularChunksMatchesSingleCall(int[] chunks)
+    {
+        byte[] input = GenerateTestInput(37);
+        int total = 0;
+        foreach (int c in chunks)
+        {
+            total += c;
+        }
+
+        foreach (CH.SimdSupport tier in new[]
+        {
+            CH.SimdSupport.None,
+            CH.SimdSupport.Ssse3,
+            CH.SimdSupport.Avx2,
+            CH.SimdSupport.Avx512F,
+            CH.SimdSupport.Neon,
+        })
+        {
+            if (tier != CH.SimdSupport.None && (Blake3.SimdSupport & tier) == 0)
+            {
+                continue;
+            }
+
+            using var single = Blake3.Create(tier, 32);
+            single.Absorb(input);
+            byte[] expected = new byte[total];
+            single.Squeeze(expected);
+
+            using var chunked = Blake3.Create(tier, 32);
+            chunked.Absorb(input);
+            byte[] actual = new byte[total];
+            int offset = 0;
+            foreach (int c in chunks)
+            {
+                chunked.Squeeze(actual.AsSpan(offset, c));
+                offset += c;
+            }
+
+            Assert.That(actual, Is.EqualTo(expected),
+                $"Squeeze mismatch for chunks [{string.Join(",", chunks)}], tier {tier}");
+        }
+    }
+
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(64)]

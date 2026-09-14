@@ -17,31 +17,43 @@ internal unsafe partial struct Blake3State
     /// Finalizes the hash and squeezes output of the specified length.
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
+    /// <remarks>
+    /// <para>
+    /// Squeeze blocks are produced lazily. <c>_squeezeBuf</c> holds block
+    /// <c>_outputCounter</c> if and only if <c>_squeezeOffset &gt; 0</c>; when the offset
+    /// is zero nothing is buffered and <c>_outputCounter</c> names the next block to
+    /// produce. Full blocks go straight into the caller's span, and a block is only
+    /// materialised into the buffer when a trailing partial read actually needs one.
+    /// </para>
+    /// <para>
+    /// This replaces a look-ahead scheme that kept the buffer primed at all times. That
+    /// invariant cost one full compression per call whose length was a multiple of the
+    /// 64-byte block - the common case, since a caller asking for a fixed-size output
+    /// usually never squeezes again - and another on every buffer-crossing.
+    /// </para>
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     internal void Squeeze(Span<byte> output)
     {
         fixed (Blake3State* core = &this)
         {
-            byte* dst = core->_squeezeBuf;
             if (!_squeezed)
             {
                 FinalizeRoot(core);
                 _squeezed = true;
                 _outputCounter = 0;
                 _squeezeOffset = 0;
-
-                // Fill the first squeeze buffer block (counter = 0)
-                SqueezeRootBlock(core, 0, dst);
             }
 
             int remaining = output.Length;
             int destOffset = 0;
 
-            // Resume from partial block left by a previous Squeeze call
+            // Drain whatever a previous call left buffered. Reaching the end of that
+            // block advances the counter and empties the buffer; the next block is
+            // not produced here because this call may not need one.
             if (_squeezeOffset > 0 && remaining > 0)
             {
-                int available = BlockSizeBytes - _squeezeOffset;
-                int toCopy = Math.Min(remaining, available);
+                int toCopy = Math.Min(remaining, BlockSizeBytes - _squeezeOffset);
                 Unsafe.CopyBlockUnaligned(
                     ref MemoryMarshal.GetReference(output.Slice(destOffset)),
                     ref core->_squeezeBuf[_squeezeOffset],
@@ -53,53 +65,30 @@ internal unsafe partial struct Blake3State
                 if (_squeezeOffset == BlockSizeBytes)
                 {
                     _outputCounter++;
-                    SqueezeRootBlock(core, _outputCounter, dst);
                     _squeezeOffset = 0;
                 }
             }
 
-            // Process full 64-byte output blocks. Unlike chunk compression,
-            // squeeze blocks have no chaining dependency on each other — each
-            // is an independent function of (_rootCv, _rootBlock, counter) —
-            // so instead of one SqueezeRootBlock call per block (each reloading
-            // _rootCv/_rootBlock and round-tripping through _squeezeBuf), batch
-            // everything but the already-buffered current block and the
-            // look-ahead block directly into the caller's span.
+            // Whole blocks are written directly to the caller. Squeeze blocks have no
+            // chaining dependency on each other - each is an independent function of
+            // (_rootCv, _rootBlock, counter) - so the whole run is one batched call.
             int fullBlocks = remaining / BlockSizeBytes;
             if (fullBlocks > 0)
             {
-                // Block _outputCounter is already sitting in _squeezeBuf from
-                // the previous iteration/call — just copy it out.
-                Unsafe.CopyBlockUnaligned(
-                    ref MemoryMarshal.GetReference(output.Slice(destOffset)),
-                    ref core->_squeezeBuf[0],
-                    BlockSizeBytes);
-                destOffset += BlockSizeBytes;
-                remaining -= BlockSizeBytes;
-
-                int extraBlocks = fullBlocks - 1;
-                if (extraBlocks > 0)
+                fixed (byte* blockDst = output.Slice(destOffset, fullBlocks * BlockSizeBytes))
                 {
-                    fixed (byte* extraDst = output.Slice(destOffset, extraBlocks * BlockSizeBytes))
-                    {
-                        SqueezeRootBlocks(core, _outputCounter + 1, extraBlocks, extraDst);
-                    }
-
-                    destOffset += extraBlocks * BlockSizeBytes;
-                    remaining -= extraBlocks * BlockSizeBytes;
+                    SqueezeRootBlocks(core, _outputCounter, fullBlocks, blockDst);
                 }
 
+                destOffset += fullBlocks * BlockSizeBytes;
+                remaining -= fullBlocks * BlockSizeBytes;
                 _outputCounter += (ulong)fullBlocks;
-
-                // Look-ahead: prime _squeezeBuf with the next block for a
-                // trailing partial read below, or a future Squeeze call.
-                SqueezeRootBlock(core, _outputCounter, dst);
-                _squeezeOffset = 0;
             }
 
-            // Handle trailing partial block
+            // Only now, with a partial read to satisfy, is a block buffered.
             if (remaining > 0)
             {
+                SqueezeRootBlock(core, _outputCounter, core->_squeezeBuf);
                 Unsafe.CopyBlockUnaligned(
                     ref MemoryMarshal.GetReference(output.Slice(destOffset)),
                     ref core->_squeezeBuf[0],
