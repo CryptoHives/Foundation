@@ -200,7 +200,7 @@ internal unsafe partial struct Blake3State
     // registers, so the rounds run spill-free with the message words folding
     // into the adds as memory operands.
     [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector512(
         Vector512<uint>* cv, Vector512<uint>* m, Vector512<uint>* counters, uint flags)
     {
@@ -317,7 +317,7 @@ internal unsafe partial struct Blake3State
     // registers, so the rounds run spill-free with the message words folding
     // into the adds as memory operands.
     [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector512Squeeze(
         Vector512<uint>* cv, Vector512<uint>* m, Vector512<uint>* counters,
         uint blockLen, uint flags, Vector512<uint>* halves)
