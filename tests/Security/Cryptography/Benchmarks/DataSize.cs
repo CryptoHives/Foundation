@@ -66,15 +66,7 @@ public class DataSize : IFormattable
     /// <summary>8 KB - throughput testing.</summary>
     public static readonly DataSize K8 = new("8KB", 8192);
 
-    /// <summary>
-    /// 9 KB - nine BLAKE3 chunks: one full eight-chunk batch plus a one-chunk tail.
-    /// </summary>
-    /// <remarks>
-    /// Sits beside <see cref="K8"/> as the direct A/B for the batch-drain path. At 8 KB the
-    /// final batch drains the input, so the commit takes the slow branch and fires four serial
-    /// single-block parent compressions; at 9 KB the same batch is not the last, so it takes the
-    /// wide SIMD reduce. Without this size the two paths are indistinguishable in the results.
-    /// </remarks>
+    /// <summary>9 KB - nine BLAKE3 chunks: one full eight-chunk batch plus a one-chunk tail.</summary>
     public static readonly DataSize B9216 = new("9216B", 9216);
 
     /// <summary>128 KB - sustained throughput.</summary>
