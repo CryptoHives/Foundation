@@ -207,11 +207,19 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// <see cref="TryComputeHash"/> without calling
     /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> first.
     /// </para>
+    /// <para>
+    /// The base implementation feeds <paramref name="source"/> through the streaming
+    /// <c>HashCore</c>/<c>TryHashFinal</c> pair. An algorithm with a dedicated single-call
+    /// path that is faster than streaming — BLAKE3's tree hashing, for instance — should
+    /// override this and dispatch to it. An override must preserve the auto-reset above
+    /// and must still honour data already appended to this instance, falling back to
+    /// <c>base.TryComputeHash</c> when its one-shot path needs a freshly initialized state.
+    /// </para>
     /// </remarks>
 #if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
-    public new bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    public new virtual bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
 #else
-    public bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    public virtual bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
 #endif
     {
         if (destination.Length < HashSizeValue / 8)
@@ -345,12 +353,34 @@ public abstract class HashAlgorithm : System.Security.Cryptography.HashAlgorithm
     /// BLAKE3 instance): those return <see langword="false"/> so the pool's policy disposes
     /// the instance — erasing the secret — instead of recycling it for an unrelated caller.
     /// </para>
+    /// <para>
+    /// The reset is skipped when <see cref="IsInitialized"/> already reports the initial state.
+    /// That is the common case for a pooled instance: every helper in
+    /// <c>HashAlgorithmPool&lt;T&gt;</c> finishes with <see cref="TryComputeHash"/> or
+    /// <see cref="TryGetHashAndReset"/>, both of which end in
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> on success, so the
+    /// instance handed back to the pool is already reset and doing it again is pure cost.
+    /// </para>
     /// </remarks>
     public virtual bool TryReset()
     {
-        Initialize();
+        if (!IsInitialized)
+        {
+            Initialize();
+        }
+
         return true;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether this instance is already in the state
+    /// <see cref="System.Security.Cryptography.HashAlgorithm.Initialize"/> would produce, so
+    /// <see cref="TryReset"/> can skip resetting it.
+    /// </summary>
+    /// <value>
+    /// <see langword="true"/> if a reset would be a no-op; otherwise, <see langword="false"/>.
+    /// </value>
+    protected virtual bool IsInitialized => false;
 
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
