@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 #if NET8_0_OR_GREATER
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -35,6 +36,86 @@ internal unsafe partial struct Blake3State
     internal const int Avx512BatchSizeBytes = ChunksPerAvx512Batch * ChunkSizeBytes;
 
     /// <summary>
+    /// Tree level of one aligned 16-chunk batch: a subtree of 2^level chunks, which is what
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="ChunksPerAvx512Batch"/>).
+    /// </summary>
+    internal const int Avx512BatchLevel = 4;
+
+
+    /// <summary>
+    /// Runs every complete 64-chunk subtree group the remaining input allows, using this
+    /// tier's 16-wide chunk kernel, and returns the advanced offset. See
+    /// <see cref="CompressSubtreeGroupsAvx2"/> for why this is specialised per tier and
+    /// why the loop tests length alone.
+    /// </summary>
+    /// <remarks>
+    /// The reduction is the <em>8</em>-lane <see cref="ReduceChunkCvsToSubtreeCvAvx2"/>,
+    /// not a 16-lane one: reduction width follows the widest available *parent* kernel,
+    /// and there is no <c>CompressParents16Avx512</c>. The two widths are independent.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the first group starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
+    /// <returns><paramref name="offset"/> advanced past every group compressed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CompressSubtreeGroupsAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        do
+        {
+            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerAvx512Batch; b++)
+            {
+                CompressChunksPartialAvx512(
+                    srcPtr + offset,
+                    ChunksPerAvx512Batch,
+                    core->_keyWords,
+                    batchCvs + b * ChunksPerAvx512Batch * KeySizeWords,
+                    _chunkCounter + (ulong)(b * ChunksPerAvx512Batch),
+                    _baseFlags);
+                offset += Avx512BatchSizeBytes;
+            }
+
+            ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+            PushSubtreeCv(core, batchCvs, SubtreeGroupLevel);
+            _chunkCounter += ChunksPerSubtreeGroup;
+        }
+        while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
+
+        return offset;
+    }
+
+    /// <summary>
+    /// Compresses the 9-15 chunk tail left by the 16-chunk batch loop and commits its CVs,
+    /// returning the bytes consumed.
+    /// </summary>
+    /// <remarks>
+    /// Specialised per tier so the kernel call is direct; the previous shared helper took it
+    /// as a function pointer. <c>fullChunks</c> is genuinely variable here (9..15), so unlike
+    /// the SSSE3 and NEON tails there is no constant width to fold.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
+    /// <returns>The number of bytes consumed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CommitPartialBatchAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        int fullChunks = (length - offset) / ChunkSizeBytes;
+        Debug.Assert(fullChunks > ChunksPerAvx2Batch && fullChunks < ChunksPerAvx512Batch,
+            "the 16-chunk batch loop leaves 9..15 chunks here");
+        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
+
+        CompressChunksPartialAvx512(
+            srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+
+        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
+        return fullChunks * ChunkSizeBytes;
+    }
+
+    /// <summary>
     /// Compresses <paramref name="chunkCount"/> (9..16) independent, full
     /// (1024-byte) chunks with the 16-way kernel by ignoring the surplus lanes
     /// (lane <c>j</c> is only loaded, and its output only stored, when
@@ -50,14 +131,18 @@ internal unsafe partial struct Blake3State
     /// partial-batch call for the remainder — two 8-wide kernel calls (two
     /// transposes, two reduction passes) instead of the one 16-wide call here.
     /// </remarks>
+
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialAvx512(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        var scratch = stackalloc Vector512<uint>[26];
+        // One allocation laid out as three regions: BlockSizeWords message vectors,
+        // KeySizeWords chaining-value vectors, then the low/high counter pair.
+        const int CounterVectors = 2;
+        var scratch = stackalloc Vector512<uint>[BlockSizeWords + KeySizeWords + CounterVectors];
         Vector512<uint>* m = scratch;
-        Vector512<uint>* cv = scratch + 16;
-        Vector512<uint>* counters = scratch + 24;
+        Vector512<uint>* cv = scratch + BlockSizeWords;
+        Vector512<uint>* counters = scratch + BlockSizeWords + KeySizeWords;
 
         counters[0] = Vector512.Create(
             (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3),
@@ -70,7 +155,7 @@ internal unsafe partial struct Blake3State
             (uint)((baseCounter + 8) >> 32), (uint)((baseCounter + 9) >> 32), (uint)((baseCounter + 10) >> 32), (uint)((baseCounter + 11) >> 32),
             (uint)((baseCounter + 12) >> 32), (uint)((baseCounter + 13) >> 32), (uint)((baseCounter + 14) >> 32), (uint)((baseCounter + 15) >> 32));
 
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < KeySizeWords; i++)
         {
             cv[i] = Vector512.Create(key[i]);
         }
@@ -79,7 +164,7 @@ internal unsafe partial struct Blake3State
         uint startFlags = baseFlags | FlagChunkStart;
         uint endFlags = baseFlags | FlagChunkEnd;
 
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
             byte* blockBase = source + blockIdx * BlockSizeBytes;
 
@@ -90,11 +175,11 @@ internal unsafe partial struct Blake3State
 
             Transpose16x16(m);
 
-            uint flags = blockIdx == 0 ? startFlags : (blockIdx == 15 ? endFlags : middleFlags);
+            uint flags = blockIdx == 0 ? startFlags : (blockIdx == BlocksPerChunk - 1 ? endFlags : middleFlags);
             CompressVector512(cv, m, counters, flags);
         }
 
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < KeySizeWords; i++)
         {
             m[i] = cv[i];
         }
@@ -102,7 +187,7 @@ internal unsafe partial struct Blake3State
         Transpose16x16(m);
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
         {
-            Avx.Store(outCvs + chunkIdx * 8, m[chunkIdx].GetLower());
+            Avx.Store(outCvs + chunkIdx * KeySizeWords, m[chunkIdx].GetLower());
         }
     }
 
@@ -115,7 +200,7 @@ internal unsafe partial struct Blake3State
     // registers, so the rounds run spill-free with the message words folding
     // into the adds as memory operands.
     [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector512(
         Vector512<uint>* cv, Vector512<uint>* m, Vector512<uint>* counters, uint flags)
     {
@@ -215,6 +300,198 @@ internal unsafe partial struct Blake3State
         cv[6] = Avx512F.Xor(v6, v14);
         cv[7] = Avx512F.Xor(v7, v15);
     }
+
+    // Squeeze twin of CompressVector512. Two differences, both forced by what an
+    // XOF output block is:
+    //
+    //  * blockLen is a parameter. A chunk block is always 64 bytes, but the root
+    //    block a squeeze re-compresses is whatever the final input block was.
+    //  * both folds are emitted. A chunk only needs the chaining value
+    //    v[i] ^ v[i+8]; a squeeze block is the full 16 words, so it also needs
+    //    v[i+8] ^ cv[i]. cv is left untouched so the caller's root CV survives
+    //    for that second fold and for the next call.
+    //
+    // Otherwise identical - same schedule, same groupings, generated from
+    // CompressVector512 rather than transcribed - and NoInlining for the same
+    // reason: standalone, only the 16 v-state locals compete for the 32 ZMM
+    // registers, so the rounds run spill-free with the message words folding
+    // into the adds as memory operands.
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void CompressVector512Squeeze(
+        Vector512<uint>* cv, Vector512<uint>* m, Vector512<uint>* counters,
+        uint blockLen, uint flags, Vector512<uint>* halves)
+    {
+        var v0 = cv[0];
+        var v1 = cv[1];
+        var v2 = cv[2];
+        var v3 = cv[3];
+        var v4 = cv[4];
+        var v5 = cv[5];
+        var v6 = cv[6];
+        var v7 = cv[7];
+        var v8 = Vector512.Create(IV0);
+        var v9 = Vector512.Create(IV1);
+        var v10 = Vector512.Create(IV2);
+        var v11 = Vector512.Create(IV3);
+        var v12 = counters[0];
+        var v13 = counters[1];
+        var v14 = Vector512.Create(blockLen);
+        var v15 = Vector512.Create(flags);
+
+        // Round 1
+        GVec(ref v0, ref v4, ref v8, ref v12, m, 0, 1);
+        GVec(ref v1, ref v5, ref v9, ref v13, m, 2, 3);
+        GVec(ref v2, ref v6, ref v10, ref v14, m, 4, 5);
+        GVec(ref v3, ref v7, ref v11, ref v15, m, 6, 7);
+        GVec(ref v0, ref v5, ref v10, ref v15, m, 8, 9);
+        GVec(ref v1, ref v6, ref v11, ref v12, m, 10, 11);
+        GVec(ref v2, ref v7, ref v8, ref v13, m, 12, 13);
+        GVec(ref v3, ref v4, ref v9, ref v14, m, 14, 15);
+
+        // Round 2
+        GVec(ref v0, ref v4, ref v8, ref v12, m, 2, 6);
+        GVec(ref v1, ref v5, ref v9, ref v13, m, 3, 10);
+        GVec(ref v2, ref v6, ref v10, ref v14, m, 7, 0);
+        GVec(ref v3, ref v7, ref v11, ref v15, m, 4, 13);
+        GVec(ref v0, ref v5, ref v10, ref v15, m, 1, 11);
+        GVec(ref v1, ref v6, ref v11, ref v12, m, 12, 5);
+        GVec(ref v2, ref v7, ref v8, ref v13, m, 9, 14);
+        GVec(ref v3, ref v4, ref v9, ref v14, m, 15, 8);
+
+        // Round 3
+        GVec(ref v0, ref v4, ref v8, ref v12, m, 3, 4);
+        GVec(ref v1, ref v5, ref v9, ref v13, m, 10, 12);
+        GVec(ref v2, ref v6, ref v10, ref v14, m, 13, 2);
+        GVec(ref v3, ref v7, ref v11, ref v15, m, 7, 14);
+        GVec(ref v0, ref v5, ref v10, ref v15, m, 6, 5);
+        GVec(ref v1, ref v6, ref v11, ref v12, m, 9, 0);
+        GVec(ref v2, ref v7, ref v8, ref v13, m, 11, 15);
+        GVec(ref v3, ref v4, ref v9, ref v14, m, 8, 1);
+
+        // Round 4
+        GVec(ref v0, ref v4, ref v8, ref v12, m, 10, 7);
+        GVec(ref v1, ref v5, ref v9, ref v13, m, 12, 9);
+        GVec(ref v2, ref v6, ref v10, ref v14, m, 14, 3);
+        GVec(ref v3, ref v7, ref v11, ref v15, m, 13, 15);
+        GVec(ref v0, ref v5, ref v10, ref v15, m, 4, 0);
+        GVec(ref v1, ref v6, ref v11, ref v12, m, 11, 2);
+        GVec(ref v2, ref v7, ref v8, ref v13, m, 5, 8);
+        GVec(ref v3, ref v4, ref v9, ref v14, m, 1, 6);
+
+        // Round 5
+        GVec(ref v0, ref v4, ref v8, ref v12, m, 12, 13);
+        GVec(ref v1, ref v5, ref v9, ref v13, m, 9, 11);
+        GVec(ref v2, ref v6, ref v10, ref v14, m, 15, 10);
+        GVec(ref v3, ref v7, ref v11, ref v15, m, 14, 8);
+        GVec(ref v0, ref v5, ref v10, ref v15, m, 7, 2);
+        GVec(ref v1, ref v6, ref v11, ref v12, m, 5, 3);
+        GVec(ref v2, ref v7, ref v8, ref v13, m, 0, 1);
+        GVec(ref v3, ref v4, ref v9, ref v14, m, 6, 4);
+
+        // Round 6
+        GVec(ref v0, ref v4, ref v8, ref v12, m, 9, 14);
+        GVec(ref v1, ref v5, ref v9, ref v13, m, 11, 5);
+        GVec(ref v2, ref v6, ref v10, ref v14, m, 8, 12);
+        GVec(ref v3, ref v7, ref v11, ref v15, m, 15, 1);
+        GVec(ref v0, ref v5, ref v10, ref v15, m, 13, 3);
+        GVec(ref v1, ref v6, ref v11, ref v12, m, 0, 10);
+        GVec(ref v2, ref v7, ref v8, ref v13, m, 2, 6);
+        GVec(ref v3, ref v4, ref v9, ref v14, m, 4, 7);
+
+        // Round 7
+        GVec(ref v0, ref v4, ref v8, ref v12, m, 11, 15);
+        GVec(ref v1, ref v5, ref v9, ref v13, m, 5, 0);
+        GVec(ref v2, ref v6, ref v10, ref v14, m, 1, 9);
+        GVec(ref v3, ref v7, ref v11, ref v15, m, 8, 6);
+        GVec(ref v0, ref v5, ref v10, ref v15, m, 14, 10);
+        GVec(ref v1, ref v6, ref v11, ref v12, m, 2, 12);
+        GVec(ref v2, ref v7, ref v8, ref v13, m, 3, 4);
+        GVec(ref v3, ref v4, ref v9, ref v14, m, 7, 13);
+
+        halves[0] = Avx512F.Xor(v0, v8);   halves[8] = Avx512F.Xor(v8, cv[0]);
+        halves[1] = Avx512F.Xor(v1, v9);   halves[9] = Avx512F.Xor(v9, cv[1]);
+        halves[2] = Avx512F.Xor(v2, v10);  halves[10] = Avx512F.Xor(v10, cv[2]);
+        halves[3] = Avx512F.Xor(v3, v11);  halves[11] = Avx512F.Xor(v11, cv[3]);
+        halves[4] = Avx512F.Xor(v4, v12);  halves[12] = Avx512F.Xor(v12, cv[4]);
+        halves[5] = Avx512F.Xor(v5, v13);  halves[13] = Avx512F.Xor(v13, cv[5]);
+        halves[6] = Avx512F.Xor(v6, v14);  halves[14] = Avx512F.Xor(v14, cv[6]);
+        halves[7] = Avx512F.Xor(v7, v15);  halves[15] = Avx512F.Xor(v15, cv[7]);
+    }
+
+    /// <summary>
+    /// Squeezes <see cref="ChunksPerAvx512Batch"/> consecutive output blocks
+    /// (counters <paramref name="startCounter"/> .. +15) into
+    /// <paramref name="dst"/>, which must have room for all of them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The 16-wide counterpart of <c>SqueezeRootBlocks8Avx2</c>. Squeeze blocks are
+    /// independent - every lane compresses the same root block and chaining value and
+    /// only the counter differs - so there is nothing to transpose in: each message
+    /// and CV word is broadcast to all 16 lanes.
+    /// </para>
+    /// <para>
+    /// The un-transpose is where the 512-bit width pays twice. 16 lanes by 16 output
+    /// words is exactly square, so one <see cref="Transpose16x16"/> puts whole blocks
+    /// in <c>halves[j]</c> and each block leaves in a single 64-byte store - where the
+    /// 8-wide kernel needs two 8x8 transposes and two half-block stores per block.
+    /// </para>
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private void SqueezeRootBlocks16Avx512(Blake3State* core, ulong startCounter, byte* dst)
+    {
+        uint* rootCv = core->_rootCv;
+        uint* rootBlock = core->_rootBlock;
+
+        // One allocation, three regions: the broadcast message, the broadcast root
+        // chaining value, the counter pair, and the 16 output words.
+        const int CounterVectors = 2;
+        var scratch = stackalloc Vector512<uint>[BlockSizeWords + KeySizeWords + CounterVectors + BlockSizeWords];
+        Vector512<uint>* m = scratch;
+        Vector512<uint>* cv = scratch + BlockSizeWords;
+        Vector512<uint>* counters = cv + KeySizeWords;
+        Vector512<uint>* halves = counters + CounterVectors;
+
+        for (int w = 0; w < BlockSizeWords; w++)
+        {
+            m[w] = Vector512.Create(rootBlock[w]);
+        }
+
+        for (int i = 0; i < KeySizeWords; i++)
+        {
+            cv[i] = Vector512.Create(rootCv[i]);
+        }
+
+        counters[0] = Vector512.Create(
+            (uint)(startCounter + 0), (uint)(startCounter + 1), (uint)(startCounter + 2), (uint)(startCounter + 3),
+            (uint)(startCounter + 4), (uint)(startCounter + 5), (uint)(startCounter + 6), (uint)(startCounter + 7),
+            (uint)(startCounter + 8), (uint)(startCounter + 9), (uint)(startCounter + 10), (uint)(startCounter + 11),
+            (uint)(startCounter + 12), (uint)(startCounter + 13), (uint)(startCounter + 14), (uint)(startCounter + 15));
+        counters[1] = Vector512.Create(
+            (uint)((startCounter + 0) >> 32), (uint)((startCounter + 1) >> 32),
+            (uint)((startCounter + 2) >> 32), (uint)((startCounter + 3) >> 32),
+            (uint)((startCounter + 4) >> 32), (uint)((startCounter + 5) >> 32),
+            (uint)((startCounter + 6) >> 32), (uint)((startCounter + 7) >> 32),
+            (uint)((startCounter + 8) >> 32), (uint)((startCounter + 9) >> 32),
+            (uint)((startCounter + 10) >> 32), (uint)((startCounter + 11) >> 32),
+            (uint)((startCounter + 12) >> 32), (uint)((startCounter + 13) >> 32),
+            (uint)((startCounter + 14) >> 32), (uint)((startCounter + 15) >> 32));
+
+        CompressVector512Squeeze(cv, m, counters, _rootBlockLen, _rootFlags, halves);
+
+        // halves[w] holds word w of all 16 blocks; transposing leaves halves[j]
+        // holding all 16 words of block j - a whole 64-byte output block.
+        Transpose16x16(halves);
+
+        for (int j = 0; j < ChunksPerAvx512Batch; j++)
+        {
+            Avx512F.Store((uint*)(dst + j * BlockSizeBytes), halves[j]);
+        }
+    }
+
+
 
     /// <summary>
     /// In-place 16×16 transpose of 32-bit words: on input <c>vecs[j]</c> holds

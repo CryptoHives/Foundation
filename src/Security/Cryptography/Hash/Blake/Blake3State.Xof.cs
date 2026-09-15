@@ -17,31 +17,43 @@ internal unsafe partial struct Blake3State
     /// Finalizes the hash and squeezes output of the specified length.
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
+    /// <remarks>
+    /// <para>
+    /// Squeeze blocks are produced lazily. <c>_squeezeBuf</c> holds block
+    /// <c>_outputCounter</c> if and only if <c>_squeezeOffset &gt; 0</c>; when the offset
+    /// is zero nothing is buffered and <c>_outputCounter</c> names the next block to
+    /// produce. Full blocks go straight into the caller's span, and a block is only
+    /// materialised into the buffer when a trailing partial read actually needs one.
+    /// </para>
+    /// <para>
+    /// This replaces a look-ahead scheme that kept the buffer primed at all times. That
+    /// invariant cost one full compression per call whose length was a multiple of the
+    /// 64-byte block - the common case, since a caller asking for a fixed-size output
+    /// usually never squeezes again - and another on every buffer-crossing.
+    /// </para>
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     internal void Squeeze(Span<byte> output)
     {
         fixed (Blake3State* core = &this)
         {
-            byte* dst = core->_squeezeBuf;
             if (!_squeezed)
             {
                 FinalizeRoot(core);
                 _squeezed = true;
                 _outputCounter = 0;
                 _squeezeOffset = 0;
-
-                // Fill the first squeeze buffer block (counter = 0)
-                SqueezeRootBlock(core, 0, dst);
             }
 
             int remaining = output.Length;
             int destOffset = 0;
 
-            // Resume from partial block left by a previous Squeeze call
+            // Drain whatever a previous call left buffered. Reaching the end of that
+            // block advances the counter and empties the buffer; the next block is
+            // not produced here because this call may not need one.
             if (_squeezeOffset > 0 && remaining > 0)
             {
-                int available = BlockSizeBytes - _squeezeOffset;
-                int toCopy = Math.Min(remaining, available);
+                int toCopy = Math.Min(remaining, BlockSizeBytes - _squeezeOffset);
                 Unsafe.CopyBlockUnaligned(
                     ref MemoryMarshal.GetReference(output.Slice(destOffset)),
                     ref core->_squeezeBuf[_squeezeOffset],
@@ -53,53 +65,30 @@ internal unsafe partial struct Blake3State
                 if (_squeezeOffset == BlockSizeBytes)
                 {
                     _outputCounter++;
-                    SqueezeRootBlock(core, _outputCounter, dst);
                     _squeezeOffset = 0;
                 }
             }
 
-            // Process full 64-byte output blocks. Unlike chunk compression,
-            // squeeze blocks have no chaining dependency on each other — each
-            // is an independent function of (_rootCv, _rootBlock, counter) —
-            // so instead of one SqueezeRootBlock call per block (each reloading
-            // _rootCv/_rootBlock and round-tripping through _squeezeBuf), batch
-            // everything but the already-buffered current block and the
-            // look-ahead block directly into the caller's span.
+            // Whole blocks are written directly to the caller. Squeeze blocks have no
+            // chaining dependency on each other - each is an independent function of
+            // (_rootCv, _rootBlock, counter) - so the whole run is one batched call.
             int fullBlocks = remaining / BlockSizeBytes;
             if (fullBlocks > 0)
             {
-                // Block _outputCounter is already sitting in _squeezeBuf from
-                // the previous iteration/call — just copy it out.
-                Unsafe.CopyBlockUnaligned(
-                    ref MemoryMarshal.GetReference(output.Slice(destOffset)),
-                    ref core->_squeezeBuf[0],
-                    BlockSizeBytes);
-                destOffset += BlockSizeBytes;
-                remaining -= BlockSizeBytes;
-
-                int extraBlocks = fullBlocks - 1;
-                if (extraBlocks > 0)
+                fixed (byte* blockDst = output.Slice(destOffset, fullBlocks * BlockSizeBytes))
                 {
-                    fixed (byte* extraDst = output.Slice(destOffset, extraBlocks * BlockSizeBytes))
-                    {
-                        SqueezeRootBlocks(core, _outputCounter + 1, extraBlocks, extraDst);
-                    }
-
-                    destOffset += extraBlocks * BlockSizeBytes;
-                    remaining -= extraBlocks * BlockSizeBytes;
+                    SqueezeRootBlocks(core, _outputCounter, fullBlocks, blockDst);
                 }
 
+                destOffset += fullBlocks * BlockSizeBytes;
+                remaining -= fullBlocks * BlockSizeBytes;
                 _outputCounter += (ulong)fullBlocks;
-
-                // Look-ahead: prime _squeezeBuf with the next block for a
-                // trailing partial read below, or a future Squeeze call.
-                SqueezeRootBlock(core, _outputCounter, dst);
-                _squeezeOffset = 0;
             }
 
-            // Handle trailing partial block
+            // Only now, with a partial read to satisfy, is a block buffered.
             if (remaining > 0)
             {
+                SqueezeRootBlock(core, _outputCounter, core->_squeezeBuf);
                 Unsafe.CopyBlockUnaligned(
                     ref MemoryMarshal.GetReference(output.Slice(destOffset)),
                     ref core->_squeezeBuf[0],
@@ -131,41 +120,30 @@ internal unsafe partial struct Blake3State
             // from _chunkBuffer/_cv, which wouldn't hold this chunk's data.
             if (_hasPendingCv)
             {
-                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * 8, core->_pendingCv, KeySizeWords * (uint)sizeof(uint));
+                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * KeySizeWords, core->_pendingCv, KeySizeBytes);
             }
             else
 #endif
             {
-                FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * 8);
+                FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * KeySizeWords);
             }
 
             _cvStackDepth++;
 
             // Merge all CVs in the stack
-            while (_cvStackDepth > 1)
+            while (_cvStackDepth > 2)
             {
-                uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * 8;
-                uint* right = core->_cvStackBuf + (_cvStackDepth - 1) * 8;
-
-                if (_cvStackDepth == 2)
-                {
-                    SaveParentAsRoot(core, left, right);
-                    return;
-                }
-
                 // left/right are adjacent stack slots — the contiguous
                 // 64-byte parent block ComputeParentCv reads directly.
+                uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * KeySizeWords;
                 ComputeParentCv(left, core->_keyWords, left);
 
                 _cvStackDepth--;
             }
 
-            // Single CV remaining — treat as parent root with zero right child
-            if (_cvStackDepth == 1)
-            {
-                uint* zr = stackalloc uint[8];
-                SaveParentAsRoot(core, core->_cvStackBuf, zr);
-            }
+            // _cvStackDepth is exactly 2 here: the else branch is only entered with at
+            // least one chunk already committed, so the push above left at least two.
+            SaveParentAsRoot(core, core->_cvStackBuf, core->_cvStackBuf + KeySizeWords);
         }
     }
 
@@ -222,11 +200,10 @@ internal unsafe partial struct Blake3State
         }
         else
         {
-            // Partial (or empty) last block: zero-pad the tail explicitly, since
-            // SkipLocalsInit leaves the stack buffer dirty.
+            // zero padded by erasing the whole block avoids a JIT call to memset
             byte* block = stackalloc byte[BlockSizeBytes];
+            Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *block, ref *pEnd, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned(block + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
 
             CompressBlock(core->_cv, block, (uint)lastBlockLen, _chunkCounter, finalFlags);
         }
@@ -273,18 +250,18 @@ internal unsafe partial struct Blake3State
         uint* rb = core->_rootBlock;
         if (BitConverter.IsLittleEndian)
         {
+            Unsafe.InitBlock(rb, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *(byte*)rb, ref *pEnd, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned((byte*)rb + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
         }
         else
         {
             byte* block = stackalloc byte[BlockSizeBytes];
+            Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *block, ref *pEnd, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned(block + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
             BinarySpans.ReadUInt32LittleEndian(block, rb, BlockSizeWords);
         }
 
-        Unsafe.CopyBlock(core->_rootCv, core->_cv, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(core->_rootCv, core->_cv, KeySizeBytes);
 
         _rootBlockLen = (uint)lastBlockLen;
         _rootFlags = finalFlags;
@@ -295,10 +272,10 @@ internal unsafe partial struct Blake3State
     /// </summary>
     private void SaveParentAsRoot(Blake3State* core, uint* left, uint* right)
     {
-        // Copy left[8] and right[8] directly into _rootBlock[16]
-        Unsafe.CopyBlock(core->_rootBlock, left, 8 * (uint)sizeof(uint));
-        Unsafe.CopyBlock(&core->_rootBlock[8], right, 8 * (uint)sizeof(uint));
-        Unsafe.CopyBlock(core->_rootCv, core->_keyWords, KeySizeWords * (uint)sizeof(uint));
+        // The two child CVs sit side by side as the parent's 64-byte message block.
+        Unsafe.CopyBlock(core->_rootBlock, left, KeySizeBytes);
+        Unsafe.CopyBlock(&core->_rootBlock[KeySizeWords], right, KeySizeBytes);
+        Unsafe.CopyBlock(core->_rootCv, core->_keyWords, KeySizeBytes);
         _rootBlockLen = BlockSizeBytes;
         _rootFlags = _baseFlags | FlagParent | FlagRoot;
     }
@@ -354,27 +331,42 @@ internal unsafe partial struct Blake3State
         if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
         {
             int offset = 0;
-            int fullGroups = blocks / ChunksPerAvx2Batch;
-            for (int g = 0; g < fullGroups; g++)
+            int remaining = blocks;
+            ulong counter = startCounter;
+
+            // Widest first: 16 blocks per call where AVX-512 is available, then the
+            // 8-wide kernel for what is left, then the tail. The AVX-512 pass only
+            // takes whole groups of 16 - a short group would gain nothing, since an
+            // over-wide batch costs the same as a full one and the 8-wide kernel
+            // below already handles 2..15 in one call.
+            if ((_simdSupport & SimdSupport.Avx512F) != 0)
             {
-                SqueezeRootBlocks8Avx2(
-                    core,
-                    startCounter + (ulong)(g * ChunksPerAvx2Batch),
-                    dst + offset);
-                offset += ChunksPerAvx2Batch * BlockSizeBytes;
+                while (remaining >= ChunksPerAvx512Batch)
+                {
+                    SqueezeRootBlocks16Avx512(core, counter, dst + offset);
+                    offset += ChunksPerAvx512Batch * BlockSizeBytes;
+                    counter += ChunksPerAvx512Batch;
+                    remaining -= ChunksPerAvx512Batch;
+                }
             }
 
-            int remaining = blocks - fullGroups * ChunksPerAvx2Batch;
-            ulong tailCounter = startCounter + (ulong)(fullGroups * ChunksPerAvx2Batch);
+            while (remaining >= ChunksPerAvx2Batch)
+            {
+                SqueezeRootBlocks8Avx2(core, counter, dst + offset);
+                offset += ChunksPerAvx2Batch * BlockSizeBytes;
+                counter += ChunksPerAvx2Batch;
+                remaining -= ChunksPerAvx2Batch;
+            }
+
             if (remaining >= 2)
             {
                 byte* scratch = stackalloc byte[ChunksPerAvx2Batch * BlockSizeBytes];
-                SqueezeRootBlocks8Avx2(core, tailCounter, scratch);
+                SqueezeRootBlocks8Avx2(core, counter, scratch);
                 Unsafe.CopyBlockUnaligned(dst + offset, scratch, (uint)(remaining * BlockSizeBytes));
             }
             else if (remaining == 1)
             {
-                SqueezeRootBlocksSsse3(core, tailCounter, 1, dst + offset);
+                SqueezeRootBlocksSsse3(core, counter, 1, dst + offset);
             }
         }
         else if ((_simdSupport & SimdSupport.Ssse3) != 0)
