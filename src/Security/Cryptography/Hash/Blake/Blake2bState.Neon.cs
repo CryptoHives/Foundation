@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
+#pragma warning disable CA1857 // A constant is expected for the parameter — false positive due to .NET 8 runtime metadata bug.
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -266,7 +267,6 @@ internal unsafe partial struct Blake2bState
     /// Performs one Gy half-round: <c>a += b + y; d = ror(d^a, 16); c += d; b = ror(b^c, 63)</c>.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "False negative due to bug in .NET 8 runtime metadata.")]
     private static void GRoundYNeon(
         ref Vector128<ulong> aL, ref Vector128<ulong> aH,
         ref Vector128<ulong> bL, ref Vector128<ulong> bH,

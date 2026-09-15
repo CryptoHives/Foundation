@@ -31,7 +31,7 @@ using ManagedHasher = Blake3Managed::Blake3.Hasher;
 /// scalar/SIMD paths and no native library dependency, distinct from the Rust-backed
 /// "Blake3.Native" package wrapped by <see cref="Blake3NativeAdapter"/>.
 /// </remarks>
-internal sealed class Blake3ManagedAdapter : CH.Hash.HashAlgorithm, IOneShotHash
+internal sealed class Blake3ManagedAdapter : CH.Hash.HashAlgorithm
 {
     private readonly int _outputBytes;
     private ManagedHasher _hasher;
@@ -65,9 +65,10 @@ internal sealed class Blake3ManagedAdapter : CH.Hash.HashAlgorithm, IOneShotHash
     /// <remarks>
     /// Uses the library's static one-shot <c>Hasher.Hash(input, output)</c>, which
     /// hashes via recursive subtree splitting instead of the slower streaming
-    /// Update path (see <see cref="IOneShotHash"/>).
+    /// Update path (overriding <c>CH.Hash.HashAlgorithm.TryComputeHash</c>,
+    /// so the benchmarks measure this library's best single-call API rather than its streaming path).
     /// </remarks>
-    bool IOneShotHash.TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < _outputBytes)
         {

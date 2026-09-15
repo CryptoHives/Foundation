@@ -243,7 +243,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         var context = new Blake3State(simdSupport, KeySizeBytes, FlagDeriveKeyContext);
         try
         {
-            context.TryHashOneShot(contextUtf8, contextKey, out _);
+            context.TryHashOneShot(contextUtf8, contextKey, out _, out _);
         }
         finally
         {
@@ -252,6 +252,40 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     public bool Squeezed => _squeezed;
+
+    /// <summary>
+    /// Gets whether no input has been absorbed and no output squeezed since the last
+    /// reset — i.e. the state is exactly as <c>ResetCommonState</c> leaves it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the precondition of <see cref="TryHashOneShot"/>, which hashes its
+    /// source as a complete message and cannot continue an in-progress tree.
+    /// </para>
+    /// <para>
+    /// <c>ResetCommonState</c> also clears <c>_outputCounter</c> and
+    /// <c>_squeezeOffset</c>, which are deliberately not tested here: every write that
+    /// makes either non-zero happens inside a squeeze, which sets <c>_squeezed</c>
+    /// first, so <c>!_squeezed</c> already implies both are zero. They sit ~3 KB into
+    /// the struct, past the bulk buffers, and reading them cost this predicate a
+    /// second cache line on every call. A field added to <c>ResetCommonState</c>
+    /// belongs here too unless it is implied this same way.
+    /// </para>
+    /// </remarks>
+    public bool IsFresh
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get =>
+            _chunkBufferLength == 0
+            && _chunkCounter == 0
+            && _blocksCompressed == 0
+            && _cvStackDepth == 0
+            && !_squeezed
+#if NET8_0_OR_GREATER
+            && !_hasPendingCv
+#endif
+            ;
+    }
 
     /// <inheritdoc/>
     public void Reset(bool keyedMode)
@@ -320,16 +354,34 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// inputs reuse the existing batched <see cref="Append(ReadOnlySpan{byte})"/>/<see cref="TryGetCurrentHash"/>
     /// machinery, which already amortizes any bookkeeping over many chunks.
     /// </remarks>
-    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value.</param>
+    /// <param name="bytesWritten">The number of bytes written into <paramref name="destination"/>.</param>
+    /// <param name="stateDirty">
+    /// <para>
+    /// When this method returns, whether the call left the state needing a reset before
+    /// it can be used again — <see langword="false"/> only on the constant-state kernel
+    /// path, which touches no field at all.
+    /// </para>
+    /// <para>
+    /// This cannot be inferred from <see cref="IsFresh"/>: that predicate tests only the
+    /// bookkeeping scalars, and <see cref="HashChunkRoot32"/> leaves <c>_cv</c> holding
+    /// the root fold without making any of them non-zero. So a path that dirties the
+    /// state has to say so.
+    /// </para>
+    /// </param>
+    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten, out bool stateDirty)
     {
         if (destination.Length < _outputBytes)
         {
             bytesWritten = 0;
+            stateDirty = false;
             return false;
         }
 
         bytesWritten = _outputBytes;
 
+ stateDirty = true;
         if (source.Length <= ChunkSizeBytes)
         {
             TryHashOneShotSingleChunk(source, destination);

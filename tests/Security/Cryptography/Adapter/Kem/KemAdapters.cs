@@ -16,7 +16,7 @@ using CH = CryptoHives.Foundation.Security.Cryptography.Kem;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Plays the same role for KEMs that <c>IOneShotHash</c> plays for hashes and <c>IMac</c>
+/// Plays the same role for KEMs that the virtual <c>TryComputeHash</c> plays for hashes and <c>IMac</c>
 /// for MACs: the implementations have genuinely different APIs — key-holding versus
 /// stateless, span-based versus <c>byte[]</c>-with-offsets — and a fair comparison needs a
 /// common one. Two rules keep it honest:
