@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Benchmarks.Hash;
@@ -25,16 +25,6 @@ using CH = CryptoHives.Foundation.Security.Cryptography;
 /// </remarks>
 public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
 {
-    // HashAlgorithm is System.Security.Cryptography.HashAlgorithm, because eight registry
-    // rows are in-box implementations and several third-party adapters derive from it
-    // directly. Its TryComputeHash is NOT virtual and always runs the streaming
-    // HashCore/HashFinal path, so calling it through that type would measure every
-    // implementation's slow path - including Blake3.Managed's, whose multi-threaded
-    // one-shot then never runs. Only CH.Hash.HashAlgorithm exposes the virtual that
-    // implementations override with their best single-call API, so it is resolved once
-    // here; rows that are not ours fall back to the in-box method, which is all they have.
-    private CH.Hash.HashAlgorithm? _cryptoHivesHash;
-
     [ParamsSource(nameof(Sizes))]
     public DataSize TestDataSize { get; set; } = DataSize.K8;
 
@@ -55,22 +45,28 @@ public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
     {
         Bytes = TestDataSize.Bytes;
         HashAlgorithm = TestHashAlgorithm.Create();
-        _cryptoHivesHash = HashAlgorithm as CH.Hash.HashAlgorithm;
         base.GlobalSetup();
     }
 
     [Test, Repeat(5)]
-    [TestCaseSource(typeof(DataSize), nameof(DataSize.AllSizes))]
+    [FixtureDataSizeSource(nameof(Sizes))]
     public void TestComputeHash(DataSize dataSize)
     {
         TestDataSize = dataSize;
         GlobalSetup();
 #if NET5_0_OR_GREATER
         _outputSize = -1;
+        Array.Clear(_outputData);
         TryComputeHash();
         Assert.That(_outputSize, Is.GreaterThan(0), "Hash output should not be empty.");
         var result = _outputData.AsSpan().Slice(0, _outputSize).ToArray();
         Assert.That(_outputSize, Is.EqualTo(HashAlgorithm.HashSize / 8));
+        var previousOutputData = new byte[_outputSize];
+        Array.Copy(_outputData, previousOutputData, _outputSize);
+        _outputSize = -1;
+        Array.Clear(_outputData);
+        TryComputeHash();
+        Assert.That(_outputData, Is.EqualTo(previousOutputData));
 #else
         var result = ComputeHash();
         Assert.That(result, Is.Not.Null, "Hash output should not be null.");
@@ -88,11 +84,7 @@ public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
 #if NET5_0_OR_GREATER
     public void TryComputeHash()
     {
-        bool written = _cryptoHivesHash is not null
-            ? _cryptoHivesHash.TryComputeHash(_inputData, _outputData, out int bytesWritten)
-            : HashAlgorithm.TryComputeHash(_inputData, _outputData, out bytesWritten);
-
-        if (written)
+        if (HashAlgorithm.TryComputeHash(_inputData, _outputData, out int bytesWritten))
         {
             _outputSize = bytesWritten;
         }

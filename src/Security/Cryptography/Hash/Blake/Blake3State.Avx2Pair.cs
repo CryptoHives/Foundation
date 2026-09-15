@@ -117,8 +117,9 @@ internal unsafe partial struct Blake3State
 
     /// <summary>
     /// The seven-round Samuel Neves schedule over a pair of independent blocks, one per
-    /// 128-bit half. Mirrors <see cref="GRounds128"/> exactly; only the register width
-    /// and the message load differ.
+    /// 128-bit half.
+    /// Mirrors <see cref="GRounds128(uint*, ref Vector128{uint}, ref Vector128{uint}, ref Vector128{uint}, ref Vector128{uint})"/>
+    /// exactly; only the register width and the message load differ.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRounds256Pair(

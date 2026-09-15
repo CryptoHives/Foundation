@@ -262,7 +262,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         var context = new Blake3State(simdSupport, KeySizeBytes, FlagDeriveKeyContext);
         try
         {
-            context.TryHashOneShot(contextUtf8, contextKey, out _);
+            context.TryHashOneShot(contextUtf8, contextKey, out _, out _);
         }
         finally
         {
@@ -373,16 +373,55 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// inputs reuse the existing batched <see cref="Append(ReadOnlySpan{byte})"/>/<see cref="TryGetCurrentHash"/>
     /// machinery, which already amortizes any bookkeeping over many chunks.
     /// </remarks>
-    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value.</param>
+    /// <param name="bytesWritten">The number of bytes written into <paramref name="destination"/>.</param>
+    /// <param name="stateDirty">
+    /// <para>
+    /// When this method returns, whether the call left the state needing a reset before
+    /// it can be used again — <see langword="false"/> only on the constant-state kernel
+    /// path, which touches no field at all.
+    /// </para>
+    /// <para>
+    /// This cannot be inferred from <see cref="IsFresh"/>: that predicate tests only the
+    /// bookkeeping scalars, and <see cref="HashChunkRoot32"/> leaves <c>_cv</c> holding
+    /// the root fold without making any of them non-zero. So a path that dirties the
+    /// state has to say so.
+    /// </para>
+    /// </param>
+    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten, out bool stateDirty)
     {
         if (destination.Length < _outputBytes)
         {
             bytesWritten = 0;
+            stateDirty = false;
             return false;
         }
 
         bytesWritten = _outputBytes;
 
+#if NET8_0_OR_GREATER
+        // The shape that dominates every real workload: an unkeyed 32-byte digest of at
+        // most one chunk on a machine with SSSE3. HashRootIv32Ssse3 takes the chaining
+        // value, the zero chunk counter and the flags as compile-time constants, keeps the
+        // CV in registers across the chunk and writes the root fold straight into
+        // destination — so it reads and writes no field of this struct, needs no
+        // fixed() pin of the ~3 KB state, and leaves nothing for the caller to reset.
+        //
+        // _outputBytes must be exactly 32, not merely at most: the kernel stores its
+        // answer as two full 128-bit writes into the caller's buffer.
+        if (_baseFlags == 0
+            && _outputBytes == DefaultHashSizeBytes
+            && source.Length <= ChunkSizeBytes
+            && (_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        {
+            HashRootIv32Ssse3(source, destination);
+            stateDirty = false;
+            return true;
+        }
+#endif
+
+        stateDirty = true;
         if (source.Length <= ChunkSizeBytes)
         {
             TryHashOneShotSingleChunk(source, destination);

@@ -488,8 +488,14 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     internal bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
-        bool result = _core.TryHashOneShot(source, destination, out bytesWritten);
-        Initialize();
+        bool result = _core.TryHashOneShot(source, destination, out bytesWritten, out bool stateDirty);
+
+        // Only reset if the single shot actually dirtied the core struct.
+        if (stateDirty)
+        {
+            Initialize();
+        }
+
         return result;
     }
 

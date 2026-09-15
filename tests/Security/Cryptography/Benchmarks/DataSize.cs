@@ -120,11 +120,9 @@ public class DataSize : IFormattable
     public static readonly DataSize M10 = new("10MB", 10000000);
 
     /// <summary>
-    /// Sizes for BLAKE3 benchmarks: extends <see cref="AllSizes"/> with sizes on and around
-    /// the 8 KB SIMD chunk-batch boundary, since the batching fast path makes BLAKE3
-    /// throughput sensitive to sizes other algorithms are indifferent to.
+    /// Sizes for BLAKE benchmarks: extends <see cref="AllSizes"/> with very small and large chunks.
     /// </summary>
-    public static readonly DataSize[] Blake3Sizes =
+    public static readonly DataSize[] BlakeSizes =
         [B4, B100, B128, B137, B1000, K1, K2, B1025, K4, K6, K8, B9216, B10000, K64, B100000, K128, K256, K512, M1, M10];
 
     /// <summary>Edge case sizes only.</summary>
