@@ -112,7 +112,18 @@ param(
     [int]$TimeoutMinutes = 0,
 
     [Parameter(HelpMessage = "Shutdown dotnet build servers after run to avoid lingering MSBuild node-reuse processes")]
-    [switch]$ShutdownBuildServers
+    [switch]$ShutdownBuildServers,
+
+    [Parameter(HelpMessage = "Mask CoreCLR instruction-set support so a narrower target can be measured on this host (e.g. -DisableIsa AVX512)")]
+    [ValidateSet("AVX512", "AVX2", "SSE42", "SSSE3", "AES", "AdvSimd")]
+    [string[]]$DisableIsa,
+
+    [Parameter(HelpMessage = "Pin the benchmark process to a single logical CPU (0-based). Windows/Linux only; ignored on macOS")]
+    [ValidateRange(-1, 63)]
+    [int]$PinToCore = -1,
+
+    [Parameter(HelpMessage = "Power plan for the run: UserPowerPlan (keep the active one), Balanced, PowerSaver, HighPerformance, UltimatePerformance, or a plan GUID. Windows only")]
+    [string]$PowerPlan
 )
 
 $ErrorActionPreference = "Stop"
@@ -141,6 +152,9 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
     Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
     Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
+    Write-Host "   - DisableIsa — AVX512 | AVX2 | SSE42 | SSSE3 | AES | AdvSimd (comma list) — none  "
+    Write-Host "   - PinToCore — int logical CPU to pin the benchmark process to — -1 (unpinned)  "
+    Write-Host "   - PowerPlan — UserPowerPlan | Balanced | PowerSaver | HighPerformance | UltimatePerformance | GUID — none (BDN forces HighPerformance)  "
     Write-Host ""
     exit 0
 }
@@ -528,6 +542,123 @@ if (-not (Test-Path $testProject)) {
     exit 1
 }
 
+# ---------------------------------------------------------------------------
+# Measurement environment: ISA masking, CPU pinning, power plan.
+# ---------------------------------------------------------------------------
+
+# CoreCLR reads these at startup and the benchmark host inherits them, as do the child
+# processes BenchmarkDotNet spawns per benchmark. Note DOTNET_EnableAVX512 - the more
+# obvious DOTNET_EnableAVX512F is silently a no-op.
+$isaEnvMap = [ordered]@{
+    "AVX512"  = "DOTNET_EnableAVX512"
+    "AVX2"    = "DOTNET_EnableAVX2"
+    "SSE42"   = "DOTNET_EnableSSE42"
+    "SSSE3"   = "DOTNET_EnableSSSE3"
+    "AES"     = "DOTNET_EnableAES"
+    "AdvSimd" = "DOTNET_EnableArm64AdvSimd"
+}
+$savedEnv = @{}
+
+function Set-BenchmarkEnv {
+    param([string]$Name, [string]$Value)
+    if (-not $savedEnv.ContainsKey($Name)) {
+        $savedEnv[$Name] = [Environment]::GetEnvironmentVariable($Name)
+    }
+    [Environment]::SetEnvironmentVariable($Name, $Value)
+}
+
+if ($DisableIsa) {
+    Write-Host "ISA mask requested: $($DisableIsa -join ', ')" -ForegroundColor Yellow
+    foreach ($isa in $DisableIsa) {
+        Set-BenchmarkEnv -Name $isaEnvMap[$isa] -Value "0"
+        Write-Host "  $($isaEnvMap[$isa])=0" -ForegroundColor DarkGray
+    }
+
+    # Assert rather than trust. A knob that silently does nothing produces a run that
+    # looks fine and measures the wrong target - after an hour of CPU time.
+    Write-Host "  verifying the mask took effect..." -ForegroundColor DarkGray
+    Push-Location $testProject
+    try {
+        $probeOutput = & dotnet run -v q --configuration $Configuration --framework $Framework -- --print-isa 2>&1
+    }
+    finally {
+        Pop-Location
+    }
+
+    $isaLine = $probeOutput | Where-Object { $_ -is [string] -and $_ -match '^ISA ' } | Select-Object -Last 1
+    if (-not $isaLine) {
+        Write-Host "ERROR: could not read the ISA probe. Output was:" -ForegroundColor Red
+        $probeOutput | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+        exit 1
+    }
+    if ($isaLine -match 'unavailable=') {
+        Write-Host "ERROR: -DisableIsa needs a framework with the intrinsics APIs; $Framework has none." -ForegroundColor Red
+        exit 1
+    }
+
+    $resolved = @{}
+    foreach ($pair in ($isaLine -replace '^ISA\s+', '') -split '\s+') {
+        $kv = $pair -split '=', 2
+        if ($kv.Count -eq 2) { $resolved[$kv[0]] = [bool]::Parse($kv[1]) }
+    }
+
+    $failed = @()
+    foreach ($isa in $DisableIsa) {
+        if ($resolved.ContainsKey($isa) -and $resolved[$isa]) { $failed += $isa }
+    }
+    if ($failed.Count -gt 0) {
+        Write-Host "ERROR: still enabled after masking: $($failed -join ', ')" -ForegroundColor Red
+        Write-Host "  resolved: $isaLine" -ForegroundColor DarkGray
+        Write-Host "  The environment variable had no effect - do not trust a run made this way." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "  resolved: $isaLine" -ForegroundColor DarkGray
+
+    # Masking an ISA removes rows: the adapters force an algorithm tier the hardware no
+    # longer offers, so those rows either vanish or silently fall back to a narrower one.
+    $collapsed = @()
+    if (-not $resolved["AVX512"]) { $collapsed += "CryptoHives-AVX512F" }
+    if (-not $resolved["AVX2"])   { $collapsed += "CryptoHives-AVX2" }
+    if (-not $resolved["SSSE3"])  { $collapsed += "CryptoHives-Ssse3" }
+    if ($collapsed.Count -gt 0) {
+        Write-Host "  tier collapse: no meaningful $($collapsed -join ', ') rows in this run." -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+
+# BenchmarkDotNet forces the High Performance plan for the duration of a run unless a job
+# says otherwise, so activating a plan externally (powercfg) does nothing. tests/Common/
+# Main.cs reads this and applies it as a mutator job instead.
+if ($PowerPlan) {
+    if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6) {
+        Write-Host "WARNING: -PowerPlan is Windows-only; ignoring." -ForegroundColor Yellow
+    }
+    else {
+        Set-BenchmarkEnv -Name "CRYPTOHIVES_BENCH_POWERPLAN" -Value $PowerPlan
+        Write-Host "Power plan: $PowerPlan" -ForegroundColor Yellow
+        if ($PowerPlan -eq "UserPowerPlan") {
+            Write-Host "  keeping the currently active plan instead of forcing High Performance." -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
+}
+
+# Affinity is passed to BenchmarkDotNet rather than set on this process, so it lands on
+# the benchmark child processes and is recorded as a job column in the report.
+$affinityMask = $null
+if ($PinToCore -ge 0) {
+    if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6 -and -not $IsLinux) {
+        Write-Host "WARNING: -PinToCore is Windows/Linux-only; ignoring." -ForegroundColor Yellow
+    }
+    else {
+        $affinityMask = [int]([math]::Pow(2, $PinToCore))
+        Write-Host "Pinning the benchmark process to logical CPU $PinToCore (affinity mask $affinityMask)." -ForegroundColor Yellow
+        Write-Host "  This does not reduce throttling - it makes it repeatable, which is what an A/B needs." -ForegroundColor DarkGray
+        Write-Host ""
+    }
+}
+
 # Build the command arguments
 $dotnetArgs = @(
     "run"
@@ -538,7 +669,10 @@ $dotnetArgs = @(
 )
 
 if ($List) {
+    # BenchmarkDotNet's --list takes a value (Flat/Tree); a bare --list is rejected
+    # with "Option 'list' is defined with a bad format".
     $dotnetArgs += "--list"
+    $dotnetArgs += "flat"
 }
 else {
     # Add filter patterns - multiple patterns are space-separated after --filter
@@ -563,6 +697,11 @@ if ($ExtraArgs) {
     foreach ($arg in $ExtraArgs) {
         $dotnetArgs += [string]$arg
     }
+}
+
+if ($null -ne $affinityMask) {
+    $dotnetArgs += "--affinity"
+    $dotnetArgs += [string]$affinityMask
 }
 
 # Show command. Quote any argument a shell would otherwise treat specially (wildcards,
@@ -642,6 +781,12 @@ try {
 }
 finally {
     Pop-Location
+
+    # Leave the shell as we found it - an ISA mask left set would silently affect
+    # every later run from this session.
+    foreach ($name in $savedEnv.Keys) {
+        [Environment]::SetEnvironmentVariable($name, $savedEnv[$name])
+    }
 
     if ($ShutdownBuildServers) {
         Write-Host ""

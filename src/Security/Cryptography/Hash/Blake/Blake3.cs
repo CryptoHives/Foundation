@@ -203,9 +203,10 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
     /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
     /// <remarks>
-    /// Uses the dedicated one-shot path (see <see cref="TryHashOneShot"/>) instead of
-    /// the generic streaming pool, so the entire call — including small inputs — skips
-    /// the incremental chunk-buffer bookkeeping.
+    /// Rents a pooled instance and takes the dedicated one-shot path — the same path
+    /// <see cref="TryComputeHash"/> takes on a freshly initialized instance — so the
+    /// entire call, small inputs included, skips the incremental chunk-buffer
+    /// bookkeeping the streaming surface needs.
     /// </remarks>
     public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
@@ -227,9 +228,10 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="source">The input data to hash.</param>
     /// <returns>A new byte array containing the BLAKE3 hash.</returns>
     /// <remarks>
-    /// Uses the dedicated one-shot path (see <see cref="TryHashOneShot"/>) instead of
-    /// the generic streaming pool, so the entire call — including small inputs — skips
-    /// the incremental chunk-buffer bookkeeping.
+    /// Rents a pooled instance and takes the dedicated one-shot path — the same path
+    /// <see cref="TryComputeHash"/> takes on a freshly initialized instance — so the
+    /// entire call, small inputs included, skips the incremental chunk-buffer
+    /// bookkeeping the streaming surface needs.
     /// </remarks>
     public static byte[] HashData(ReadOnlySpan<byte> source)
     {
@@ -429,6 +431,9 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     }
 
     /// <inheritdoc/>
+    protected override bool IsInitialized => !_disposed && _core.IsFresh;
+
+    /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input)
     {
         if (_core.Squeezed) throw new InvalidOperationException("Cannot add data after finalization.");
@@ -462,25 +467,57 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
     /// <remarks>
     /// <para>
-    /// Unlike <c>TryComputeHash(ReadOnlySpan{byte}, Span{byte}, out int)</c>,
-    /// which always routes through the streaming <c>HashCore</c>/<c>TryHashFinal</c>
-    /// pair, this calls a dedicated one-shot path directly — see
-    /// <see cref="Blake3State.TryHashOneShot"/> for what it skips.
+    /// This is the fast path behind the public surface, not a separate API: it knows the
+    /// total length up front, so it picks one SIMD kernel instead of walking the dispatch
+    /// ladder per call and finalises inline. See <see cref="Blake3State.TryHashOneShot"/>
+    /// for exactly what the streaming <c>HashCore</c>/<c>TryHashFinal</c> pair does that
+    /// this skips. <see cref="TryComputeHash"/> dispatches here, and
+    /// the <c>TryHashData</c> and <c>HashData</c> statics call it on a pooled instance.
     /// </para>
     /// <para>
-    /// The instance must be freshly constructed or freshly <see cref="Initialize"/>d;
-    /// calling this after <see cref="Absorb"/> or any streaming write produces
-    /// incorrect results.
+    /// <b>Precondition:</b> the instance must be freshly constructed or freshly
+    /// <see cref="Initialize"/>d — this hashes <paramref name="source"/> as a complete
+    /// message and cannot continue an in-progress tree, so calling it after
+    /// <see cref="Absorb"/> or any streaming write silently produces the wrong digest.
+    /// It is <c>internal</c> for that reason: every caller must establish the
+    /// precondition first, which <see cref="TryComputeHash"/> does by testing
+    /// <c>Blake3State.IsFresh</c> and falling back to the streaming path when it fails.
     /// </para>
     /// </remarks>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
-    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    internal bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
-        bool result = _core.TryHashOneShot(source, destination, out bytesWritten);
-        Initialize();
+        bool result = _core.TryHashOneShot(source, destination, out bytesWritten, out bool stateDirty);
+
+        // Only reset if the single shot actually dirtied the core struct.
+        if (stateDirty)
+        {
+            Initialize();
+        }
+
         return result;
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// <para>
+    /// Overridden to route a whole-message hash through BLAKE3's internal one-shot
+    /// path, which knows the total length up front: it picks one SIMD kernel instead
+    /// of walking the dispatch ladder per call and finalises inline.
+    /// </para>
+    /// <para>
+    /// The one-shot path hashes its source as a complete message and cannot continue
+    /// an in-progress tree, so when anything has already been appended to this instance
+    /// the base streaming implementation runs instead and the result is byte-identical
+    /// to what it always was. Both paths leave the instance freshly initialized.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => _core.IsFresh
+            ? TryHashOneShot(source, destination, out bytesWritten)
+            : base.TryComputeHash(source, destination, out bytesWritten);
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
