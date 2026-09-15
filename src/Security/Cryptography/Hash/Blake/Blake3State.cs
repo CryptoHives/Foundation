@@ -381,7 +381,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
         bytesWritten = _outputBytes;
 
- stateDirty = true;
+        stateDirty = true;
         if (source.Length <= ChunkSizeBytes)
         {
             TryHashOneShotSingleChunk(source, destination);
