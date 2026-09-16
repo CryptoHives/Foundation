@@ -486,6 +486,15 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     /// <inheritdoc/>
+    public void Append<T>(ReadOnlySequence<T> input) where T : struct
+    {
+        foreach (var segment in input)
+        {
+            Append(MemoryMarshal.AsBytes(segment.Span));
+        }
+    }
+
+    /// <inheritdoc/>
     /// <remarks>
     /// <c>[SkipLocalsInit]</c>: the <c>batchCvs</c> stack buffers (up to 2 KB,
     /// otherwise zeroed on every batched call) are fully overwritten by the SIMD
