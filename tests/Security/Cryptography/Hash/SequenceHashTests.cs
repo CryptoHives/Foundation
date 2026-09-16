@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT
 
 namespace Cryptography.Tests.Hash;
@@ -208,8 +208,7 @@ public class SequenceHashTests
         int remaining = data.Length;
         while (remaining > 0)
         {
-            int size = strategy switch
-            {
+            int size = strategy switch {
                 SegmentStrategy.SingleByte => 1,
                 SegmentStrategy.ExactBlock => blockSize,
                 SegmentStrategy.BlockMinusOne => Math.Max(1, blockSize - 1),

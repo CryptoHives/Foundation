@@ -274,10 +274,8 @@ public class HashAlgorithmResetTests
             Assert.That(keyed.TryReset(), Is.False, "a keyed instance after a completed hash");
         }
 
-        using (var derived = Blake3.CreateDeriveKey("CryptoHives 2026-09-14 reset test"))
-        {
-            Assert.That(derived.TryReset(), Is.False, "a derive-key instance");
-        }
+        using var derived = Blake3.CreateDeriveKey("CryptoHives 2026-09-14 reset test");
+        Assert.That(derived.TryReset(), Is.False, "a derive-key instance");
     }
 
     [Test]
