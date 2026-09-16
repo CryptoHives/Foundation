@@ -42,62 +42,6 @@ internal unsafe partial struct Blake3State
     internal const int Avx512BatchLevel = 4;
 
     /// <summary>
-    /// Fewest chunks for which one 16-wide pass beats an 8-wide pass plus a tail.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// A wide pass costs very nearly the same whether its lanes are live or duplicated and
-    /// discarded, so the tier choice is a question about how much work is available, not
-    /// about what the CPU supports. Measured pass costs on a Ryzen 5 7600X: one 16-wide
-    /// pass 2952 ns flat; one 8-wide pass 1488 ns with 4 lanes live, 1690 ns with 8; a lone
-    /// serial chunk 921 ns; the 2-chunk pair kernel 1003 ns.
-    /// </para>
-    /// <para>
-    /// That puts the crossover at eleven. Nine chunks cost 1690 + 921 = 2611 as 8 + serial,
-    /// ten cost 1690 + 1003 = 2693 as 8 + pair, and both beat 2952. Eleven cost
-    /// 1690 + ~1470 = ~3160 as 8 + a three-chunk pass, and one 16-wide pass wins from there
-    /// up. Gating on a full 16-chunk batch instead left 11..15 paying about 7% too much;
-    /// gating at 9, as this once did, lost 16.2% at nine chunks by running the 16-wide
-    /// kernel with seven lanes wasted.
-    /// </para>
-    /// </remarks>
-    internal const int Avx512MinPartialChunks = 11;
-
-    /// <summary>
-    /// Compresses the <see cref="Avx512MinPartialChunks"/>..15 chunk tail left by the
-    /// 16-chunk batch loop and commits its CVs, returning the bytes consumed.
-    /// </summary>
-    /// <remarks>
-    /// Specialised per tier so the kernel call is direct; the previous shared helper took it
-    /// as a function pointer. <c>fullChunks</c> is genuinely variable here, so unlike the
-    /// SSSE3 and NEON tails there is no constant width to fold. The lower bound is the
-    /// measured crossover, not the kernel's capability — see
-    /// <see cref="Avx512MinPartialChunks"/> for why a tail shorter than that is cheaper
-    /// through the AVX2 branch.
-    /// </remarks>
-    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
-    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
-    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
-    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
-    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
-    /// <returns>The number of bytes consumed.</returns>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private int CommitPartialBatchAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
-    {
-        int fullChunks = (length - offset) / ChunkSizeBytes;
-        Debug.Assert(fullChunks >= Avx512MinPartialChunks && fullChunks < ChunksPerAvx512Batch,
-            "the 16-chunk batch loop leaves 11..15 chunks here");
-        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
-
-        CompressChunksPartialAvx512(
-            srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
-
-        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
-        return fullChunks * ChunkSizeBytes;
-    }
-
-
-    /// <summary>
     /// Runs every complete 64-chunk subtree group the remaining input allows, using this
     /// tier's 16-wide chunk kernel, and returns the advanced offset. See
     /// <see cref="CompressSubtreeGroupsAvx2"/> for why this is specialised per tier and
@@ -141,22 +85,17 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Compresses <paramref name="chunkCount"/> (9..16) independent, full
-    /// (1024-byte) chunks with the 16-way kernel by ignoring the surplus lanes
-    /// (lane <c>j</c> is only loaded, and its output only stored, when
-    /// <c>j &lt; chunkCount</c>) — the single kernel used both for the exact
-    /// 16-chunk batch loop (<paramref name="chunkCount"/> == 16) and the 9-15
-    /// chunk tail case. Only <paramref name="chunkCount"/> chaining values in
-    /// <paramref name="outCvs"/> are valid.
+    /// Compresses <paramref name="chunkCount"/> independent, full (1024-byte) chunks
+    /// with the 16-way kernel by ignoring the surplus lanes (lane <c>j</c> is only
+    /// loaded, and its output only stored, when <c>j &lt; chunkCount</c>). Only
+    /// <paramref name="chunkCount"/> chaining values in <paramref name="outCvs"/> are
+    /// valid.
     /// </summary>
     /// <remarks>
-    /// Mirrors <see cref="CompressChunksPartialAvx2"/> one level wider. Without
-    /// the 9-15 case, that chunk-count tail on AVX-512F hardware would fall
-    /// through to one full AVX2 8-chunk batch plus a separate AVX2
-    /// partial-batch call for the remainder — two 8-wide kernel calls (two
-    /// transposes, two reduction passes) instead of the one 16-wide call here.
+    /// Mirrors <see cref="CompressChunksPartialAvx2"/> one level wider. Every caller now
+    /// passes exactly <see cref="ChunksPerAvx512Batch"/>; the lane masking is kept for the
+    /// partial tail that <c>Append</c> currently declines to route here.
     /// </remarks>
-
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialAvx512(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
@@ -216,14 +155,10 @@ internal unsafe partial struct Blake3State
         }
     }
 
-    // Mirrors Blake3State.Compress(uint*, uint*) exactly (same message schedule,
-    // same G-function groupings), with every uint word replaced by a
-    // Vector512<uint> holding that word's value for 16 independent chunks.
-    // Compresses one 64-byte block position of all 16 chunks and folds the
-    // result back into cv[0..7]. Kept out-of-line (NoInlining) on purpose: as
-    // a standalone method only the 16 v-state locals compete for the 32 ZMM
-    // registers, so the rounds run spill-free with the message words folding
-    // into the adds as memory operands.
+    // Mirrors Blake3State.Compress with each uint word replaced by a Vector512<uint>
+    // across 16 chunks, folding one block position back into cv[0..7]. NoInlining is
+    // deliberate: standalone, only the 16 state locals compete for the 32 ZMM registers,
+    // so the rounds run spill-free.
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector512(
@@ -326,21 +261,10 @@ internal unsafe partial struct Blake3State
         cv[7] = Avx512F.Xor(v7, v15);
     }
 
-    // Squeeze twin of CompressVector512. Two differences, both forced by what an
-    // XOF output block is:
-    //
-    //  * blockLen is a parameter. A chunk block is always 64 bytes, but the root
-    //    block a squeeze re-compresses is whatever the final input block was.
-    //  * both folds are emitted. A chunk only needs the chaining value
-    //    v[i] ^ v[i+8]; a squeeze block is the full 16 words, so it also needs
-    //    v[i+8] ^ cv[i]. cv is left untouched so the caller's root CV survives
-    //    for that second fold and for the next call.
-    //
-    // Otherwise identical - same schedule, same groupings, generated from
-    // CompressVector512 rather than transcribed - and NoInlining for the same
-    // reason: standalone, only the 16 v-state locals compete for the 32 ZMM
-    // registers, so the rounds run spill-free with the message words folding
-    // into the adds as memory operands.
+    // Squeeze twin of CompressVector512, differing only in what an XOF output block needs:
+    // blockLen is a parameter (the root block is whatever the final input block was), and
+    // both folds are emitted, since a squeeze block is the full 16 words. cv is left
+    // untouched so the caller's root CV survives the second fold and the next call.
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector512Squeeze(
@@ -535,14 +459,11 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void Transpose16x16(Vector512<uint>* vecs)
     {
-        // Deliberately out-of-line (NoInlining): the flat single-assignment
-        // body below needs ~48 vector locals, past the inliner's hard cap, and
-        // the call is cheap because the caller keeps no ZMM state live across
-        // it (chaining values and counters are memory-resident). An in-place
-        // staged variant with few locals would inline, but chains all four
-        // stages through memory — and Zen 4 cannot store-forward split 512-bit
-        // stores, which stalled every reload. Here the three intermediate
-        // stages stay entirely in registers: 16 loads in, 16 stores out.
+        // NoInlining: the flat single-assignment body needs ~48 vector locals, past the
+        // inliner's cap, and the caller keeps no ZMM state live across the call. A staged
+        // variant would inline but chains through memory, which stalls on hardware that
+        // cannot store-forward split 512-bit stores. Here the intermediates stay in
+        // registers: 16 loads in, 16 stores out.
 
         // Interleave 32-bit words of row pairs: lane L of ab0 carries
         // [a,b][col 4L..4L+1], of ab2 carries [a,b][col 4L+2..4L+3].

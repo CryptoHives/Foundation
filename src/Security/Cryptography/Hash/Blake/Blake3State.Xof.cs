@@ -153,27 +153,12 @@ internal unsafe partial struct Blake3State
     /// and will never squeeze again.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The counter-mode staging <see cref="SaveChunkAsRoot"/> performs exists only so a
-    /// later <see cref="Squeeze"/> can resume: it materialises <c>_rootBlock</c> (a
-    /// 64-byte zero-padded copy of the final block) and <c>_rootCv</c> (a 32-byte copy),
-    /// then <see cref="SqueezeRootBlock"/> produces a full 64-byte output block into
-    /// scratch, of which the caller copies the first 32 out. For a plain 32-byte hash
-    /// every one of those steps is dead weight, and at these input sizes they are most of
-    /// the call: they cost about as much as the single compression that does the work.
-    /// </para>
-    /// <para>
-    /// The first 32 bytes of root output block 0 are <c>v[i] ^ v[i+8]</c> — the identical
-    /// fold <see cref="CompressBlock"/> already writes into a chaining value. So the final
-    /// block is simply compressed with <c>FlagRoot</c> set and <c>_cv</c> copied out; only
-    /// the <c>v[i+8] ^ rootCv[i]</c> second half, which nothing here reads, is skipped.
-    /// </para>
-    /// <para>
-    /// Requires <c>_chunkCounter == 0</c> and <c>_cv</c> holding the IV or key, as
-    /// <see cref="SaveChunkAsRoot"/> does. Leaves <c>_cv</c> holding the root fold and the
-    /// counter-mode fields untouched, so the caller must reinitialise before any further
-    /// use — <see cref="Blake3.TryHashOneShot"/> does.
-    /// </para>
+    /// The first 32 bytes of root output block 0 are <c>v[i] ^ v[i+8]</c>, the same fold
+    /// <see cref="CompressBlock"/> already writes into a chaining value, so the final block
+    /// is compressed with <c>FlagRoot</c> set and <c>_cv</c> copied out — no counter-mode
+    /// staging, no 64-byte output block. Requires <c>_chunkCounter == 0</c> and <c>_cv</c>
+    /// holding the IV or key, and leaves <c>_cv</c> holding the root fold, so the caller
+    /// must reinitialise.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -304,24 +289,12 @@ internal unsafe partial struct Blake3State
     /// in one call.
     /// </summary>
     /// <remarks>
-    /// Unlike chunk compression, squeeze blocks have no chaining dependency on
-    /// each other — each is an independent function of (<c>_rootCv</c>,
-    /// <c>_rootBlock</c>, counter) — so batching loads them once per tier
-    /// kernel and writes straight into the caller's span. On AVX2/AVX512F,
-    /// that independence lets <c>SqueezeRootBlocks8Avx2</c> compute 8 blocks
-    /// in parallel.
-    /// No AVX-512-specific squeeze kernel exists: <c>CompressVector512</c>
-    /// only exposes the folded CV, not the second half a squeeze block needs.
-    /// <para>
-    /// A tail of 2 or more blocks still goes through the wide kernel rather than
-    /// one single-lane call per block. Surplus lanes are free here in a way they are
-    /// not for chunk compression: every lane derives its block from <c>_rootCv</c>
-    /// and <c>_rootBlock</c> with only the counter differing, so an over-wide batch
-    /// reads nothing it should not — the output simply lands in scratch and the
-    /// wanted prefix is copied out. That matters at modest output lengths: a 1 KB
-    /// squeeze is 16 blocks, which used to be one wide batch plus seven single-lane
-    /// compressions.
-    /// </para>
+    /// Unlike chunk compression, squeeze blocks have no chaining dependency on each other —
+    /// each is an independent function of (<c>_rootCv</c>, <c>_rootBlock</c>, counter) — so
+    /// a wide kernel produces several at once. Surplus lanes are free here in a way they are
+    /// not for chunk compression: every lane derives its block from the same root with only
+    /// the counter differing, so an over-wide batch reads nothing it should not and even a
+    /// two-block tail goes through the wide kernel.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]

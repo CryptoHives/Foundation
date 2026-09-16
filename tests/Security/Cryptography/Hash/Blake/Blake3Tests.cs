@@ -970,12 +970,9 @@ public class Blake3Tests
     /// tier this platform supports.
     /// </summary>
     /// <remarks>
-    /// The batch ladder picks a kernel from the chunk count, and the ranges it carves up
-    /// moved when the 2-chunk and 3-4-chunk special cases were folded into the 2..8 handler
-    /// and the AVX-512 9..15 tail was dropped in favour of falling through to AVX2. Each
-    /// tier's threshold sits at a different count, so a sweep over counts is what actually
-    /// covers the dispatch; the enumerated sizes elsewhere in this fixture hit only some of
-    /// the boundaries and only on the tier that happens to be active.
+    /// Each tier's batch threshold sits at a different chunk count, so only a sweep over
+    /// counts covers the dispatch; the enumerated sizes elsewhere hit some boundaries on
+    /// whichever tier happens to be active.
     /// </remarks>
     [Test]
     public void BatchingMatchesScalarReferenceAtEveryChunkCount()
@@ -998,8 +995,8 @@ public class Blake3Tests
 
             for (int chunks = 1; chunks <= 17; chunks++)
             {
-                // The exact multiple and one byte into the next chunk: the second forces the
-                // "is this the message tail" decision the commit paths branch on.
+                // Exact multiple, then one byte over: the second forces the "is this the
+                // message tail" decision the commit paths branch on.
                 foreach (int length in new[] { chunks * chunkSizeBytes, (chunks * chunkSizeBytes) + 1 })
                 {
                     byte[] input = GenerateTestInput(length);
@@ -1040,14 +1037,11 @@ public class Blake3Tests
         byte[] input = GenerateTestInput(chunkSizeBytes + 1);
         Span<byte> actual = stackalloc byte[32];
 
-        // The reference is the *streaming* path: ComputeHash goes through the sealed
-        // HashCore/HashFinal pair, never TryComputeHash, so it is independent of both
-        // one-shot kernels even when the tier under test is the scalar one.
+        // ComputeHash is the streaming path, so the reference stays independent of both
+        // one-shot kernels even when the scalar tier is under test.
         using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
 
-        // Both kernels, not just the SIMD one. The vector kernel pads a short final block
-        // per 16-byte lane, the scalar kernel per 4-byte word, so the shape each takes
-        // varies with a different modulus and neither is covered by the other.
+        // Both kernels: they pad on different moduli (16-byte lane vs 4-byte word).
         using var simdTier = Blake3.Create();
         using var scalarTier = Blake3.Create(CH.SimdSupport.None, 32);
 
@@ -1085,9 +1079,7 @@ public class Blake3Tests
         using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
         byte[] expected = scalar.ComputeHash(input);
 
-        // Both kernels: the vector one stores the digest as two unaligned 128-bit writes,
-        // the scalar one as eight 4-byte writes, so "does it stay inside the digest" is a
-        // different question for each.
+        // Both kernels: two 128-bit writes vs eight 4-byte ones.
         using var simdTier = Blake3.Create();
         using var scalarTier = Blake3.Create(CH.SimdSupport.None, 32);
 

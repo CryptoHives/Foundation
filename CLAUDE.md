@@ -58,6 +58,27 @@ Use `CustomTestTarget` MSBuild property to test a single legacy or preview TFM (
 - Strong-name signing is active when `CryptoHives.Foundation.Key.snk` exists in the repo root (not checked in by default; SIGNASSEMBLY compile constant is set when signing)
 - Experimental algorithms are compiled in (`#if EXPERIMENTAL`) unless `/p:EnableExperimentalAlgorithms=false` is passed at build time
 
+## Comments
+
+Write a comment only where the code does something a reader would **not** expect from reading
+it. Otherwise write none. The audience is a consumer of this library, not a reviewer of the
+change that introduced it.
+
+- **No history.** Not what a PR changed, not what used to be there, not what was tried and
+  reverted. Nobody reading this code later has that context or wants it.
+- **No measurement figures.** A percentage nobody can reproduce — different machine, different
+  run — is noise. Say only *that* something was measured and which way it came out:
+  "showed a measurable improvement", "no measurable difference", "within measurement
+  uncertainty". Never the number, the size, or the host.
+- **Cap it.** One or two lines inline. A `<remarks>` only for a genuine trap or precondition,
+  about three lines. Never multi-paragraph.
+- **No narration.** Do not restate what the code does or re-explain a name.
+- If a comment is needed to explain *what* a line does, rename things instead.
+
+Benchmark figures belong in the commit message and the PR, where the run that produced them is
+identified. But keep these comments also brief and without history. Avoid offensive language like beats, masters etc. 
+
+
 ## Project Structure
 
 ```

@@ -12,7 +12,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
@@ -22,13 +21,9 @@ using System.Runtime.Intrinsics.X86;
 /// </summary>
 internal unsafe partial struct Blake3State
 {
-    // Pre-computed shuffle masks for byte-aligned rotations on 32-bit words.
-    // Expression-bodied properties for the same reason IVLow below is one: as
-    // static readonly fields every use re-tests the class-init byte and loads the
-    // mask indirectly through the GC static base, which showed up in the
-    // disassembly of CompressBlockSsse3 as a guard plus a call to
-    // StaticsHelpers.GetGCStaticBase on the block path. All-const operands
-    // materialise from the constant pool in one RIP-relative load instead.
+    // Expression-bodied rather than static readonly fields: an all-const vector
+    // materialises from the constant pool, where a static field costs a class-init test
+    // and an indirect load through the GC static base on every use.
 
     // Rotate right by 16 bits
     private static Vector128<byte> RotateMask16
@@ -172,46 +167,20 @@ internal unsafe partial struct Blake3State
     /// <see cref="DefaultHashSizeBytes"/> bytes.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The counterpart of <see cref="HashChunkRoot32"/> for the one shape that dominates
-    /// every real workload: an unkeyed 32-byte digest of a single chunk. Because the mode
-    /// is plain hashing, the chaining value is the IV, the chunk counter is zero and the
-    /// flags are compile-time literals, so rows 0, 1 and 2 of every compression
-    /// materialise from the constant pool instead of being loaded out of the ~3 KB
-    /// <see cref="Blake3State"/>, and row 3 costs a single insert for the block length.
-    /// </para>
-    /// <para>
-    /// The other two differences from <see cref="HashChunkRoot32"/> matter as much. The
-    /// chaining value stays in two registers across the whole chunk rather than being
-    /// stored to <c>_cv</c> by the leading-blocks call and loaded back by the final-block
-    /// one, and the zero-padded last block is assembled in registers
-    /// (<see cref="LoadPaddedBlock128"/>) rather than staged through a <c>stackalloc</c>
-    /// whose overlapping zeroing and data stores defeat store-to-load forwarding.
-    /// </para>
-    /// <para>
-    /// Nothing here reads or writes instance state, so the caller neither pins
-    /// <c>this</c> nor has to reinitialise afterwards — see
-    /// <see cref="Blake3State.TryHashOneShot"/>.
-    /// </para>
+    /// Unkeyed-only counterpart of <see cref="HashChunkRoot32"/>: IV chaining value, zero
+    /// counter and literal flags, so rows 0-2 come from the constant pool rather than the
+    /// state; CV stays in registers across the chunk; the padded last block is built in
+    /// registers (<see cref="LoadPaddedBlock128"/>). Touches no instance state.
     /// </remarks>
-    internal static void HashRootIv32Ssse3(ReadOnlySpan<byte> source, Span<byte> destination)
+    internal static void HashRootIv32Ssse3(byte* src, int length, byte* destination)
     {
-        ref byte src = ref MemoryMarshal.GetReference(source);
-        ref byte dst = ref MemoryMarshal.GetReference(destination);
-
-        // Two classes, not three, and the collapse is measured. A dedicated unrolled kernel
-        // for exactly two blocks used to sit between these, on the reasoning that 65..128
-        // bytes is common enough to deserve every flag as a literal. Removing it and letting
-        // the chunk loop below take 65..1024 came out 8-9 points *better* than the control
-        // rows at 128 bytes - a size the whole run was slow at, third-party implementations
-        // included - so the unrolled twin was buying nothing the loop does not.
-        if (source.Length <= BlockSizeBytes)
+        if (length <= BlockSizeBytes)
         {
-            CompressRootIvSingleBlock(ref src, source.Length, ref dst);
+            CompressRootIvSingleBlock(src, length, destination);
         }
         else
         {
-            HashChunkRootIv32Ssse3(ref src, source.Length, ref dst);
+            HashChunkRootIv32Ssse3(src, length, destination);
         }
     }
 
@@ -221,17 +190,17 @@ internal unsafe partial struct Blake3State
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void CompressRootIvSingleBlock(ref byte src, int length, ref byte destination)
+    private static void CompressRootIvSingleBlock(byte* src, int length, byte* destination)
     {
         var row0 = IVLow;
         var row1 = IVHigh;
         var row2 = IVLow;
         var row3 = Vector128.Create(0u, 0u, (uint)length, FlagChunkStart | FlagChunkEnd | FlagRoot);
 
-        LoadPaddedBlock128(ref src, length, out var m0, out var m1, out var m2, out var m3);
+        LoadPaddedBlock128(src, length, out var m0, out var m1, out var m2, out var m3);
         GRounds128(m0, m1, m2, m3, ref row0, ref row1, ref row2, ref row3);
 
-        StoreRootFold(ref destination, row0, row1, row2, row3);
+        StoreRootFold(destination, row0, row1, row2, row3);
     }
 
     /// <summary>
@@ -240,100 +209,91 @@ internal unsafe partial struct Blake3State
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void HashChunkRootIv32Ssse3(ref byte src, int length, ref byte destination)
+    private static void HashChunkRootIv32Ssse3(byte* src, int length, byte* destination)
     {
-        var cv0 = IVLow;
-        var cv1 = IVHigh;
+        Vector128<uint> cv0 = IVLow;
+        Vector128<uint> cv1 = IVHigh;
+        Vector128<uint> row2;
+        Vector128<uint> row3;
 
         int pos = 0;
         uint startFlag = FlagChunkStart;
 
-        // Strictly greater, not greater-or-equal: the last block is always handled after
-        // the loop, so an input that is an exact multiple of 64 ends on a full block and
-        // needs no padding at all.
+        // Strictly greater: the last block is handled after the loop, so an exact multiple
+        // of 64 ends on a full block and needs no padding.
         while (length - pos > BlockSizeBytes)
         {
-            var row0 = cv0;
-            var row1 = cv1;
-            var row2 = IVLow;
-            var row3 = Vector128.Create(0u, 0u, (uint)BlockSizeBytes, startFlag);
+            row2 = IVLow;
+            row3 = Vector128.Create(0u, 0u, (uint)BlockSizeBytes, startFlag);
 
-            ref byte b = ref Unsafe.Add(ref src, pos);
+            uint* b = (uint*)(src + pos);
             GRounds128(
-                Unsafe.ReadUnaligned<Vector128<uint>>(ref b),
-                Unsafe.ReadUnaligned<Vector128<uint>>(ref Unsafe.Add(ref b, 16)),
-                Unsafe.ReadUnaligned<Vector128<uint>>(ref Unsafe.Add(ref b, 32)),
-                Unsafe.ReadUnaligned<Vector128<uint>>(ref Unsafe.Add(ref b, 48)),
-                ref row0, ref row1, ref row2, ref row3);
+                Sse2.LoadVector128(b),
+                Sse2.LoadVector128(b + 4),
+                Sse2.LoadVector128(b + 8),
+                Sse2.LoadVector128(b + 12),
+                ref cv0, ref cv1, ref row2, ref row3);
 
-            cv0 = Sse2.Xor(row0, row2);
-            cv1 = Sse2.Xor(row1, row3);
+            cv0 = Sse2.Xor(cv0, row2);
+            cv1 = Sse2.Xor(cv1, row3);
 
             pos += BlockSizeBytes;
 
-            // Doubles as the "is first block" carrier: whatever it holds when the loop
-            // exits is what the tail's flags must pick up.
+            // Doubles as the "is first block" carrier for the tail's flags.
             startFlag = 0;
         }
 
         int lastLen = length - pos;
-        ref byte last = ref Unsafe.Add(ref src, pos);
+        byte* last = src + pos;
 
         Vector128<uint> m0, m1, m2, m3;
         if (lastLen == BlockSizeBytes)
         {
-            m0 = Unsafe.ReadUnaligned<Vector128<uint>>(ref last);
-            m1 = Unsafe.ReadUnaligned<Vector128<uint>>(ref Unsafe.Add(ref last, 16));
-            m2 = Unsafe.ReadUnaligned<Vector128<uint>>(ref Unsafe.Add(ref last, 32));
-            m3 = Unsafe.ReadUnaligned<Vector128<uint>>(ref Unsafe.Add(ref last, 48));
+            uint* b = (uint*)last;
+            m0 = Sse2.LoadVector128(b);
+            m1 = Sse2.LoadVector128(b + 4);
+            m2 = Sse2.LoadVector128(b + 8);
+            m3 = Sse2.LoadVector128(b + 12);
         }
         else
         {
-            LoadPaddedBlock128(ref last, lastLen, out m0, out m1, out m2, out m3);
+            LoadPaddedBlock128(last, lastLen, out m0, out m1, out m2, out m3);
         }
 
-        var f0 = cv0;
-        var f1 = cv1;
-        var f2 = IVLow;
-        var f3 = Vector128.Create(0u, 0u, (uint)lastLen, startFlag | FlagChunkEnd | FlagRoot);
-        GRounds128(m0, m1, m2, m3, ref f0, ref f1, ref f2, ref f3);
+        row2 = IVLow;
+        row3 = Vector128.Create(0u, 0u, (uint)lastLen, startFlag | FlagChunkEnd | FlagRoot);
+        GRounds128(m0, m1, m2, m3, ref cv0, ref cv1, ref row2, ref row3);
 
-        StoreRootFold(ref destination, f0, f1, f2, f3);
+        StoreRootFold(destination, cv0, cv1, row2, row3);
     }
 
     /// <summary>
-    /// Writes the low eight words of the root output — <c>v[i] ^ v[i+8]</c>, the same fold
-    /// a chaining value gets — straight into the caller's buffer as two unaligned 128-bit
-    /// stores. For a 32-byte digest those eight words are the whole answer, so the high
-    /// half of the output block is never computed and nothing is copied.
+    /// Stores the root fold <c>v[i] ^ v[i+8]</c> — the whole 32-byte digest, so the output
+    /// block's high half is never computed.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void StoreRootFold(
-        ref byte destination,
+        byte* destination,
         Vector128<uint> row0,
         Vector128<uint> row1,
         Vector128<uint> row2,
         Vector128<uint> row3)
     {
-        Unsafe.WriteUnaligned(ref destination, Sse2.Xor(row0, row2));
-        Unsafe.WriteUnaligned(ref Unsafe.Add(ref destination, 16), Sse2.Xor(row1, row3));
+        Sse2.Store((uint*)destination, Sse2.Xor(row0, row2));
+        Sse2.Store((uint*)(destination + 16), Sse2.Xor(row1, row3));
     }
 
     /// <summary>
-    /// Assembles a zero-padded 64-byte message block from <paramref name="length"/>
-    /// (0..64) bytes as four vectors, without touching memory it did not have to.
+    /// Assembles a zero-padded 64-byte block of <paramref name="length"/> (0..64) bytes as
+    /// four vectors, in registers.
     /// </summary>
     /// <remarks>
-    /// The obvious implementation zeroes a 64-byte stack buffer, copies the input over the
-    /// front of it and loads it back as four vectors — which is what
-    /// <see cref="HashChunkRoot32"/> does. That load overlaps both a wide zeroing store and
-    /// a narrower data store, so it cannot be satisfied by store-to-load forwarding and
-    /// stalls instead. Assembling the words directly avoids the round trip: for a 4-byte
-    /// input this is one 32-bit load and three zero vectors.
+    /// Staging through a zeroed stack buffer — what <see cref="HashChunkRoot32"/> does —
+    /// reloads across two overlapping stores and loses store-to-load forwarding.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void LoadPaddedBlock128(
-        ref byte src,
+        byte* src,
         int length,
         out Vector128<uint> m0,
         out Vector128<uint> m1,
@@ -342,74 +302,58 @@ internal unsafe partial struct Blake3State
     {
         Debug.Assert(BitConverter.IsLittleEndian, "The whole-lane reads are native-endian; this tier is x86 only.");
 
-        m0 = LoadPaddedLane128(ref src, length, 0);
-        m1 = LoadPaddedLane128(ref src, length, 16);
-        m2 = LoadPaddedLane128(ref src, length, 32);
-        m3 = LoadPaddedLane128(ref src, length, 48);
+        m0 = LoadPaddedLane128(src, length, 0);
+        m1 = LoadPaddedLane128(src, length, 16);
+        m2 = LoadPaddedLane128(src, length, 32);
+        m3 = LoadPaddedLane128(src, length, 48);
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector128<uint> LoadPaddedLane128(ref byte src, int length, int offset)
+    private static Vector128<uint> LoadPaddedLane128(byte* src, int length, int offset)
     {
         // Wholly inside the input: read it where it lies.
         if (offset + 16 <= length)
         {
-            return Unsafe.ReadUnaligned<Vector128<uint>>(ref Unsafe.Add(ref src, offset));
+            return Sse2.LoadVector128((uint*)(src + offset));
         }
 
-        // Wholly past the end: pure padding, and nothing is dereferenced — which is also
-        // what makes a zero-length input safe, whose source reference is null.
+        // Nothing dereferenced, which is what makes a null (zero-length) source safe.
         if (offset >= length)
         {
             return Vector128<uint>.Zero;
         }
 
         return Vector128.Create(
-            LoadPaddedWord(ref src, length, offset),
-            LoadPaddedWord(ref src, length, offset + 4),
-            LoadPaddedWord(ref src, length, offset + 8),
-            LoadPaddedWord(ref src, length, offset + 12));
+            LoadPaddedWord(src, length, offset),
+            LoadPaddedWord(src, length, offset + 4),
+            LoadPaddedWord(src, length, offset + 8),
+            LoadPaddedWord(src, length, offset + 12));
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static uint LoadPaddedWord(ref byte src, int length, int offset)
+    private static uint LoadPaddedWord(byte* src, int length, int offset)
     {
         if (offset + 4 <= length)
         {
-            return Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref src, offset));
+            return Unsafe.ReadUnaligned<uint>(src + offset);
         }
 
-        // The one word that straddles the end, built little-endian by hand so it is right
-        // however many of its bytes exist. At most one word per block takes this path.
+        // The one straddling word, built little-endian by hand. At most one per block.
         uint word = 0;
         for (int i = 0; offset + i < length; i++)
         {
-            word |= (uint)Unsafe.Add(ref src, offset + i) << (i * 8);
+            word |= (uint)src[offset + i] << (i * 8);
         }
 
         return word;
     }
 
     /// <summary>
-    /// Compresses <paramref name="chunkCount"/> (2..4) independent, full
-    /// (1024-byte) chunks with a genuine 4-lane kernel, for the low end of the
-    /// partial-batch range where <see cref="CompressChunksPartialAvx2"/>'s
-    /// 8-lane kernel wastes the most register pressure and transpose work on
-    /// unused lanes. Lane <c>j</c> reads chunk <c>j</c> mod
-    /// <paramref name="chunkCount"/> (same surplus-lane-duplication strategy
-    /// as the 8-lane kernel), so no memory outside the
-    /// <paramref name="chunkCount"/>*1024 input bytes is touched; surplus
+    /// Compresses <paramref name="chunkCount"/> (2..4) independent, full (1024-byte) chunks
+    /// with a 4-lane kernel. Lane <c>j</c> reads chunk <c>j</c> mod
+    /// <paramref name="chunkCount"/>, so nothing outside the input is touched; surplus
     /// lanes' outputs are wrong and must be ignored.
     /// </summary>
-    /// <remarks>
-    /// Reuses <see cref="GRound128"/> and the SSSE3-tier rotate helpers
-    /// directly: the G-function is a pure elementwise operation (add/xor/
-    /// rotate), so it is correct regardless of what each lane represents —
-    /// here, one word broadcast across 4 independent chunks, rather than the
-    /// SSSE3 path's 4 state words of a single chunk. Only the data layout
-    /// (via <see cref="Transpose4x4(Vector128{uint}*)"/>) differs from the SSSE3 usage; the
-    /// round schedule mirrors <see cref="CompressVector256"/>'s exactly.
-    /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartial4Ssse3(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
@@ -473,11 +417,8 @@ internal unsafe partial struct Blake3State
             v6 = Sse2.Xor(v6, v14); v7 = Sse2.Xor(v7, v15);
         }
 
-        // Un-transpose the CVs (word-major -> chunk-major); transpose is its
-        // own inverse for a square arrangement, so the same function that
-        // converted the message loads to word-major restores chunk-major
-        // here, in two 4-word halves (cv0-3, cv4-7) instead of the 8-lane
-        // kernel's single 8-word transpose.
+        // Transpose is its own inverse for a square arrangement, so the same function
+        // restores chunk-major order here, in two 4-word halves.
         Transpose4x4(ref v0, ref v1, ref v2, ref v3);
         Transpose4x4(ref v4, ref v5, ref v6, ref v7);
         m[0] = v0; m[1] = v1; m[2] = v2; m[3] = v3;
@@ -542,15 +483,8 @@ internal unsafe partial struct Blake3State
         var left = Sse.Shuffle(leftA.AsSingle(), leftB.AsSingle(), leftControl).AsUInt32();
         var right = Sse.Shuffle(rightA.AsSingle(), rightB.AsSingle(), rightControl).AsUInt32();
 
-        // Kept as PBLENDW: routing this through VPBLENDD instead (Avx2.Blend(left, right,
-        // 0b1010) - the same lane selection, but a plain select that issues on any vector
-        // ALU port rather than only the shuffle ports) was measured and is neutral. The
-        // disassembly confirmed all four blends per round became VPBLENDD, and every
-        // single-chunk size moved by less than the run-to-run drift of the unmodified
-        // control rows. This kernel is bound by the latency of the G-function's serial
-        // chain, not by shuffle-port throughput, so trading ports here buys nothing -
-        // and neither would cutting the op count (a two-source VPERMT2D for the one
-        // gather that needs only two sources, say).
+        // Latency-bound on the G-function's serial chain rather than shuffle-port
+        // throughput, so the choice of blend instruction makes no measurable difference.
         if (Sse41.IsSupported)
         {
             // 0xCC selects words 2,3,6,7 (uint lanes 1 and 3) from the second
@@ -609,14 +543,9 @@ internal unsafe partial struct Blake3State
         GRound128(ref row0, ref row1, ref row2, ref row3, diagX, diagY);
         DiagPermute128(ref row3, ref row2, ref row1);
 
-        // Rounds 2-7: BLAKE3's message schedule applies the same fixed
-        // permutation every round to the previous round's own output vectors,
-        // so the six remaining rounds are textually identical.
-        //
-        // Kept as a loop: fully unrolling it (matching the competitor's
-        // DoRoundsShuffle) was measured and is neutral - 141 -> 414 instructions
-        // and 685 -> 1989 bytes for no time change on either 4B or 1KB, with a
-        // stable control. The per-block gap is not loop overhead.
+        // Rounds 2-7 apply the same fixed permutation to the previous round's own output
+        // vectors, so they are textually identical. Kept as a loop: unrolling measured no
+        // faster and costs code size.
         for (int i = 1; i < 7; i++)
         {
             q0 = colX; q1 = colY; q2 = diagX; q3 = diagY;
@@ -716,16 +645,10 @@ internal unsafe partial struct Blake3State
     /// <paramref name="outCvs"/>.
     /// </summary>
     /// <remarks>
-    /// The 128-bit counterpart of <see cref="CompressParents8Avx2"/> and the x86
-    /// mirror of <c>CompressParents4Neon</c>: one BLAKE3 state word per lane
-    /// across four independent parent compressions. Parent nodes always carry
-    /// counter 0 and a full 64-byte block length, so only the flags word varies.
-    /// <para>
-    /// Fewer than four live parents is allowed — the surplus lanes compress
-    /// whatever the buffer holds and their outputs are ignored — but
-    /// <paramref name="childCvs"/> must still be readable for the full eight CVs
-    /// (64 words), which every caller satisfies via the shared batch scratch.
-    /// </para>
+    /// One state word per lane across four independent parent compressions; parents always
+    /// carry counter 0 and a full block length, so only the flags word varies. Fewer than
+    /// four live parents is allowed, but <paramref name="childCvs"/> must still be readable
+    /// for all eight CVs.
     /// </remarks>
     /// <param name="childCvs">Eight child CVs, laid out contiguously.</param>
     /// <param name="key">The 8-word key/IV words for this hash.</param>
@@ -828,12 +751,8 @@ internal unsafe partial struct Blake3State
     /// Compresses the exactly-3-chunk tail this tier can still batch, and commits its CVs.
     /// </summary>
     /// <remarks>
-    /// The count really is exactly 3, so it is passed as a literal rather than computed:
-    /// the caller's guard requires at least 3 chunks, and fewer than 4 always remain -
-    /// either the 4-chunk batch loop above ran and exited with under 4 chunks left, or it
-    /// was skipped because under 4 chunks were there to begin with. Handing the kernel a
-    /// constant width folds its lane-offset table and its per-lane store guards, which a
-    /// runtime count cannot.
+    /// The count is passed as a literal, not computed: a constant width folds the kernel's
+    /// lane-offset table and per-lane store guards, which a runtime count cannot.
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>

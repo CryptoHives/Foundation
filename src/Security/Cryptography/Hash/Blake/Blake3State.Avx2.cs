@@ -134,30 +134,10 @@ internal unsafe partial struct Blake3State
     /// <see cref="CompressChunksPartialAvx2"/> for the always-full-width case.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <see cref="CompressChunksPartialAvx2"/> loads message words through a
-    /// <c>for (int j = 0; j &lt; chunkCount; j++)</c> loop so one method body
-    /// can serve both the always-8 batch loop and the 5–7-chunk partial tail.
-    /// Because <c>chunkCount</c> is a runtime parameter there, the JIT cannot
-    /// unroll that loop or promote the loaded (pre-transpose) vectors to
-    /// registers — they round-trip through the <c>m</c> stackalloc buffer
-    /// instead. This method exists purely to give the hot always-8 callers
-    /// (the main batch loop and each tier's <c>CompressSubtreeGroups*</c>, both of
-    /// which never call the partial kernel with anything but exactly 8) a
-    /// body with no runtime-variable trip count at all: every load is a named
-    /// local at a compile-time-constant offset, transposed directly from
-    /// those locals with no intermediate store. Dissimilis/Blake3.Managed's
-    /// own 1.5.2 performance notes hit this exact regression from the other
-    /// direction — adding variable lane offsets to their fixed 8-chunk kernel
-    /// regressed 8 KB inputs — and fixed it by keeping the two kernels
-    /// separate, which is what this split mirrors.
-    /// </para>
-    /// <para>
-    /// <paramref name="chunkCount"/> exists only so this matches the
-    /// tier-kernel function-pointer signature the per-tier <c>CommitPartialBatch*</c> helpers
-    /// and each tier's <c>CompressSubtreeGroups*</c> dispatch through; it is always 8
-    /// and is otherwise unused.
-    /// </para>
+    /// A runtime <c>chunkCount</c> stops the JIT unrolling the load loop or keeping the
+    /// pre-transpose vectors in registers, so the always-8 callers get this fixed-width
+    /// twin. <paramref name="chunkCount"/> is always 8 and exists only to match the shared
+    /// kernel signature.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -445,20 +425,9 @@ internal unsafe partial struct Blake3State
     /// offset.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Specialised per tier rather than parameterised on the kernel: with the kernel, the
-    /// reduction and the batch width all fixed here, the batch loop has a constant trip
-    /// count (<c>64 / 8</c>), the byte stride is a constant, and both calls are direct.
-    /// The previous shared version took the kernel and the reduction as function pointers,
-    /// which leaves the trip count opaque and the calls indirect.
-    /// </para>
-    /// <para>
-    /// The caller's entry guard tests 64-chunk counter alignment *and* remaining length,
-    /// but only the length can change while looping: adding exactly
-    /// <see cref="ChunksPerSubtreeGroup"/> to a counter that is already a multiple of it
-    /// leaves it one. So the alignment test belongs outside as a one-time <c>if</c>, and
-    /// the loop here re-tests length alone.
-    /// </para>
+    /// The caller's guard tests both 64-chunk counter alignment and remaining length, but
+    /// only length can change while looping: adding <see cref="ChunksPerSubtreeGroup"/> to
+    /// an already-aligned counter leaves it aligned, so the loop re-tests length alone.
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
@@ -497,21 +466,9 @@ internal unsafe partial struct Blake3State
     /// returning the bytes consumed.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Two kernels, split at exactly 2 chunks, and the split is measured.
-    /// <see cref="CompressChunksPartialAvx2"/> duplicates its surplus lanes and discards
-    /// their output, so it is correct for any count from 2 to 8 and serves 3-7 here. At
-    /// exactly 2 it is the wrong shape by a wide margin: routing 2 chunks through it costs
-    /// <b>+46.9% at 2 KB</b> (1003 -> 1474 ns, AVX2 tier; +44.2% on AVX-512), against a
-    /// control median of +0.3% at that size. Six of eight lanes duplicated is too much
-    /// waste to absorb, so the row-oriented pair kernel stays.
-    /// </para>
-    /// <para>
-    /// A third kernel used to sit between these, taking 3-4 chunks through the 4-lane
-    /// SSSE3 kernel on the same reasoning. That one is <i>not</i> justified: removing it
-    /// measured -0.9% (AVX2) and -2.1% (AVX-512) at 4 KB against a +0.5% control, so the
-    /// 8-lane kernel is already the right choice from 3 chunks up.
-    /// </para>
+    /// The 8-lane kernel is correct for any count from 2 to 8, duplicating surplus lanes.
+    /// The pair kernel at exactly 2 showed a measurable improvement over it; a specialized
+    /// 3-4 chunk kernel did not, and stayed within measurement uncertainty.
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
@@ -589,23 +546,10 @@ internal unsafe partial struct Blake3State
     // force-inlined so that, after inlining into the caller's block loop, the
     // state maps onto the 16 YMM registers instead of stack slots.
     //
-    // Reads the 16 message words into locals up front. De-hoisting them - reading
-    // m[..] at each GVec instead, which is what the 128-bit compressor does and
-    // what gained 15% there (3011247) - was tried here and is a regression on
-    // *both* register files, measured pinned to one core:
-    //
-    //            AVX-512 hardware        AVX2-only (DOTNET_EnableAVX512=0)
-    //    8KB        +8.7%                      +17.7%
-    //    64KB       +3.3%                      +14.8%
-    //    128KB      +5.3%                      +43.2%
-    //
-    // On AVX-512 hardware the reason is that this tier already gets vprord for the
-    // rotates, so there are no temporaries competing for the 16 YMM registers and
-    // nothing to buy by moving the messages out. On a real AVX2-only target the
-    // de-hoist does not even remove the spills - they persist either way - it just
-    // adds 112 loads per block, and at 128KB the extra traffic turns the size
-    // scaling superlinear (2.98x for 2x the data, against 1.98x without it).
-    //
+    // Message words are read into locals up front. Reading m[..] at each GVec instead -
+    // which is what the 128-bit compressor does - measurably regresses this width on both
+    // register files: there are no temporaries competing for the YMM registers here, so it
+    // frees nothing and only adds loads.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector256(
         ref Vector256<uint> v0, ref Vector256<uint> v1, ref Vector256<uint> v2, ref Vector256<uint> v3,

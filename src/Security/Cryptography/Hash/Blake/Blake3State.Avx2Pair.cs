@@ -28,14 +28,10 @@ using System.Runtime.Intrinsics.X86;
 /// <c>vpblendw</c>) is lane-local on AVX2, so widening is a one-for-one substitution.
 /// </para>
 /// <para>
-/// It exists because a *transposed* kernel is the wrong shape for exactly two chunks.
+/// A transposed kernel is the wrong shape for exactly two chunks:
 /// <see cref="CompressChunksPartial4Ssse3"/> spends four lanes' worth of rounds plus a
-/// transpose to produce two useful CVs, which measured at no gain over compressing the
-/// two chunks one after another (2 KB cost 1.47x what 1 KB did). Two chunks is a common
-/// size — it is every 2-chunk message, and every 2-chunk tail left by the 4-, 8- and
-/// 16-wide batch loops — so the range gets its own kernel rather than a wasteful lane
-/// assignment. Three and four chunks stay on the 4-lane transposed kernel, where the
-/// transpose does pay.
+/// transpose to produce two useful CVs, which measured no better than compressing the two
+/// in sequence. Three and four chunks stay on the 4-lane kernel, where the transpose pays.
 /// </para>
 /// </remarks>
 internal unsafe partial struct Blake3State
