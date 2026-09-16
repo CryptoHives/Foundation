@@ -259,7 +259,7 @@ internal unsafe partial struct Blake3State
     private void SqueezeRootBlock(Blake3State* core, ulong counter, byte* dst)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        if (System.Runtime.Intrinsics.X86.Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             SqueezeRootBlocksSsse3(core, counter, 1, dst);
         }
@@ -334,7 +334,7 @@ internal unsafe partial struct Blake3State
         {
             SqueezeRootBlocksSsse3(core, startCounter, blocks, dst);
         }
-        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        else if (System.Runtime.Intrinsics.Arm.AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Neon) != 0)
         {
             int offset = 0;
             int fullGroups = blocks / ChunksPerNeonBatch;

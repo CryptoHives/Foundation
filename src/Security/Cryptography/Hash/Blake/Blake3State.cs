@@ -397,6 +397,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             {
 #if NET8_0_OR_GREATER
                 if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
+                { 
                     HashRootIv32Ssse3(srcPtr, source.Length, dstPtr);
                 }
                 else
@@ -1017,7 +1018,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private void CompressBlock(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             CompressBlockSsse3(cv, block, blockLen, counter, flags);
         }
@@ -1033,7 +1034,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private void CompressBlocks(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             CompressBlocksSsse3(cv, block, blocks, blockLen, counter, flags);
         }

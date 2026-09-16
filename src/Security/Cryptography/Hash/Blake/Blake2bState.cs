@@ -209,12 +209,12 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
                 _bytesCompressed += (ulong)blockSize;
 
 #if NET8_0_OR_GREATER
-                if ((_simdSupport & SimdSupport.Avx2) != 0)
+                if (System.Runtime.Intrinsics.X86.Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
                 {
                     CompressAvx2(block, state, _bytesCompressed, isFinal);
                 }
 #if EXPERIMENTAL
-                else if ((_simdSupport & SimdSupport.Neon) != 0)
+                else if (System.Runtime.Intrinsics.Arm.AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Neon) != 0)
                 {
                     CompressNeon(block, state, _bytesCompressed, isFinal);
                 }

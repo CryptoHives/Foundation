@@ -148,18 +148,18 @@ internal unsafe partial struct KeccakCoreState
     public void Permute()
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Arm64) != 0)
+        if (AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Arm64) != 0)
         {
             PermuteScalarArm64();
             return;
         }
 #if EXPERIMENTAL
-        if ((_simdSupport & SimdSupport.Avx512F) != 0)
+        if (Avx512F.IsSupported && (_simdSupport & SimdSupport.Avx512F) != 0)
         {
             PermuteAvx512F();
             return;
         }
-        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        if (Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
         {
             PermuteAvx2();
             return;
