@@ -396,8 +396,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             fixed (byte* dstPtr = destination)
             {
 #if NET8_0_OR_GREATER
-                if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
-                {
+                if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
                     HashRootIv32Ssse3(srcPtr, source.Length, dstPtr);
                 }
                 else
