@@ -41,6 +41,61 @@ internal unsafe partial struct Blake3State
     /// </summary>
     internal const int Avx512BatchLevel = 4;
 
+    /// <summary>
+    /// Fewest chunks for which one 16-wide pass beats an 8-wide pass plus a tail.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A wide pass costs very nearly the same whether its lanes are live or duplicated and
+    /// discarded, so the tier choice is a question about how much work is available, not
+    /// about what the CPU supports. Measured pass costs on a Ryzen 5 7600X: one 16-wide
+    /// pass 2952 ns flat; one 8-wide pass 1488 ns with 4 lanes live, 1690 ns with 8; a lone
+    /// serial chunk 921 ns; the 2-chunk pair kernel 1003 ns.
+    /// </para>
+    /// <para>
+    /// That puts the crossover at eleven. Nine chunks cost 1690 + 921 = 2611 as 8 + serial,
+    /// ten cost 1690 + 1003 = 2693 as 8 + pair, and both beat 2952. Eleven cost
+    /// 1690 + ~1470 = ~3160 as 8 + a three-chunk pass, and one 16-wide pass wins from there
+    /// up. Gating on a full 16-chunk batch instead left 11..15 paying about 7% too much;
+    /// gating at 9, as this once did, lost 16.2% at nine chunks by running the 16-wide
+    /// kernel with seven lanes wasted.
+    /// </para>
+    /// </remarks>
+    internal const int Avx512MinPartialChunks = 11;
+
+    /// <summary>
+    /// Compresses the <see cref="Avx512MinPartialChunks"/>..15 chunk tail left by the
+    /// 16-chunk batch loop and commits its CVs, returning the bytes consumed.
+    /// </summary>
+    /// <remarks>
+    /// Specialised per tier so the kernel call is direct; the previous shared helper took it
+    /// as a function pointer. <c>fullChunks</c> is genuinely variable here, so unlike the
+    /// SSSE3 and NEON tails there is no constant width to fold. The lower bound is the
+    /// measured crossover, not the kernel's capability — see
+    /// <see cref="Avx512MinPartialChunks"/> for why a tail shorter than that is cheaper
+    /// through the AVX2 branch.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
+    /// <returns>The number of bytes consumed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CommitPartialBatchAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        int fullChunks = (length - offset) / ChunkSizeBytes;
+        Debug.Assert(fullChunks >= Avx512MinPartialChunks && fullChunks < ChunksPerAvx512Batch,
+            "the 16-chunk batch loop leaves 11..15 chunks here");
+        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
+
+        CompressChunksPartialAvx512(
+            srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+
+        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
+        return fullChunks * ChunkSizeBytes;
+    }
+
 
     /// <summary>
     /// Runs every complete 64-chunk subtree group the remaining input allows, using this
@@ -83,36 +138,6 @@ internal unsafe partial struct Blake3State
         while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
 
         return offset;
-    }
-
-    /// <summary>
-    /// Compresses the 9-15 chunk tail left by the 16-chunk batch loop and commits its CVs,
-    /// returning the bytes consumed.
-    /// </summary>
-    /// <remarks>
-    /// Specialised per tier so the kernel call is direct; the previous shared helper took it
-    /// as a function pointer. <c>fullChunks</c> is genuinely variable here (9..15), so unlike
-    /// the SSSE3 and NEON tails there is no constant width to fold.
-    /// </remarks>
-    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
-    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
-    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
-    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
-    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
-    /// <returns>The number of bytes consumed.</returns>
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private int CommitPartialBatchAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
-    {
-        int fullChunks = (length - offset) / ChunkSizeBytes;
-        Debug.Assert(fullChunks > ChunksPerAvx2Batch && fullChunks < ChunksPerAvx512Batch,
-            "the 16-chunk batch loop leaves 9..15 chunks here");
-        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
-
-        CompressChunksPartialAvx512(
-            srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
-
-        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
-        return fullChunks * ChunkSizeBytes;
     }
 
     /// <summary>

@@ -966,6 +966,60 @@ public class Blake3Tests
     }
 
     /// <summary>
+    /// Sweeps every whole chunk count from 1 to 17, plus a ragged tail, through every SIMD
+    /// tier this platform supports.
+    /// </summary>
+    /// <remarks>
+    /// The batch ladder picks a kernel from the chunk count, and the ranges it carves up
+    /// moved when the 2-chunk and 3-4-chunk special cases were folded into the 2..8 handler
+    /// and the AVX-512 9..15 tail was dropped in favour of falling through to AVX2. Each
+    /// tier's threshold sits at a different count, so a sweep over counts is what actually
+    /// covers the dispatch; the enumerated sizes elsewhere in this fixture hit only some of
+    /// the boundaries and only on the tier that happens to be active.
+    /// </remarks>
+    [Test]
+    public void BatchingMatchesScalarReferenceAtEveryChunkCount()
+    {
+        const int chunkSizeBytes = 1024;
+
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+        Span<byte> actual = stackalloc byte[32];
+        int tiersExercised = 0;
+
+        foreach (var flag in new[] { CH.SimdSupport.Ssse3, CH.SimdSupport.Avx2, CH.SimdSupport.Avx512F, CH.SimdSupport.Neon })
+        {
+            if ((Blake3.SimdSupport & flag) == 0)
+            {
+                continue;
+            }
+
+            tiersExercised++;
+            using var tier = Blake3.Create(flag, 32);
+
+            for (int chunks = 1; chunks <= 17; chunks++)
+            {
+                // The exact multiple and one byte into the next chunk: the second forces the
+                // "is this the message tail" decision the commit paths branch on.
+                foreach (int length in new[] { chunks * chunkSizeBytes, (chunks * chunkSizeBytes) + 1 })
+                {
+                    byte[] input = GenerateTestInput(length);
+                    byte[] expected = scalar.ComputeHash(input);
+
+                    Assert.That(tier.TryHashOneShot(input, actual, out int bytesWritten), Is.True, $"tier {flag}");
+                    Assert.That(bytesWritten, Is.EqualTo(32), $"tier {flag}");
+                    Assert.That(actual.ToArray(), Is.EqualTo(expected),
+                        $"Mismatch at {chunks} chunks ({length} bytes), tier {flag}");
+                }
+            }
+        }
+
+        if (tiersExercised == 0)
+        {
+            Assert.Ignore("No SIMD tier is supported on this platform, so there is no batch ladder to sweep.");
+        }
+    }
+
+    /// <summary>
     /// Sweeps <b>every</b> input length from 0 to one byte past a chunk through the
     /// one-shot path, rather than the handful of boundary sizes the
     /// <c>[TestCase]</c> fixtures above cover.
@@ -986,16 +1040,28 @@ public class Blake3Tests
         byte[] input = GenerateTestInput(chunkSizeBytes + 1);
         Span<byte> actual = stackalloc byte[32];
 
-        using var oneShot = Blake3.Create();
+        // The reference is the *streaming* path: ComputeHash goes through the sealed
+        // HashCore/HashFinal pair, never TryComputeHash, so it is independent of both
+        // one-shot kernels even when the tier under test is the scalar one.
         using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
 
-        for (int length = 0; length <= chunkSizeBytes + 1; length++)
-        {
-            byte[] expected = scalar.ComputeHash(input.AsSpan(0, length).ToArray());
+        // Both kernels, not just the SIMD one. The vector kernel pads a short final block
+        // per 16-byte lane, the scalar kernel per 4-byte word, so the shape each takes
+        // varies with a different modulus and neither is covered by the other.
+        using var simdTier = Blake3.Create();
+        using var scalarTier = Blake3.Create(CH.SimdSupport.None, 32);
 
-            Assert.That(oneShot.TryHashOneShot(input.AsSpan(0, length), actual, out int bytesWritten), Is.True);
-            Assert.That(bytesWritten, Is.EqualTo(32), $"length {length}");
-            Assert.That(actual.ToArray(), Is.EqualTo(expected), $"One-shot mismatch at {length} bytes");
+        foreach (var (name, hash) in new[] { ("SIMD", simdTier), ("scalar", scalarTier) })
+        {
+            for (int length = 0; length <= chunkSizeBytes + 1; length++)
+            {
+                byte[] expected = scalar.ComputeHash(input.AsSpan(0, length).ToArray());
+
+                Assert.That(hash.TryHashOneShot(input.AsSpan(0, length), actual, out int bytesWritten), Is.True);
+                Assert.That(bytesWritten, Is.EqualTo(32), $"{name} tier, length {length}");
+                Assert.That(actual.ToArray(), Is.EqualTo(expected),
+                    $"One-shot mismatch at {length} bytes, {name} tier");
+            }
         }
     }
 
@@ -1019,33 +1085,40 @@ public class Blake3Tests
         using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
         byte[] expected = scalar.ComputeHash(input);
 
-        using var oneShot = Blake3.Create();
+        // Both kernels: the vector one stores the digest as two unaligned 128-bit writes,
+        // the scalar one as eight 4-byte writes, so "does it stay inside the digest" is a
+        // different question for each.
+        using var simdTier = Blake3.Create();
+        using var scalarTier = Blake3.Create(CH.SimdSupport.None, 32);
 
-        // One byte of lead-in puts the destination off every useful alignment, and the
-        // trailing slack catches a store that runs past the digest.
-        for (int offset = 0; offset <= 3; offset++)
+        foreach (var (name, hash) in new[] { ("SIMD", simdTier), ("scalar", scalarTier) })
         {
-            byte[] buffer = new byte[offset + 32 + 8];
-            for (int i = 0; i < buffer.Length; i++)
+            // One byte of lead-in puts the destination off every useful alignment, and the
+            // trailing slack catches a store that runs past the digest.
+            for (int offset = 0; offset <= 3; offset++)
             {
-                buffer[i] = 0xA5;
-            }
+                byte[] buffer = new byte[offset + 32 + 8];
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    buffer[i] = 0xA5;
+                }
 
-            Assert.That(
-                oneShot.TryHashOneShot(input, buffer.AsSpan(offset, 32), out int bytesWritten),
-                Is.True);
-            Assert.That(bytesWritten, Is.EqualTo(32), $"offset {offset}");
-            Assert.That(buffer.AsSpan(offset, 32).ToArray(), Is.EqualTo(expected),
-                $"One-shot mismatch at {inputLength} bytes, destination offset {offset}");
+                Assert.That(
+                    hash.TryHashOneShot(input, buffer.AsSpan(offset, 32), out int bytesWritten),
+                    Is.True);
+                Assert.That(bytesWritten, Is.EqualTo(32), $"{name} tier, offset {offset}");
+                Assert.That(buffer.AsSpan(offset, 32).ToArray(), Is.EqualTo(expected),
+                    $"One-shot mismatch at {inputLength} bytes, {name} tier, destination offset {offset}");
 
-            for (int i = 0; i < offset; i++)
-            {
-                Assert.That(buffer[i], Is.EqualTo(0xA5), $"wrote before the destination at {i}");
-            }
+                for (int i = 0; i < offset; i++)
+                {
+                    Assert.That(buffer[i], Is.EqualTo(0xA5), $"{name} tier wrote before the destination at {i}");
+                }
 
-            for (int i = offset + 32; i < buffer.Length; i++)
-            {
-                Assert.That(buffer[i], Is.EqualTo(0xA5), $"wrote past the destination at {i}");
+                for (int i = offset + 32; i < buffer.Length; i++)
+                {
+                    Assert.That(buffer[i], Is.EqualTo(0xA5), $"{name} tier wrote past the destination at {i}");
+                }
             }
         }
     }

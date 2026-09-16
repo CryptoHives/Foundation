@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -400,26 +401,37 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
         bytesWritten = _outputBytes;
 
-#if NET8_0_OR_GREATER
         // The shape that dominates every real workload: an unkeyed 32-byte digest of at
-        // most one chunk on a machine with SSSE3. HashRootIv32Ssse3 takes the chaining
-        // value, the zero chunk counter and the flags as compile-time constants, keeps the
-        // CV in registers across the chunk and writes the root fold straight into
-        // destination — so it reads and writes no field of this struct, needs no
-        // fixed() pin of the ~3 KB state, and leaves nothing for the caller to reset.
+        // most one chunk. Both kernels below take the chaining value, the zero chunk
+        // counter and the flags as compile-time constants, keep the CV in registers across
+        // the chunk and write the root fold straight into destination — so they read and
+        // write no field of this struct, need no fixed() pin of the ~3 KB state, and leave
+        // nothing for the caller to reset.
         //
-        // _outputBytes must be exactly 32, not merely at most: the kernel stores its
-        // answer as two full 128-bit writes into the caller's buffer.
+        // _outputBytes must be exactly 32, not merely at most: both kernels store the
+        // answer as a full 32 bytes into the caller's buffer.
         if (_baseFlags == 0
             && _outputBytes == DefaultHashSizeBytes
-            && source.Length <= ChunkSizeBytes
-            && (_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+            && source.Length <= ChunkSizeBytes)
         {
-            HashRootIv32Ssse3(source, destination);
+#if NET8_0_OR_GREATER
+            if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+            {
+                HashRootIv32Ssse3(source, destination);
+            }
+            else
+#endif
+            {
+                // No 128-bit single-block compressor applies here. The NEON tier
+                // deliberately uses the scalar one for single-block work — there is no
+                // independent work to spread across its lanes, see CompressBlock — and the
+                // downlevel TFMs have no SIMD path at all.
+                HashRootIv32Scalar(source, destination);
+            }
+
             stateDirty = false;
             return true;
         }
-#endif
 
         stateDirty = true;
         if (source.Length <= ChunkSizeBytes)
@@ -602,8 +614,14 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // AVX-512 partial batch: 9..15 chunks via the 16-way kernel
-                    if (length - offset >= (ChunksPerAvx2Batch + 1) * ChunkSizeBytes)
+                    // AVX-512 partial batch, but only from Avx512MinPartialChunks up. A wide
+                    // pass costs the same whether its lanes are live or duplicated and
+                    // discarded, so this is a question about how much work is available, not
+                    // about what the CPU supports. Gating it at 9, as this once did, lost
+                    // 16.2% at exactly 9 chunks by wasting seven lanes; 9 and 10 chunks are
+                    // cheaper through the AVX2 branch below as 8 + serial and 8 + pair. From
+                    // 11 up the single 16-wide pass wins. See Avx512MinPartialChunks.
+                    if (length - offset >= Avx512MinPartialChunks * ChunkSizeBytes)
                     {
                         offset += CommitPartialBatchAvx512(core, srcPtr, offset, length, batchCvs);
                     }
@@ -634,7 +652,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx2BatchSizeBytes == length;
-
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx2Batch - 1)) == 0)
                             {
                                 // Complete aligned 8-chunk subtree, not the tail.
@@ -695,7 +712,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Ssse3BatchSizeBytes == length;
-
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerSsse3Batch - 1)) == 0)
                             {
                                 // Complete aligned 4-chunk subtree, not the tail:
@@ -958,19 +974,17 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
 
         uint finalFlags = flags | FlagChunkEnd;
-        if (lastBlockLen == BlockSizeBytes)
-        {
-            CompressBlock(core->_cv, p, (uint)lastBlockLen, _chunkCounter, finalFlags);
-        }
-        else
+        if (lastBlockLen != BlockSizeBytes)
         {
             // Partial last block: zero-pad the tail explicitly (SkipLocalsInit)
             byte* block = stackalloc byte[BlockSizeBytes];
             Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *block, ref *p, (uint)lastBlockLen);
 
-            CompressBlock(core->_cv, block, (uint)lastBlockLen, _chunkCounter, finalFlags);
+            p = block;
         }
+
+        CompressBlock(core->_cv, p, (uint)lastBlockLen, _chunkCounter, finalFlags);
 
         _blocksCompressed++;
 
@@ -1105,6 +1119,150 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
             block += blockLen;
             flags &= ~FlagChunkStart;
+        }
+    }
+
+    /// <summary>
+    /// Hashes a complete unkeyed message of at most one chunk straight into
+    /// <paramref name="destination"/>, which must hold at least
+    /// <see cref="DefaultHashSizeBytes"/> bytes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The scalar twin of <c>HashRootIv32Ssse3</c>, and it exists for the same three
+    /// reasons rather than for anything to do with vector width. The chaining value is the
+    /// IV and the chunk counter is zero, so nothing is loaded out of the ~3 KB state; the
+    /// CV stays in eight locals across the whole chunk instead of round-tripping through
+    /// <c>_cv</c> between the leading-blocks call and the final-block one; and the short
+    /// final block is assembled word by word rather than zero-padded into a stack buffer
+    /// that the compressor then reads back out again.
+    /// </para>
+    /// <para>
+    /// All three are ISA-independent — on x86 they were worth about 22 ns of fixed
+    /// per-call cost with the per-block cost unchanged — so this gives them to every
+    /// target that has no 128-bit single-block compressor: the NEON tier, which
+    /// deliberately uses the scalar one for single-block work (see
+    /// <see cref="CompressBlock"/>), and net462/netstandard2.0, which have no SIMD path at
+    /// all.
+    /// </para>
+    /// <para>
+    /// Reads and writes no field of this struct, so the caller needs no reset afterwards.
+    /// </para>
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void HashRootIv32Scalar(ReadOnlySpan<byte> source, Span<byte> destination)
+    {
+        uint cv0 = IV0, cv1 = IV1, cv2 = IV2, cv3 = IV3;
+        uint cv4 = IV4, cv5 = IV5, cv6 = IV6, cv7 = IV7;
+
+        uint* m = stackalloc uint[BlockSizeWords];
+        int length = source.Length;
+
+        fixed (byte* src = source)
+        {
+            int pos = 0;
+            uint startFlag = FlagChunkStart;
+
+            // Strictly greater, not greater-or-equal: the last block is always handled
+            // after the loop, so an input that is an exact multiple of 64 ends on a full
+            // block and never reaches the word-assembly path below.
+            while (length - pos > BlockSizeBytes)
+            {
+                BinarySpans.ReadUInt32LittleEndian(src + pos, m, BlockSizeWords);
+                CompressRootBlockScalar(
+                    ref cv0, ref cv1, ref cv2, ref cv3, ref cv4, ref cv5, ref cv6, ref cv7,
+                    m, BlockSizeBytes, startFlag);
+
+                pos += BlockSizeBytes;
+
+                // Doubles as the "is first block" carrier: whatever it holds when the loop
+                // exits is what the tail's flags must pick up.
+                startFlag = 0;
+            }
+
+            int lastLen = length - pos;
+            LoadLastBlockWordsScalar(src + pos, lastLen, m);
+            CompressRootBlockScalar(
+                ref cv0, ref cv1, ref cv2, ref cv3, ref cv4, ref cv5, ref cv6, ref cv7,
+                m, (uint)lastLen, startFlag | FlagChunkEnd | FlagRoot);
+        }
+
+        // The low eight words of root output block 0 are the whole 32-byte digest — the
+        // same fold a chaining value gets — so the high half is never computed.
+        Span<byte> digest = destination.Slice(0, DefaultHashSizeBytes);
+        BinaryPrimitives.WriteUInt32LittleEndian(digest, cv0);
+        BinaryPrimitives.WriteUInt32LittleEndian(digest.Slice(4), cv1);
+        BinaryPrimitives.WriteUInt32LittleEndian(digest.Slice(8), cv2);
+        BinaryPrimitives.WriteUInt32LittleEndian(digest.Slice(12), cv3);
+        BinaryPrimitives.WriteUInt32LittleEndian(digest.Slice(16), cv4);
+        BinaryPrimitives.WriteUInt32LittleEndian(digest.Slice(20), cv5);
+        BinaryPrimitives.WriteUInt32LittleEndian(digest.Slice(24), cv6);
+        BinaryPrimitives.WriteUInt32LittleEndian(digest.Slice(28), cv7);
+    }
+
+    /// <summary>
+    /// Compresses one block of the root chunk, with the chaining value carried in locals
+    /// and the chunk counter folded away as the zero it always is on this path.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void CompressRootBlockScalar(
+        ref uint cv0, ref uint cv1, ref uint cv2, ref uint cv3,
+        ref uint cv4, ref uint cv5, ref uint cv6, ref uint cv7,
+        uint* m, uint blockLen, uint flags)
+    {
+        uint v0 = cv0, v1 = cv1, v2 = cv2, v3 = cv3;
+        uint v4 = cv4, v5 = cv5, v6 = cv6, v7 = cv7;
+        uint v8 = IV0, v9 = IV1, v10 = IV2, v11 = IV3;
+        uint v12 = 0, v13 = 0;
+        uint v14 = blockLen;
+        uint v15 = flags;
+
+        Compress(
+            ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+            m);
+
+        cv0 = v0 ^ v8; cv1 = v1 ^ v9; cv2 = v2 ^ v10; cv3 = v3 ^ v11;
+        cv4 = v4 ^ v12; cv5 = v5 ^ v13; cv6 = v6 ^ v14; cv7 = v7 ^ v15;
+    }
+
+    /// <summary>
+    /// Fills <paramref name="m"/> with the 16 little-endian words of a final block of
+    /// <paramref name="length"/> (0..64) bytes, zero-padding the remainder.
+    /// </summary>
+    /// <remarks>
+    /// The obvious implementation zeroes a 64-byte stack buffer, copies the input over the
+    /// front of it and reads that back into <paramref name="m"/> — which is what
+    /// <see cref="HashChunkRoot32"/> does, and it is two round trips through memory for a
+    /// block the compressor is about to consume from registers anyway. Assembling the
+    /// words directly is one: whole words are read where they lie, at most one word
+    /// straddles the end, and the rest are stored zero.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void LoadLastBlockWordsScalar(byte* p, int length, uint* m)
+    {
+        int full = length >> 2;
+        BinarySpans.ReadUInt32LittleEndian(p, m, full);
+
+        if (full < BlockSizeWords)
+        {
+            // The one word that straddles the end, built little-endian by hand so it is
+            // right however many of its bytes exist — including none.
+            uint word = 0;
+            int remainder = length & 3;
+            byte* tail = p + (full * sizeof(uint));
+            for (int i = 0; i < remainder; i++)
+            {
+                word |= (uint)tail[i] << (i * 8);
+            }
+
+            m[full] = word;
+
+            for (int i = full + 1; i < BlockSizeWords; i++)
+            {
+                m[i] = 0;
+            }
         }
     }
 

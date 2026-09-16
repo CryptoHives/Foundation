@@ -69,6 +69,18 @@ public class DataSize : IFormattable
     /// <summary>9 KB - nine BLAKE3 chunks: one full eight-chunk batch plus a one-chunk tail.</summary>
     public static readonly DataSize B9216 = new("9216B", 9216);
 
+    /// <summary>10 KB - ten BLAKE3 chunks: an eight-chunk batch plus the two-chunk pair kernel.</summary>
+    public static readonly DataSize B10240 = new("10240B", 10240);
+
+    /// <summary>11 KB - eleven BLAKE3 chunks: eight-chunk batch plus a three-chunk tail.</summary>
+    public static readonly DataSize B11264 = new("11264B", 11264);
+
+    /// <summary>12 KB - twelve BLAKE3 chunks: one past the predicted crossover.</summary>
+    public static readonly DataSize B12288 = new("12288B", 12288);
+
+    /// <summary>15 KB - fifteen BLAKE3 chunks: the widest tail below a full 16-chunk batch.</summary>
+    public static readonly DataSize B15360 = new("15360B", 15360);
+
     /// <summary>128 KB - sustained throughput.</summary>
     public static readonly DataSize K128 = new("128KB", 131072);
 
@@ -115,7 +127,9 @@ public class DataSize : IFormattable
     /// Sizes for BLAKE benchmarks: extends <see cref="AllSizes"/> with very small and large chunks.
     /// </summary>
     public static readonly DataSize[] BlakeSizes =
-        [B4, B100, B128, B137, B1000, K1, K2, B1025, K4, K6, K8, B9216, B10000, K64, B100000, K128, K256, K512, M1, M10];
+        [B4, B100, B128, B137, B1000, K1, K2, B1025, K4, K6, K8,
+         B9216, B10000, B10240, B11264, B12288, B15360,
+         K64, B100000, K128, K256, K512, M1, M10];
 
     /// <summary>Edge case sizes only.</summary>
     public static readonly DataSize[] EdgeCases = [B137, B1025];

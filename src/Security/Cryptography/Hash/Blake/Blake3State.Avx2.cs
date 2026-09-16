@@ -497,13 +497,21 @@ internal unsafe partial struct Blake3State
     /// returning the bytes consumed.
     /// </summary>
     /// <remarks>
-    /// Three kernels serve this range, and which one applies is a property of the chunk
-    /// count, so the choice is made here rather than by the caller: exactly 2 goes to the
-    /// row-oriented pair kernel (a transposed kernel run half-empty is no faster than
-    /// compressing the two chunks in sequence), 3-4 to the 4-lane kernel, and 5-7 to the
-    /// 8-lane one - below 5 the 4-lane kernel wastes fewer lanes. Selecting inside keeps
-    /// all three calls direct and lets the exactly-2 branch pass a constant width; the
-    /// previous shared helper took the kernel as a function pointer chosen by the caller.
+    /// <para>
+    /// Two kernels, split at exactly 2 chunks, and the split is measured.
+    /// <see cref="CompressChunksPartialAvx2"/> duplicates its surplus lanes and discards
+    /// their output, so it is correct for any count from 2 to 8 and serves 3-7 here. At
+    /// exactly 2 it is the wrong shape by a wide margin: routing 2 chunks through it costs
+    /// <b>+46.9% at 2 KB</b> (1003 -> 1474 ns, AVX2 tier; +44.2% on AVX-512), against a
+    /// control median of +0.3% at that size. Six of eight lanes duplicated is too much
+    /// waste to absorb, so the row-oriented pair kernel stays.
+    /// </para>
+    /// <para>
+    /// A third kernel used to sit between these, taking 3-4 chunks through the 4-lane
+    /// SSSE3 kernel on the same reasoning. That one is <i>not</i> justified: removing it
+    /// measured -0.9% (AVX2) and -2.1% (AVX-512) at 4 KB against a +0.5% control, so the
+    /// 8-lane kernel is already the right choice from 3 chunks up.
+    /// </para>
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
@@ -523,11 +531,6 @@ internal unsafe partial struct Blake3State
         {
             CompressChunks2Avx2(
                 srcPtr + offset, ChunksPerAvx2PairBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
-        }
-        else if (fullChunks <= ChunksPerSsse3Batch)
-        {
-            CompressChunksPartial4Ssse3(
-                srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
         }
         else
         {
