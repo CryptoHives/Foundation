@@ -18,19 +18,7 @@ internal unsafe partial struct Blake3State
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
     /// <remarks>
-    /// <para>
-    /// Squeeze blocks are produced lazily. <c>_squeezeBuf</c> holds block
-    /// <c>_outputCounter</c> if and only if <c>_squeezeOffset &gt; 0</c>; when the offset
-    /// is zero nothing is buffered and <c>_outputCounter</c> names the next block to
-    /// produce. Full blocks go straight into the caller's span, and a block is only
-    /// materialised into the buffer when a trailing partial read actually needs one.
-    /// </para>
-    /// <para>
-    /// This replaces a look-ahead scheme that kept the buffer primed at all times. That
-    /// invariant cost one full compression per call whose length was a multiple of the
-    /// 64-byte block - the common case, since a caller asking for a fixed-size output
-    /// usually never squeezes again - and another on every buffer-crossing.
-    /// </para>
+    /// A partial squeeze buffers only the current output block so a subsequent call can resume.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     internal void Squeeze(Span<byte> output)
