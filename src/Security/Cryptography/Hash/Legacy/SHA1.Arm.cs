@@ -43,7 +43,8 @@ partial class SHA1
     /// <summary>
     /// Gets whether ARM SHA-1 hardware acceleration is available on the current platform.
     /// </summary>
-    internal static bool IsArmSha1Supported => ArmSha1.IsSupported;
+    // The ARM kernels reinterpret caller bytes as native words, so they are little-endian only.
+    internal static bool IsArmSha1Supported => ArmSha1.IsSupported && BitConverter.IsLittleEndian;
 
     /// <summary>
     /// Processes a single 64-byte block using ARM SHA-1 crypto extensions.

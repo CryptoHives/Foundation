@@ -102,7 +102,7 @@ internal readonly partial struct ChaChaCore
     /// </summary>
     public ChaChaCore(SimdSupport simdSupport = ChaCha20.ChaCha20Default)
     {
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
     }
 
     /// <summary>

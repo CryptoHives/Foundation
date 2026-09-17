@@ -77,7 +77,7 @@ public sealed partial class SHA1 : HashAlgorithm
         _state = new uint[5];
         _w = new uint[80];
 #if NET8_0_OR_GREATER
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
         Initialize();
     }

@@ -124,7 +124,7 @@ internal unsafe partial struct KeccakCoreState
         }
 
         // mask unsupported bits
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
         _startRound = startRound;
         Reset();
     }

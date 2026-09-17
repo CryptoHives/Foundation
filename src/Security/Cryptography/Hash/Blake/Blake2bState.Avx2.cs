@@ -60,7 +60,7 @@ internal unsafe partial struct Blake2bState
             SimdSupport support = SimdSupport.None;
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
 #if EXPERIMENTAL
-            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+            if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
 #endif
             return support;
         }

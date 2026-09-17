@@ -95,7 +95,7 @@ internal unsafe partial struct Blake3State
             if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
             if (Avx512F.IsSupported) support |= SimdSupport.Avx512F;
-            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+            if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
             return support;
         }
     }

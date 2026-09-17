@@ -104,7 +104,7 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
         _outputBytes = outputBytes;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER && EXPERIMENTAL
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
 
         Initialize();

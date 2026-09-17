@@ -50,7 +50,7 @@ internal readonly partial struct ChaChaCore
         get
         {
             var support = SimdSupport.None;
-            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+            if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
             return support;
         }
     }

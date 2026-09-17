@@ -81,7 +81,7 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
         _outputBytes = outputBytes;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
 
         Initialize();

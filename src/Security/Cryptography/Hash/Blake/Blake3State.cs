@@ -197,7 +197,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         _baseFlags = baseFlags;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
 
         InitializeHash();
@@ -234,7 +234,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         _baseFlags = baseFlags;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
 
         fixed (Blake3State* core = &this)
