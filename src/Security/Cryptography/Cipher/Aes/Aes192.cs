@@ -49,7 +49,7 @@ public sealed class Aes192 : SymmetricCipher
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     internal Aes192(SimdSupport simdSupport)
     {
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
         BlockSizeValue = AesCore.BlockSizeBits;
         KeySizeValue = KeySizeBits;
         LegalKeySizesValue = [new KeySizes(192, 192, 0)];

@@ -56,7 +56,7 @@ public sealed class SHA256 : Sha2HashAlgorithm<uint>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     internal SHA256(SimdSupport simdSupport)
     {
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
         HashSizeValue = HashSizeBits;
     }
 

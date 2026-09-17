@@ -66,7 +66,7 @@ public sealed class Aes256 : SymmetricCipher
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     internal Aes256(SimdSupport simdSupport)
     {
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
         BlockSizeValue = AesCore.BlockSizeBits;
         KeySizeValue = KeySizeBits;
         LegalKeySizesValue = [new KeySizes(256, 256, 0)];

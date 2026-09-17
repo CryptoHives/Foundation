@@ -147,7 +147,7 @@ internal struct GcmCore
         Span<byte> zeroBlock = stackalloc byte[BlockSizeBytes];
         zeroBlock.Clear();
 
-        simdSupport &= SimdSupport;
+        simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #if NET8_0_OR_GREATER
         if ((simdSupport & SimdSupport.AesNi) != 0)
         {
@@ -1028,7 +1028,8 @@ internal struct GcmCore
     /// </summary>
     private static bool IsPmullSupported
     {
-        get => ArmAes.IsSupported;
+        // The ARM kernels reinterpret caller bytes as native words, so they are little-endian only.
+        get => ArmAes.IsSupported && BitConverter.IsLittleEndian;
     }
 
     /// <summary>
