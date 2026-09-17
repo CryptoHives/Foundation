@@ -1026,9 +1026,9 @@ internal struct GcmCore
     /// <summary>
     /// Gets whether ARM PMULL hardware acceleration is available.
     /// </summary>
-    // The ARM kernels reinterpret caller bytes as native words, so they are little-endian only.
     private static bool IsPmullSupported
     {
+        // The ARM kernels reinterpret caller bytes as native words, so they are little-endian only.
         get => ArmAes.IsSupported && BitConverter.IsLittleEndian;
     }
 
