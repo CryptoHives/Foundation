@@ -38,7 +38,8 @@ internal static class AesCoreArm
     /// </summary>
     internal static bool IsSupported
     {
-        get => ArmAes.IsSupported;
+        // The ARM kernels reinterpret caller bytes as native words, so they are little-endian only.
+        get => ArmAes.IsSupported && BitConverter.IsLittleEndian;
     }
 
     /// <summary>

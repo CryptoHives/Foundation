@@ -102,7 +102,7 @@ internal readonly partial struct ChaChaCore
     /// </summary>
     public ChaChaCore(SimdSupport simdSupport = ChaCha20.ChaCha20Default)
     {
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
     }
 
     /// <summary>
@@ -124,15 +124,15 @@ internal readonly partial struct ChaChaCore
         Debug.Assert(output.Length >= input.Length, "ChaCha output buffer must be at least as long as the input");
 
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        if (System.Runtime.Intrinsics.X86.Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
         {
             TransformAvx2(key, nonce, counter, input, output);
         }
-        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        else if (System.Runtime.Intrinsics.X86.Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             TransformSsse3(key, nonce, counter, input, output);
         }
-        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        else if (System.Runtime.Intrinsics.Arm.AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Neon) != 0)
         {
             TransformNeon(key, nonce, counter, input, output);
         }
@@ -155,12 +155,12 @@ internal readonly partial struct ChaChaCore
     public readonly void Block(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Ssse3)) != 0)
+        if (System.Runtime.Intrinsics.X86.Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             BlockSsse3(key, nonce, counter, output);
             return;
         }
-        else if ((_simdSupport & SimdSupport.Neon) != 0)
+        else if (System.Runtime.Intrinsics.Arm.AdvSimd.Arm64.IsSupported && ((_simdSupport & SimdSupport.Neon) != 0))
         {
             BlockNeon(key, nonce, counter, output);
             return;
