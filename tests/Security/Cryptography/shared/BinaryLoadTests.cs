@@ -54,8 +54,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt32LittleEndianPadded_MatchesAZeroPaddedBlock()
     {
-        AssertSweep(sizeof(uint), static (backing, offset, length) =>
-        {
+        AssertSweep(sizeof(uint), static (backing, offset, length) => {
             uint word = CH.BinaryLoad.ReadUInt32LittleEndianPadded(ref backing.AsSpan(offset).GetPinnableReference(), length);
             var block = new byte[sizeof(uint)];
             BinaryPrimitives.WriteUInt32LittleEndian(block, word);
@@ -66,8 +65,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt32LittleEndianPadded_PointerOverloadAgrees()
     {
-        AssertSweep(sizeof(uint), static (backing, offset, length) =>
-        {
+        AssertSweep(sizeof(uint), static (backing, offset, length) => {
             var block = new byte[sizeof(uint)];
             fixed (byte* source = &backing.AsSpan(offset).GetPinnableReference())
             {
@@ -81,8 +79,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt64LittleEndianPadded_MatchesAZeroPaddedBlock()
     {
-        AssertSweep(sizeof(ulong), static (backing, offset, length) =>
-        {
+        AssertSweep(sizeof(ulong), static (backing, offset, length) => {
             ulong word = CH.BinaryLoad.ReadUInt64LittleEndianPadded(ref backing.AsSpan(offset).GetPinnableReference(), length);
             var block = new byte[sizeof(ulong)];
             BinaryPrimitives.WriteUInt64LittleEndian(block, word);
@@ -93,8 +90,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt64LittleEndianPadded_PointerOverloadAgrees()
     {
-        AssertSweep(sizeof(ulong), static (backing, offset, length) =>
-        {
+        AssertSweep(sizeof(ulong), static (backing, offset, length) => {
             var block = new byte[sizeof(ulong)];
             fixed (byte* source = &backing.AsSpan(offset).GetPinnableReference())
             {
@@ -108,8 +104,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt64PairLittleEndianPadded_MatchesAZeroPaddedBlock()
     {
-        AssertSweep(2 * sizeof(ulong), static (backing, offset, length) =>
-        {
+        AssertSweep(2 * sizeof(ulong), static (backing, offset, length) => {
             CH.BinaryLoad.ReadUInt64PairLittleEndianPadded(
                 ref backing.AsSpan(offset).GetPinnableReference(), length, out ulong low, out ulong high);
             return Pair(low, high);
@@ -119,8 +114,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt64PairLittleEndianPadded_PointerOverloadAgrees()
     {
-        AssertSweep(2 * sizeof(ulong), static (backing, offset, length) =>
-        {
+        AssertSweep(2 * sizeof(ulong), static (backing, offset, length) => {
             ulong low, high;
             fixed (byte* source = &backing.AsSpan(offset).GetPinnableReference())
             {
@@ -159,8 +153,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt32BigEndianPadded_MatchesAZeroPaddedBlock()
     {
-        AssertSweep(sizeof(uint), static (backing, offset, length) =>
-        {
+        AssertSweep(sizeof(uint), static (backing, offset, length) => {
             uint word = CH.BinaryLoad.ReadUInt32BigEndianPadded(ref backing.AsSpan(offset).GetPinnableReference(), length);
             var block = new byte[sizeof(uint)];
             BinaryPrimitives.WriteUInt32BigEndian(block, word);
@@ -171,8 +164,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt32BigEndianPadded_PointerOverloadAgrees()
     {
-        AssertSweep(sizeof(uint), static (backing, offset, length) =>
-        {
+        AssertSweep(sizeof(uint), static (backing, offset, length) => {
             var block = new byte[sizeof(uint)];
             fixed (byte* source = &backing.AsSpan(offset).GetPinnableReference())
             {
@@ -186,8 +178,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt64BigEndianPadded_MatchesAZeroPaddedBlock()
     {
-        AssertSweep(sizeof(ulong), static (backing, offset, length) =>
-        {
+        AssertSweep(sizeof(ulong), static (backing, offset, length) => {
             ulong word = CH.BinaryLoad.ReadUInt64BigEndianPadded(ref backing.AsSpan(offset).GetPinnableReference(), length);
             var block = new byte[sizeof(ulong)];
             BinaryPrimitives.WriteUInt64BigEndian(block, word);
@@ -198,8 +189,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt64BigEndianPadded_PointerOverloadAgrees()
     {
-        AssertSweep(sizeof(ulong), static (backing, offset, length) =>
-        {
+        AssertSweep(sizeof(ulong), static (backing, offset, length) => {
             var block = new byte[sizeof(ulong)];
             fixed (byte* source = &backing.AsSpan(offset).GetPinnableReference())
             {
@@ -213,8 +203,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt64PairBigEndianPadded_MatchesAZeroPaddedBlock()
     {
-        AssertSweep(2 * sizeof(ulong), static (backing, offset, length) =>
-        {
+        AssertSweep(2 * sizeof(ulong), static (backing, offset, length) => {
             CH.BinaryLoad.ReadUInt64PairBigEndianPadded(
                 ref backing.AsSpan(offset).GetPinnableReference(), length, out ulong first, out ulong second);
             return PairBigEndian(first, second);
@@ -224,8 +213,7 @@ public unsafe class BinaryLoadTests
     [Test]
     public void ReadUInt64PairBigEndianPadded_PointerOverloadAgrees()
     {
-        AssertSweep(2 * sizeof(ulong), static (backing, offset, length) =>
-        {
+        AssertSweep(2 * sizeof(ulong), static (backing, offset, length) => {
             ulong first, second;
             fixed (byte* source = &backing.AsSpan(offset).GetPinnableReference())
             {
