@@ -8,6 +8,8 @@
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
+    <!-- BinaryLoadTests drives the byte* overloads of BinaryLoad directly. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- CS0618: Using obsolete SHA1Managed for testing -->
     <NoWarn>$(NoWarn);CS0618</NoWarn>
   </PropertyGroup>
