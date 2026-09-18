@@ -172,6 +172,7 @@ internal unsafe partial struct Blake3State
     /// state; CV stays in registers across the chunk; the padded last block is built in
     /// registers (<see cref="LoadPaddedBlock128"/>). Touches no instance state.
     /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static void HashRootIv32Ssse3(byte* src, int length, byte* destination)
     {
         if (length <= BlockSizeBytes)
@@ -221,18 +222,19 @@ internal unsafe partial struct Blake3State
 
         // Strictly greater: the last block is handled after the loop, so an exact multiple
         // of 64 ends on a full block and needs no padding.
+        Vector128<uint> m0, m1, m2, m3;
         while (length - pos > BlockSizeBytes)
         {
             row2 = IVLow;
             row3 = Vector128.Create(0u, 0u, (uint)BlockSizeBytes, startFlag);
 
             uint* b = (uint*)(src + pos);
-            GRounds128(
-                Sse2.LoadVector128(b),
-                Sse2.LoadVector128(b + 4),
-                Sse2.LoadVector128(b + 8),
-                Sse2.LoadVector128(b + 12),
-                ref cv0, ref cv1, ref row2, ref row3);
+            m0 = Sse2.LoadVector128(b);
+            m1 = Sse2.LoadVector128(b + 4);
+            m2 = Sse2.LoadVector128(b + 8);
+            m3 = Sse2.LoadVector128(b + 12);
+
+            GRounds128(m0, m1, m2, m3, ref cv0, ref cv1, ref row2, ref row3);
 
             cv0 = Sse2.Xor(cv0, row2);
             cv1 = Sse2.Xor(cv1, row3);
@@ -246,7 +248,6 @@ internal unsafe partial struct Blake3State
         int lastLen = length - pos;
         byte* last = src + pos;
 
-        Vector128<uint> m0, m1, m2, m3;
         if (lastLen == BlockSizeBytes)
         {
             uint* b = (uint*)last;
@@ -358,6 +359,7 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartial4Ssse3(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
+        Debug.Assert(chunkCount >= 2 && chunkCount <= 4);
         var counterLow = Vector128.Create(
             (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3));
         var counterHigh = Vector128.Create(
@@ -377,6 +379,7 @@ internal unsafe partial struct Blake3State
         var v6 = Vector128.Create(key[6]);
         var v7 = Vector128.Create(key[7]);
 
+        uint flags = baseFlags | FlagChunkStart;
         var m = stackalloc Vector128<uint>[BlockSizeWords];
         for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
@@ -397,14 +400,14 @@ internal unsafe partial struct Blake3State
             Transpose4x4(m + 8);
             Transpose4x4(m + 12);
 
-            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == BlocksPerChunk - 1 ? baseFlags | FlagChunkEnd : baseFlags);
-
             var v8 = Vector128.Create(IV0); var v9 = Vector128.Create(IV1);
             var v10 = Vector128.Create(IV2); var v11 = Vector128.Create(IV3);
             var v12 = counterLow;
             var v13 = counterHigh;
             var v14 = blockLenVec;
             var v15 = Vector128.Create(flags);
+
+            flags = blockIdx == BlocksPerChunk - 2 ? baseFlags | FlagChunkEnd : baseFlags;
 
             CompressVector128ChunkParallel(
                 ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
@@ -421,13 +424,24 @@ internal unsafe partial struct Blake3State
         // restores chunk-major order here, in two 4-word halves.
         Transpose4x4(ref v0, ref v1, ref v2, ref v3);
         Transpose4x4(ref v4, ref v5, ref v6, ref v7);
-        m[0] = v0; m[1] = v1; m[2] = v2; m[3] = v3;
-        m[4] = v4; m[5] = v5; m[6] = v6; m[7] = v7;
-        for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
+
+        // minimum 2
+        Sse2.Store(outCvs, v0);
+        Sse2.Store(outCvs + 4, v4);
+
+        Sse2.Store(outCvs + KeySizeWords, v1);
+        Sse2.Store(outCvs + KeySizeWords + 4, v5);
+
+        if (chunkCount > 2)
         {
-            Sse2.Store(outCvs, m[chunkIdx]);
-            Sse2.Store(outCvs + 4, m[4 + chunkIdx]);
-            outCvs += KeySizeWords;
+            Sse2.Store(outCvs + 2 * KeySizeWords, v2);
+            Sse2.Store(outCvs + 2 * KeySizeWords + 4, v6);
+
+            if (chunkCount > 3)
+            {
+                Sse2.Store(outCvs + 3 * KeySizeWords, v3);
+                Sse2.Store(outCvs + 3 * KeySizeWords + 4, v7);
+            }
         }
     }
 
@@ -456,11 +470,11 @@ internal unsafe partial struct Blake3State
         byte* blockDest = dst;
         for (int i = 0; i < blocks; i++)
         {
-            ulong counter = startCounter + (ulong)i;
             var row0 = cvLow;
             var row1 = cvHigh;
             var row2 = IVLow;
-            var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
+            var row3 = Vector128.Create((uint)startCounter, (uint)(startCounter >> 32), blockLen, flags);
+            startCounter++;
 
             GRounds128(m, ref row0, ref row1, ref row2, ref row3);
 

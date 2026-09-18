@@ -466,9 +466,10 @@ internal unsafe partial struct Blake3State
     /// returning the bytes consumed.
     /// </summary>
     /// <remarks>
-    /// The 8-lane kernel is correct for any count from 2 to 8, duplicating surplus lanes.
-    /// The pair kernel at exactly 2 showed a measurable improvement over it; a specialized
-    /// 3-4 chunk kernel did not, and stayed within measurement uncertainty.
+    /// Only the loads and stores are bounded by the count: the 8-lane kernel's rounds run
+    /// full width whatever it is, and surplus lanes are discarded, so 3 chunks cost the same
+    /// as 7. The pair kernel at exactly 2 avoids that and showed a measurable improvement;
+    /// a narrower kernel for 3-4 did not, since halving the lanes does not halve the work.
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>

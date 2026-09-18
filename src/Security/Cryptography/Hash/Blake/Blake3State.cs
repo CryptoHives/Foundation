@@ -642,9 +642,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // Partial batch: 2..7 chunks via the widest kernel that does not
-                    // waste more lanes than it fills. Counters may be unaligned here,
-                    // so CVs commit per-chunk.
+                    // Partial batch: 2..7 chunks in a single 8-lane pass, so anything from
+                    // 3 up costs the same. Counters may be unaligned here, so CVs commit
+                    // per-chunk.
                     if (length - offset >= 2 * ChunkSizeBytes)
                     {
                         offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs);
