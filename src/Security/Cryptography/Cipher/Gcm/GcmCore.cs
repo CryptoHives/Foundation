@@ -828,7 +828,6 @@ internal struct GcmCore
         ReadOnlySpan<ulong> shoupTable, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
-        Span<byte> padded = stackalloc byte[BlockSizeBytes];
         while (offset < data.Length)
         {
             int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
@@ -840,10 +839,9 @@ internal struct GcmCore
             }
             else
             {
-                padded.Clear();
-                data.Slice(offset, blockLen).CopyTo(padded);
-                y0 ^= BinaryPrimitives.ReadUInt64BigEndian(padded);
-                y1 ^= BinaryPrimitives.ReadUInt64BigEndian(padded.Slice(sizeof(UInt64)));
+                BinaryLoad.ReadUInt64PairBigEndianPadded(data.Slice(offset, blockLen), out ulong m0, out ulong m1);
+                y0 ^= m0;
+                y1 ^= m1;
             }
 
             GfMulShoup(shoupTable, ref y0, ref y1);
@@ -858,7 +856,6 @@ internal struct GcmCore
     private static void ProcessBlocks(ulong h0, ulong h1, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
-        Span<byte> padded = stackalloc byte[BlockSizeBytes];
         while (offset < data.Length)
         {
             int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
@@ -870,10 +867,9 @@ internal struct GcmCore
             }
             else
             {
-                padded.Clear();
-                data.Slice(offset, blockLen).CopyTo(padded);
-                y0 ^= BinaryPrimitives.ReadUInt64BigEndian(padded);
-                y1 ^= BinaryPrimitives.ReadUInt64BigEndian(padded.Slice(sizeof(UInt64)));
+                BinaryLoad.ReadUInt64PairBigEndianPadded(data.Slice(offset, blockLen), out ulong m0, out ulong m1);
+                y0 ^= m0;
+                y1 ^= m1;
             }
 
             GfMulUlong(h0, h1, ref y0, ref y1);
@@ -1474,11 +1470,7 @@ internal struct GcmCore
 
         if (offset < data.Length)
         {
-            Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            data.Slice(offset).CopyTo(padded);
-            padded.Slice(data.Length - offset).Clear();
-            var block = Vector128.Create(padded);
-            block = Vector128.Shuffle(block, ByteSwapMask);
+            var block = Vector128.Shuffle(BinaryLoad.LoadTailPadded128(data, offset), ByteSwapMask);
             y ^= block;
             y = GfMulPmull(hSwapped, y);
         }
@@ -1567,11 +1559,7 @@ internal struct GcmCore
 
         if (offset < data.Length)
         {
-            Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            data.Slice(offset).CopyTo(padded);
-            padded.Slice(data.Length - offset).Clear();
-            var block = Vector128.Create(padded);
-            block = Ssse3.Shuffle(block, ByteSwapMask);
+            var block = Ssse3.Shuffle(BinaryLoad.LoadTailPadded128(data, offset), ByteSwapMask);
             y = Sse2.Xor(y, block);
             y = GfMulClmul(hSwapped, y);
         }
@@ -2020,10 +2008,8 @@ internal struct GcmCore
             for (int i = 0; i < remaining; i++)
                 ciphertext[offset + i] = (byte)(plaintext[offset + i] ^ ksBuf[i]);
 
-            Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            padded.Clear();
-            ciphertext.Slice(offset, remaining).CopyTo(padded);
-            Vector128<byte> block = Ssse3.Shuffle(Vector128.Create(padded), ByteSwapMask);
+            Vector128<byte> block = Ssse3.Shuffle(
+                BinaryLoad.LoadTailPadded128(ciphertext.Slice(0, len), offset), ByteSwapMask);
             y = Sse2.Xor(y, block);
             y = GfMulClmul(_hClmul, y);
         }
@@ -2148,10 +2134,8 @@ internal struct GcmCore
         {
             int remaining = len - offset;
 
-            Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            padded.Clear();
-            ciphertext.Slice(offset, remaining).CopyTo(padded);
-            Vector128<byte> block = Ssse3.Shuffle(Vector128.Create(padded), ByteSwapMask);
+            Vector128<byte> block = Ssse3.Shuffle(
+                BinaryLoad.LoadTailPadded128(ciphertext.Slice(0, len), offset), ByteSwapMask);
             y = Sse2.Xor(y, block);
             y = GfMulClmul(_hClmul, y);
 
