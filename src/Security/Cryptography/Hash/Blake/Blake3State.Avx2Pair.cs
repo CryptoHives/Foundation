@@ -28,14 +28,10 @@ using System.Runtime.Intrinsics.X86;
 /// <c>vpblendw</c>) is lane-local on AVX2, so widening is a one-for-one substitution.
 /// </para>
 /// <para>
-/// It exists because a *transposed* kernel is the wrong shape for exactly two chunks.
+/// A transposed kernel is the wrong shape for exactly two chunks:
 /// <see cref="CompressChunksPartial4Ssse3"/> spends four lanes' worth of rounds plus a
-/// transpose to produce two useful CVs, which measured at no gain over compressing the
-/// two chunks one after another (2 KB cost 1.47x what 1 KB did). Two chunks is a common
-/// size — it is every 2-chunk message, and every 2-chunk tail left by the 4-, 8- and
-/// 16-wide batch loops — so the range gets its own kernel rather than a wasteful lane
-/// assignment. Three and four chunks stay on the 4-lane transposed kernel, where the
-/// transpose does pay.
+/// transpose to produce two useful CVs, which measured no better than compressing the two
+/// in sequence. Three and four chunks stay on the 4-lane kernel, where the transpose pays.
 /// </para>
 /// </remarks>
 internal unsafe partial struct Blake3State
@@ -56,7 +52,7 @@ internal unsafe partial struct Blake3State
     /// </summary>
     /// <param name="source">The two chunks, contiguous: chunk A at offset 0, chunk B at 1024.</param>
     /// <param name="chunkCount">Always 2; present so this matches the tier-kernel function-pointer
-    /// signature <see cref="CommitPartialBatch"/> and <see cref="CompressSubtreeGroup"/> dispatch through.</param>
+    /// signature the per-tier <c>CommitPartialBatch*</c> helpers and each tier's <c>CompressSubtreeGroups*</c> dispatch through.</param>
     /// <param name="key">The 8-word key/IV words for this hash.</param>
     /// <param name="outCvs">Receives two 8-word CVs, chunk-major.</param>
     /// <param name="baseCounter">Chunk counter of chunk A; chunk B is <paramref name="baseCounter"/> + 1.</param>
@@ -87,10 +83,10 @@ internal unsafe partial struct Blake3State
         byte* blockA = source;
         byte* blockB = source + ChunkSizeBytes;
 
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
             var row2 = row2Seed;
-            var row3 = blockIdx == 0 ? row3Start : (blockIdx == 15 ? row3End : row3Mid);
+            var row3 = blockIdx == 0 ? row3Start : (blockIdx == BlocksPerChunk - 1 ? row3End : row3Mid);
 
             GRounds256Pair(blockA, blockB, ref row0, ref row1, ref row2, ref row3);
 
@@ -117,8 +113,9 @@ internal unsafe partial struct Blake3State
 
     /// <summary>
     /// The seven-round Samuel Neves schedule over a pair of independent blocks, one per
-    /// 128-bit half. Mirrors <see cref="GRounds128"/> exactly; only the register width
-    /// and the message load differ.
+    /// 128-bit half.
+    /// Mirrors <see cref="GRounds128(uint*, ref Vector128{uint}, ref Vector128{uint}, ref Vector128{uint}, ref Vector128{uint})"/>
+    /// exactly; only the register width and the message load differ.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRounds256Pair(

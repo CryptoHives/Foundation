@@ -74,6 +74,8 @@ internal unsafe struct CcmCore
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     public CcmCore(ReadOnlySpan<byte> key, SimdSupport simdSupport)
     {
+        simdSupport = simdSupport.WithImplicit();
+
         fixed (uint* p = _roundKeys)
         {
             var roundKeys = new Span<uint>(p, MaxRoundKeyWords);

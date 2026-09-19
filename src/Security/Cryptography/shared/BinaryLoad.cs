@@ -298,6 +298,60 @@ internal static partial class BinaryLoad
     }
 
     // ================================================================
+    // Bulk word fill
+    // ================================================================
+
+    /// <summary>
+    /// Fills <paramref name="destination"/> with <paramref name="words"/> little-endian
+    /// <see cref="UInt32"/> words taken from the first <paramref name="length"/> bytes of
+    /// <paramref name="source"/>, zero-padding the rest.
+    /// </summary>
+    /// <remarks>
+    /// The padded counterpart of <see cref="BinarySpans"/>'s bulk little-endian reader, for
+    /// kernels whose message block is a word array rather than a byte block. There is
+    /// deliberately no big-endian twin: this is built on the little-endian bulk reader
+    /// <see cref="BinarySpans"/> already has, and a big-endian form would have to hand-roll
+    /// the whole-word loop for a caller that does not exist.
+    /// </remarks>
+    /// <param name="source">The source bytes. Only the first <paramref name="length"/> are read.</param>
+    /// <param name="length">The number of readable bytes.</param>
+    /// <param name="destination">Receives <paramref name="words"/> words.</param>
+    /// <param name="words">The number of words to write.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void ReadUInt32LittleEndianPadded(byte* source, int length, uint* destination, int words)
+    {
+        Debug.Assert(length >= 0, "length is negative.");
+        Debug.Assert(words >= 0, "words is negative.");
+
+        int full = Math.Min(length / sizeof(uint), words);
+        BinarySpans.ReadUInt32LittleEndian(source, destination, full);
+
+        // At most one of these straddles the end; the rest are pure padding.
+        for (int i = full; i < words; i++)
+        {
+            int at = i * sizeof(uint);
+            destination[i] = at < length ? ReadUInt32LittleEndianPadded(source + at, length - at) : 0u;
+        }
+    }
+
+    /// <inheritdoc cref="ReadUInt32LittleEndianPadded(byte*, int, uint*, int)"/>
+    /// <param name="source">The readable bytes. Its length is the padded length.</param>
+    /// <param name="destination">Receives one word per element.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void ReadUInt32LittleEndianPadded(ReadOnlySpan<byte> source, Span<uint> destination)
+    {
+        int full = Math.Min(source.Length / sizeof(uint), destination.Length);
+        BinarySpans.ReadUInt32LittleEndian(source.Slice(0, full * sizeof(uint)), destination);
+
+        // At most one of these straddles the end; the rest are pure padding.
+        for (int i = full; i < destination.Length; i++)
+        {
+            int at = i * sizeof(uint);
+            destination[i] = at < source.Length ? ReadUInt32LittleEndianPadded(source.Slice(at)) : 0u;
+        }
+    }
+
+    // ================================================================
     // Span forwarders — the span's length is the padded length
     // ================================================================
 

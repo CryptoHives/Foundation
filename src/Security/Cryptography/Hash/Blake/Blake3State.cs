@@ -69,6 +69,19 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// </summary>
     private const int BlockSizeWords = BlockSizeBytes / sizeof(uint);
 
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// The number of 64-byte compression blocks in one 1024-byte chunk.
+    /// </summary>
+    /// <remarks>
+    /// Every chunk kernel walks exactly this many blocks, with the first carrying
+    /// <see cref="FlagChunkStart"/> and the last <see cref="FlagChunkEnd"/>. Guarded
+    /// because only the SIMD kernels count blocks this way; the scalar path below
+    /// walks the chunk buffer by length instead.
+    /// </remarks>
+    private const int BlocksPerChunk = ChunkSizeBytes / BlockSizeBytes;
+#endif
+
     // BLAKE3 flags
     internal const uint FlagChunkStart = 1 << 0;
     internal const uint FlagChunkEnd = 1 << 1;
@@ -118,6 +131,15 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private readonly uint _baseFlags;
     private readonly SimdSupport _simdSupport;
 
+    // Both are read by IsFresh on every TryComputeHash, so they belong in the hot
+    // cluster even though they are only *written* by the XOF and bulk-SIMD paths —
+    // left at their declaration sites they pulled two further cache lines into a
+    // call that otherwise touches only the first.
+    private bool _squeezed;
+#if NET8_0_OR_GREATER
+    private bool _hasPendingCv;
+#endif
+
     private fixed uint _keyWords[KeySizeWords];
     private fixed uint _cv[KeySizeWords];
 
@@ -133,16 +155,14 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     // chunk (see FinalizeRoot). Distinct from _cv, the in-progress accumulator
     // for a chunk still being buffered byte-by-byte.
     private fixed uint _pendingCv[KeySizeWords];
-    private bool _hasPendingCv;
 #endif
 
     // Bulk buffers (streaming/multi-chunk path only)
     private fixed byte _chunkBuffer[ChunkSizeBytes];
-    private fixed uint _cvStackBuf[MaxStackDepth * 8];
+    private fixed uint _cvStackBuf[MaxStackDepth * KeySizeWords];
 
     // XOF squeeze state (only touched when output exceeds one block)
     private fixed byte _squeezeBuf[BlockSizeBytes];
-    public bool _squeezed;
     private ulong _outputCounter;
     private int _squeezeOffset;
 
@@ -258,19 +278,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// reset — i.e. the state is exactly as <c>ResetCommonState</c> leaves it.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// This is the precondition of <see cref="TryHashOneShot"/>, which hashes its
-    /// source as a complete message and cannot continue an in-progress tree.
-    /// </para>
-    /// <para>
-    /// <c>ResetCommonState</c> also clears <c>_outputCounter</c> and
-    /// <c>_squeezeOffset</c>, which are deliberately not tested here: every write that
-    /// makes either non-zero happens inside a squeeze, which sets <c>_squeezed</c>
-    /// first, so <c>!_squeezed</c> already implies both are zero. They sit ~3 KB into
-    /// the struct, past the bulk buffers, and reading them cost this predicate a
-    /// second cache line on every call. A field added to <c>ResetCommonState</c>
-    /// belongs here too unless it is implied this same way.
-    /// </para>
+    /// The precondition of <see cref="TryHashOneShot"/>, which cannot continue an
+    /// in-progress tree. <c>_outputCounter</c> and <c>_squeezeOffset</c> are deliberately
+    /// not tested: both are only written inside a squeeze, which sets <c>_squeezed</c>
+    /// first, and they sit far enough into the struct to cost a second cache line here. A
+    /// field added to <c>ResetCommonState</c> belongs here too unless it is implied the
+    /// same way.
     /// </remarks>
     public bool IsFresh
     {
@@ -358,17 +371,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <param name="destination">The buffer to receive the hash value.</param>
     /// <param name="bytesWritten">The number of bytes written into <paramref name="destination"/>.</param>
     /// <param name="stateDirty">
-    /// <para>
-    /// When this method returns, whether the call left the state needing a reset before
-    /// it can be used again — <see langword="false"/> only on the constant-state kernel
-    /// path, which touches no field at all.
-    /// </para>
-    /// <para>
-    /// This cannot be inferred from <see cref="IsFresh"/>: that predicate tests only the
-    /// bookkeeping scalars, and <see cref="HashChunkRoot32"/> leaves <c>_cv</c> holding
-    /// the root fold without making any of them non-zero. So a path that dirties the
-    /// state has to say so.
-    /// </para>
+    /// Whether the call left the state needing a reset. Not inferable from
+    /// <see cref="IsFresh"/>: <see cref="HashChunkRoot32"/> dirties <c>_cv</c> without
+    /// touching any scalar that predicate tests.
     /// </param>
     public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten, out bool stateDirty)
     {
@@ -380,6 +385,33 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
 
         bytesWritten = _outputBytes;
+
+        // Unkeyed 32-byte digest of at most one chunk: constant-state kernels that touch
+        // no field, so nothing to reset. Exactly 32, not at most: both store a full 32.
+        if (_baseFlags == 0
+            && _outputBytes == DefaultHashSizeBytes
+            && source.Length <= ChunkSizeBytes)
+        {
+            fixed (byte* srcPtr = source)
+            fixed (byte* dstPtr = destination)
+            {
+#if NET8_0_OR_GREATER
+                if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
+                { 
+                    HashRootIv32Ssse3(srcPtr, source.Length, dstPtr);
+                }
+                else
+#endif
+                {
+                    // NEON uses the scalar compressor for single-block work (see
+                    // CompressBlock); the downlevel TFMs have no SIMD path.
+                    HashRootIv32Scalar(srcPtr, source.Length, dstPtr);
+                }
+            }
+
+            stateDirty = false;
+            return true;
+        }
 
         stateDirty = true;
         if (source.Length <= ChunkSizeBytes)
@@ -426,11 +458,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             }
             else
             {
-                // Prime the squeeze buffer exactly as the (!_squeezed) branch of
-                // Squeeze() would, then mark squeezed so it resumes from here
-                // instead of re-deriving the root from _chunkBuffer.
-                SqueezeRootBlock(core, 0, core->_squeezeBuf);
-
+                // The root is already saved, so mark the state squeezed and let
+                // Squeeze() resume from here instead of re-deriving it from
+                // _chunkBuffer. No block is primed: Squeeze() produces blocks
+                // lazily and buffers one only for a trailing partial read, so
+                // priming here would just compute a block it would recompute.
                 _squeezed = true;
                 _outputCounter = 0;
                 _squeezeOffset = 0;
@@ -456,13 +488,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
     /// <inheritdoc/>
     /// <remarks>
-    /// <c>[SkipLocalsInit]</c>: the <c>batchCvs</c> stack buffers (up to 2 KB,
-    /// otherwise zeroed on every batched call) are fully overwritten by the SIMD
-    /// chunk kernels before the commit loops read them.
-    /// <c>AggressiveOptimization</c>: this method's own batch-loop scaffolding
-    /// (offset arithmetic, tier dispatch) would otherwise run under quick-JIT
-    /// (Tier 0) on early calls before tiering-up or OSR promotes it, even though
-    /// the SIMD kernels it calls are already forced to full optimization.
+    /// <c>SkipLocalsInit</c> because the SIMD kernels fully overwrite the <c>batchCvs</c>
+    /// stack buffer before the commit loops read it; <c>AggressiveOptimization</c> because
+    /// the batch-loop scaffolding would otherwise run under quick-JIT on early calls.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -480,7 +508,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // bytes prove it wasn't the final chunk, so commit it now.
             if (_hasPendingCv && length > 0)
             {
-                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * 8, core->_pendingCv, KeySizeWords * (uint)sizeof(uint));
+                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * KeySizeWords, core->_pendingCv, KeySizeBytes);
                 AddChunkToTree(core);
                 _chunkCounter++;
                 _hasPendingCv = false;
@@ -498,22 +526,23 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             if (_chunkBufferLength == 0)
             {
                 // Helps to not JIT this branch on Arm
-                if (Avx512F.IsSupported)
+                if (Avx512F.IsSupported && ((_simdSupport & SimdSupport.Avx512F) != 0))
                 {
                     // Groups of 16 independent chunks compressed together. A
                     // batch that exactly drains the input holds back its last
                     // chunk as pending instead of committing it (see FinalizeRoot).
-                    if ((_simdSupport & SimdSupport.Avx512F) != 0 &&
-                        length - offset >= Avx512BatchSizeBytes)
+                    if (length - offset >= Avx512BatchSizeBytes)
                     {
                         // 64-chunk subtree groups: 4 batches reduce to one CV,
                         // one tree push per 64 KB. Strictly-greater guard keeps
                         // the group clear of the message tail.
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                        // Alignment is loop-invariant once true (adding exactly 64 to a
+                        // multiple of 64 leaves one), so it is tested once here and the
+                        // loop over further groups lives inside.
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                             length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx512Batch,
-                                Avx512BatchSizeBytes, batchCvs, &CompressChunksPartialAvx512);
+                            offset = CompressSubtreeGroupsAvx512(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Avx512BatchSizeBytes)
@@ -527,8 +556,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 // Complete, aligned 16-chunk subtree, not the
                                 // tail: reduce and push one tree node instead
                                 // of 16 serial single-chunk commits.
-                                ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 4);
+                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, Avx512BatchLevel);
                                 _chunkCounter += ChunksPerAvx512Batch;
                             }
                             else
@@ -542,8 +571,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                     // them wide; only the last 7 commit serially. The
                                     // in-place reduction never writes past the first
                                     // 8 CV slots, so CVs 8..15 stay intact.
-                                    ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
-                                    PushSubtreeCv(core, batchCvs, 3);
+                                    ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
+                                    PushSubtreeCv(core, batchCvs, Avx2BatchLevel);
                                     _chunkCounter += ChunksPerAvx2Batch;
                                     firstChunk = ChunksPerAvx2Batch;
                                 }
@@ -561,32 +590,28 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // AVX-512 partial batch: 9..15 chunks via the 16-way kernel
-                    if ((_simdSupport & SimdSupport.Avx512F) != 0 &&
-                        length - offset >= (ChunksPerAvx2Batch + 1) * ChunkSizeBytes)
-                    {
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialAvx512);
-                    }
+                    // No partial batch here: a 1..15 chunk tail falls through to the AVX2
+                    // branch. Running the 16-wide kernel on a short tail wastes most of its
+                    // lanes and showed no improvement outside measurement uncertainty.
                 }
 
                 // Helps to not JIT this branch if unsupported
-                if (Avx2.IsSupported || Avx512F.IsSupported)
+                if ((Avx2.IsSupported || Avx512F.IsSupported) &&
+                    (_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
                 {
                     // AVX2 8-chunk batches: primary path on AVX2-only hardware
-                    if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
-                        length - offset >= Avx2BatchSizeBytes)
+                    if (length - offset >= Avx2BatchSizeBytes)
                     {
                         // 64-chunk subtree groups 
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                               length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx2Batch,
-                                Avx2BatchSizeBytes, batchCvs, &CompressChunksPartialAvx2);
+                            offset = CompressSubtreeGroupsAvx2(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Avx2BatchSizeBytes)
                         {
-                            CompressChunksPartialAvx2(
+                            CompressChunks8Avx2(
                                 srcPtr + offset,
                                 ChunksPerAvx2Batch,
                                 core->_keyWords,
@@ -595,12 +620,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx2BatchSizeBytes == length;
-
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx2Batch - 1)) == 0)
                             {
                                 // Complete aligned 8-chunk subtree, not the tail.
-                                ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 3);
+                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, Avx2BatchLevel);
                                 _chunkCounter += ChunksPerAvx2Batch;
                             }
                             else
@@ -618,43 +642,31 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // Partial batch: 2..7 chunks via the widest kernel that does not
-                    // waste more lanes than it fills. Counters may be unaligned here,
-                    // so CVs commit per-chunk.
-                    if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
-                        length - offset >= 2 * ChunkSizeBytes)
+                    // Partial batch: 2..7 chunks in a single 8-lane pass, so anything from
+                    // 3 up costs the same. Counters may be unaligned here, so CVs commit
+                    // per-chunk.
+                    if (length - offset >= 2 * ChunkSizeBytes)
                     {
-                        // At most 7 chunks remain. Exactly 2 goes to the row-oriented
-                        // pair kernel — a transposed kernel run half-empty is no faster
-                        // than compressing the two chunks in sequence. From 3 up the
-                        // transpose pays: below 5 the 4-lane kernel beats the 8-lane one.
-                        int fullChunks = (length - offset) / ChunkSizeBytes;
-                        delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel =
-                            fullChunks == ChunksPerAvx2PairBatch ? &CompressChunks2Avx2
-                            : fullChunks <= 4 ? &CompressChunksPartial4Ssse3
-                            : &CompressChunksPartialAvx2;
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, kernel);
+                        offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs);
                     }
                 }
 
                 // Helps to not JIT this branch where SSSE3 is unavailable
-                if (Ssse3.IsSupported)
+                if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
                 {
                     // SSSE3 4-chunk batches.
                     //
                     // Unlike AVX2 and NEON this tier reduces four CVs per subtree
                     // rather than eight, using CompressParents4Ssse3 — the 8-lane
                     // reduce needs Vector256 and is unavailable here.
-                    if ((_simdSupport & SimdSupport.Ssse3) != 0 &&
-                        length - offset >= Ssse3BatchSizeBytes)
+                    if (length - offset >= Ssse3BatchSizeBytes)
                     {
                         // 64-chunk subtree groups: 16 batches reduce to one CV,
                         // so the tree only sees one push per 64 KB instead of 64.
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
                             length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerSsse3Batch,
-                                Ssse3BatchSizeBytes, batchCvs, &CompressChunksPartial4Ssse3);
+                            offset = CompressSubtreeGroupsSsse3(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Ssse3BatchSizeBytes)
@@ -668,13 +680,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Ssse3BatchSizeBytes == length;
-
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerSsse3Batch - 1)) == 0)
                             {
                                 // Complete aligned 4-chunk subtree, not the tail:
                                 // fold the four CVs into one before pushing.
-                                ReduceChunkCvsToSubtreeCvSsse3(batchCvs, core->_keyWords, ChunksPerSsse3Batch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 2);
+                                ReduceChunkCvsToSubtreeCvSsse3(core, batchCvs, core->_keyWords, ChunksPerSsse3Batch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, Ssse3BatchLevel);
                                 _chunkCounter += ChunksPerSsse3Batch;
                                 offset += Ssse3BatchSizeBytes;
                                 continue;
@@ -695,27 +706,24 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // SSSE3 partial batch: exactly 3 chunks via the 4-way kernel with
                     // one ignored lane, mirroring the NEON tier's threshold (2 chunks
                     // did not repay the transpose cost there either).
-                    if ((_simdSupport & SimdSupport.Ssse3) != 0 &&
-                        length - offset >= 3 * ChunkSizeBytes)
+                    if (length - offset >= 3 * ChunkSizeBytes)
                     {
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartial4Ssse3);
+                        offset += CommitPartialBatch3Ssse3(core, srcPtr, offset, length, batchCvs);
                     }
                 }
 
-                // Helps to not JIT this branch on Arm
-                if (AdvSimd.Arm64.IsSupported)
+                // Helps to not JIT this branch on x64
+                if (AdvSimd.Arm64.IsSupported && ((_simdSupport & SimdSupport.Neon) != 0))
                 {
                     // NEON 4-chunk batches: same subtree-group strategy as AVX2
                     // above, one register width down (4 lanes vs. 8).
-                    if ((_simdSupport & SimdSupport.Neon) != 0 &&
-                        length - offset >= NeonBatchSizeBytes)
+                    if (length - offset >= NeonBatchSizeBytes)
                     {
                         // 64-chunk subtree groups
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                               length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerNeonBatch,
-                                NeonBatchSizeBytes, batchCvs, &CompressChunksPartialNeon);
+                            offset = CompressSubtreeGroupsNeon(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= NeonBatchSizeBytes)
@@ -727,8 +735,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             if (!drainsRemainingInput && (_chunkCounter & (ChunksPerNeonBatch - 1)) == 0)
                             {
                                 // Complete aligned 4-chunk subtree, not the tail.
-                                ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 2);
+                                ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, NeonBatchLevel);
                                 _chunkCounter += ChunksPerNeonBatch;
                             }
                             else
@@ -750,11 +758,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // with one ignored lane. The 2-chunk case benchmarked
                     // slower than scalar (fixed transpose/spill cost not repaid
                     // by 2 chunks), so it falls through to the scalar loop instead.
-                    if ((_simdSupport & SimdSupport.Neon) != 0 &&
-                        length - offset >= 3 * ChunkSizeBytes)
+                    if (length - offset >= 3 * ChunkSizeBytes)
                     {
                         // At most 3 chunks remain here (3,072..4,095 bytes).
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialNeon);
+                        offset += CommitPartialBatch3Neon(core, srcPtr, offset, length, batchCvs);
                     }
                 }
             }
@@ -766,13 +773,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 // If chunk buffer is full, finalize the chunk
                 if (_chunkBufferLength == ChunkSizeBytes)
                 {
-                    FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * 8);
+                    FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * KeySizeWords);
 
                     AddChunkToTree(core);
                     _chunkCounter++;
                     _chunkBufferLength = 0;
                     _blocksCompressed = 0;
-                    Unsafe.CopyBlock(core->_cv, core->_keyWords, KeySizeWords * (uint)sizeof(uint));
+                    Unsafe.CopyBlock(core->_cv, core->_keyWords, KeySizeBytes);
 
 #if NET8_0_OR_GREATER
                     // The buffer is empty again and more chunks remain for batching
@@ -795,36 +802,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
 #if NET8_0_OR_GREATER
-    /// <summary>
-    /// Shared tail handling for a SIMD tier's partial batch (fewer full chunks
-    /// remaining than one whole batch, but enough to beat serial per-chunk
-    /// compression): compresses them all via <paramref name="partialKernel"/>,
-    /// commits every chunk but the last, and holds the last back as pending if
-    /// it exactly drains the input (see <see cref="FinalizeRoot"/>).
-    /// </summary>
-    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
-    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
-    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the remaining full chunks start.</param>
-    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
-    /// <param name="scratch">Caller-owned scratch buffer for the partial kernel's output CVs.</param>
-    /// <param name="partialKernel">The tier-specific partial-batch compression kernel to call.</param>
-    /// <returns>The number of bytes consumed (<c>fullChunks * ChunkSizeBytes</c>).</returns>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private int CommitPartialBatch(
-        Blake3State* core, byte* srcPtr, int offset, int length, uint* scratch,
-        delegate*<byte*, int, uint*, uint*, ulong, uint, void> partialKernel)
-    {
-        int fullChunks = (length - offset) / ChunkSizeBytes;
-        bool drainsRemainingInput = offset + fullChunks * ChunkSizeBytes == length;
-
-        uint* partialCvs = scratch;
-        partialKernel(srcPtr + offset, fullChunks, core->_keyWords, partialCvs, _chunkCounter, _baseFlags);
-
-        int chunksToCommit = drainsRemainingInput ? fullChunks - 1 : fullChunks;
-        CommitBatchChunks(core, partialCvs, 0, chunksToCommit, drainsRemainingInput);
-
-        return fullChunks * ChunkSizeBytes;
-    }
 
     /// <summary>
     /// Commits CVs <c>[firstChunk, chunksToCommit)</c> from a compressed batch
@@ -842,9 +819,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         for (int i = firstChunk; i < chunksToCommit; i++)
         {
             Unsafe.CopyBlock(
-                core->_cvStackBuf + _cvStackDepth * 8,
+                core->_cvStackBuf + _cvStackDepth * KeySizeWords,
                 batchCvs + i * KeySizeWords,
-                KeySizeWords * (uint)sizeof(uint));
+                KeySizeBytes);
             AddChunkToTree(core);
             _chunkCounter++;
         }
@@ -854,7 +831,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             Unsafe.CopyBlock(
                 core->_pendingCv,
                 batchCvs + chunksToCommit * KeySizeWords,
-                KeySizeWords * (uint)sizeof(uint));
+                KeySizeBytes);
             _hasPendingCv = true;
             return true;
         }
@@ -865,69 +842,16 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <summary>
     /// Copies a reduced subtree CV onto the tree stack and pushes it —
     /// the shared tail of every "aligned subtree" branch across the SIMD
-    /// batch loops and <see cref="CompressSubtreeGroup"/>.
+    /// batch loops and each tier's <c>CompressSubtreeGroups*</c>.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void PushSubtreeCv(Blake3State* core, uint* cvs, int level)
     {
         Unsafe.CopyBlock(
-            core->_cvStackBuf + _cvStackDepth * 8,
+            core->_cvStackBuf + _cvStackDepth * KeySizeWords,
             cvs,
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         AddSubtreeToTree(core, level);
-    }
-
-    /// <summary>
-    /// Shared body for every SIMD tier's 64-chunk subtree-group loop: runs
-    /// <c>ChunksPerSubtreeGroup / batchWidth</c> kernel batches into
-    /// <paramref name="batchCvs"/>, reduces all 64 CVs to one subtree CV, and
-    /// pushes it — so the reduction and tree push are paid once per 64 KB.
-    /// </summary>
-    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
-    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
-    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the group starts.</param>
-    /// <param name="batchWidth">The tier's chunk-parallel width (4, 8, or 16).</param>
-    /// <param name="batchSizeBytes"><c>batchWidth * ChunkSizeBytes</c>.</param>
-    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
-    /// <param name="kernel">The tier-specific partial-batch compression kernel to call.</param>
-    /// <returns><paramref name="offset"/> advanced by <c>ChunksPerSubtreeGroup * ChunkSizeBytes</c>.</returns>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private int CompressSubtreeGroup(
-        Blake3State* core, byte* srcPtr, int offset, int batchWidth, int batchSizeBytes,
-        uint* batchCvs, delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel)
-    {
-        for (int b = 0; b < ChunksPerSubtreeGroup / batchWidth; b++)
-        {
-            kernel(
-                srcPtr + offset,
-                batchWidth,
-                core->_keyWords,
-                batchCvs + b * batchWidth * KeySizeWords,
-                _chunkCounter + (ulong)(b * batchWidth),
-                _baseFlags);
-            offset += batchSizeBytes;
-        }
-
-        // hardcoding, so the JIT can remove
-        if (AdvSimd.Arm64.IsSupported)
-        {
-            ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-        }
-        else if (Ssse3.IsSupported && (_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) == 0)
-        {
-            // SSSE3 tier: the 8-lane reduce needs Vector256, so use the 4-lane
-            // one. Runs once per 64-chunk group (64 KB of input), so the extra
-            // runtime check here is far below the noise floor.
-            ReduceChunkCvsToSubtreeCvSsse3(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-        }
-        else
-        {
-            ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-        }
-
-        PushSubtreeCv(core, batchCvs, 6);
-        _chunkCounter += ChunksPerSubtreeGroup;
-        return offset;
     }
 #endif
 
@@ -936,16 +860,16 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     {
         fixed (Blake3State* core = &this)
         {
-            Unsafe.InitBlockUnaligned(core->_keyWords, 0, KeySizeWords * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_cv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_keyWords, 0, KeySizeBytes);
+            Unsafe.InitBlockUnaligned(core->_cv, 0, KeySizeBytes);
             Unsafe.InitBlockUnaligned(core->_chunkBuffer, 0, ChunkSizeBytes);
-            Unsafe.InitBlockUnaligned(core->_cvStackBuf, 0, MaxStackDepth * 8 * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_rootBlock, 0, BlockSizeWords * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_rootCv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_cvStackBuf, 0, MaxStackDepth * KeySizeBytes);
+            Unsafe.InitBlockUnaligned(core->_rootBlock, 0, BlockSizeBytes);
+            Unsafe.InitBlockUnaligned(core->_rootCv, 0, KeySizeBytes);
             Unsafe.InitBlockUnaligned(core->_squeezeBuf, 0, BlockSizeBytes);
             _cvStackDepth = 0;
 #if NET8_0_OR_GREATER
-            Unsafe.InitBlockUnaligned(core->_pendingCv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_pendingCv, 0, KeySizeBytes);
             _hasPendingCv = false;
 #endif
         }
@@ -956,11 +880,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _keyWords[0]),
             ref Unsafe.As<uint, byte>(ref MemoryMarshal.GetReference(IV)),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _cv[0]),
             ref Unsafe.As<uint, byte>(ref MemoryMarshal.GetReference(IV)),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         ResetCommonState();
     }
 
@@ -969,7 +893,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _cv[0]),
             ref Unsafe.As<uint, byte>(ref _keyWords[0]),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         ResetCommonState();
     }
 
@@ -1018,23 +942,21 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
 
         uint finalFlags = flags | FlagChunkEnd;
-        if (lastBlockLen == BlockSizeBytes)
-        {
-            CompressBlock(core->_cv, p, (uint)lastBlockLen, _chunkCounter, finalFlags);
-        }
-        else
+        if (lastBlockLen != BlockSizeBytes)
         {
             // Partial last block: zero-pad the tail explicitly (SkipLocalsInit)
             byte* block = stackalloc byte[BlockSizeBytes];
+            Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *block, ref *p, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned(block + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
 
-            CompressBlock(core->_cv, block, (uint)lastBlockLen, _chunkCounter, finalFlags);
+            p = block;
         }
+
+        CompressBlock(core->_cv, p, (uint)lastBlockLen, _chunkCounter, finalFlags);
 
         _blocksCompressed++;
 
-        Unsafe.CopyBlock(destination, core->_cv, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(destination, core->_cv, KeySizeBytes);
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -1061,7 +983,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // The two sibling CVs are adjacent stack slots — exactly the
             // contiguous 64-byte parent block ComputeParentCv reads; the
             // merge lands in-place in left's slot.
-            uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * 8;
+            uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * KeySizeWords;
             ComputeParentCv(left, core->_keyWords, left);
 
             _cvStackDepth--;
@@ -1085,20 +1007,18 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     {
         uint flags = _baseFlags | FlagParent;
         uint* cv = stackalloc uint[KeySizeWords];
-        Unsafe.CopyBlock(cv, key, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(cv, key, KeySizeBytes);
         CompressBlock(cv, (byte*)children, BlockSizeBytes, 0, flags);
-        Unsafe.CopyBlock(destination, cv, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(destination, cv, KeySizeBytes);
     }
 
-    // Single/few-block work (parent merges, one chunk via FinalizeChunk/
-    // SaveChunkAsRoot) has no independent work to spread across NEON's lanes,
-    // so row-vectorizing it benchmarked slower than scalar — NEON-tier
-    // instances use the scalar kernel here too, same as no-SIMD instances.
+    // Single-block work has no independent work to spread across NEON's lanes, and
+    // row-vectorizing it measured slower than scalar, so the NEON tier uses scalar here.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void CompressBlock(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             CompressBlockSsse3(cv, block, blockLen, counter, flags);
         }
@@ -1114,7 +1034,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private void CompressBlocks(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             CompressBlocksSsse3(cv, block, blocks, blockLen, counter, flags);
         }
@@ -1166,6 +1086,86 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             block += blockLen;
             flags &= ~FlagChunkStart;
         }
+    }
+
+    /// <summary>
+    /// Hashes a complete unkeyed message of at most one chunk straight into
+    /// <paramref name="destination"/>, which must hold at least
+    /// <see cref="DefaultHashSizeBytes"/> bytes.
+    /// </summary>
+    /// <remarks>
+    /// Scalar twin of <c>HashRootIv32Ssse3</c>, for targets with no 128-bit single-block
+    /// compressor: the NEON tier (see <see cref="CompressBlock"/>) and the downlevel TFMs.
+    /// Constant IV and zero counter, CV in locals across the chunk, final block assembled
+    /// word by word. Touches no field of this struct, so the caller needs no reset.
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void HashRootIv32Scalar(byte* src, int length, byte* destination)
+    {
+        uint cv0 = IV0, cv1 = IV1, cv2 = IV2, cv3 = IV3;
+        uint cv4 = IV4, cv5 = IV5, cv6 = IV6, cv7 = IV7;
+
+        uint* m = stackalloc uint[BlockSizeWords];
+
+        int pos = 0;
+        uint startFlag = FlagChunkStart;
+
+        // Strictly greater: an exact multiple of 64 ends on a full block and never
+        // reaches the word-assembly path.
+        while (length - pos > BlockSizeBytes)
+        {
+            BinarySpans.ReadUInt32LittleEndian(src + pos, m, BlockSizeWords);
+            CompressRootBlockScalar(
+                ref cv0, ref cv1, ref cv2, ref cv3, ref cv4, ref cv5, ref cv6, ref cv7,
+                m, BlockSizeBytes, startFlag);
+
+            pos += BlockSizeBytes;
+
+            // Doubles as the "is first block" carrier for the tail's flags.
+            startFlag = 0;
+        }
+
+        int lastLen = length - pos;
+        BinaryLoad.ReadUInt32LittleEndianPadded(src + pos, lastLen, m, BlockSizeWords);
+        CompressRootBlockScalar(
+            ref cv0, ref cv1, ref cv2, ref cv3, ref cv4, ref cv5, ref cv6, ref cv7,
+            m, (uint)lastLen, startFlag | FlagChunkEnd | FlagRoot);
+
+        // Root output block 0's low eight words are the whole digest.
+        BinarySpans.WriteUInt32LittleEndian(destination, cv0);
+        BinarySpans.WriteUInt32LittleEndian(destination + 4, cv1);
+        BinarySpans.WriteUInt32LittleEndian(destination + 8, cv2);
+        BinarySpans.WriteUInt32LittleEndian(destination + 12, cv3);
+        BinarySpans.WriteUInt32LittleEndian(destination + 16, cv4);
+        BinarySpans.WriteUInt32LittleEndian(destination + 20, cv5);
+        BinarySpans.WriteUInt32LittleEndian(destination + 24, cv6);
+        BinarySpans.WriteUInt32LittleEndian(destination + 28, cv7);
+    }
+
+    /// <summary>
+    /// Compresses one root-chunk block, CV in locals and the counter folded away as zero.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void CompressRootBlockScalar(
+        ref uint cv0, ref uint cv1, ref uint cv2, ref uint cv3,
+        ref uint cv4, ref uint cv5, ref uint cv6, ref uint cv7,
+        uint* m, uint blockLen, uint flags)
+    {
+        uint v0 = cv0, v1 = cv1, v2 = cv2, v3 = cv3;
+        uint v4 = cv4, v5 = cv5, v6 = cv6, v7 = cv7;
+        uint v8 = IV0, v9 = IV1, v10 = IV2, v11 = IV3;
+        uint v12 = 0, v13 = 0;
+        uint v14 = blockLen;
+        uint v15 = flags;
+
+        Compress(
+            ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+            m);
+
+        cv0 = v0 ^ v8; cv1 = v1 ^ v9; cv2 = v2 ^ v10; cv3 = v3 ^ v11;
+        cv4 = v4 ^ v12; cv5 = v5 ^ v13; cv6 = v6 ^ v14; cv7 = v7 ^ v15;
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
