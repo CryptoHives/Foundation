@@ -338,6 +338,67 @@ public unsafe class BinaryLoadTests
         }
     }
 
+    /// <summary>
+    /// The bulk word fill, over the 16-word block BLAKE3's scalar kernel uses. The words
+    /// are written back little-endian so the whole sweep can compare byte blocks.
+    /// </summary>
+    [Test]
+    public void ReadUInt32LittleEndianPaddedWords_MatchesAZeroPaddedBlock()
+    {
+        const int Words = 16;
+
+        AssertSweep(Words * sizeof(uint), static (backing, offset, length) =>
+        {
+            var words = new uint[Words];
+            fixed (byte* source = &backing.AsSpan(offset).GetPinnableReference())
+            fixed (uint* destination = words)
+            {
+                CH.BinaryLoad.ReadUInt32LittleEndianPadded(source, length, destination, Words);
+            }
+
+            var block = new byte[Words * sizeof(uint)];
+            for (int i = 0; i < Words; i++)
+            {
+                BinaryPrimitives.WriteUInt32LittleEndian(block.AsSpan(i * sizeof(uint)), words[i]);
+            }
+
+            return block;
+        });
+    }
+
+    /// <summary>
+    /// The span form agrees with the pointer form, and a word count shorter than the input
+    /// stops at that many words rather than running on.
+    /// </summary>
+    [Test]
+    public void ReadUInt32LittleEndianPaddedWords_SpanFormAndShortWordCountsAgree()
+    {
+        var rng = new Random(Seed(0) ^ 2);
+
+        for (int length = 0; length <= 64; length++)
+        {
+            for (int words = 0; words <= 16; words++)
+            {
+                byte[] source = Randomized(rng, length);
+
+                var expected = new uint[words];
+                for (int i = 0; i < words; i++)
+                {
+                    int at = i * sizeof(uint);
+                    int readable = Math.Max(0, Math.Min(sizeof(uint), length - at));
+                    expected[i] = readable == 0
+                        ? 0u
+                        : CH.BinaryLoad.ReadUInt32LittleEndianPadded(source.AsSpan(at, readable));
+                }
+
+                var actual = new uint[words];
+                CH.BinaryLoad.ReadUInt32LittleEndianPadded(source, actual);
+
+                Assert.That(actual, Is.EqualTo(expected), $"length {length}, words {words}");
+            }
+        }
+    }
+
 #if NET8_0_OR_GREATER
     [Test]
     public void LoadPadded128_MatchesAZeroPaddedBlock()
@@ -423,6 +484,51 @@ public unsafe class BinaryLoadTests
                 }
 
                 Assert.That(actual, Is.EqualTo(expected), $"pointer overload, dataLength {dataLength}, offset {offset}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The tail form sees the whole buffer, so its straddling lane realigns an overlapping
+    /// load where <c>LoadPaddedBlock128x4</c> composes word by word. Sweeping every split of
+    /// every buffer length straddles both paths.
+    /// </summary>
+    /// <remarks>
+    /// The buffer sits inside a larger backing array whose trailing bytes are refilled
+    /// between repetitions. Sizing it exactly would hide a short over-read: the bytes just
+    /// past a freshly allocated array are zero, which is what the padding should be anyway,
+    /// so the wrong answer would look right.
+    /// </remarks>
+    [Test]
+    public void LoadPaddedTailBlock128x4_MatchesAZeroPaddedBlockForEverySplit()
+    {
+        int width = 4 * Vector128<byte>.Count;
+        var rng = new Random(Seed(width) ^ 1);
+
+        for (int dataLength = 0; dataLength <= width; dataLength++)
+        {
+            for (int offset = 0; offset <= dataLength; offset++)
+            {
+                byte[] backing = Randomized(rng, dataLength + width);
+
+                byte[] expected = new byte[width];
+                backing.AsSpan(offset, dataLength - offset).CopyTo(expected);
+
+                for (int repetition = 0; repetition < Repetitions; repetition++)
+                {
+                    Scramble(rng, backing, 0, dataLength);
+
+                    Vector128<uint> m0, m1, m2, m3;
+                    fixed (byte* source = &backing.AsSpan(0).GetPinnableReference())
+                    {
+                        CH.BinaryLoad.LoadPaddedTailBlock128x4(source, dataLength, offset, out m0, out m1, out m2, out m3);
+                    }
+
+                    Assert.That(
+                        Block(m0, m1, m2, m3),
+                        Is.EqualTo(expected),
+                        $"dataLength {dataLength}, offset {offset}, repetition {repetition}");
+                }
             }
         }
     }

@@ -1127,7 +1127,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
 
         int lastLen = length - pos;
-        LoadLastBlockWordsScalar(src + pos, lastLen, m);
+        BinaryLoad.ReadUInt32LittleEndianPadded(src + pos, lastLen, m, BlockSizeWords);
         CompressRootBlockScalar(
             ref cv0, ref cv1, ref cv2, ref cv3, ref cv4, ref cv5, ref cv6, ref cv7,
             m, (uint)lastLen, startFlag | FlagChunkEnd | FlagRoot);
@@ -1166,41 +1166,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
         cv0 = v0 ^ v8; cv1 = v1 ^ v9; cv2 = v2 ^ v10; cv3 = v3 ^ v11;
         cv4 = v4 ^ v12; cv5 = v5 ^ v13; cv6 = v6 ^ v14; cv7 = v7 ^ v15;
-    }
-
-    /// <summary>
-    /// Fills <paramref name="m"/> with the 16 little-endian words of a final block of
-    /// <paramref name="length"/> (0..64) bytes, zero-padding the rest.
-    /// </summary>
-    /// <remarks>
-    /// One trip through memory, not the two <see cref="HashChunkRoot32"/> takes (zero a
-    /// stack buffer, copy in, read back out).
-    /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void LoadLastBlockWordsScalar(byte* p, int length, uint* m)
-    {
-        int full = length >> 2;
-        BinarySpans.ReadUInt32LittleEndian(p, m, full);
-
-        if (full < BlockSizeWords)
-        {
-            // The one word that straddles the end, built little-endian by hand so it is
-            // right however many of its bytes exist — including none.
-            uint word = 0;
-            int remainder = length & 3;
-            byte* tail = p + (full * sizeof(uint));
-            for (int i = 0; i < remainder; i++)
-            {
-                word |= (uint)tail[i] << (i * 8);
-            }
-
-            m[full] = word;
-
-            for (int i = full + 1; i < BlockSizeWords; i++)
-            {
-                m[i] = 0;
-            }
-        }
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]

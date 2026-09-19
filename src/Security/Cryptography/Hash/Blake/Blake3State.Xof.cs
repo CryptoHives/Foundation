@@ -220,19 +220,7 @@ internal unsafe partial struct Blake3State
 
         uint finalFlags = flags | FlagChunkEnd | FlagRoot;
 
-        uint* rb = core->_rootBlock;
-        if (BitConverter.IsLittleEndian)
-        {
-            Unsafe.InitBlock(rb, 0, BlockSizeBytes);
-            Unsafe.CopyBlockUnaligned(ref *(byte*)rb, ref *pEnd, (uint)lastBlockLen);
-        }
-        else
-        {
-            byte* block = stackalloc byte[BlockSizeBytes];
-            Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
-            Unsafe.CopyBlockUnaligned(ref *block, ref *pEnd, (uint)lastBlockLen);
-            BinarySpans.ReadUInt32LittleEndian(block, rb, BlockSizeWords);
-        }
+        BinaryLoad.ReadUInt32LittleEndianPadded(pEnd, lastBlockLen, core->_rootBlock, BlockSizeWords);
 
         Unsafe.CopyBlock(core->_rootCv, core->_cv, KeySizeBytes);
 

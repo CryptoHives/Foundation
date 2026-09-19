@@ -137,6 +137,41 @@ internal static partial class BinaryLoad
         m3 = LoadPaddedLane(ref source, length, 3 * Vector128<byte>.Count);
     }
 
+    /// <summary>
+    /// Loads the 64-byte block of <paramref name="data"/> starting at
+    /// <paramref name="offset"/> as four vectors, zero-padding whatever runs past the end.
+    /// </summary>
+    /// <remarks>
+    /// Differs from <see cref="LoadPaddedBlock128x4(ref byte, int, out Vector128{uint}, out Vector128{uint}, out Vector128{uint}, out Vector128{uint})"/>
+    /// in seeing the whole buffer rather than just the block, which is what lets the
+    /// straddling lane realign an overlapping load instead of composing word by word.
+    /// </remarks>
+    /// <param name="data">The buffer the block is taken from.</param>
+    /// <param name="dataLength">The length of <paramref name="data"/>.</param>
+    /// <param name="offset">Where the block starts. Bytes before it are not read.</param>
+    /// <param name="m0">Bytes 0 to 15 of the block.</param>
+    /// <param name="m1">Bytes 16 to 31 of the block.</param>
+    /// <param name="m2">Bytes 32 to 47 of the block.</param>
+    /// <param name="m3">Bytes 48 to 63 of the block.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void LoadPaddedTailBlock128x4(
+        byte* data,
+        int dataLength,
+        int offset,
+        out Vector128<uint> m0,
+        out Vector128<uint> m1,
+        out Vector128<uint> m2,
+        out Vector128<uint> m3)
+    {
+        Debug.Assert((uint)offset <= (uint)dataLength, "offset is outside the buffer.");
+        Debug.Assert(dataLength - offset <= 4 * Vector128<byte>.Count, "the block runs past 64 bytes.");
+
+        m0 = LoadPaddedTailLane(data, dataLength, offset);
+        m1 = LoadPaddedTailLane(data, dataLength, offset + Vector128<byte>.Count);
+        m2 = LoadPaddedTailLane(data, dataLength, offset + (2 * Vector128<byte>.Count));
+        m3 = LoadPaddedTailLane(data, dataLength, offset + (3 * Vector128<byte>.Count));
+    }
+
     /// <inheritdoc cref="LoadPadded128(ref byte, int)"/>
     /// <param name="source">The readable bytes, at most 16. Its length is the padded length.</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -166,6 +201,22 @@ internal static partial class BinaryLoad
         out Vector128<uint> m2,
         out Vector128<uint> m3) =>
         LoadPaddedBlock128x4(ref Unsafe.AsRef<byte>(source), length, out m0, out m1, out m2, out m3);
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static unsafe Vector128<uint> LoadPaddedTailLane(byte* data, int dataLength, int offset)
+    {
+        if (offset + Vector128<byte>.Count <= dataLength)
+        {
+            return Vector128.LoadUnsafe(ref Unsafe.AsRef<byte>(data), (nuint)offset).AsUInt32();
+        }
+
+        if (offset >= dataLength)
+        {
+            return Vector128<uint>.Zero;
+        }
+
+        return LoadTailPadded128(data, dataLength, offset).AsUInt32();
+    }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> LoadPaddedLane(ref byte source, int length, int offset)

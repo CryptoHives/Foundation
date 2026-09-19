@@ -170,7 +170,7 @@ internal unsafe partial struct Blake3State
     /// Unkeyed-only counterpart of <see cref="HashChunkRoot32"/>: IV chaining value, zero
     /// counter and literal flags, so rows 0-2 come from the constant pool rather than the
     /// state; CV stays in registers across the chunk; the padded last block is built in
-    /// registers (<see cref="LoadPaddedBlock128"/>). Touches no instance state.
+    /// registers (see <c>BinaryLoad.LoadPaddedTailBlock128x4</c>). Touches no instance state.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static void HashRootIv32Ssse3(byte* src, int length, byte* destination)
@@ -198,7 +198,7 @@ internal unsafe partial struct Blake3State
         var row2 = IVLow;
         var row3 = Vector128.Create(0u, 0u, (uint)length, FlagChunkStart | FlagChunkEnd | FlagRoot);
 
-        LoadPaddedBlock128(src, length, out var m0, out var m1, out var m2, out var m3);
+        BinaryLoad.LoadPaddedTailBlock128x4(src, length, 0, out var m0, out var m1, out var m2, out var m3);
         GRounds128(m0, m1, m2, m3, ref row0, ref row1, ref row2, ref row3);
 
         StoreRootFold(destination, row0, row1, row2, row3);
@@ -258,7 +258,7 @@ internal unsafe partial struct Blake3State
         }
         else
         {
-            LoadPaddedBlock128(last, lastLen, out m0, out m1, out m2, out m3);
+            BinaryLoad.LoadPaddedTailBlock128x4(src, length, pos, out m0, out m1, out m2, out m3);
         }
 
         row2 = IVLow;
@@ -282,71 +282,6 @@ internal unsafe partial struct Blake3State
     {
         Sse2.Store((uint*)destination, Sse2.Xor(row0, row2));
         Sse2.Store((uint*)(destination + 16), Sse2.Xor(row1, row3));
-    }
-
-    /// <summary>
-    /// Assembles a zero-padded 64-byte block of <paramref name="length"/> (0..64) bytes as
-    /// four vectors, in registers.
-    /// </summary>
-    /// <remarks>
-    /// Staging through a zeroed stack buffer — what <see cref="HashChunkRoot32"/> does —
-    /// reloads across two overlapping stores and loses store-to-load forwarding.
-    /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void LoadPaddedBlock128(
-        byte* src,
-        int length,
-        out Vector128<uint> m0,
-        out Vector128<uint> m1,
-        out Vector128<uint> m2,
-        out Vector128<uint> m3)
-    {
-        Debug.Assert(BitConverter.IsLittleEndian, "The whole-lane reads are native-endian; this tier is x86 only.");
-
-        m0 = LoadPaddedLane128(src, length, 0);
-        m1 = LoadPaddedLane128(src, length, 16);
-        m2 = LoadPaddedLane128(src, length, 32);
-        m3 = LoadPaddedLane128(src, length, 48);
-    }
-
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector128<uint> LoadPaddedLane128(byte* src, int length, int offset)
-    {
-        // Wholly inside the input: read it where it lies.
-        if (offset + 16 <= length)
-        {
-            return Sse2.LoadVector128((uint*)(src + offset));
-        }
-
-        // Nothing dereferenced, which is what makes a null (zero-length) source safe.
-        if (offset >= length)
-        {
-            return Vector128<uint>.Zero;
-        }
-
-        return Vector128.Create(
-            LoadPaddedWord(src, length, offset),
-            LoadPaddedWord(src, length, offset + 4),
-            LoadPaddedWord(src, length, offset + 8),
-            LoadPaddedWord(src, length, offset + 12));
-    }
-
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static uint LoadPaddedWord(byte* src, int length, int offset)
-    {
-        if (offset + 4 <= length)
-        {
-            return Unsafe.ReadUnaligned<uint>(src + offset);
-        }
-
-        // The one straddling word, built little-endian by hand. At most one per block.
-        uint word = 0;
-        for (int i = 0; offset + i < length; i++)
-        {
-            word |= (uint)src[offset + i] << (i * 8);
-        }
-
-        return word;
     }
 
     /// <summary>
@@ -531,7 +466,7 @@ internal unsafe partial struct Blake3State
     /// </summary>
     /// <remarks>
     /// Split out of the pointer overload for the root kernels below: they assemble a
-    /// zero-padded final block word by word (see <see cref="LoadPaddedBlock128"/>)
+    /// zero-padded final block in registers (see <c>BinaryLoad.LoadPaddedTailBlock128x4</c>)
     /// instead of staging it through a <c>stackalloc</c>, so there is no memory for a
     /// pointer to point at.
     /// </remarks>
