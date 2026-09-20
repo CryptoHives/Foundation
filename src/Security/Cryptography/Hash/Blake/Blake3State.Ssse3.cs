@@ -169,8 +169,9 @@ internal unsafe partial struct Blake3State
     /// <remarks>
     /// Unkeyed-only counterpart of <see cref="HashChunkRoot32"/>: IV chaining value, zero
     /// counter and literal flags, so rows 0-2 come from the constant pool rather than the
-    /// state; CV stays in registers across the chunk; the padded last block is built in
-    /// registers (see <c>BinaryLoad.LoadPaddedTailBlock128x4</c>). Touches no instance state.
+    /// state; CV stays in registers across the chunk; the padded last block is assembled in
+    /// registers (<c>BinaryLoad.LoadPaddedTailBlock128x4</c>) because on a path this short the
+    /// per-call cost is the whole cost. Touches no instance state.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static void HashRootIv32Ssse3(byte* src, int length, byte* destination)

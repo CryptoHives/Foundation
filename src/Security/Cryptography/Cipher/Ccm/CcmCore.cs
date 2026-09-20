@@ -414,14 +414,14 @@ internal unsafe struct CcmCore
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if (_useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAesNi)
             {
                 AesCoreAesNi.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
 
-            if (_useArmAes)
+            if (AesCoreArm.IsSupported && _useArmAes)
             {
                 AesCoreArm.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);

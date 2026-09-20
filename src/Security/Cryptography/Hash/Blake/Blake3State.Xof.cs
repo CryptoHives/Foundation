@@ -6,6 +6,9 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics.X86;
+#endif
 using System.Threading;
 
 /// <summary>
@@ -247,7 +250,7 @@ internal unsafe partial struct Blake3State
     private void SqueezeRootBlock(Blake3State* core, ulong counter, byte* dst)
     {
 #if NET8_0_OR_GREATER
-        if (System.Runtime.Intrinsics.X86.Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             SqueezeRootBlocksSsse3(core, counter, 1, dst);
         }
@@ -277,7 +280,8 @@ internal unsafe partial struct Blake3State
     private void SqueezeRootBlocks(Blake3State* core, ulong startCounter, int blocks, byte* dst)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        if ((Avx2.IsSupported || Avx512F.IsSupported) &&
+            (_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
         {
             int offset = 0;
             int remaining = blocks;
@@ -288,7 +292,7 @@ internal unsafe partial struct Blake3State
             // takes whole groups of 16 - a short group would gain nothing, since an
             // over-wide batch costs the same as a full one and the 8-wide kernel
             // below already handles 2..15 in one call.
-            if ((_simdSupport & SimdSupport.Avx512F) != 0)
+            if (Avx512F.IsSupported && (_simdSupport & SimdSupport.Avx512F) != 0)
             {
                 while (remaining >= ChunksPerAvx512Batch)
                 {
@@ -318,7 +322,7 @@ internal unsafe partial struct Blake3State
                 SqueezeRootBlocksSsse3(core, counter, 1, dst + offset);
             }
         }
-        else if ((_simdSupport & SimdSupport.Ssse3) != 0)
+        else if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             SqueezeRootBlocksSsse3(core, startCounter, blocks, dst);
         }

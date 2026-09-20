@@ -277,13 +277,13 @@ public sealed class AesCmac : IMac
     private void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if (_useAesNi)
+        if (AesCoreAesNi.IsSupported && _useAesNi)
         {
             AesCoreAesNi.EncryptBlock(input, output, _niRoundKeys, _rounds);
             return;
         }
 
-        if (_useArmAes)
+        if (AesCoreArm.IsSupported && _useArmAes)
         {
             AesCoreArm.EncryptBlock(input, output, _niRoundKeys, _rounds);
             return;

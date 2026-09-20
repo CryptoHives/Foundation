@@ -185,7 +185,7 @@ internal struct GcmCore
         {
             _hClmul = PrepareH(_h);
             _hPowers = _useArmPmull ? PrepareHPowersPmull(_hClmul) : PrepareHPowers(_hClmul);
-            if (_useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAesNi)
             {
                 _usePipeline = _usePclmul || _usePclmulV256;
             }
@@ -918,13 +918,13 @@ internal struct GcmCore
     public void GctrDispatch(ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if (_useAesNi)
+        if (AesCoreAesNi.IsSupported && _useAesNi)
         {
             GctrAesNi(AesNiRoundKeys, _rounds, icb, input, output);
             return;
         }
 
-        if (_useArmAes)
+        if (AesCoreArm.IsSupported && _useArmAes)
         {
             GctrArmAes(AesNiRoundKeys, _rounds, icb, input, output);
             return;
@@ -937,13 +937,13 @@ internal struct GcmCore
     public void GHashDispatch(ReadOnlySpan<byte> aad, ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if (_usePclmul)
+        if (IsPclmulSupported && _usePclmul)
         {
             GHashCompletePclmul(_hPowers, aad, ciphertext, output);
             return;
         }
 
-        if (_useArmPmull)
+        if (IsPmullSupported && _useArmPmull)
         {
             GHashCompletePmull(_hPowers, aad, ciphertext, output);
             return;
@@ -959,7 +959,7 @@ internal struct GcmCore
         Span<byte> ciphertext, Span<byte> ghash)
     {
 #if NET8_0_OR_GREATER
-        if (_usePipeline)
+        if (AesCoreAesNi.IsSupported && _usePipeline)
         {
             // Fused GCTR+GHASH pipeline: 4-block interleaved AES + aggregated CLMUL
             EncryptPipelined(
@@ -982,7 +982,7 @@ internal struct GcmCore
         Span<byte> plaintext, Span<byte> ghash)
     {
 #if NET8_0_OR_GREATER
-        if (_usePipeline)
+        if (AesCoreAesNi.IsSupported && _usePipeline)
         {
             // Fused GHASH+GCTR pipeline: computes GHASH and decrypts simultaneously
             DecryptPipelined(
@@ -1931,7 +1931,7 @@ internal struct GcmCore
             Vector128<byte> g7 = Ssse3.Shuffle(c7, ByteSwapMask);
 
 #if NET10_0_OR_GREATER
-            y = _usePclmulV256 ?
+            y = IsPclmulV256Supported && _usePclmulV256 ?
                 GfMulReduce8Vpclmul(hPowers, g0, g1, g2, g3, g4, g5, g6, g7) :
                 GfMulReduce8(hPowers, g0, g1, g2, g3, g4, g5, g6, g7);
 #else
@@ -2068,7 +2068,7 @@ internal struct GcmCore
             // for maximum CPU port overlap (AES on port 0/1, CLMUL on port 0)
             // use non inlined functions which can be better
 #if NET10_0_OR_GREATER
-            if (_usePclmulV256)
+            if (IsPclmulV256Supported && _usePclmulV256)
             {
                 offset = DecryptStitchedPclmulV256Loop(roundKeys, rounds, hPowers,
                     ref counter, ref y, ciphertext, plaintext, offset, len);
