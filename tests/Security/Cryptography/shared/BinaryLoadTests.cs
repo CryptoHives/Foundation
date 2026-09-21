@@ -347,8 +347,7 @@ public unsafe class BinaryLoadTests
     {
         const int Words = 16;
 
-        AssertSweep(Words * sizeof(uint), static (backing, offset, length) =>
-        {
+        AssertSweep(Words * sizeof(uint), static (backing, offset, length) => {
             var words = new uint[Words];
             fixed (byte* source = &backing.AsSpan(offset).GetPinnableReference())
             fixed (uint* destination = words)

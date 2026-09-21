@@ -64,6 +64,14 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// </summary>
     private const int KeySizeWords = KeySizeBytes / sizeof(uint);
 
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Words between one parent's child-CV pair and the next: a parent's 64-byte block is
+    /// its two children's chaining values laid end to end.
+    /// </summary>
+    private const int ParentStrideWords = 2 * KeySizeWords;
+#endif
+
     /// <summary>
     /// The block size in uint words for internal usage.
     /// </summary>
@@ -547,23 +555,23 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                         while (length - offset >= Avx512BatchSizeBytes)
                         {
-                            CompressChunksPartialAvx512(srcPtr + offset, ChunksPerAvx512Batch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+                            CompressChunksPartialAvx512(srcPtr + offset, Avx512ChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx512BatchSizeBytes == length;
 
-                            if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx512Batch - 1)) == 0)
+                            if (!drainsRemainingInput && (_chunkCounter & (Avx512ChunksPerBatch - 1)) == 0)
                             {
                                 // Complete, aligned 16-chunk subtree, not the
                                 // tail: reduce and push one tree node instead
                                 // of 16 serial single-chunk commits.
-                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
+                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, Avx512ChunksPerBatch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, Avx512BatchLevel);
-                                _chunkCounter += ChunksPerAvx512Batch;
+                                _chunkCounter += Avx512ChunksPerBatch;
                             }
                             else
                             {
                                 int firstChunk = 0;
-                                if (drainsRemainingInput && (_chunkCounter & (ChunksPerAvx2Batch - 1)) == 0)
+                                if (drainsRemainingInput && (_chunkCounter & (Avx2ChunksPerBatch - 1)) == 0)
                                 {
                                     // Even in the final batch, the first 8 chunks form
                                     // an aligned complete subtree (chunks 8..15 follow
@@ -571,13 +579,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                     // them wide; only the last 7 commit serially. The
                                     // in-place reduction never writes past the first
                                     // 8 CV slots, so CVs 8..15 stay intact.
-                                    ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
+                                    ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, Avx2ChunksPerBatch, _baseFlags);
                                     PushSubtreeCv(core, batchCvs, Avx2BatchLevel);
-                                    _chunkCounter += ChunksPerAvx2Batch;
-                                    firstChunk = ChunksPerAvx2Batch;
+                                    _chunkCounter += Avx2ChunksPerBatch;
+                                    firstChunk = Avx2ChunksPerBatch;
                                 }
 
-                                int chunksToCommit = drainsRemainingInput ? ChunksPerAvx512Batch - 1 : ChunksPerAvx512Batch;
+                                int chunksToCommit = drainsRemainingInput ? Avx512ChunksPerBatch - 1 : Avx512ChunksPerBatch;
 
                                 // Draining means offset == length; return directly.
                                 if (CommitBatchChunks(core, batchCvs, firstChunk, chunksToCommit, drainsRemainingInput))
@@ -613,23 +621,23 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         {
                             CompressChunks8Avx2(
                                 srcPtr + offset,
-                                ChunksPerAvx2Batch,
+                                Avx2ChunksPerBatch,
                                 core->_keyWords,
                                 batchCvs,
                                 _chunkCounter,
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx2BatchSizeBytes == length;
-                            if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx2Batch - 1)) == 0)
+                            if (!drainsRemainingInput && (_chunkCounter & (Avx2ChunksPerBatch - 1)) == 0)
                             {
                                 // Complete aligned 8-chunk subtree, not the tail.
-                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
+                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, Avx2ChunksPerBatch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, Avx2BatchLevel);
-                                _chunkCounter += ChunksPerAvx2Batch;
+                                _chunkCounter += Avx2ChunksPerBatch;
                             }
                             else
                             {
-                                int chunksToCommit = drainsRemainingInput ? ChunksPerAvx2Batch - 1 : ChunksPerAvx2Batch;
+                                int chunksToCommit = drainsRemainingInput ? Avx2ChunksPerBatch - 1 : Avx2ChunksPerBatch;
 
                                 // Draining means offset == length; return directly.
                                 if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
@@ -673,25 +681,25 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         {
                             CompressChunksPartial4Ssse3(
                                 srcPtr + offset,
-                                ChunksPerSsse3Batch,
+                                Ssse3ChunksPerBatch,
                                 core->_keyWords,
                                 batchCvs,
                                 _chunkCounter,
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Ssse3BatchSizeBytes == length;
-                            if (!drainsRemainingInput && (_chunkCounter & (ChunksPerSsse3Batch - 1)) == 0)
+                            if (!drainsRemainingInput && (_chunkCounter & (Ssse3ChunksPerBatch - 1)) == 0)
                             {
                                 // Complete aligned 4-chunk subtree, not the tail:
                                 // fold the four CVs into one before pushing.
-                                ReduceChunkCvsToSubtreeCvSsse3(core, batchCvs, core->_keyWords, ChunksPerSsse3Batch, _baseFlags);
+                                ReduceChunkCvsToSubtreeCvSsse3(core, batchCvs, core->_keyWords, Ssse3ChunksPerBatch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, Ssse3BatchLevel);
-                                _chunkCounter += ChunksPerSsse3Batch;
+                                _chunkCounter += Ssse3ChunksPerBatch;
                                 offset += Ssse3BatchSizeBytes;
                                 continue;
                             }
 
-                            int chunksToCommit = drainsRemainingInput ? ChunksPerSsse3Batch - 1 : ChunksPerSsse3Batch;
+                            int chunksToCommit = drainsRemainingInput ? Ssse3ChunksPerBatch - 1 : Ssse3ChunksPerBatch;
 
                             // Draining means offset == length; return directly.
                             if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
@@ -728,20 +736,20 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                         while (length - offset >= NeonBatchSizeBytes)
                         {
-                            CompressChunksPartialNeon(srcPtr + offset, ChunksPerNeonBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+                            CompressChunksPartialNeon(srcPtr + offset, NeonChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
                             bool drainsRemainingInput = offset + NeonBatchSizeBytes == length;
 
-                            if (!drainsRemainingInput && (_chunkCounter & (ChunksPerNeonBatch - 1)) == 0)
+                            if (!drainsRemainingInput && (_chunkCounter & (NeonChunksPerBatch - 1)) == 0)
                             {
                                 // Complete aligned 4-chunk subtree, not the tail.
-                                ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
+                                ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, NeonChunksPerBatch, _baseFlags);
                                 PushSubtreeCv(core, batchCvs, NeonBatchLevel);
-                                _chunkCounter += ChunksPerNeonBatch;
+                                _chunkCounter += NeonChunksPerBatch;
                             }
                             else
                             {
-                                int chunksToCommit = drainsRemainingInput ? ChunksPerNeonBatch - 1 : ChunksPerNeonBatch;
+                                int chunksToCommit = drainsRemainingInput ? NeonChunksPerBatch - 1 : NeonChunksPerBatch;
 
                                 // Draining means offset == length; return directly.
                                 if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))

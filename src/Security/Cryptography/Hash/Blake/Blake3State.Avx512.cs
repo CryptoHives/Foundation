@@ -32,14 +32,43 @@ using System.Runtime.Intrinsics.X86;
 /// </remarks>
 internal unsafe partial struct Blake3State
 {
-    internal const int ChunksPerAvx512Batch = 16;
-    internal const int Avx512BatchSizeBytes = ChunksPerAvx512Batch * ChunkSizeBytes;
+    internal const int Avx512CounterVectors = 2;
+    internal const int Avx512ChunksPerBatch = 16;
+    internal const int Avx512BatchSizeBytes = Avx512ChunksPerBatch * ChunkSizeBytes;
 
     /// <summary>
     /// Tree level of one aligned 16-chunk batch: a subtree of 2^level chunks, which is what
-    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="ChunksPerAvx512Batch"/>).
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="Avx512ChunksPerBatch"/>).
     /// </summary>
     internal const int Avx512BatchLevel = 4;
+
+    // Lane i carries counter baseCounter + i, split into low and high halves. The high half comes
+    // from the low half's carry rather than a branch, so no lane count appears in the arithmetic.
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void CounterVectors512(ulong baseCounter, out Vector512<uint> low, out Vector512<uint> high)
+    {
+#if NET10_0_OR_GREATER
+        var lowBase = Vector512.Create((uint)baseCounter);
+        low = lowBase + Vector512<uint>.Indices;
+        high = Vector512.Create((uint)(baseCounter >> 32)) - Vector512.LessThan(low, lowBase);
+#else
+        low = Vector512.Create(
+            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3),
+            (uint)(baseCounter + 4), (uint)(baseCounter + 5), (uint)(baseCounter + 6), (uint)(baseCounter + 7),
+            (uint)(baseCounter + 8), (uint)(baseCounter + 9), (uint)(baseCounter + 10), (uint)(baseCounter + 11),
+            (uint)(baseCounter + 12), (uint)(baseCounter + 13), (uint)(baseCounter + 14), (uint)(baseCounter + 15));
+        high = Vector512.Create(
+            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32),
+            (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32),
+            (uint)((baseCounter + 4) >> 32), (uint)((baseCounter + 5) >> 32),
+            (uint)((baseCounter + 6) >> 32), (uint)((baseCounter + 7) >> 32),
+            (uint)((baseCounter + 8) >> 32), (uint)((baseCounter + 9) >> 32),
+            (uint)((baseCounter + 10) >> 32), (uint)((baseCounter + 11) >> 32),
+            (uint)((baseCounter + 12) >> 32), (uint)((baseCounter + 13) >> 32),
+            (uint)((baseCounter + 14) >> 32), (uint)((baseCounter + 15) >> 32));
+#endif
+    }
+
 
     /// <summary>
     /// Runs every complete 64-chunk subtree group the remaining input allows, using this
@@ -63,14 +92,14 @@ internal unsafe partial struct Blake3State
     {
         do
         {
-            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerAvx512Batch; b++)
+            for (int b = 0; b < ChunksPerSubtreeGroup / Avx512ChunksPerBatch; b++)
             {
                 CompressChunksPartialAvx512(
                     srcPtr + offset,
-                    ChunksPerAvx512Batch,
+                    Avx512ChunksPerBatch,
                     core->_keyWords,
-                    batchCvs + b * ChunksPerAvx512Batch * KeySizeWords,
-                    _chunkCounter + (ulong)(b * ChunksPerAvx512Batch),
+                    batchCvs + b * Avx512ChunksPerBatch * KeySizeWords,
+                    _chunkCounter + (ulong)(b * Avx512ChunksPerBatch),
                     _baseFlags);
                 offset += Avx512BatchSizeBytes;
             }
@@ -93,31 +122,20 @@ internal unsafe partial struct Blake3State
     /// </summary>
     /// <remarks>
     /// Mirrors <see cref="CompressChunksPartialAvx2"/> one level wider. Every caller now
-    /// passes exactly <see cref="ChunksPerAvx512Batch"/>; the lane masking is kept for the
+    /// passes exactly <see cref="Avx512ChunksPerBatch"/>; the lane masking is kept for the
     /// partial tail that <c>Append</c> currently declines to route here.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialAvx512(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        // One allocation laid out as three regions: BlockSizeWords message vectors,
-        // KeySizeWords chaining-value vectors, then the low/high counter pair.
-        const int CounterVectors = 2;
-        var scratch = stackalloc Vector512<uint>[BlockSizeWords + KeySizeWords + CounterVectors];
-        Vector512<uint>* m = scratch;
-        Vector512<uint>* cv = scratch + BlockSizeWords;
-        Vector512<uint>* counters = scratch + BlockSizeWords + KeySizeWords;
+        Vector512<uint>* m = stackalloc Vector512<uint>[BlockSizeWords];
+        Vector512<uint>* cv = stackalloc Vector512<uint>[KeySizeWords];
+        Vector512<uint>* counters = stackalloc Vector512<uint>[Avx512CounterVectors];
 
-        counters[0] = Vector512.Create(
-            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3),
-            (uint)(baseCounter + 4), (uint)(baseCounter + 5), (uint)(baseCounter + 6), (uint)(baseCounter + 7),
-            (uint)(baseCounter + 8), (uint)(baseCounter + 9), (uint)(baseCounter + 10), (uint)(baseCounter + 11),
-            (uint)(baseCounter + 12), (uint)(baseCounter + 13), (uint)(baseCounter + 14), (uint)(baseCounter + 15));
-        counters[1] = Vector512.Create(
-            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32), (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32),
-            (uint)((baseCounter + 4) >> 32), (uint)((baseCounter + 5) >> 32), (uint)((baseCounter + 6) >> 32), (uint)((baseCounter + 7) >> 32),
-            (uint)((baseCounter + 8) >> 32), (uint)((baseCounter + 9) >> 32), (uint)((baseCounter + 10) >> 32), (uint)((baseCounter + 11) >> 32),
-            (uint)((baseCounter + 12) >> 32), (uint)((baseCounter + 13) >> 32), (uint)((baseCounter + 14) >> 32), (uint)((baseCounter + 15) >> 32));
+        CounterVectors512(baseCounter, out var counterLow, out var counterHigh);
+        counters[0] = counterLow;
+        counters[1] = counterHigh;
 
         for (int i = 0; i < KeySizeWords; i++)
         {
@@ -125,13 +143,12 @@ internal unsafe partial struct Blake3State
         }
 
         uint middleFlags = baseFlags;
-        uint startFlags = baseFlags | FlagChunkStart;
         uint endFlags = baseFlags | FlagChunkEnd;
+        uint flags = baseFlags | FlagChunkStart;
+        byte* blockBase = source;
 
         for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
-            byte* blockBase = source + blockIdx * BlockSizeBytes;
-
             for (int j = 0; j < chunkCount; j++)
             {
                 m[j] = Avx512F.LoadVector512((uint*)(blockBase + j * ChunkSizeBytes));
@@ -139,8 +156,10 @@ internal unsafe partial struct Blake3State
 
             Transpose16x16(m);
 
-            uint flags = blockIdx == 0 ? startFlags : (blockIdx == BlocksPerChunk - 1 ? endFlags : middleFlags);
             CompressVector512(cv, m, counters, flags);
+
+            flags = (blockIdx >= BlocksPerChunk - 2) ? endFlags : middleFlags;
+            blockBase += BlockSizeBytes;
         }
 
         for (int i = 0; i < KeySizeWords; i++)
@@ -151,7 +170,8 @@ internal unsafe partial struct Blake3State
         Transpose16x16(m);
         for (int chunkIdx = 0; chunkIdx < chunkCount; chunkIdx++)
         {
-            Avx.Store(outCvs + chunkIdx * KeySizeWords, m[chunkIdx].GetLower());
+            Avx.Store(outCvs, m[chunkIdx].GetLower());
+            outCvs += KeySizeWords;
         }
     }
 
@@ -269,7 +289,7 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector512Squeeze(
         Vector512<uint>* cv, Vector512<uint>* m, Vector512<uint>* counters,
-        uint blockLen, uint flags, Vector512<uint>* halves)
+        uint blockLen, uint flags)
     {
         var v0 = cv[0];
         var v1 = cv[1];
@@ -358,18 +378,18 @@ internal unsafe partial struct Blake3State
         GVec(ref v2, ref v7, ref v8, ref v13, m, 3, 4);
         GVec(ref v3, ref v4, ref v9, ref v14, m, 7, 13);
 
-        halves[0] = Avx512F.Xor(v0, v8);   halves[8] = Avx512F.Xor(v8, cv[0]);
-        halves[1] = Avx512F.Xor(v1, v9);   halves[9] = Avx512F.Xor(v9, cv[1]);
-        halves[2] = Avx512F.Xor(v2, v10);  halves[10] = Avx512F.Xor(v10, cv[2]);
-        halves[3] = Avx512F.Xor(v3, v11);  halves[11] = Avx512F.Xor(v11, cv[3]);
-        halves[4] = Avx512F.Xor(v4, v12);  halves[12] = Avx512F.Xor(v12, cv[4]);
-        halves[5] = Avx512F.Xor(v5, v13);  halves[13] = Avx512F.Xor(v13, cv[5]);
-        halves[6] = Avx512F.Xor(v6, v14);  halves[14] = Avx512F.Xor(v14, cv[6]);
-        halves[7] = Avx512F.Xor(v7, v15);  halves[15] = Avx512F.Xor(v15, cv[7]);
+        m[0] = Avx512F.Xor(v0, v8); m[8] = Avx512F.Xor(v8, cv[0]);
+        m[1] = Avx512F.Xor(v1, v9); m[9] = Avx512F.Xor(v9, cv[1]);
+        m[2] = Avx512F.Xor(v2, v10); m[10] = Avx512F.Xor(v10, cv[2]);
+        m[3] = Avx512F.Xor(v3, v11); m[11] = Avx512F.Xor(v11, cv[3]);
+        m[4] = Avx512F.Xor(v4, v12); m[12] = Avx512F.Xor(v12, cv[4]);
+        m[5] = Avx512F.Xor(v5, v13); m[13] = Avx512F.Xor(v13, cv[5]);
+        m[6] = Avx512F.Xor(v6, v14); m[14] = Avx512F.Xor(v14, cv[6]);
+        m[7] = Avx512F.Xor(v7, v15); m[15] = Avx512F.Xor(v15, cv[7]);
     }
 
     /// <summary>
-    /// Squeezes <see cref="ChunksPerAvx512Batch"/> consecutive output blocks
+    /// Squeezes <see cref="Avx512ChunksPerBatch"/> consecutive output blocks
     /// (counters <paramref name="startCounter"/> .. +15) into
     /// <paramref name="dst"/>, which must have room for all of them.
     /// </summary>
@@ -394,14 +414,9 @@ internal unsafe partial struct Blake3State
         uint* rootCv = core->_rootCv;
         uint* rootBlock = core->_rootBlock;
 
-        // One allocation, three regions: the broadcast message, the broadcast root
-        // chaining value, the counter pair, and the 16 output words.
-        const int CounterVectors = 2;
-        var scratch = stackalloc Vector512<uint>[BlockSizeWords + KeySizeWords + CounterVectors + BlockSizeWords];
-        Vector512<uint>* m = scratch;
-        Vector512<uint>* cv = scratch + BlockSizeWords;
-        Vector512<uint>* counters = cv + KeySizeWords;
-        Vector512<uint>* halves = counters + CounterVectors;
+        Vector512<uint>* m = stackalloc Vector512<uint>[BlockSizeWords];
+        Vector512<uint>* cv = stackalloc Vector512<uint>[KeySizeWords];
+        Vector512<uint>* counters = stackalloc Vector512<uint>[Avx512CounterVectors];
 
         for (int w = 0; w < BlockSizeWords; w++)
         {
@@ -413,30 +428,19 @@ internal unsafe partial struct Blake3State
             cv[i] = Vector512.Create(rootCv[i]);
         }
 
-        counters[0] = Vector512.Create(
-            (uint)(startCounter + 0), (uint)(startCounter + 1), (uint)(startCounter + 2), (uint)(startCounter + 3),
-            (uint)(startCounter + 4), (uint)(startCounter + 5), (uint)(startCounter + 6), (uint)(startCounter + 7),
-            (uint)(startCounter + 8), (uint)(startCounter + 9), (uint)(startCounter + 10), (uint)(startCounter + 11),
-            (uint)(startCounter + 12), (uint)(startCounter + 13), (uint)(startCounter + 14), (uint)(startCounter + 15));
-        counters[1] = Vector512.Create(
-            (uint)((startCounter + 0) >> 32), (uint)((startCounter + 1) >> 32),
-            (uint)((startCounter + 2) >> 32), (uint)((startCounter + 3) >> 32),
-            (uint)((startCounter + 4) >> 32), (uint)((startCounter + 5) >> 32),
-            (uint)((startCounter + 6) >> 32), (uint)((startCounter + 7) >> 32),
-            (uint)((startCounter + 8) >> 32), (uint)((startCounter + 9) >> 32),
-            (uint)((startCounter + 10) >> 32), (uint)((startCounter + 11) >> 32),
-            (uint)((startCounter + 12) >> 32), (uint)((startCounter + 13) >> 32),
-            (uint)((startCounter + 14) >> 32), (uint)((startCounter + 15) >> 32));
+        CounterVectors512(startCounter, out var counterLow, out var counterHigh);
+        counters[0] = counterLow;
+        counters[1] = counterHigh;
 
-        CompressVector512Squeeze(cv, m, counters, _rootBlockLen, _rootFlags, halves);
+        CompressVector512Squeeze(cv, m, counters, _rootBlockLen, _rootFlags);
 
-        // halves[w] holds word w of all 16 blocks; transposing leaves halves[j]
+        // m[w] holds word w of all 16 blocks; transposing leaves m[j]
         // holding all 16 words of block j - a whole 64-byte output block.
-        Transpose16x16(halves);
+        Transpose16x16(m);
 
-        for (int j = 0; j < ChunksPerAvx512Batch; j++)
+        for (int j = 0; j < Avx512ChunksPerBatch; j++)
         {
-            Avx512F.Store((uint*)(dst + j * BlockSizeBytes), halves[j]);
+            Avx512F.Store((uint*)(dst + j * BlockSizeBytes), m[j]);
         }
     }
 
@@ -547,11 +551,11 @@ internal unsafe partial struct Blake3State
         Vector512<uint>* m,
         int mx, int my)
     {
-        a = Avx512F.Add(a, Avx512F.Add(b, m[mx]));
+        a = Avx512F.Add(Avx512F.Add(a, m[mx]), b);
         d = Avx512F.RotateRight(Avx512F.Xor(d, a), 16);
         c = Avx512F.Add(c, d);
         b = Avx512F.RotateRight(Avx512F.Xor(b, c), 12);
-        a = Avx512F.Add(a, Avx512F.Add(b, m[my]));
+        a = Avx512F.Add(Avx512F.Add(a, m[my]), b);
         d = Avx512F.RotateRight(Avx512F.Xor(d, a), 8);
         c = Avx512F.Add(c, d);
         b = Avx512F.RotateRight(Avx512F.Xor(b, c), 7);

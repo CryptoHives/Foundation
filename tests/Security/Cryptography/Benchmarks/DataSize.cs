@@ -78,6 +78,15 @@ public class DataSize : IFormattable
     /// <summary>2 KB - multiple blocks.</summary>
     public static readonly DataSize K2 = new("2KB", 2048);
 
+    /// <summary>3 KB - three chunks, the narrowest count the two-chain kernel takes.</summary>
+    public static readonly DataSize K3 = new("3KB", 3072);
+
+    /// <summary>5 KB - five chunks, the first count the 8-lane partial kernel claims.</summary>
+    public static readonly DataSize K5 = new("5KB", 5120);
+
+    /// <summary>16 KB - sixteen chunks, exactly one AVX-512 batch.</summary>
+    public static readonly DataSize K16 = new("16KB", 16384);
+
     /// <summary>6 KB - multiple blocks.</summary>
     public static readonly DataSize K6 = new("6KB", 6144);
 
@@ -138,8 +147,8 @@ public class DataSize : IFormattable
 
     /// <summary>Sizes for BLAKE3, which needs boundaries no other BLAKE variant has.</summary>
     public static readonly DataSize[] Blake3Sizes =
-        [B4, B64, B65, B100, B128, B137, B1000, K1, B1025, K2, K4, K6, K8,
-         B9216, B10000, B10240, B11264, B12288, B15360,
+        [B4, B64, B65, B100, B128, B137, B1000, K1, B1025, K2, K3, K4, K5, K6, K8,
+         B9216, B10000, B10240, B11264, B12288, B15360, K16,
          K64, B100000, K128, M1, M10];
 
     /// <summary>Edge case sizes only.</summary>

@@ -53,6 +53,25 @@ internal unsafe partial struct Blake3State
         get => Vector128.Create(IV4, IV5, IV6, IV7);
     }
 
+
+    // Lane i carries counter baseCounter + i, split into low and high halves. The high half comes
+    // from the low half's carry rather than a branch, so no lane count appears in the arithmetic.
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void CounterVectors128(ulong baseCounter, out Vector128<uint> low, out Vector128<uint> high)
+    {
+#if NET10_0_OR_GREATER
+        var lowBase = Vector128.Create((uint)baseCounter);
+        low = lowBase + Vector128<uint>.Indices;
+        high = Vector128.Create((uint)(baseCounter >> 32)) - Vector128.LessThan(low, lowBase);
+#else
+        low = Vector128.Create(
+            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3));
+        high = Vector128.Create(
+            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32),
+            (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32));
+#endif
+    }
+
     // Selects dwords 1 and 3 from the second operand, 0 and 2 from the first.
     private static Vector128<uint> BlendMask0101
     {
@@ -70,16 +89,16 @@ internal unsafe partial struct Blake3State
     /// <c>Vector128</c> code, also used by the AVX2 tier as its partial-batch
     /// handler, and requires nothing beyond SSSE3.
     /// </remarks>
-    internal const int ChunksPerSsse3Batch = 4;
+    internal const int Ssse3ChunksPerBatch = 4;
 
     /// <summary>
-    /// Bytes consumed by one <see cref="ChunksPerSsse3Batch"/>-wide batch.
+    /// Bytes consumed by one <see cref="Ssse3ChunksPerBatch"/>-wide batch.
     /// </summary>
-    internal const int Ssse3BatchSizeBytes = ChunksPerSsse3Batch * ChunkSizeBytes;
+    internal const int Ssse3BatchSizeBytes = Ssse3ChunksPerBatch * ChunkSizeBytes;
 
     /// <summary>
     /// Tree level of one aligned 4-chunk batch: a subtree of 2^level chunks, which is what
-    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="ChunksPerSsse3Batch"/>).
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="Ssse3ChunksPerBatch"/>).
     /// </summary>
     internal const int Ssse3BatchLevel = 2;
 
@@ -200,6 +219,7 @@ internal unsafe partial struct Blake3State
         var row3 = Vector128.Create(0u, 0u, (uint)length, FlagChunkStart | FlagChunkEnd | FlagRoot);
 
         BinaryLoad.LoadPaddedTailBlock128x4(src, length, 0, out var m0, out var m1, out var m2, out var m3);
+
         GRounds128(m0, m1, m2, m3, ref row0, ref row1, ref row2, ref row3);
 
         StoreRootFold(destination, row0, row1, row2, row3);
@@ -296,11 +316,7 @@ internal unsafe partial struct Blake3State
     private static void CompressChunksPartial4Ssse3(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
         Debug.Assert(chunkCount >= 2 && chunkCount <= 4);
-        var counterLow = Vector128.Create(
-            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3));
-        var counterHigh = Vector128.Create(
-            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32),
-            (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32));
+        CounterVectors128(baseCounter, out var counterLow, out var counterHigh);
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
 
         // v0..v7 *are* the running chaining value — see CompressChunks8Avx2 for
@@ -444,6 +460,44 @@ internal unsafe partial struct Blake3State
         return Sse2.Or(Sse2.And(right, BlendMask0101), Sse2.AndNot(BlendMask0101, left));
     }
 
+    // The four gathers below replace the general Gather128 in the round schedule. Each names
+    // one of the four message vectors the permutation produces and picks the cheapest sequence
+    // for that vector's own lane pattern, rather than paying the general shuffle/shuffle/blend
+    // form four times. Lane comments read as indices into the four inputs.
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> GatherColX128(Vector128<uint> colX, Vector128<uint> colY)
+    {
+        // colX1 colY1 colY3 colX2
+        var lo = Sse2.UnpackLow(colX, colY);
+        var hi = Sse2.UnpackHigh(colY, colX);
+        return Sse.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x6E).AsUInt32();
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> GatherColY128(Vector128<uint> colX, Vector128<uint> diagX, Vector128<uint> diagY)
+    {
+        // colX3 diagX1 colX0 diagY2
+        var lo = Sse.Shuffle(colX.AsSingle(), diagX.AsSingle(), 0x13).AsUInt32();
+        var hi = Sse.Shuffle(colX.AsSingle(), diagY.AsSingle(), 0x20).AsUInt32();
+        return Sse.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x88).AsUInt32();
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> GatherDiagX128(Vector128<uint> colY, Vector128<uint> diagX, Vector128<uint> diagY)
+    {
+        // colY0 diagX2 diagY0 diagY3 - the upper half is single sourced, so one merge is enough.
+        var lo = Sse.Shuffle(colY.AsSingle(), diagX.AsSingle(), 0x20).AsUInt32();
+        return Sse.Shuffle(lo.AsSingle(), diagY.AsSingle(), 0xC8).AsUInt32();
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> GatherDiagY128(Vector128<uint> colY, Vector128<uint> diagX, Vector128<uint> diagY)
+    {
+        // diagY1 colY2 diagX3 diagX0 - the upper half is single sourced, so one merge is enough.
+        var lo = Sse.Shuffle(diagY.AsSingle(), colY.AsSingle(), 0x21).AsUInt32();
+        return Sse.Shuffle(lo.AsSingle(), diagX.AsSingle(), 0x38).AsUInt32();
+    }
+
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void GRounds128(
         uint* m,
@@ -482,40 +536,102 @@ internal unsafe partial struct Blake3State
         ref Vector128<uint> row2,
         ref Vector128<uint> row3)
     {
+        Vector128<uint> colX, colY, diagX, diagY;
+
         // Round 1: 0,2,4,6 | 1,3,5,7 (columns), 8,10,12,14 | 9,11,13,15 (diagonals).
-        var colX = Sse.Shuffle(q0.AsSingle(), q1.AsSingle(), 0x88).AsUInt32();   // 0,2,4,6
-        var colY = Sse.Shuffle(q0.AsSingle(), q1.AsSingle(), 0xDD).AsUInt32();   // 1,3,5,7
-        var diagX = Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0x88).AsUInt32();  // 8,10,12,14
-        var diagY = Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0xDD).AsUInt32();  // 9,11,13,15
+        colX = Sse.Shuffle(q0.AsSingle(), q1.AsSingle(), 0x88).AsUInt32();   // 0,2,4,6
+        colY = Sse.Shuffle(q0.AsSingle(), q1.AsSingle(), 0xDD).AsUInt32();   // 1,3,5,7
+        diagX = Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0x88).AsUInt32();  // 8,10,12,14
+        diagY = Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0xDD).AsUInt32();  // 9,11,13,15
 
         GRound128(ref row0, ref row1, ref row2, ref row3, colX, colY);
-        DiagPermute128(ref row1, ref row2, ref row3);
+        DiagPermute128(ref row0, ref row2, ref row3);
         GRound128(ref row0, ref row1, ref row2, ref row3, diagX, diagY);
-        DiagPermute128(ref row3, ref row2, ref row1);
+        DiagPermute128(ref row2, ref row0, ref row3);
 
         // Rounds 2-7 apply the same fixed permutation to the previous round's own output
-        // vectors, so they are textually identical. Kept as a loop: unrolling measured no
-        // faster and costs code size.
-        for (int i = 1; i < 7; i++)
+        // vectors, so they are textually identical. Kept as a twin loop to save register moves.
+        for (int i = 1; i < 7; i += 2)
         {
-            q0 = colX; q1 = colY; q2 = diagX; q3 = diagY;
-            colX = Gather128(q0, q1, 0x31, q1, q0, 0x84);
-            colY = Gather128(q0, q0, 0x03, q2, q3, 0x84);
-            diagX = Gather128(q1, q3, 0x00, q2, q3, 0xC8);
-            diagY = Gather128(q3, q2, 0x31, q1, q2, 0x08);
-            GRound128(ref row0, ref row1, ref row2, ref row3, colX, colY);
-            DiagPermute128(ref row1, ref row2, ref row3);
-            GRound128(ref row0, ref row1, ref row2, ref row3, diagX, diagY);
-            DiagPermute128(ref row3, ref row2, ref row1);
+            // round 2 + i
+            q0 = GatherColX128(colX, colY);
+            GRoundX128(ref row0, ref row1, ref row2, ref row3, q0);
+            q1 = GatherColY128(colX, diagX, diagY);
+            GRoundY128(ref row0, ref row1, ref row2, ref row3, q1);
+            DiagPermute128(ref row0, ref row2, ref row3);
+
+            q2 = GatherDiagX128(colY, diagX, diagY);
+            GRoundX128(ref row0, ref row1, ref row2, ref row3, q2);
+            q3 = GatherDiagY128(colY, diagX, diagY);
+            GRoundY128(ref row0, ref row1, ref row2, ref row3, q3);
+            DiagPermute128(ref row2, ref row0, ref row3);
+
+            // round 3 + i
+            colX = GatherColX128(q0, q1);
+            GRoundX128(ref row0, ref row1, ref row2, ref row3, colX);
+            colY = GatherColY128(q0, q2, q3);
+            GRoundY128(ref row0, ref row1, ref row2, ref row3, colY);
+            DiagPermute128(ref row0, ref row2, ref row3);
+
+            diagX = GatherDiagX128(q1, q2, q3);
+            GRoundX128(ref row0, ref row1, ref row2, ref row3, diagX);
+            diagY = GatherDiagY128(q1, q2, q3);
+            GRoundY128(ref row0, ref row1, ref row2, ref row3, diagY);
+            DiagPermute128(ref row2, ref row0, ref row3);
         }
     }
 
+    /// <summary>
+    /// Rotates three of the four state rows into, or back out of, diagonal alignment.
+    /// </summary>
+    /// <remarks>
+    /// Only the rows' relative offsets matter, so which row is left untouched is free. row1 is
+    /// chosen: it is written last in a half-round and read first by the next, so a shuffle on it
+    /// would sit on the dependency chain with no slack to hide in. Arguments are passed in
+    /// rotation order, which differs between the two directions.
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void DiagPermute128(ref Vector128<uint> row1, ref Vector128<uint> row2, ref Vector128<uint> row3)
+    private static void DiagPermute128(ref Vector128<uint> by3, ref Vector128<uint> by1, ref Vector128<uint> by2)
     {
-        row1 = Sse2.Shuffle(row1, 0b00_11_10_01); // 1,2,3,0
-        row2 = Sse2.Shuffle(row2, 0b01_00_11_10); // 2,3,0,1
-        row3 = Sse2.Shuffle(row3, 0b10_01_00_11); // 3,0,1,2
+        by3 = Sse2.Shuffle(by3, 0b10_01_00_11); // 3,0,1,2
+        by1 = Sse2.Shuffle(by1, 0b00_11_10_01); // 1,2,3,0
+        by2 = Sse2.Shuffle(by2, 0b01_00_11_10); // 2,3,0,1
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void GRoundX128(
+        ref Vector128<uint> a,
+        ref Vector128<uint> b,
+        ref Vector128<uint> c,
+        ref Vector128<uint> d,
+        Vector128<uint> x)
+    {
+        // a = a + b + x
+        a = Sse2.Add(Sse2.Add(a, x), b);
+        // d = ror(d ^ a, 16)
+        d = RotateRight16(Sse2.Xor(d, a));
+        // c = c + d
+        c = Sse2.Add(c, d);
+        // b = ror(b ^ c, 12)
+        b = RotateRight12(Sse2.Xor(b, c));
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void GRoundY128(
+        ref Vector128<uint> a,
+        ref Vector128<uint> b,
+        ref Vector128<uint> c,
+        ref Vector128<uint> d,
+        Vector128<uint> y)
+    {
+        // a = a + b + y
+        a = Sse2.Add(Sse2.Add(a, y), b);
+        // d = ror(d ^ a, 8)
+        d = RotateRight8(Sse2.Xor(d, a));
+        // c = c + d
+        c = Sse2.Add(c, d);
+        // b = ror(b ^ c, 7)
+        b = RotateRight7(Sse2.Xor(b, c));
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -528,7 +644,7 @@ internal unsafe partial struct Blake3State
         Vector128<uint> y)
     {
         // a = a + b + x
-        a = Sse2.Add(a, Sse2.Add(b, x));
+        a = Sse2.Add(Sse2.Add(a, x), b);
         // d = ror(d ^ a, 16)
         d = RotateRight16(Sse2.Xor(d, a));
         // c = c + d
@@ -536,7 +652,7 @@ internal unsafe partial struct Blake3State
         // b = ror(b ^ c, 12)
         b = RotateRight12(Sse2.Xor(b, c));
         // a = a + b + y
-        a = Sse2.Add(a, Sse2.Add(b, y));
+        a = Sse2.Add(Sse2.Add(a, y), b);
         // d = ror(d ^ a, 8)
         d = RotateRight8(Sse2.Xor(d, a));
         // c = c + d
@@ -620,12 +736,12 @@ internal unsafe partial struct Blake3State
         // Each parent's 64-byte block is its two child CVs, so the eight child
         // CVs transpose into the 16 message words exactly as chunk blocks do.
         var m = stackalloc Vector128<uint>[BlockSizeWords];
-        for (int j = 0; j < ChunksPerSsse3Batch; j++)
+        for (int j = 0; j < Ssse3ChunksPerBatch; j++)
         {
-            m[j] = Sse2.LoadVector128(childCvs + j * 2 * KeySizeWords);
-            m[j + 4] = Sse2.LoadVector128(childCvs + j * 2 * KeySizeWords + 4);
-            m[j + 8] = Sse2.LoadVector128(childCvs + j * 2 * KeySizeWords + 8);
-            m[j + 12] = Sse2.LoadVector128(childCvs + j * 2 * KeySizeWords + 12);
+            m[j] = Sse2.LoadVector128(childCvs + j * ParentStrideWords);
+            m[j + 4] = Sse2.LoadVector128(childCvs + j * ParentStrideWords + 4);
+            m[j + 8] = Sse2.LoadVector128(childCvs + j * ParentStrideWords + 8);
+            m[j + 12] = Sse2.LoadVector128(childCvs + j * ParentStrideWords + 12);
         }
 
         Transpose4x4(m);
@@ -676,14 +792,14 @@ internal unsafe partial struct Blake3State
     {
         do
         {
-            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerSsse3Batch; b++)
+            for (int b = 0; b < ChunksPerSubtreeGroup / Ssse3ChunksPerBatch; b++)
             {
                 CompressChunksPartial4Ssse3(
                     srcPtr + offset,
-                    ChunksPerSsse3Batch,
+                    Ssse3ChunksPerBatch,
                     core->_keyWords,
-                    batchCvs + b * ChunksPerSsse3Batch * KeySizeWords,
-                    _chunkCounter + (ulong)(b * ChunksPerSsse3Batch),
+                    batchCvs + b * Ssse3ChunksPerBatch * KeySizeWords,
+                    _chunkCounter + (ulong)(b * Ssse3ChunksPerBatch),
                     _baseFlags);
                 offset += Ssse3BatchSizeBytes;
             }
@@ -746,9 +862,9 @@ internal unsafe partial struct Blake3State
         while (chunkCount >= 8)
         {
             int parents = chunkCount >> 1;
-            for (int g = 0; g < parents; g += ChunksPerSsse3Batch)
+            for (int g = 0; g < parents; g += Ssse3ChunksPerBatch)
             {
-                CompressParents4Ssse3(cvs + g * 2 * KeySizeWords, key, cvs + g * KeySizeWords, baseFlags);
+                CompressParents4Ssse3(cvs + g * ParentStrideWords, key, cvs + g * KeySizeWords, baseFlags);
             }
 
             chunkCount = parents;

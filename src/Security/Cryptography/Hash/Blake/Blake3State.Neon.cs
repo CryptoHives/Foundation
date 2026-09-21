@@ -30,7 +30,7 @@ internal unsafe partial struct Blake3State
         Vector128<uint> y)
     {
         // a = a + b + x
-        a = AdvSimd.Add(a, AdvSimd.Add(b, x));
+        a = AdvSimd.Add(AdvSimd.Add(a, x), b);
         // d = ror(d ^ a, 16) — TBL byte shuffle
         d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask16).AsUInt32();
         // c = c + d
@@ -39,7 +39,7 @@ internal unsafe partial struct Blake3State
         var t1 = b ^ c;
         b = AdvSimd.Or(AdvSimd.ShiftRightLogical(t1, 12), AdvSimd.ShiftLeftLogical(t1, 20));
         // a = a + b + y
-        a = AdvSimd.Add(a, AdvSimd.Add(b, y));
+        a = AdvSimd.Add(AdvSimd.Add(a, y), b);
         // d = ror(d ^ a, 8) — TBL byte shuffle
         d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask8).AsUInt32();
         // c = c + d
@@ -61,12 +61,12 @@ internal unsafe partial struct Blake3State
     // independent tree leaves).
     // ------------------------------------------------------------------
 
-    internal const int ChunksPerNeonBatch = 4;
-    internal const int NeonBatchSizeBytes = ChunksPerNeonBatch * ChunkSizeBytes;
+    internal const int NeonChunksPerBatch = 4;
+    internal const int NeonBatchSizeBytes = NeonChunksPerBatch * ChunkSizeBytes;
 
     /// <summary>
     /// Tree level of one aligned 4-chunk batch: a subtree of 2^level chunks, which is what
-    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="ChunksPerNeonBatch"/>).
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="NeonChunksPerBatch"/>).
     /// </summary>
     internal const int NeonBatchLevel = 2;
 
@@ -89,17 +89,13 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialNeon(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        int* laneOffsets = stackalloc int[ChunksPerNeonBatch];
-        for (int j = 0; j < ChunksPerNeonBatch; j++)
+        int* laneOffsets = stackalloc int[NeonChunksPerBatch];
+        for (int j = 0; j < NeonChunksPerBatch; j++)
         {
             laneOffsets[j] = (j % chunkCount) * ChunkSizeBytes;
         }
 
-        var counterLow = Vector128.Create(
-            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3));
-        var counterHigh = Vector128.Create(
-            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32),
-            (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32));
+        CounterVectors128(baseCounter, out var counterLow, out var counterHigh);
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
 
         Vector128<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
@@ -113,14 +109,15 @@ internal unsafe partial struct Blake3State
         {
             byte* blockBase = source + blockIdx * BlockSizeBytes;
 
-            for (int g = 0; g < 4; g++)
+            for (int g = 0; g < BlockSizeWords / NeonChunksPerBatch; g++)
             {
-                for (int j = 0; j < ChunksPerNeonBatch; j++)
+                for (int j = 0; j < NeonChunksPerBatch; j++)
                 {
-                    m[g * 4 + j] = AdvSimd.LoadVector128((uint*)(blockBase + laneOffsets[j] + g * 16));
+                    m[(g * NeonChunksPerBatch) + j] =
+                        AdvSimd.LoadVector128((uint*)(blockBase + laneOffsets[j] + (g * Vector128<byte>.Count)));
                 }
 
-                Transpose4x4Neon(m + g * 4);
+                Transpose4x4Neon(m + (g * NeonChunksPerBatch));
             }
 
             uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == BlocksPerChunk - 1 ? baseFlags | FlagChunkEnd : baseFlags);
@@ -184,12 +181,7 @@ internal unsafe partial struct Blake3State
         uint blockLen = _rootBlockLen;
         uint flags = _rootFlags;
 
-        var counterLow = Vector128.Create(
-            (uint)(startCounter + 0), (uint)(startCounter + 1),
-            (uint)(startCounter + 2), (uint)(startCounter + 3));
-        var counterHigh = Vector128.Create(
-            (uint)((startCounter + 0) >> 32), (uint)((startCounter + 1) >> 32),
-            (uint)((startCounter + 2) >> 32), (uint)((startCounter + 3) >> 32));
+        CounterVectors128(startCounter, out var counterLow, out var counterHigh);
 
         var cv0 = Vector128.Create(rootCv[0]); var cv1 = Vector128.Create(rootCv[1]);
         var cv2 = Vector128.Create(rootCv[2]); var cv3 = Vector128.Create(rootCv[3]);
@@ -208,7 +200,7 @@ internal unsafe partial struct Blake3State
         // No transpose-in: every lane compresses the same message, so each of
         // the 16 words is simply broadcast rather than gathered per-lane.
         var m = stackalloc Vector128<uint>[BlockSizeWords];
-        for (int w = 0; w < 16; w++)
+        for (int w = 0; w < BlockSizeWords; w++)
         {
             m[w] = Vector128.Create(rootBlock[w]);
         }
@@ -282,12 +274,12 @@ internal unsafe partial struct Blake3State
         v6 = Vector128.Create(key[6]); v7 = Vector128.Create(key[7]);
 
         var m = stackalloc Vector128<uint>[BlockSizeWords];
-        for (int j = 0; j < ChunksPerNeonBatch; j++)
+        for (int j = 0; j < NeonChunksPerBatch; j++)
         {
-            m[j] = AdvSimd.LoadVector128(childCvs + j * 2 * KeySizeWords);
-            m[j + 4] = AdvSimd.LoadVector128(childCvs + j * 2 * KeySizeWords + 4);
-            m[j + 8] = AdvSimd.LoadVector128(childCvs + j * 2 * KeySizeWords + 8);
-            m[j + 12] = AdvSimd.LoadVector128(childCvs + j * 2 * KeySizeWords + 12);
+            m[j] = AdvSimd.LoadVector128(childCvs + j * ParentStrideWords);
+            m[j + 4] = AdvSimd.LoadVector128(childCvs + j * ParentStrideWords + 4);
+            m[j + 8] = AdvSimd.LoadVector128(childCvs + j * ParentStrideWords + 8);
+            m[j + 12] = AdvSimd.LoadVector128(childCvs + j * ParentStrideWords + 12);
         }
 
         Transpose4x4Neon(m);
@@ -337,14 +329,14 @@ internal unsafe partial struct Blake3State
     {
         do
         {
-            for (int b = 0; b < ChunksPerSubtreeGroup / ChunksPerNeonBatch; b++)
+            for (int b = 0; b < ChunksPerSubtreeGroup / NeonChunksPerBatch; b++)
             {
                 CompressChunksPartialNeon(
                     srcPtr + offset,
-                    ChunksPerNeonBatch,
+                    NeonChunksPerBatch,
                     core->_keyWords,
-                    batchCvs + b * ChunksPerNeonBatch * KeySizeWords,
-                    _chunkCounter + (ulong)(b * ChunksPerNeonBatch),
+                    batchCvs + b * NeonChunksPerBatch * KeySizeWords,
+                    _chunkCounter + (ulong)(b * NeonChunksPerBatch),
                     _baseFlags);
                 offset += NeonBatchSizeBytes;
             }
@@ -408,9 +400,9 @@ internal unsafe partial struct Blake3State
         while (chunkCount >= 8)
         {
             int parents = chunkCount >> 1;
-            for (int g = 0; g < parents; g += ChunksPerNeonBatch)
+            for (int g = 0; g < parents; g += NeonChunksPerBatch)
             {
-                CompressParents4Neon(cvs + g * 2 * KeySizeWords, key, cvs + g * KeySizeWords, baseFlags);
+                CompressParents4Neon(cvs + g * ParentStrideWords, key, cvs + g * KeySizeWords, baseFlags);
             }
 
             chunkCount = parents;

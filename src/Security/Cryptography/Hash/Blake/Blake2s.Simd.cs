@@ -128,7 +128,7 @@ internal unsafe partial struct Blake2sState
                 GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx0, my0);
 
                 // Diagonal step: rotate rows
-                Permute(ref row1, ref row2, ref row3);
+                Permute(ref row0, ref row2, ref row3);
 
                 var mx1 = Vector128.Create(m[s[8]], m[s[10]], m[s[12]], m[s[14]]);
                 var my1 = Vector128.Create(m[s[9]], m[s[11]], m[s[13]], m[s[15]]);
@@ -136,7 +136,7 @@ internal unsafe partial struct Blake2sState
                 GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 
                 // Un-rotate rows
-                Permute(ref row3, ref row2, ref row1);
+                Permute(ref row2, ref row0, ref row3);
 
                 s += ScratchSize;
             }
@@ -179,7 +179,7 @@ internal unsafe partial struct Blake2sState
                 GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx0, my0);
 
                 // Diagonal step: rotate rows
-                Permute(ref row1, ref row2, ref row3);
+                Permute(ref row0, ref row2, ref row3);
 
                 var mx1 = Vector128.Create(m[s[8]], m[s[10]], m[s[12]], m[s[14]]);
                 var my1 = Vector128.Create(m[s[9]], m[s[11]], m[s[13]], m[s[15]]);
@@ -187,7 +187,7 @@ internal unsafe partial struct Blake2sState
                 GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 
                 // Un-rotate rows
-                Permute(ref row3, ref row2, ref row1);
+                Permute(ref row2, ref row0, ref row3);
 
                 s += ScratchSize;
             }
@@ -235,7 +235,7 @@ internal unsafe partial struct Blake2sState
             GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx0, my0);
 
             // Diagonal step: rotate rows to align diagonals
-            Permute(ref row1, ref row2, ref row3);
+            Permute(ref row0, ref row2, ref row3);
 
             // Diagonal step - use AVX2 gather for message words
             var mx1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx + 1), 1).AsUInt32();
@@ -244,7 +244,7 @@ internal unsafe partial struct Blake2sState
             GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 
             // Un-rotate rows to restore column order
-            Permute(ref row3, ref row2, ref row1);
+            Permute(ref row2, ref row0, ref row3);
         }
 
         row0 = Sse2.Xor(Sse2.Xor(row0, row2), orig0);
@@ -270,7 +270,7 @@ internal unsafe partial struct Blake2sState
         Vector128<uint> y)
     {
         // a = a + b + x
-        a = Sse2.Add(a, Sse2.Add(b, x));
+        a = Sse2.Add(Sse2.Add(a, x), b);
         // d = ror(d ^ a, 16) - use SSE2 shift+or (no SSSE3 shuffle)
         var t0 = Sse2.Xor(d, a);
         d = Sse2.Or(Sse2.ShiftRightLogical(t0, 16), Sse2.ShiftLeftLogical(t0, 16));
@@ -280,7 +280,7 @@ internal unsafe partial struct Blake2sState
         var t1 = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftRightLogical(t1, 12), Sse2.ShiftLeftLogical(t1, 20));
         // a = a + b + y
-        a = Sse2.Add(a, Sse2.Add(b, y));
+        a = Sse2.Add(Sse2.Add(a, y), b);
         // d = ror(d ^ a, 8) - use SSE2 shift+or (no SSSE3 shuffle)
         var t2 = Sse2.Xor(d, a);
         d = Sse2.Or(Sse2.ShiftRightLogical(t2, 8), Sse2.ShiftLeftLogical(t2, 24));
@@ -307,7 +307,7 @@ internal unsafe partial struct Blake2sState
         Vector128<uint> y)
     {
         // a = a + b + x
-        a = Sse2.Add(a, Sse2.Add(b, x));
+        a = Sse2.Add(Sse2.Add(a, x), b);
         // d = ror(d ^ a, 16) - use shuffle for byte-aligned rotation
         d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), RotateMask16).AsUInt32();
         // c = c + d
@@ -316,7 +316,7 @@ internal unsafe partial struct Blake2sState
         var t1 = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftRightLogical(t1, 12), Sse2.ShiftLeftLogical(t1, 20));
         // a = a + b + y
-        a = Sse2.Add(a, Sse2.Add(b, y));
+        a = Sse2.Add(Sse2.Add(a, y), b);
         // d = ror(d ^ a, 8) - use shuffle for byte-aligned rotation
         d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), RotateMask8).AsUInt32();
         // c = c + d
@@ -327,16 +327,21 @@ internal unsafe partial struct Blake2sState
     }
 
     /// <summary>
-    /// Diagonal permutation. Call as <c>Permute(ref row1, ref row2, ref row3)</c> to
-    /// diagonalize and <c>Permute(ref row3, ref row2, ref row1)</c> to un-diagonalize.
+    /// Diagonal permutation. Call as <c>Permute(ref row0, ref row2, ref row3)</c> to
+    /// diagonalize and <c>Permute(ref row2, ref row0, ref row3)</c> to un-diagonalize.
     /// </summary>
+    /// <remarks>
+    /// Only the rows' relative offsets matter, so which row is left untouched is free. row1 is
+    /// chosen: it is written last in a half-round and read first by the next, so a shuffle on it
+    /// would sit on the dependency chain with no slack to hide in.
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Permute(
-        ref Vector128<uint> a, ref Vector128<uint> b, ref Vector128<uint> c)
+        ref Vector128<uint> by3, ref Vector128<uint> by1, ref Vector128<uint> by2)
     {
-        a = Sse2.Shuffle(a, 0b00_11_10_01);
-        b = Sse2.Shuffle(b, 0b01_00_11_10);
-        c = Sse2.Shuffle(c, 0b10_01_00_11);
+        by3 = Sse2.Shuffle(by3, 0b10_01_00_11);
+        by1 = Sse2.Shuffle(by1, 0b00_11_10_01);
+        by2 = Sse2.Shuffle(by2, 0b01_00_11_10);
     }
 #endif
 }

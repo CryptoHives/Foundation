@@ -7,6 +7,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 #endif
 using System.Threading;
@@ -294,26 +295,26 @@ internal unsafe partial struct Blake3State
             // below already handles 2..15 in one call.
             if (Avx512F.IsSupported && (_simdSupport & SimdSupport.Avx512F) != 0)
             {
-                while (remaining >= ChunksPerAvx512Batch)
+                while (remaining >= Avx512ChunksPerBatch)
                 {
                     SqueezeRootBlocks16Avx512(core, counter, dst + offset);
-                    offset += ChunksPerAvx512Batch * BlockSizeBytes;
-                    counter += ChunksPerAvx512Batch;
-                    remaining -= ChunksPerAvx512Batch;
+                    offset += Avx512ChunksPerBatch * BlockSizeBytes;
+                    counter += Avx512ChunksPerBatch;
+                    remaining -= Avx512ChunksPerBatch;
                 }
             }
 
-            while (remaining >= ChunksPerAvx2Batch)
+            while (remaining >= Avx2ChunksPerBatch)
             {
                 SqueezeRootBlocks8Avx2(core, counter, dst + offset);
-                offset += ChunksPerAvx2Batch * BlockSizeBytes;
-                counter += ChunksPerAvx2Batch;
-                remaining -= ChunksPerAvx2Batch;
+                offset += Avx2ChunksPerBatch * BlockSizeBytes;
+                counter += Avx2ChunksPerBatch;
+                remaining -= Avx2ChunksPerBatch;
             }
 
             if (remaining >= 2)
             {
-                byte* scratch = stackalloc byte[ChunksPerAvx2Batch * BlockSizeBytes];
+                byte* scratch = stackalloc byte[Avx2ChunksPerBatch * BlockSizeBytes];
                 SqueezeRootBlocks8Avx2(core, counter, scratch);
                 Unsafe.CopyBlockUnaligned(dst + offset, scratch, (uint)(remaining * BlockSizeBytes));
             }
@@ -326,24 +327,24 @@ internal unsafe partial struct Blake3State
         {
             SqueezeRootBlocksSsse3(core, startCounter, blocks, dst);
         }
-        else if (System.Runtime.Intrinsics.Arm.AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Neon) != 0)
+        else if (AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Neon) != 0)
         {
             int offset = 0;
-            int fullGroups = blocks / ChunksPerNeonBatch;
+            int fullGroups = blocks / NeonChunksPerBatch;
             for (int g = 0; g < fullGroups; g++)
             {
                 SqueezeRootBlocks4Neon(
                     core,
-                    startCounter + (ulong)(g * ChunksPerNeonBatch),
+                    startCounter + (ulong)(g * NeonChunksPerBatch),
                     dst + offset);
-                offset += ChunksPerNeonBatch * BlockSizeBytes;
+                offset += NeonChunksPerBatch * BlockSizeBytes;
             }
 
-            int remaining = blocks - fullGroups * ChunksPerNeonBatch;
-            ulong tailCounter = startCounter + (ulong)(fullGroups * ChunksPerNeonBatch);
+            int remaining = blocks - fullGroups * NeonChunksPerBatch;
+            ulong tailCounter = startCounter + (ulong)(fullGroups * NeonChunksPerBatch);
             if (remaining >= 2)
             {
-                byte* scratch = stackalloc byte[ChunksPerNeonBatch * BlockSizeBytes];
+                byte* scratch = stackalloc byte[NeonChunksPerBatch * BlockSizeBytes];
                 SqueezeRootBlocks4Neon(core, tailCounter, scratch);
                 Unsafe.CopyBlockUnaligned(dst + offset, scratch, (uint)(remaining * BlockSizeBytes));
             }
