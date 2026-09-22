@@ -72,13 +72,6 @@ internal unsafe partial struct Blake3State
 #endif
     }
 
-    // Selects dwords 1 and 3 from the second operand, 0 and 2 from the first.
-    private static Vector128<uint> BlendMask0101
-    {
-        [MethodImpl(MethodImplOptionsEx.HotPath)]
-        get => Vector128.Create(0u, uint.MaxValue, 0u, uint.MaxValue);
-    }
-
     /// <summary>
     /// Number of chunks the SSSE3 tier compresses in parallel.
     /// </summary>
@@ -438,64 +431,47 @@ internal unsafe partial struct Blake3State
         }
     }
 
-    // Extracts 4 message words from up to 4 source vectors in a single
-    // shuffle_ps/shuffle_ps/blend sequence, avoiding scalar loads and
-    // GPR-to-XMM inserts.
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector128<uint> Gather128(
-        Vector128<uint> leftA, Vector128<uint> leftB, byte leftControl,
-        Vector128<uint> rightA, Vector128<uint> rightB, byte rightControl)
-    {
-        var left = Sse.Shuffle(leftA.AsSingle(), leftB.AsSingle(), leftControl).AsUInt32();
-        var right = Sse.Shuffle(rightA.AsSingle(), rightB.AsSingle(), rightControl).AsUInt32();
-
-        // Latency-bound on the G-function's serial chain rather than shuffle-port
-        // throughput, so the choice of blend instruction makes no measurable difference.
-        if (Sse41.IsSupported)
-        {
-            // 0xCC selects words 2,3,6,7 (uint lanes 1 and 3) from the second
-            // operand, matching BlendMask0101's lane selection in one PBLENDW.
-            return Sse41.Blend(left.AsInt16(), right.AsInt16(), 0xCC).AsUInt32();
-        }
-        return Sse2.Or(Sse2.And(right, BlendMask0101), Sse2.AndNot(BlendMask0101, left));
-    }
-
-    // The four gathers below replace the general Gather128 in the round schedule. Each names
-    // one of the four message vectors the permutation produces and picks the cheapest sequence
-    // for that vector's own lane pattern, rather than paying the general shuffle/shuffle/blend
-    // form four times. Lane comments read as indices into the four inputs.
+    // Each gather below produces one of the four message vectors the round permutation yields,
+    // by the cheapest sequence for that vector's own lane pattern. Lane comments read as indices
+    // into the four inputs.
+    //
+    // The two diagonal vectors are carried rotated by 3 rather than in message order, which is
+    // the alignment DiagPermute128 leaves the rows in, so the diagonal half-rounds can add them
+    // as they are. The rotation is folded into these sequences and into the round 1 extraction.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> GatherColX128(Vector128<uint> colX, Vector128<uint> colY)
     {
         // colX1 colY1 colY3 colX2
-        var lo = Sse2.UnpackLow(colX, colY);
-        var hi = Sse2.UnpackHigh(colY, colX);
-        return Sse.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x6E).AsUInt32();
+        var lo = Sse.Shuffle(colX.AsSingle(), colY.AsSingle(), 0x11).AsUInt32();
+        var hi = Sse.Shuffle(colY.AsSingle(), colX.AsSingle(), 0x23).AsUInt32();
+        return Sse.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x88).AsUInt32();
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> GatherColY128(Vector128<uint> colX, Vector128<uint> diagX, Vector128<uint> diagY)
     {
-        // colX3 diagX1 colX0 diagY2
-        var lo = Sse.Shuffle(colX.AsSingle(), diagX.AsSingle(), 0x13).AsUInt32();
-        var hi = Sse.Shuffle(colX.AsSingle(), diagY.AsSingle(), 0x20).AsUInt32();
+        // colX3 diagX2 colX0 diagY3
+        var lo = Sse.Shuffle(colX.AsSingle(), diagX.AsSingle(), 0x23).AsUInt32();
+        var hi = Sse.Shuffle(colX.AsSingle(), diagY.AsSingle(), 0x30).AsUInt32();
         return Sse.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x88).AsUInt32();
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> GatherDiagX128(Vector128<uint> colY, Vector128<uint> diagX, Vector128<uint> diagY)
     {
-        // colY0 diagX2 diagY0 diagY3 - the upper half is single sourced, so one merge is enough.
-        var lo = Sse.Shuffle(colY.AsSingle(), diagX.AsSingle(), 0x20).AsUInt32();
-        return Sse.Shuffle(lo.AsSingle(), diagY.AsSingle(), 0xC8).AsUInt32();
+        // diagY0 colY0 diagX3 diagY1
+        var lo = Sse2.UnpackLow(diagY, colY);
+        var hi = Sse.Shuffle(diagX.AsSingle(), diagY.AsSingle(), 0x13).AsUInt32();
+        return Sse.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x84).AsUInt32();
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> GatherDiagY128(Vector128<uint> colY, Vector128<uint> diagX, Vector128<uint> diagY)
     {
-        // diagY1 colY2 diagX3 diagX0 - the upper half is single sourced, so one merge is enough.
-        var lo = Sse.Shuffle(diagY.AsSingle(), colY.AsSingle(), 0x21).AsUInt32();
-        return Sse.Shuffle(lo.AsSingle(), diagX.AsSingle(), 0x38).AsUInt32();
+        // diagX1 diagY2 colY2 diagX0
+        var lo = Sse.Shuffle(diagX.AsSingle(), diagY.AsSingle(), 0x21).AsUInt32();
+        var hi = Sse.Shuffle(colY.AsSingle(), diagX.AsSingle(), 0x02).AsUInt32();
+        return Sse.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x88).AsUInt32();
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -541,8 +517,8 @@ internal unsafe partial struct Blake3State
         // Round 1: 0,2,4,6 | 1,3,5,7 (columns), 8,10,12,14 | 9,11,13,15 (diagonals).
         colX = Sse.Shuffle(q0.AsSingle(), q1.AsSingle(), 0x88).AsUInt32();   // 0,2,4,6
         colY = Sse.Shuffle(q0.AsSingle(), q1.AsSingle(), 0xDD).AsUInt32();   // 1,3,5,7
-        diagX = Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0x88).AsUInt32();  // 8,10,12,14
-        diagY = Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0xDD).AsUInt32();  // 9,11,13,15
+        diagX = Sse2.Shuffle(Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0x88).AsUInt32(), 0b10_01_00_11);  // 14,8,10,12
+        diagY = Sse2.Shuffle(Sse.Shuffle(q2.AsSingle(), q3.AsSingle(), 0xDD).AsUInt32(), 0b10_01_00_11);  // 15,9,11,13
 
         GRound128(ref row0, ref row1, ref row2, ref row3, colX, colY);
         DiagPermute128(ref row0, ref row2, ref row3);

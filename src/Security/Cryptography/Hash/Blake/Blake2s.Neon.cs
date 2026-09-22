@@ -40,80 +40,80 @@ internal unsafe partial struct Blake2sState
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w0, w2, w4, w6));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w1, w3, w5, w7));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w8, w10, w12, w14));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w9, w11, w13, w15));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w14, w8, w10, w12));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w15, w9, w11, w13));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 1 — sigma: 14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w14, w4, w9, w13));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w10, w8, w15, w6));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w1, w0, w11, w5));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w12, w2, w7, w3));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w5, w1, w0, w11));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w3, w12, w2, w7));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 2 — sigma: 11,8,12,0,5,2,15,13,10,14,3,6,7,1,9,4
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w11, w12, w5, w15));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w8, w0, w2, w13));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w10, w3, w7, w9));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w14, w6, w1, w4));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w9, w10, w3, w7));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w4, w14, w6, w1));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 3 — sigma: 7,9,3,1,13,12,11,14,2,6,5,10,4,0,15,8
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w7, w3, w13, w11));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w9, w1, w12, w14));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w2, w5, w4, w15));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w6, w10, w0, w8));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w15, w2, w5, w4));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w8, w6, w10, w0));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 4 — sigma: 9,0,5,7,2,4,10,15,14,1,11,12,6,8,3,13
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w9, w5, w2, w10));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w0, w7, w4, w15));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w14, w11, w6, w3));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w1, w12, w8, w13));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w3, w14, w11, w6));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w13, w1, w12, w8));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 5 — sigma: 2,12,6,10,0,11,8,3,4,13,7,5,15,14,1,9
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w2, w6, w0, w8));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w12, w10, w11, w3));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w4, w7, w15, w1));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w13, w5, w14, w9));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w1, w4, w7, w15));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w9, w13, w5, w14));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 6 — sigma: 12,5,1,15,14,13,4,10,0,7,6,3,9,2,8,11
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w12, w1, w14, w4));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w5, w15, w13, w10));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w0, w6, w9, w8));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w7, w3, w2, w11));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w8, w0, w6, w9));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w11, w7, w3, w2));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 7 — sigma: 13,11,7,14,12,1,3,9,5,0,15,4,8,6,2,10
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w13, w7, w12, w3));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w11, w14, w1, w9));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w5, w15, w8, w2));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w0, w4, w6, w10));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w2, w5, w15, w8));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w10, w0, w4, w6));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 8 — sigma: 6,15,14,9,11,3,0,8,12,2,13,7,1,4,10,5
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w6, w14, w11, w0));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w15, w9, w3, w8));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w12, w13, w1, w10));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w2, w7, w4, w5));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w10, w12, w13, w1));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w5, w2, w7, w4));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         // Round 9 — sigma: 10,2,8,4,7,6,1,5,15,11,9,14,3,12,13,0
         GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w10, w8, w7, w1));
         GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w2, w4, w6, w5));
         PermuteNeon(ref row0, ref row2, ref row3);
-        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w15, w9, w3, w13));
-        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w11, w14, w12, w0));
+        GRoundXNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w13, w15, w9, w3));
+        GRoundYNeon(ref row0, ref row1, ref row2, ref row3, Vector128.Create(w0, w11, w14, w12));
         PermuteNeon(ref row2, ref row0, ref row3);
 
         row0 = AdvSimd.Xor(AdvSimd.Xor(row0, row2), orig0);

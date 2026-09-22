@@ -73,8 +73,8 @@ internal unsafe partial struct Blake2sState
                 Sigma[offset + 0] * 4, Sigma[offset + 2] * 4,
                 Sigma[offset + 4] * 4, Sigma[offset + 6] * 4);
             indices[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 8] * 4, Sigma[offset + 10] * 4,
-                Sigma[offset + 12] * 4, Sigma[offset + 14] * 4);
+                Sigma[offset + 14] * 4, Sigma[offset + 8] * 4,
+                Sigma[offset + 10] * 4, Sigma[offset + 12] * 4);
         }
         return indices;
     }
@@ -89,8 +89,8 @@ internal unsafe partial struct Blake2sState
                 Sigma[offset + 1] * 4, Sigma[offset + 3] * 4,
                 Sigma[offset + 5] * 4, Sigma[offset + 7] * 4);
             indices[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 9] * 4, Sigma[offset + 11] * 4,
-                Sigma[offset + 13] * 4, Sigma[offset + 15] * 4);
+                Sigma[offset + 15] * 4, Sigma[offset + 9] * 4,
+                Sigma[offset + 11] * 4, Sigma[offset + 13] * 4);
         }
         return indices;
     }
@@ -130,8 +130,10 @@ internal unsafe partial struct Blake2sState
                 // Diagonal step: rotate rows
                 Permute(ref row0, ref row2, ref row3);
 
-                var mx1 = Vector128.Create(m[s[8]], m[s[10]], m[s[12]], m[s[14]]);
-                var my1 = Vector128.Create(m[s[9]], m[s[11]], m[s[13]], m[s[15]]);
+                // Rotated by 3: DiagPermute spares row1 the shuffle, which costs row0 a
+                // rotation, so lane i computes diagonal (i + 3) mod 4 and the message follows.
+                var mx1 = Vector128.Create(m[s[14]], m[s[8]], m[s[10]], m[s[12]]);
+                var my1 = Vector128.Create(m[s[15]], m[s[9]], m[s[11]], m[s[13]]);
 
                 GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 
@@ -181,8 +183,10 @@ internal unsafe partial struct Blake2sState
                 // Diagonal step: rotate rows
                 Permute(ref row0, ref row2, ref row3);
 
-                var mx1 = Vector128.Create(m[s[8]], m[s[10]], m[s[12]], m[s[14]]);
-                var my1 = Vector128.Create(m[s[9]], m[s[11]], m[s[13]], m[s[15]]);
+                // Rotated by 3: DiagPermute spares row1 the shuffle, which costs row0 a
+                // rotation, so lane i computes diagonal (i + 3) mod 4 and the message follows.
+                var mx1 = Vector128.Create(m[s[14]], m[s[8]], m[s[10]], m[s[12]]);
+                var my1 = Vector128.Create(m[s[15]], m[s[9]], m[s[11]], m[s[13]]);
 
                 GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 

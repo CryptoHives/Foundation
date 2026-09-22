@@ -210,10 +210,10 @@ internal unsafe partial struct Blake3State
         var colXB = Avx.Shuffle(qB0.AsSingle(), qB1.AsSingle(), 0x88).AsUInt32();
         var colYA = Avx.Shuffle(qA0.AsSingle(), qA1.AsSingle(), 0xDD).AsUInt32();
         var colYB = Avx.Shuffle(qB0.AsSingle(), qB1.AsSingle(), 0xDD).AsUInt32();
-        var diagXA = Avx.Shuffle(qA2.AsSingle(), qA3.AsSingle(), 0x88).AsUInt32();
-        var diagXB = Avx.Shuffle(qB2.AsSingle(), qB3.AsSingle(), 0x88).AsUInt32();
-        var diagYA = Avx.Shuffle(qA2.AsSingle(), qA3.AsSingle(), 0xDD).AsUInt32();
-        var diagYB = Avx.Shuffle(qB2.AsSingle(), qB3.AsSingle(), 0xDD).AsUInt32();
+        var diagXA = Avx2.Shuffle(Avx.Shuffle(qA2.AsSingle(), qA3.AsSingle(), 0x88).AsUInt32(), 0b10_01_00_11);
+        var diagXB = Avx2.Shuffle(Avx.Shuffle(qB2.AsSingle(), qB3.AsSingle(), 0x88).AsUInt32(), 0b10_01_00_11);
+        var diagYA = Avx2.Shuffle(Avx.Shuffle(qA2.AsSingle(), qA3.AsSingle(), 0xDD).AsUInt32(), 0b10_01_00_11);
+        var diagYB = Avx2.Shuffle(Avx.Shuffle(qB2.AsSingle(), qB3.AsSingle(), 0xDD).AsUInt32(), 0b10_01_00_11);
 
         GRound256Pair(ref a0, ref a1, ref a2, ref a3, colXA, colYA);
         GRound256Pair(ref b0, ref b1, ref b2, ref b3, colXB, colYB);
@@ -229,14 +229,14 @@ internal unsafe partial struct Blake3State
             qA0 = colXA; qA1 = colYA; qA2 = diagXA; qA3 = diagYA;
             qB0 = colXB; qB1 = colYB; qB2 = diagXB; qB3 = diagYB;
 
-            colXA = Gather256(qA0, qA1, 0x31, qA1, qA0, 0x84);
-            colXB = Gather256(qB0, qB1, 0x31, qB1, qB0, 0x84);
-            colYA = Gather256(qA0, qA0, 0x03, qA2, qA3, 0x84);
-            colYB = Gather256(qB0, qB0, 0x03, qB2, qB3, 0x84);
-            diagXA = Gather256(qA1, qA3, 0x00, qA2, qA3, 0xC8);
-            diagXB = Gather256(qB1, qB3, 0x00, qB2, qB3, 0xC8);
-            diagYA = Gather256(qA3, qA2, 0x31, qA1, qA2, 0x08);
-            diagYB = Gather256(qB3, qB2, 0x31, qB1, qB2, 0x08);
+            colXA = GatherColX256(qA0, qA1);
+            colXB = GatherColX256(qB0, qB1);
+            colYA = GatherColY256(qA0, qA2, qA3);
+            colYB = GatherColY256(qB0, qB2, qB3);
+            diagXA = GatherDiagX256(qA1, qA2, qA3);
+            diagXB = GatherDiagX256(qB1, qB2, qB3);
+            diagYA = GatherDiagY256(qA1, qA2, qA3);
+            diagYB = GatherDiagY256(qB1, qB2, qB3);
 
             GRound256Pair(ref a0, ref a1, ref a2, ref a3, colXA, colYA);
             GRound256Pair(ref b0, ref b1, ref b2, ref b3, colXB, colYB);
@@ -280,8 +280,8 @@ internal unsafe partial struct Blake3State
         // Round 1: 0,2,4,6 | 1,3,5,7 (columns), 8,10,12,14 | 9,11,13,15 (diagonals).
         var colX = Avx.Shuffle(q0.AsSingle(), q1.AsSingle(), 0x88).AsUInt32();
         var colY = Avx.Shuffle(q0.AsSingle(), q1.AsSingle(), 0xDD).AsUInt32();
-        var diagX = Avx.Shuffle(q2.AsSingle(), q3.AsSingle(), 0x88).AsUInt32();
-        var diagY = Avx.Shuffle(q2.AsSingle(), q3.AsSingle(), 0xDD).AsUInt32();
+        var diagX = Avx2.Shuffle(Avx.Shuffle(q2.AsSingle(), q3.AsSingle(), 0x88).AsUInt32(), 0b10_01_00_11);
+        var diagY = Avx2.Shuffle(Avx.Shuffle(q2.AsSingle(), q3.AsSingle(), 0xDD).AsUInt32(), 0b10_01_00_11);
 
         GRound256Pair(ref row0, ref row1, ref row2, ref row3, colX, colY);
         DiagPermute256Pair(ref row0, ref row2, ref row3);
@@ -294,10 +294,10 @@ internal unsafe partial struct Blake3State
         for (int i = 1; i < 7; i++)
         {
             q0 = colX; q1 = colY; q2 = diagX; q3 = diagY;
-            colX = Gather256(q0, q1, 0x31, q1, q0, 0x84);
-            colY = Gather256(q0, q0, 0x03, q2, q3, 0x84);
-            diagX = Gather256(q1, q3, 0x00, q2, q3, 0xC8);
-            diagY = Gather256(q3, q2, 0x31, q1, q2, 0x08);
+            colX = GatherColX256(q0, q1);
+            colY = GatherColY256(q0, q2, q3);
+            diagX = GatherDiagX256(q1, q2, q3);
+            diagY = GatherDiagY256(q1, q2, q3);
             GRound256Pair(ref row0, ref row1, ref row2, ref row3, colX, colY);
             DiagPermute256Pair(ref row0, ref row2, ref row3);
             GRound256Pair(ref row0, ref row1, ref row2, ref row3, diagX, diagY);
@@ -311,21 +311,47 @@ internal unsafe partial struct Blake3State
             Sse2.LoadVector128((uint*)(blockA + offset)),
             Sse2.LoadVector128((uint*)(blockB + offset)));
 
-    /// <summary>
-    /// The 256-bit counterpart of <see cref="Gather128"/>: <c>vshufps</c> twice and one
-    /// <c>vpblendw</c>, all lane-local, so each half gathers its own block's words.
-    /// </summary>
+    // Each gather below produces one of the four message vectors the round permutation yields,
+    // by the cheapest sequence for that vector's own lane pattern. Every instruction works within
+    // its 128-bit half, so each half keeps operating on its own chunk.
+    //
+    // The two diagonal vectors are carried rotated by 3 rather than in message order, which is
+    // the alignment DiagPermute256Pair leaves the rows in, so the diagonal half-rounds can add
+    // them as they are. The rotation is folded into these sequences and into round 1.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector256<uint> Gather256(
-        Vector256<uint> leftA, Vector256<uint> leftB, byte leftControl,
-        Vector256<uint> rightA, Vector256<uint> rightB, byte rightControl)
+    private static Vector256<uint> GatherColX256(Vector256<uint> colX, Vector256<uint> colY)
     {
-        var left = Avx.Shuffle(leftA.AsSingle(), leftB.AsSingle(), leftControl).AsUInt32();
-        var right = Avx.Shuffle(rightA.AsSingle(), rightB.AsSingle(), rightControl).AsUInt32();
+        // colX1 colY1 colY3 colX2
+        var lo = Avx.Shuffle(colX.AsSingle(), colY.AsSingle(), 0x11).AsUInt32();
+        var hi = Avx.Shuffle(colY.AsSingle(), colX.AsSingle(), 0x23).AsUInt32();
+        return Avx.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x88).AsUInt32();
+    }
 
-        // 0xCC selects words 2,3,6,7 (uint lanes 1 and 3) of each 128-bit half from the
-        // second operand — the same selection Gather128 makes, applied per half.
-        return Avx2.Blend(left.AsInt16(), right.AsInt16(), 0xCC).AsUInt32();
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector256<uint> GatherColY256(Vector256<uint> colX, Vector256<uint> diagX, Vector256<uint> diagY)
+    {
+        // colX3 diagX2 colX0 diagY3
+        var lo = Avx.Shuffle(colX.AsSingle(), diagX.AsSingle(), 0x23).AsUInt32();
+        var hi = Avx.Shuffle(colX.AsSingle(), diagY.AsSingle(), 0x30).AsUInt32();
+        return Avx.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x88).AsUInt32();
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector256<uint> GatherDiagX256(Vector256<uint> colY, Vector256<uint> diagX, Vector256<uint> diagY)
+    {
+        // diagY0 colY0 diagX3 diagY1
+        var lo = Avx2.UnpackLow(diagY, colY);
+        var hi = Avx.Shuffle(diagX.AsSingle(), diagY.AsSingle(), 0x13).AsUInt32();
+        return Avx.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x84).AsUInt32();
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector256<uint> GatherDiagY256(Vector256<uint> colY, Vector256<uint> diagX, Vector256<uint> diagY)
+    {
+        // diagX1 diagY2 colY2 diagX0
+        var lo = Avx.Shuffle(diagX.AsSingle(), diagY.AsSingle(), 0x21).AsUInt32();
+        var hi = Avx.Shuffle(colY.AsSingle(), diagX.AsSingle(), 0x02).AsUInt32();
+        return Avx.Shuffle(lo.AsSingle(), hi.AsSingle(), 0x88).AsUInt32();
     }
 
     /// <summary>
