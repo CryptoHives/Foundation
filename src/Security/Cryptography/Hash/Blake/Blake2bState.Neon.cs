@@ -259,8 +259,8 @@ internal unsafe partial struct Blake2bState
         ref Vector128<ulong> dL, ref Vector128<ulong> dH,
         Vector128<ulong> xL, Vector128<ulong> xH)
     {
-        aL = AdvSimd.Add(aL, AdvSimd.Add(bL, xL));
-        aH = AdvSimd.Add(aH, AdvSimd.Add(bH, xH));
+        aL = AdvSimd.Add(AdvSimd.Add(aL, xL), bL);
+        aH = AdvSimd.Add(AdvSimd.Add(aH, xH), bH);
         // ror64(d ^ a, 32) — single REV64.4S instruction
         dL = AdvSimd.ReverseElement32((dL ^ aL).AsInt64()).AsUInt64();
         dH = AdvSimd.ReverseElement32((dH ^ aH).AsInt64()).AsUInt64();
@@ -282,8 +282,8 @@ internal unsafe partial struct Blake2bState
         ref Vector128<ulong> dL, ref Vector128<ulong> dH,
         Vector128<ulong> yL, Vector128<ulong> yH)
     {
-        aL = AdvSimd.Add(aL, AdvSimd.Add(bL, yL));
-        aH = AdvSimd.Add(aH, AdvSimd.Add(bH, yH));
+        aL = AdvSimd.Add(AdvSimd.Add(aL, yL), bL);
+        aH = AdvSimd.Add(AdvSimd.Add(aH, yH), bH);
         // ror64(d ^ a, 16) — TBL byte shuffle
         dL = AdvSimd.Arm64.VectorTableLookup((dL ^ aL).AsByte(), NeonRotMask16).AsUInt64();
         dH = AdvSimd.Arm64.VectorTableLookup((dH ^ aH).AsByte(), NeonRotMask16).AsUInt64();

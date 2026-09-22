@@ -294,16 +294,6 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
                 _bytesCompressed += (ulong)blockSize;
 
 #if NET8_0_OR_GREATER
-                // Widest first. Ssse3 cannot lead: WithImplicit makes Avx2 imply Ssse3, so an
-                // Ssse3 test ahead of Avx2 would answer for both and the gather kernel would be
-                // unreachable on every CPU that has one.
-#if EXPERIMENTAL
-                if (Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
-                {
-                    CompressAvx2(block, state, _bytesCompressed, isFinal);
-                }
-                else
-#endif
                 if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
                 {
                     CompressSsse3(block, state, _bytesCompressed, isFinal);
