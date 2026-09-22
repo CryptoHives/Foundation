@@ -12,6 +12,10 @@ using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics.Arm;
+using System.Runtime.Intrinsics.X86;
+#endif
 
 /// <summary>
 /// Core state for the BLAKE2s hash computation.
@@ -103,7 +107,7 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
     {
         _outputBytes = outputBytes;
         _simdSupport = SimdSupport.None;
-#if NET8_0_OR_GREATER && EXPERIMENTAL
+#if NET8_0_OR_GREATER
         _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
 
@@ -231,23 +235,31 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
             {
                 _bytesCompressed += (ulong)blockSize;
 
-#if NET8_0_OR_GREATER && EXPERIMENTAL
-                if (System.Runtime.Intrinsics.X86.Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
-                {
-                    CompressSsse3(block, state, _bytesCompressed, isFinal);
-                }
-                else if (System.Runtime.Intrinsics.X86.Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
+#if NET8_0_OR_GREATER
+                // Widest first. Ssse3 cannot lead: WithImplicit makes Avx2 imply Ssse3, so an
+                // Ssse3 test ahead of Avx2 would answer for both and the gather kernel would be
+                // unreachable on every CPU that has one.
+#if EXPERIMENTAL
+                if (Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
                 {
                     CompressAvx2(block, state, _bytesCompressed, isFinal);
                 }
-                else if (System.Runtime.Intrinsics.X86.Sse2.IsSupported && (_simdSupport & SimdSupport.Sse2) != 0)
+                else
+#endif
+                if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
+                {
+                    CompressSsse3(block, state, _bytesCompressed, isFinal);
+                }
+                else if (Sse2.IsSupported && (_simdSupport & SimdSupport.Sse2) != 0)
                 {
                     CompressSse2(block, state, _bytesCompressed, isFinal);
                 }
-                else if (System.Runtime.Intrinsics.Arm.AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Neon) != 0)
+#if EXPERIMENTAL
+                else if (AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Neon) != 0)
                 {
                     CompressNeon(block, state, _bytesCompressed, isFinal);
                 }
+#endif
                 else
 #endif
                 {

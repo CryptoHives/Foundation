@@ -29,9 +29,11 @@ using System.Buffers;
 public sealed class Blake2s : HashAlgorithm
 {
     /// <summary>
-    /// The default optimization to use for Blake2s based algorithms.
+    /// The default optimization to use for Blake2s based algorithms. Named explicitly rather
+    /// than written as <see cref="SimdSupport.All"/> minus the unwanted sets, because the
+    /// constructor runs <c>WithImplicit</c> over it and that would put them back.
     /// </summary>
-    internal const SimdSupport Blake2sDefault = SimdSupport.None;
+    internal const SimdSupport Blake2sDefault = SimdSupport.Ssse3 | SimdSupport.Sse2;
 
     /// <summary>
     /// The maximum hash size in bits.
