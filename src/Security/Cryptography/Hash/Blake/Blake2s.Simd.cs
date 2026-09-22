@@ -9,7 +9,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
@@ -52,52 +51,14 @@ internal unsafe partial struct Blake2sState
             if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
             if (Sse2.IsSupported) support |= SimdSupport.Sse2;
 #if EXPERIMENTAL
-            // The gather and NEON kernels have no measurements behind them yet, so they are
-            // offered only to the internal factory and never reach Blake2sDefault.
-            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
+            // The NEON kernel is yet slower than scalar, so it is offered only to the
+            // internal factory and never reaches Blake2sDefault.
             if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
 #endif
             return support;
         }
     }
 
-#if EXPERIMENTAL
-    // Pre-computed Vector128<int> indices for gather operations (scaled by 4 for uint stride)
-    private static readonly Vector128<int>[] GatherIndicesX = InitGatherIndicesX();
-    private static readonly Vector128<int>[] GatherIndicesY = InitGatherIndicesY();
-
-    private static Vector128<int>[] InitGatherIndicesX()
-    {
-        var indices = new Vector128<int>[Rounds * 2];
-        for (int round = 0; round < Rounds; round++)
-        {
-            int offset = round * ScratchSize;
-            indices[round * 2] = Vector128.Create(
-                Sigma[offset + 0] * 4, Sigma[offset + 2] * 4,
-                Sigma[offset + 4] * 4, Sigma[offset + 6] * 4);
-            indices[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 14] * 4, Sigma[offset + 8] * 4,
-                Sigma[offset + 10] * 4, Sigma[offset + 12] * 4);
-        }
-        return indices;
-    }
-
-    private static Vector128<int>[] InitGatherIndicesY()
-    {
-        var indices = new Vector128<int>[Rounds * 2];
-        for (int round = 0; round < Rounds; round++)
-        {
-            int offset = round * ScratchSize;
-            indices[round * 2] = Vector128.Create(
-                Sigma[offset + 1] * 4, Sigma[offset + 3] * 4,
-                Sigma[offset + 5] * 4, Sigma[offset + 7] * 4);
-            indices[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 15] * 4, Sigma[offset + 9] * 4,
-                Sigma[offset + 11] * 4, Sigma[offset + 13] * 4);
-        }
-        return indices;
-    }
-#endif
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -207,62 +168,6 @@ internal unsafe partial struct Blake2sState
         Sse2.Store(state, row0);
         Sse2.Store(state + 4, row1);
     }
-
-#if EXPERIMENTAL
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void CompressAvx2(byte* mPtr, uint* state, ulong bytesCompressed, bool isFinal)
-    {
-        // Get base references for gather indices (avoids bounds checking in loop)
-        ref Vector128<int> gatherXBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesX);
-        ref Vector128<int> gatherYBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesY);
-
-        // Initialize rows from vector state
-        var row0 = Sse2.LoadVector128(state);
-        var row1 = Sse2.LoadVector128(state + 4);
-        var row2 = IVLow;
-
-        // row3 = IVHigh with counter/finalization applied
-        var counterVec = Vector128.Create((uint)bytesCompressed, (uint)(bytesCompressed >> 32), 0U, 0U);
-        var row3 = Sse2.Xor(IVHigh, counterVec);
-
-        if (isFinal)
-        {
-            row3 = Sse2.Xor(row3, FinalMask);
-        }
-
-        var orig0 = row0;
-        var orig1 = row1;
-
-        // 10 rounds of mixing
-        for (int gatherIdx = 0; gatherIdx < Rounds * 2; gatherIdx += 2)
-        {
-            // Column step - use AVX2 gather for message words
-            var mx0 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx), 1).AsUInt32();
-            var my0 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherYBase, gatherIdx), 1).AsUInt32();
-
-            Blake3State.GRound128(ref row0, ref row1, ref row2, ref row3, mx0, my0);
-
-            // Diagonal step: rotate rows to align diagonals
-            Blake3State.DiagPermute128(ref row0, ref row2, ref row3);
-
-            // Diagonal step - use AVX2 gather for message words
-            var mx1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx + 1), 1).AsUInt32();
-            var my1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherYBase, gatherIdx + 1), 1).AsUInt32();
-
-            Blake3State.GRound128(ref row0, ref row1, ref row2, ref row3, mx1, my1);
-
-            // Un-rotate rows to restore column order
-            Blake3State.DiagPermute128(ref row2, ref row0, ref row3);
-        }
-
-        row0 = Sse2.Xor(Sse2.Xor(row0, row2), orig0);
-        row1 = Sse2.Xor(Sse2.Xor(row1, row3), orig1);
-
-        Sse2.Store(state, row0);
-        Sse2.Store(state + 4, row1);
-    }
-#endif
 
     /// <summary>
     /// Performs one G round on 4 parallel lanes using SSE2 only.

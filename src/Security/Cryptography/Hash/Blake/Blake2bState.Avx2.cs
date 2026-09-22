@@ -363,23 +363,17 @@ internal unsafe partial struct Blake2bState
         b = RotateRight63(Avx2.Xor(b, c));
     }
 
-    // Where the CPU offers vprorq all four are one instruction and the two byte-shuffle masks
-    // stop being live, which matters in a kernel already holding four rows and eight message
-    // vectors. Without it, only the 63 needs more than a single shuffle.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector256<ulong> RotateRight32(Vector256<ulong> value) => Avx512F.VL.IsSupported
-        ? Avx512F.VL.RotateRight(value, 32)
-        : Avx2.Shuffle(value.AsUInt32(), 0b_10_11_00_01).AsUInt64();
+    private static Vector256<ulong> RotateRight32(Vector256<ulong> value) =>
+        Avx2.Shuffle(value.AsUInt32(), 0b_10_11_00_01).AsUInt64();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector256<ulong> RotateRight24(Vector256<ulong> value) => Avx512F.VL.IsSupported
-        ? Avx512F.VL.RotateRight(value, 24)
-        : Avx2.Shuffle(value.AsByte(), RotateMask24).AsUInt64();
+    private static Vector256<ulong> RotateRight24(Vector256<ulong> value) =>
+        Avx2.Shuffle(value.AsByte(), RotateMask24).AsUInt64();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector256<ulong> RotateRight16(Vector256<ulong> value) => Avx512F.VL.IsSupported
-        ? Avx512F.VL.RotateRight(value, 16)
-        : Avx2.Shuffle(value.AsByte(), RotateMask16).AsUInt64();
+    private static Vector256<ulong> RotateRight16(Vector256<ulong> value) =>
+        Avx2.Shuffle(value.AsByte(), RotateMask16).AsUInt64();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<ulong> RotateRight63(Vector256<ulong> value) => Avx512F.VL.IsSupported
