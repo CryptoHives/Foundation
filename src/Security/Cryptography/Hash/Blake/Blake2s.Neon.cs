@@ -149,7 +149,7 @@ internal unsafe partial struct Blake2sState
         Vector128<uint> y)
     {
         a = AdvSimd.Add(AdvSimd.Add(a, y), b);
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask8).AsUInt32();
+        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), Blake3State.RotateMask8).AsUInt32();
         c = AdvSimd.Add(c, d);
         var t = b ^ c;
         b = AdvSimd.Or(AdvSimd.ShiftRightLogical(t, 7), AdvSimd.ShiftLeftLogical(t, 25));

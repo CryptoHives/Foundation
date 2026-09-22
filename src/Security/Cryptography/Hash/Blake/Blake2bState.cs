@@ -128,6 +128,64 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
         return true;
     }
 
+
+    /// <summary>
+    /// True when nothing has been appended since the last <see cref="Reset"/>.
+    /// </summary>
+    /// <remarks>
+    /// A keyed instance is never fresh: <see cref="Reset"/> leaves the zero-padded key sitting in
+    /// the staging buffer as the first block.
+    /// </remarks>
+    internal readonly bool IsFresh => _bytesCompressed == 0 && _bufferLength == 0;
+
+    /// <summary>
+    /// Hashes a complete message in one call.
+    /// </summary>
+    /// <remarks>
+    /// <b>Precondition:</b> <see cref="IsFresh"/>. Knowing the whole length up front lets a full
+    /// final block be compressed where it lies; the streaming path cannot, because it has to hold
+    /// a block back before it knows whether more is coming, and so always copies it.
+    /// </remarks>
+    internal bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (destination.Length < _outputBytes)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        ref byte rinput = ref MemoryMarshal.GetReference(source);
+        uint remaining = (uint)source.Length;
+
+        if (remaining > BlockSizeBytes)
+        {
+            uint cb = (remaining - 1) & ~((uint)BlockSizeBytes - 1);
+            Compress(ref rinput, cb, false);
+            rinput = ref Unsafe.Add(ref rinput, (nint)cb);
+            remaining -= cb;
+        }
+
+        if (remaining == BlockSizeBytes)
+        {
+            Compress(ref rinput, BlockSizeBytes, true);
+        }
+        else
+        {
+            if (remaining != 0)
+            {
+                Unsafe.CopyBlockUnaligned(ref _buffer[0], ref rinput, remaining);
+            }
+
+            Unsafe.InitBlockUnaligned(ref _buffer[remaining], 0, BlockSizeBytes - remaining);
+            Compress(ref _buffer[0], remaining, true);
+        }
+
+        ExtractOutput(destination);
+
+        bytesWritten = _outputBytes;
+        return true;
+    }
+
     /// <inheritdoc/>
     public void Reset(byte[]? key)
     {

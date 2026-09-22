@@ -28,12 +28,20 @@ internal unsafe partial struct Blake2bState
 {
     // Byte-shuffle masks for 64-bit word rotations within a 128-bit register (2 × ulong).
     // ror64(v, 24): for each 8-byte group: [b3,b4,b5,b6,b7,b0,b1,b2]
-    private static readonly Vector128<byte> s_neonRotMask24 = Vector128.Create(
-        (byte)3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10);
+    private static Vector128<byte> NeonRotMask24
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector128.Create(
+            (byte)3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10);
+    }
 
     // ror64(v, 16): for each 8-byte group: [b2,b3,b4,b5,b6,b7,b0,b1]
-    private static readonly Vector128<byte> s_neonRotMask16 = Vector128.Create(
-        (byte)2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9);
+    private static Vector128<byte> NeonRotMask16
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector128.Create(
+            (byte)2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9);
+    }
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -259,8 +267,8 @@ internal unsafe partial struct Blake2bState
         cL = AdvSimd.Add(cL, dL);
         cH = AdvSimd.Add(cH, dH);
         // ror64(b ^ c, 24) — TBL byte shuffle
-        bL = AdvSimd.Arm64.VectorTableLookup((bL ^ cL).AsByte(), s_neonRotMask24).AsUInt64();
-        bH = AdvSimd.Arm64.VectorTableLookup((bH ^ cH).AsByte(), s_neonRotMask24).AsUInt64();
+        bL = AdvSimd.Arm64.VectorTableLookup((bL ^ cL).AsByte(), NeonRotMask24).AsUInt64();
+        bH = AdvSimd.Arm64.VectorTableLookup((bH ^ cH).AsByte(), NeonRotMask24).AsUInt64();
     }
 
     /// <summary>
@@ -277,8 +285,8 @@ internal unsafe partial struct Blake2bState
         aL = AdvSimd.Add(aL, AdvSimd.Add(bL, yL));
         aH = AdvSimd.Add(aH, AdvSimd.Add(bH, yH));
         // ror64(d ^ a, 16) — TBL byte shuffle
-        dL = AdvSimd.Arm64.VectorTableLookup((dL ^ aL).AsByte(), s_neonRotMask16).AsUInt64();
-        dH = AdvSimd.Arm64.VectorTableLookup((dH ^ aH).AsByte(), s_neonRotMask16).AsUInt64();
+        dL = AdvSimd.Arm64.VectorTableLookup((dL ^ aL).AsByte(), NeonRotMask16).AsUInt64();
+        dH = AdvSimd.Arm64.VectorTableLookup((dH ^ aH).AsByte(), NeonRotMask16).AsUInt64();
         cL = AdvSimd.Add(cL, dL);
         cH = AdvSimd.Add(cH, dH);
         // ror64(b ^ c, 63) — shift + add (add(t,t) == shl(t,1))

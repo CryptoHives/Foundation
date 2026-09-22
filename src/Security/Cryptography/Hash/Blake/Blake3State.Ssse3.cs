@@ -32,8 +32,8 @@ internal unsafe partial struct Blake3State
         get => Vector128.Create((byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
     }
 
-    // Rotate right by 8 bits
-    private static Vector128<byte> RotateMask8
+    // Rotate right by 8 bits. internal: shared with the BLAKE2s NEON round.
+    internal static Vector128<byte> RotateMask8
     {
         [MethodImpl(MethodImplOptionsEx.HotPath)]
         get => Vector128.Create((byte)1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
@@ -567,7 +567,7 @@ internal unsafe partial struct Blake3State
     /// rotation order, which differs between the two directions.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void DiagPermute128(ref Vector128<uint> by3, ref Vector128<uint> by1, ref Vector128<uint> by2)
+    internal static void DiagPermute128(ref Vector128<uint> by3, ref Vector128<uint> by1, ref Vector128<uint> by2)
     {
         by3 = Sse2.Shuffle(by3, 0b10_01_00_11); // 3,0,1,2
         by1 = Sse2.Shuffle(by1, 0b00_11_10_01); // 1,2,3,0
@@ -610,8 +610,12 @@ internal unsafe partial struct Blake3State
         b = RotateRight7(Sse2.Xor(b, c));
     }
 
+    /// <remarks>
+    /// internal rather than private: BLAKE3's G is BLAKE2s's G, so <c>Blake2sState</c> drives
+    /// its SSSE3 kernel from this one rather than keeping a second copy.
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void GRound128(
+    internal static void GRound128(
         ref Vector128<uint> a,
         ref Vector128<uint> b,
         ref Vector128<uint> c,

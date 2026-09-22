@@ -227,6 +227,31 @@ public sealed class Blake2s : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Routes a whole-message hash through the one-shot path, which knows the total length up
+    /// front. Anything already appended to this instance, and any keyed instance, falls back to
+    /// the base streaming implementation; both paths leave the instance freshly initialized.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake2s));
+
+        if (!_core.IsFresh)
+        {
+            return base.TryComputeHash(source, destination, out bytesWritten);
+        }
+
+        if (!_core.TryHashOneShot(source, destination, out bytesWritten))
+        {
+            return false;
+        }
+
+        Initialize();
+        return true;
+    }
+
+    /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     protected override void HashCore(ReadOnlySpan<byte> source)
     {
