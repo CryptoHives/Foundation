@@ -91,3 +91,62 @@ internal enum SimdSupport
     /// </summary>
     All = Sse2 | Ssse3 | Avx2 | Avx512F | Neon | AesNi | PClMul | PClMulV256 | ArmAes | ArmPmull | ArmSha256 | Arm64 | ArmSha1,
 }
+
+/// <summary>
+/// Helper to set implicit SIMD dependencies and hierarchy.
+/// </summary>
+internal static class SimdSupportExtensions
+{
+    /// <summary>
+    /// Adds every instruction set the ones in <paramref name="input"/> imply, so a caller
+    /// selecting one tier gets the same set a CPU offering that tier would.
+    /// </summary>
+    /// <remarks>
+    /// Each step names only the immediate parent and relies on the preceding step having run,
+    /// so the order is load-bearing: widest first, and a feature that pulls in a vector width
+    /// before the step for that width.
+    /// </remarks>
+    public static SimdSupport WithImplicit(this SimdSupport input)
+    {
+        // VPCLMULQDQ is AVX-encoded and architecturally implies PCLMULQDQ.
+        if ((input & SimdSupport.PClMulV256) != 0)
+        {
+            input |= SimdSupport.PClMul | SimdSupport.Avx2;
+        }
+
+        if ((input & SimdSupport.Avx512F) != 0)
+        {
+            input |= SimdSupport.Avx2;
+        }
+
+        if ((input & SimdSupport.Avx2) != 0)
+        {
+            input |= SimdSupport.Ssse3;
+        }
+
+        // AES-NI and PCLMULQDQ operate on XMM registers. Both also happen to be Westmere-era,
+        // so SSSE3 comes with them on every shipping part, but that is not architectural.
+        if ((input & (SimdSupport.Ssse3 | SimdSupport.AesNi | SimdSupport.PClMul)) != 0)
+        {
+            input |= SimdSupport.Sse2;
+        }
+
+        // FEAT_PMULL is the higher value of the same AArch64 feature field as FEAT_AES.
+        if ((input & SimdSupport.ArmPmull) != 0)
+        {
+            input |= SimdSupport.ArmAes;
+        }
+
+        // Arm64 pulls in Neon because AArch64 mandates Advanced SIMD, but not the reverse:
+        // Arm64 also selects scalar AArch64 paths, which a Neon-tier caller has not asked for.
+        if ((input & (SimdSupport.Arm64 | SimdSupport.ArmAes | SimdSupport.ArmSha1 | SimdSupport.ArmSha256)) != 0)
+        {
+            input |= SimdSupport.Neon;
+        }
+
+        return input;
+    }
+}
+
+
+

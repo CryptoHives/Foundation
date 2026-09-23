@@ -203,9 +203,10 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
     /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
     /// <remarks>
-    /// Uses the dedicated one-shot path (see <see cref="TryHashOneShot"/>) instead of
-    /// the generic streaming pool, so the entire call — including small inputs — skips
-    /// the incremental chunk-buffer bookkeeping.
+    /// Rents a pooled instance and takes the dedicated one-shot path — the same path
+    /// <see cref="TryComputeHash"/> takes on a freshly initialized instance — so the
+    /// entire call, small inputs included, skips the incremental chunk-buffer
+    /// bookkeeping the streaming surface needs.
     /// </remarks>
     public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
@@ -227,9 +228,10 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="source">The input data to hash.</param>
     /// <returns>A new byte array containing the BLAKE3 hash.</returns>
     /// <remarks>
-    /// Uses the dedicated one-shot path (see <see cref="TryHashOneShot"/>) instead of
-    /// the generic streaming pool, so the entire call — including small inputs — skips
-    /// the incremental chunk-buffer bookkeeping.
+    /// Rents a pooled instance and takes the dedicated one-shot path — the same path
+    /// <see cref="TryComputeHash"/> takes on a freshly initialized instance — so the
+    /// entire call, small inputs included, skips the incremental chunk-buffer
+    /// bookkeeping the streaming surface needs.
     /// </remarks>
     public static byte[] HashData(ReadOnlySpan<byte> source)
     {
@@ -429,6 +431,9 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     }
 
     /// <inheritdoc/>
+    protected override bool IsInitialized => !_disposed && _core.IsFresh;
+
+    /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input)
     {
         if (_core.Squeezed) throw new InvalidOperationException("Cannot add data after finalization.");
@@ -461,26 +466,38 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
     /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
     /// <remarks>
-    /// <para>
-    /// Unlike <c>TryComputeHash(ReadOnlySpan{byte}, Span{byte}, out int)</c>,
-    /// which always routes through the streaming <c>HashCore</c>/<c>TryHashFinal</c>
-    /// pair, this calls a dedicated one-shot path directly — see
-    /// <see cref="Blake3State.TryHashOneShot"/> for what it skips.
-    /// </para>
-    /// <para>
-    /// The instance must be freshly constructed or freshly <see cref="Initialize"/>d;
-    /// calling this after <see cref="Absorb"/> or any streaming write produces
-    /// incorrect results.
-    /// </para>
+    /// <b>Precondition:</b> the instance must be freshly constructed or freshly
+    /// <see cref="Initialize"/>d. This hashes <paramref name="source"/> as a complete
+    /// message and cannot continue an in-progress tree, so calling it after a streaming
+    /// write silently produces the wrong digest — hence <c>internal</c>, with
+    /// <see cref="TryComputeHash"/> establishing the precondition for public callers.
     /// </remarks>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
-    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    internal bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Blake3));
-        bool result = _core.TryHashOneShot(source, destination, out bytesWritten);
-        Initialize();
+        bool result = _core.TryHashOneShot(source, destination, out bytesWritten, out bool stateDirty);
+
+        // Only reset if the single shot actually dirtied the core struct.
+        if (stateDirty)
+        {
+            Initialize();
+        }
+
         return result;
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Routes a whole-message hash through the one-shot path, which knows the total length
+    /// up front. Anything already appended to this instance falls back to the base
+    /// streaming implementation; both paths leave the instance freshly initialized.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+        => _core.IsFresh
+            ? TryHashOneShot(source, destination, out bytesWritten)
+            : base.TryComputeHash(source, destination, out bytesWritten);
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>

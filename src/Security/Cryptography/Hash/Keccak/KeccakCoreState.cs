@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1815 // Override equals and operator equals on value types
+#pragma warning disable CA1857 // A constant is expected for the parameter — false positive due to .NET 8 runtime metadata bug.
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -32,9 +33,9 @@ using System.Runtime.Intrinsics.X86;
 /// The Keccak state is a 5×5×64 = 1600-bit array organized as 25 64-bit lanes.
 /// </para>
 /// <para>
-/// On platforms with AVX2 support (.NET 8+), an optimized SIMD implementation is used.
-/// However, currently the all SIMD versions are slower than the scalar version on AMD 8945
-/// which is used for benchmarking, so SIMD is disabled by default in release packages.
+/// On platforms with AVX2 support (.NET 8+), a SIMD implementation is prototyped.
+/// However, currently all SIMD versions are slower than the scalar version on all
+/// benchmarked processors, so SIMD is removed by default from release packages.
 /// </para>
 /// </remarks>
 internal unsafe partial struct KeccakCoreState
@@ -123,7 +124,7 @@ internal unsafe partial struct KeccakCoreState
         }
 
         // mask unsupported bits
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
         _startRound = startRound;
         Reset();
     }
@@ -147,18 +148,18 @@ internal unsafe partial struct KeccakCoreState
     public void Permute()
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Arm64) != 0)
+        if (AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Arm64) != 0)
         {
             PermuteScalarArm64();
             return;
         }
 #if EXPERIMENTAL
-        if ((_simdSupport & SimdSupport.Avx512F) != 0)
+        if (Avx512F.IsSupported && (_simdSupport & SimdSupport.Avx512F) != 0)
         {
             PermuteAvx512F();
             return;
         }
-        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        if (Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
         {
             PermuteAvx2();
             return;
@@ -435,7 +436,6 @@ internal unsafe partial struct KeccakCoreState
     /// <summary>
     /// Performs 64-bit rotation using AVX2 shift and OR operations.
     /// </summary>
-    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "False negative due to bug in .NET 8 runtime metadata.")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static Vector256<ulong> Rol64Avx2(Vector256<ulong> a, byte offset)
     {

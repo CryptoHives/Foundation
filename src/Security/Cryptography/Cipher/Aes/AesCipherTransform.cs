@@ -475,7 +475,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     Vector128<byte> b4 = ct4; Vector128<byte> b5 = ct5;
                     Vector128<byte> b6 = ct6; Vector128<byte> b7 = ct7;
 
-                    if (_useAesNi)
+                    if (AesCoreAesNi.IsSupported && _useAesNi)
                     {
                         AesCoreAesNi.DecryptBlocks8(ref b0, ref b1, ref b2, ref b3,
                                                      ref b4, ref b5, ref b6, ref b7,
@@ -512,7 +512,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     Vector128<byte> b0 = ct0; Vector128<byte> b1 = ct1;
                     Vector128<byte> b2 = ct2; Vector128<byte> b3 = ct3;
 
-                    if (_useAesNi)
+                    if (AesCoreAesNi.IsSupported && _useAesNi)
                     {
                         AesCoreAesNi.DecryptBlocks4(ref b0, ref b1, ref b2, ref b3,
                                                      keys, _rounds);
@@ -537,7 +537,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                 {
                     var ct = Vector128.Create(input.Slice(offset, BlockSize));
 
-                    if (_useAesNi)
+                    if (AesCoreAesNi.IsSupported && _useAesNi)
                     {
                         AesCoreAesNi.DecryptBlock(input.Slice(offset, BlockSize),
                                                    output.Slice(offset, BlockSize),
@@ -725,14 +725,14 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if (_useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAesNi)
             {
                 AesCoreAesNi.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
 
-            if (_useArmAes)
+            if (AesCoreArm.IsSupported && _useArmAes)
             {
                 AesCoreArm.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
@@ -750,14 +750,14 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if (_useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAesNi)
             {
                 AesCoreAesNi.DecryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
 
-            if (_useArmAes)
+            if (AesCoreArm.IsSupported && _useArmAes)
             {
                 AesCoreArm.DecryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);

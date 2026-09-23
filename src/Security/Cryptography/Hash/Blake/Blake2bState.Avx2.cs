@@ -26,29 +26,53 @@ using System.Runtime.Intrinsics.X86;
 internal unsafe partial struct Blake2bState
 {
     // Pre-computed IV vectors for AVX2 path
-    private static readonly Vector256<ulong> IVLow = Vector256.Create(
-        0x6a09e667f3bcc908UL, 0xbb67ae8584caa73bUL,
-        0x3c6ef372fe94f82bUL, 0xa54ff53a5f1d36f1UL);
+    // Properties rather than static fields: a getter that is Vector256.Create over literals
+    // materialises from the constant pool, where a static field costs a static-base access and
+    // a load at every use.
 
-    private static readonly Vector256<ulong> IVHigh = Vector256.Create(
-        0x510e527fade682d1UL, 0x9b05688c2b3e6c1fUL,
-        0x1f83d9abfb41bd6bUL, 0x5be0cd19137e2179UL);
+    private static Vector256<ulong> IVLow
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector256.Create(
+            0x6a09e667f3bcc908UL, 0xbb67ae8584caa73bUL,
+            0x3c6ef372fe94f82bUL, 0xa54ff53a5f1d36f1UL);
+    }
+
+    private static Vector256<ulong> IVHigh
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector256.Create(
+            0x510e527fade682d1UL, 0x9b05688c2b3e6c1fUL,
+            0x1f83d9abfb41bd6bUL, 0x5be0cd19137e2179UL);
+    }
 
     // Finalization mask for inverting element 2 of row3
-    private static readonly Vector256<ulong> FinalMask = Vector256.Create(0UL, 0UL, ~0UL, 0UL);
+    private static Vector256<ulong> FinalMask
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector256.Create(0UL, 0UL, ~0UL, 0UL);
+    }
 
     // Pre-computed shuffle masks for byte-aligned rotations
-    private static readonly Vector256<byte> RotateMask24 = Vector256.Create(
-        (byte)3, 4, 5, 6, 7, 0, 1, 2,
-        11, 12, 13, 14, 15, 8, 9, 10,
-        19, 20, 21, 22, 23, 16, 17, 18,
-        27, 28, 29, 30, 31, 24, 25, 26);
+    private static Vector256<byte> RotateMask24
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector256.Create(
+            (byte)3, 4, 5, 6, 7, 0, 1, 2,
+            11, 12, 13, 14, 15, 8, 9, 10,
+            19, 20, 21, 22, 23, 16, 17, 18,
+            27, 28, 29, 30, 31, 24, 25, 26);
+    }
 
-    private static readonly Vector256<byte> RotateMask16 = Vector256.Create(
-        (byte)2, 3, 4, 5, 6, 7, 0, 1,
-        10, 11, 12, 13, 14, 15, 8, 9,
-        18, 19, 20, 21, 22, 23, 16, 17,
-        26, 27, 28, 29, 30, 31, 24, 25);
+    private static Vector256<byte> RotateMask16
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector256.Create(
+            (byte)2, 3, 4, 5, 6, 7, 0, 1,
+            10, 11, 12, 13, 14, 15, 8, 9,
+            18, 19, 20, 21, 22, 23, 16, 17,
+            26, 27, 28, 29, 30, 31, 24, 25);
+    }
 
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
@@ -60,7 +84,7 @@ internal unsafe partial struct Blake2bState
             SimdSupport support = SimdSupport.None;
             if (Avx2.IsSupported) support |= SimdSupport.Avx2;
 #if EXPERIMENTAL
-            if (AdvSimd.Arm64.IsSupported) support |= SimdSupport.Neon;
+            if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
 #endif
             return support;
         }
@@ -309,12 +333,12 @@ internal unsafe partial struct Blake2bState
         // a = a + b + x
         a = Avx2.Add(b, Avx2.Add(a, x));
         // d = ror(d ^ a, 32)
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsUInt32(), 0b_10_11_00_01).AsUInt64();
+        d = RotateRight32(Avx2.Xor(d, a));
 
         // c = c + d
         c = Avx2.Add(c, d);
         // b = ror(b ^ c, 24)
-        b = Avx2.Shuffle(Avx2.Xor(b, c).AsByte(), RotateMask24).AsUInt64();
+        b = RotateRight24(Avx2.Xor(b, c));
     }
 
     /// <summary>
@@ -331,14 +355,30 @@ internal unsafe partial struct Blake2bState
         // a = a + b + y
         a = Avx2.Add(b, Avx2.Add(a, y));
         // d = ror(d ^ a, 16)
-        d = Avx2.Shuffle(Avx2.Xor(d, a).AsByte(), RotateMask16).AsUInt64();
+        d = RotateRight16(Avx2.Xor(d, a));
 
         // c = c + d
         c = Avx2.Add(c, d);
-        // b = ror(b ^ c, 63) - must use shift+or
-        var t = Avx2.Xor(b, c);
-        b = Avx2.Or(Avx2.ShiftRightLogical(t, 63), Avx2.Add(t, t));
+        // b = ror(b ^ c, 63)
+        b = RotateRight63(Avx2.Xor(b, c));
     }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector256<ulong> RotateRight32(Vector256<ulong> value) =>
+        Avx2.Shuffle(value.AsUInt32(), 0b_10_11_00_01).AsUInt64();
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector256<ulong> RotateRight24(Vector256<ulong> value) =>
+        Avx2.Shuffle(value.AsByte(), RotateMask24).AsUInt64();
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector256<ulong> RotateRight16(Vector256<ulong> value) =>
+        Avx2.Shuffle(value.AsByte(), RotateMask16).AsUInt64();
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector256<ulong> RotateRight63(Vector256<ulong> value) => Avx512F.VL.IsSupported
+        ? Avx512F.VL.RotateRight(value, 63)
+        : Avx2.Or(Avx2.ShiftRightLogical(value, 63), Avx2.Add(value, value));
 
     /// <summary>
     /// Performs diagonal permutations.

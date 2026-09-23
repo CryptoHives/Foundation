@@ -45,7 +45,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
 | TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
 | ParallelHash (SP 800-185) | ParallelHash128, ParallelHash256 |
-| BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
+| BLAKE | BLAKE2b, BLAKE2s, BLAKE3 (all SIMD-accelerated) |
 | Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
 | Regional hash | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5, HMAC-SHA-1, HMAC-MD5 (backward compatibility only) |

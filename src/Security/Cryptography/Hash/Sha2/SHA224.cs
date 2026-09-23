@@ -48,7 +48,7 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     internal SHA224(SimdSupport simdSupport)
     {
-        _simdSupport = simdSupport & SHA256.SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SHA256.SimdSupport;
         HashSizeValue = HashSizeBits;
     }
 
@@ -139,7 +139,7 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     protected override void ProcessBlock(ReadOnlySpan<byte> block, Span<uint> state)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.ArmSha256) != 0)
+        if (SHA256Core.IsArmSha256Supported && (_simdSupport & SimdSupport.ArmSha256) != 0)
         {
             SHA256Core.ProcessBlockArm(block, state);
             return;

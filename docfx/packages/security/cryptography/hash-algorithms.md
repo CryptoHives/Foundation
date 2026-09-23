@@ -630,16 +630,19 @@ Span<byte> hash = stackalloc byte[64];
 blake2b.TryComputeHash(data, hash, out _);
 
 // Custom output size (32 bytes)
-using var blake2b32 = Blake2b.Create(hashSize: 32);
+using var blake2b32 = Blake2b.Create(outputBytes: 32);
 Span<byte> hash32 = stackalloc byte[32];
 blake2b32.TryComputeHash(data, hash32, out _);
 
 // Keyed hash (MAC)
 byte[] key = new byte[32]; // Up to 64 bytes
-using var blake2bMac = Blake2b.Create(key: key, hashSize: 32);
+using var blake2bMac = Blake2b.CreateKeyed(outputBytes: 32, key: key);
 Span<byte> mac = stackalloc byte[32];
 blake2bMac.TryComputeHash(data, mac, out _);
 ```
+
+> **Hardware acceleration:** AVX2 on .NET 8+, using AVX-512 VL rotates where the CPU
+> offers them. Falls back to a portable scalar kernel on other targets and CPUs.
 
 ### Blake2s
 
@@ -661,16 +664,20 @@ Span<byte> hash = stackalloc byte[32];
 blake2s.TryComputeHash(data, hash, out _);
 
 // Custom output size (16 bytes)
-using var blake2s16 = Blake2s.Create(hashSize: 16);
+using var blake2s16 = Blake2s.Create(outputBytes: 16);
 Span<byte> hash16 = stackalloc byte[16];
 blake2s16.TryComputeHash(data, hash16, out _);
 
 // Keyed hash (MAC)
 byte[] key = new byte[16]; // Up to 32 bytes
-using var blake2sMac = Blake2s.Create(key: key, hashSize: 16);
+using var blake2sMac = Blake2s.CreateKeyed(outputBytes: 16, key: key);
 Span<byte> mac = stackalloc byte[16];
 blake2sMac.TryComputeHash(data, mac, out _);
 ```
+
+> **Hardware acceleration:** SSSE3, with an SSE2 fallback, on .NET 8+, using AVX-512 VL
+> rotates where the CPU offers them. Falls back to a portable scalar kernel on other
+> targets and CPUs.
 
 ---
 
@@ -836,7 +843,7 @@ Span<byte> hash = stackalloc byte[64];
 streebog.TryComputeHash(data, hash, out _);
 
 // Streebog-256
-using var streebog256 = Streebog.Create(hashSize: 32);
+using var streebog256 = Streebog.Create(hashSizeBytes: 32);
 Span<byte> hash256 = stackalloc byte[32];
 streebog256.TryComputeHash(data, hash256, out _);
 ```
@@ -994,7 +1001,7 @@ Span<byte> hash = stackalloc byte[32];
 ascon.TryComputeHash(data, hash, out _);
 
 // Custom output size
-using var ascon64 = AsconXof128.Create(outputBytes: 64);
+using var ascon64 = AsconXof128.Create(outputSizeBytes: 64);
 Span<byte> longHash = stackalloc byte[64];
 ascon64.TryComputeHash(data, longHash, out _);
 ```
