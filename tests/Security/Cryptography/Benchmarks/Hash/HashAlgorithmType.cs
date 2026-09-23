@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #pragma warning disable CA1050 // Declare types in namespaces
+#pragma warning disable CA2000 // Dispose objects before losing scope, the created algorithm is handed to the caller
 #pragma warning disable IDE0011 // Add braces
 
 using Cryptography.Tests.Adapter.Hash;
@@ -58,17 +59,24 @@ public sealed class HashAlgorithmType : IFormattable
     /// Creates an instance of the hash algorithm.
     /// </summary>
     /// <exception cref="PlatformNotSupportedException">Thrown if the algorithm is not supported.</exception>
-    public HashAlgorithm Create()
+    public CH.Hash.HashAlgorithm Create()
     {
         if (!IsSupported)
             throw new PlatformNotSupportedException($"Hash algorithm '{Name}' is not supported on this platform.");
-        return _factory();
+
+        var factoryAlgorithm = _factory();
+        if (factoryAlgorithm is CH.Hash.HashAlgorithm chAlgorithm)
+        {
+            return chAlgorithm;
+        }
+
+        return new HashAlgorithmAdapter(factoryAlgorithm, Category);
     }
 
     /// <summary>
     /// Tries to create an instance of the hash algorithm.
     /// </summary>
-    public bool TryCreate(out HashAlgorithm? algorithm)
+    public bool TryCreate(out CH.Hash.HashAlgorithm? algorithm)
     {
         if (!IsSupported)
         {
@@ -78,7 +86,16 @@ public sealed class HashAlgorithmType : IFormattable
 
         try
         {
-            algorithm = _factory();
+            var factoryAlgorithm = _factory();
+            if (factoryAlgorithm is CH.Hash.HashAlgorithm chAlgorithm)
+            {
+                algorithm = chAlgorithm;
+            }
+            else
+            {
+                algorithm = new HashAlgorithmAdapter(factoryAlgorithm, Category);
+            }
+
             return true;
         }
         catch (PlatformNotSupportedException)

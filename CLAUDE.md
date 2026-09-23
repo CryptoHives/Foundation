@@ -58,6 +58,45 @@ Use `CustomTestTarget` MSBuild property to test a single legacy or preview TFM (
 - Strong-name signing is active when `CryptoHives.Foundation.Key.snk` exists in the repo root (not checked in by default; SIGNASSEMBLY compile constant is set when signing)
 - Experimental algorithms are compiled in (`#if EXPERIMENTAL`) unless `/p:EnableExperimentalAlgorithms=false` is passed at build time
 
+## Comments
+
+Write a comment only where the code does something a reader would **not** expect from reading
+it. Otherwise write none. The audience is a consumer of this library, not a reviewer of the
+change that introduced it.
+
+- **No history.** Not what a PR changed, not what used to be there, not what was tried and
+  reverted. Nobody reading this code later has that context or wants it.
+- **No measurement figures.** A percentage nobody can reproduce — different machine, different
+  run — is noise. Say only *that* something was measured and which way it came out:
+  "showed a measurable improvement", "no measurable difference", "within measurement
+  uncertainty". Never the number, the size, or the host.
+- **Cap it.** One or two lines inline. A `<remarks>` only for a genuine trap or precondition,
+  about three lines. Never multi-paragraph.
+- **No narration.** Do not restate what the code does or re-explain a name.
+- If a comment is needed to explain *what* a line does, rename things instead.
+
+Benchmark figures belong in the commit message and the PR, where the run that produced them is
+identified. But keep these comments also brief and without history. Avoid offensive language like beats, masters etc. 
+
+## Verifying and reporting
+
+Make the check a competent engineer would actually make, and report it the way they would.
+Precision that carries no decision is noise, and chasing it wastes the reviewer's time and the
+user's.
+
+- **A test suite passes or it does not.** Say which. Do not report how many tests ran, do not
+  put test counts in a commit message or PR description, and do not compare counts between
+  runs. Counts move whenever a `[TestCase]` list, a data source or a merge changes — a
+  difference in them is not a finding and is never worth investigating.
+- **Do not re-verify what cannot have changed.** A comment- or documentation-only edit needs no
+  build and no test run.
+- **Report a direction where the direction is the point.** "Faster on the scalar tier", not a
+  figure to three decimal places, unless the figure itself is the deliverable.
+- **Do not enumerate what a sentence settles.** One representative example beats a table of
+  twenty rows that all say the same thing.
+- **Do not manufacture certainty.** If one run says a thing and the next disagrees, that is the
+  finding — say so, rather than picking the run that reads better.
+
 ## Project Structure
 
 ```

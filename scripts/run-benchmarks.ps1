@@ -112,7 +112,28 @@ param(
     [int]$TimeoutMinutes = 0,
 
     [Parameter(HelpMessage = "Shutdown dotnet build servers after run to avoid lingering MSBuild node-reuse processes")]
-    [switch]$ShutdownBuildServers
+    [switch]$ShutdownBuildServers,
+
+    # Deliberately not [ValidateSet]: pwsh -File (which the .cmd wrapper uses)
+    # passes arguments as literal strings, so "AVX512,AVX2" arrives as one token and
+    # ValidateSet rejects it. Split and validated below instead; the completer keeps
+    # tab-completion working.
+    [Parameter(HelpMessage = "Mask CoreCLR instruction-set support so a narrower target can be measured on this host (e.g. -DisableIsa AVX512 or -DisableIsa AVX512,AVX2)")]
+    [ArgumentCompleter({
+        param($commandName, $parameterName, $wordToComplete)
+        @("AVX512", "AVX2", "SSE42", "SSSE3", "AES", "AdvSimd") | Where-Object { $_ -like "$wordToComplete*" }
+    })]
+    [string[]]$DisableIsa,
+
+    # Deliberately [string[]], not [int[]]: under pwsh -File the list arrives as the single
+    # token "4,6", and PowerShell converts a string to int with NumberStyles.Any - which
+    # allows thousands separators, so "4,6" silently becomes 46 and "1,0" becomes 10.
+    # Parsed strictly below so a comma list cannot turn into the wrong core.
+    [Parameter(HelpMessage = "Pin the benchmark process to these logical CPUs (0-based, comma-separated, e.g. -PinToCore 4,6). Windows/Linux only; ignored on macOS")]
+    [string[]]$PinToCore,
+
+    [Parameter(HelpMessage = "Power plan for the run: UserPowerPlan (keep the active one), Balanced, PowerSaver, HighPerformance, UltimatePerformance, or a plan GUID. Windows only")]
+    [string]$PowerPlan
 )
 
 $ErrorActionPreference = "Stop"
@@ -141,6 +162,9 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
     Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
     Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
+    Write-Host "   - DisableIsa — AVX512 | AVX2 | SSE42 | SSSE3 | AES | AdvSimd (comma list) — none  "
+    Write-Host "   - PinToCore — one or more 0-based logical CPUs (e.g. 4 or 4,6) — none (unpinned)  "
+    Write-Host "   - PowerPlan — UserPowerPlan | Balanced | PowerSaver | HighPerformance | UltimatePerformance | GUID — none (BDN forces HighPerformance)  "
     Write-Host ""
     exit 0
 }
@@ -528,6 +552,174 @@ if (-not (Test-Path $testProject)) {
     exit 1
 }
 
+# ---------------------------------------------------------------------------
+# Measurement environment: ISA masking, CPU pinning, power plan.
+# ---------------------------------------------------------------------------
+
+# Both list parameters have to survive `pwsh -File`, which hands the script literal
+# strings: "AVX512,AVX2" and "4,6" each arrive as a single token. Split them here so
+# the two invocation paths (run-benchmarks.cmd and a direct PowerShell call) behave
+# identically.
+function Split-ListArgument {
+    param([string[]]$Value)
+    if (-not $Value) { return @() }
+    return @($Value -split '[,\s]+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+$isaNames = @("AVX512", "AVX2", "SSE42", "SSSE3", "AES", "AdvSimd")
+$requestedIsa = @()
+foreach ($token in (Split-ListArgument -Value $DisableIsa)) {
+    $match = $isaNames | Where-Object { $_ -ieq $token } | Select-Object -First 1
+    if (-not $match) {
+        Write-Host "ERROR: -DisableIsa '$token' is not one of: $($isaNames -join ', ')" -ForegroundColor Red
+        exit 1
+    }
+    if ($requestedIsa -notcontains $match) { $requestedIsa += $match }
+}
+
+$pinnedCores = @()
+foreach ($token in (Split-ListArgument -Value $PinToCore)) {
+    $parsed = 0
+    # NumberStyles.None rejects the thousands separators that made "4,6" parse as 46.
+    if (-not [int]::TryParse($token, [System.Globalization.NumberStyles]::None,
+                             [System.Globalization.CultureInfo]::InvariantCulture, [ref]$parsed)) {
+        Write-Host "ERROR: -PinToCore '$token' is not a whole number." -ForegroundColor Red
+        exit 1
+    }
+    if ($parsed -lt 0 -or $parsed -gt 30) {
+        Write-Host "ERROR: -PinToCore $parsed is outside 0..30 (BenchmarkDotNet takes the affinity mask as a signed 32-bit int)." -ForegroundColor Red
+        exit 1
+    }
+    if ($pinnedCores -notcontains $parsed) { $pinnedCores += $parsed }
+}
+
+
+# CoreCLR reads these at startup and the benchmark host inherits them, as do the child
+# processes BenchmarkDotNet spawns per benchmark. Note DOTNET_EnableAVX512 - the more
+# obvious DOTNET_EnableAVX512F is silently a no-op.
+$isaEnvMap = [ordered]@{
+    "AVX512"  = "DOTNET_EnableAVX512"
+    "AVX2"    = "DOTNET_EnableAVX2"
+    "SSE42"   = "DOTNET_EnableSSE42"
+    "SSSE3"   = "DOTNET_EnableSSSE3"
+    "AES"     = "DOTNET_EnableAES"
+    "AdvSimd" = "DOTNET_EnableArm64AdvSimd"
+}
+$savedEnv = @{}
+
+function Set-BenchmarkEnv {
+    param([string]$Name, [string]$Value)
+    if (-not $savedEnv.ContainsKey($Name)) {
+        $savedEnv[$Name] = [Environment]::GetEnvironmentVariable($Name)
+    }
+    [Environment]::SetEnvironmentVariable($Name, $Value)
+}
+
+if ($requestedIsa.Count -gt 0) {
+    Write-Host "ISA mask requested: $($requestedIsa -join ', ')" -ForegroundColor Yellow
+    foreach ($isa in $requestedIsa) {
+        Set-BenchmarkEnv -Name $isaEnvMap[$isa] -Value "0"
+        Write-Host "  $($isaEnvMap[$isa])=0" -ForegroundColor DarkGray
+    }
+
+    # Assert rather than trust. A knob that silently does nothing produces a run that
+    # looks fine and measures the wrong target - after an hour of CPU time.
+    Write-Host "  verifying the mask took effect..." -ForegroundColor DarkGray
+    Push-Location $testProject
+    try {
+        $probeOutput = & dotnet run -v q --configuration $Configuration --framework $Framework -- --print-isa 2>&1
+    }
+    finally {
+        Pop-Location
+    }
+
+    $isaLine = $probeOutput | Where-Object { $_ -is [string] -and $_ -match '^ISA ' } | Select-Object -Last 1
+    if (-not $isaLine) {
+        Write-Host "ERROR: could not read the ISA probe. Output was:" -ForegroundColor Red
+        $probeOutput | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+        exit 1
+    }
+    if ($isaLine -match 'unavailable=') {
+        Write-Host "ERROR: -DisableIsa needs a framework with the intrinsics APIs; $Framework has none." -ForegroundColor Red
+        exit 1
+    }
+
+    $resolved = @{}
+    foreach ($pair in ($isaLine -replace '^ISA\s+', '') -split '\s+') {
+        $kv = $pair -split '=', 2
+        if ($kv.Count -eq 2) { $resolved[$kv[0]] = [bool]::Parse($kv[1]) }
+    }
+
+    $failed = @()
+    foreach ($isa in $requestedIsa) {
+        if ($resolved.ContainsKey($isa) -and $resolved[$isa]) { $failed += $isa }
+    }
+    if ($failed.Count -gt 0) {
+        Write-Host "ERROR: still enabled after masking: $($failed -join ', ')" -ForegroundColor Red
+        Write-Host "  resolved: $isaLine" -ForegroundColor DarkGray
+        Write-Host "  The environment variable had no effect - do not trust a run made this way." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "  resolved: $isaLine" -ForegroundColor DarkGray
+
+    # Masking an ISA removes rows: the adapters force an algorithm tier the hardware no
+    # longer offers, so those rows either vanish or silently fall back to a narrower one.
+    $collapsed = @()
+    if (-not $resolved["AVX512"]) { $collapsed += "CryptoHives-AVX512F" }
+    if (-not $resolved["AVX2"])   { $collapsed += "CryptoHives-AVX2" }
+    if (-not $resolved["SSSE3"])  { $collapsed += "CryptoHives-Ssse3" }
+    if ($collapsed.Count -gt 0) {
+        Write-Host "  tier collapse: no meaningful $($collapsed -join ', ') rows in this run." -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+
+# BenchmarkDotNet forces the High Performance plan for the duration of a run unless a job
+# says otherwise, so activating a plan externally (powercfg) does nothing. tests/Common/
+# Main.cs reads this and applies it as a mutator job instead.
+if ($PowerPlan) {
+    if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6) {
+        Write-Host "WARNING: -PowerPlan is Windows-only; ignoring." -ForegroundColor Yellow
+    }
+    else {
+        Set-BenchmarkEnv -Name "CRYPTOHIVES_BENCH_POWERPLAN" -Value $PowerPlan
+        Write-Host "Power plan: $PowerPlan" -ForegroundColor Yellow
+        if ($PowerPlan -eq "UserPowerPlan") {
+            Write-Host "  keeping the currently active plan instead of forcing High Performance." -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
+}
+
+# Affinity is passed to BenchmarkDotNet rather than set on this process, so it lands on
+# the benchmark child processes and is recorded as a job column in the report.
+$affinityMask = $null
+if ($pinnedCores.Count -gt 0) {
+    if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6 -and -not $IsLinux) {
+        Write-Host "WARNING: -PinToCore is Windows/Linux-only; ignoring." -ForegroundColor Yellow
+    }
+    else {
+        # The affinity mask is a bitmask, one bit per logical CPU, so any set of cores can
+        # be expressed. BenchmarkDotNet takes it as a signed 32-bit int, hence cores 0-30.
+        $cores = @($pinnedCores | Sort-Object -Unique)
+        $affinityMask = 0
+        foreach ($core in $cores) {
+            $affinityMask = $affinityMask -bor (1 -shl $core)
+        }
+
+        $coreList = $cores -join ', '
+        Write-Host "Pinning the benchmark process to logical CPU $coreList (affinity mask $affinityMask = 0x$('{0:X}' -f $affinityMask))." -ForegroundColor Yellow
+        Write-Host "  Pinning does not reduce throttling - it concentrates it - but it makes it" -ForegroundColor DarkGray
+        Write-Host "  repeatable, which is what an interleaved A/B needs." -ForegroundColor DarkGray
+        if ($cores.Count -eq 1) {
+            Write-Host "  One core also hosts the GC, finalizer and BDN's own engine threads, which then" -ForegroundColor DarkGray
+            Write-Host "  contend with the benchmark. Two cores often measure more cleanly - try -PinToCore $($cores[0]),$($cores[0] + 2)." -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
+}
+
 # Build the command arguments
 $dotnetArgs = @(
     "run"
@@ -538,7 +730,10 @@ $dotnetArgs = @(
 )
 
 if ($List) {
+    # BenchmarkDotNet's --list takes a value (Flat/Tree); a bare --list is rejected
+    # with "Option 'list' is defined with a bad format".
     $dotnetArgs += "--list"
+    $dotnetArgs += "flat"
 }
 else {
     # Add filter patterns - multiple patterns are space-separated after --filter
@@ -563,6 +758,11 @@ if ($ExtraArgs) {
     foreach ($arg in $ExtraArgs) {
         $dotnetArgs += [string]$arg
     }
+}
+
+if ($null -ne $affinityMask) {
+    $dotnetArgs += "--affinity"
+    $dotnetArgs += [string]$affinityMask
 }
 
 # Show command. Quote any argument a shell would otherwise treat specially (wildcards,
@@ -642,6 +842,12 @@ try {
 }
 finally {
     Pop-Location
+
+    # Leave the shell as we found it - an ISA mask left set would silently affect
+    # every later run from this session.
+    foreach ($name in $savedEnv.Keys) {
+        [Environment]::SetEnvironmentVariable($name, $savedEnv[$name])
+    }
 
     if ($ShutdownBuildServers) {
         Write-Host ""

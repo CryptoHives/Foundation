@@ -45,11 +45,29 @@ public class DataSize : IFormattable
 
     public override string ToString() => Name;
 
+    /// <summary>4 bytes - minimal input.</summary>
+    public static readonly DataSize B4 = new("4B", 4);
+
+    /// <summary>100 bytes - sub-block input.</summary>
+    public static readonly DataSize B100 = new("100B", 100);
+
+    /// <summary>64 bytes - one BLAKE2s/BLAKE3 block exactly.</summary>
+    public static readonly DataSize B64 = new("64B", 64);
+
+    /// <summary>65 bytes - one BLAKE2s/BLAKE3 block + 1, and 4 AES blocks + 1.</summary>
+    public static readonly DataSize B65 = new("65B", 65);
+
     /// <summary>128 bytes - small data, fits in single block for most algorithms.</summary>
     public static readonly DataSize B128 = new("128B", 128);
 
+    /// <summary>129 bytes - one BLAKE2b block + 1, and 8 AES blocks + 1.</summary>
+    public static readonly DataSize B129 = new("129B", 129);
+
     /// <summary>137 bytes - edge case: SHA3-256/Keccak-256 rate (136) + 1 byte.</summary>
     public static readonly DataSize B137 = new("137B", 137);
+
+    /// <summary>1000 bytes - just below the BLAKE3 chunk size (1024).</summary>
+    public static readonly DataSize B1000 = new("1000B", 1000);
 
     /// <summary>1 KB - multiple blocks.</summary>
     public static readonly DataSize K1 = new("1KB", 1024);
@@ -60,29 +78,38 @@ public class DataSize : IFormattable
     /// <summary>2 KB - multiple blocks.</summary>
     public static readonly DataSize K2 = new("2KB", 2048);
 
-    /// <summary>2 KB - multiple blocks.</summary>
+    /// <summary>3 KB - three chunks, the narrowest count the two-chain kernel takes.</summary>
+    public static readonly DataSize K3 = new("3KB", 3072);
+
+    /// <summary>5 KB - five chunks, the first count the 8-lane partial kernel claims.</summary>
+    public static readonly DataSize K5 = new("5KB", 5120);
+
+    /// <summary>16 KB - sixteen chunks, exactly one AVX-512 batch.</summary>
+    public static readonly DataSize K16 = new("16KB", 16384);
+
+    /// <summary>6 KB - multiple blocks.</summary>
     public static readonly DataSize K6 = new("6KB", 6144);
 
     /// <summary>8 KB - throughput testing.</summary>
     public static readonly DataSize K8 = new("8KB", 8192);
 
+    /// <summary>9 KB - nine BLAKE3 chunks: one full eight-chunk batch plus a one-chunk tail.</summary>
+    public static readonly DataSize B9216 = new("9216B", 9216);
+
+    /// <summary>10 KB - ten BLAKE3 chunks: eight-chunk batch plus the pair kernel.</summary>
+    public static readonly DataSize B10240 = new("10240B", 10240);
+
+    /// <summary>11 KB - eleven BLAKE3 chunks: eight-chunk batch plus a three-chunk tail.</summary>
+    public static readonly DataSize B11264 = new("11264B", 11264);
+
+    /// <summary>12 KB - twelve BLAKE3 chunks.</summary>
+    public static readonly DataSize B12288 = new("12288B", 12288);
+
+    /// <summary>15 KB - fifteen BLAKE3 chunks: widest tail below a 16-chunk batch.</summary>
+    public static readonly DataSize B15360 = new("15360B", 15360);
+
     /// <summary>128 KB - sustained throughput.</summary>
     public static readonly DataSize K128 = new("128KB", 131072);
-
-    /// <summary>Standard sizes for quick benchmarks.</summary>
-    public static readonly DataSize[] Standard = [B128, K1, K8, K128];
-
-    /// <summary>All sizes including edge cases.</summary>
-    public static readonly DataSize[] AllSizes = [B128, B137, K1, B1025, K8, K128];
-
-    /// <summary>4 bytes - minimal input.</summary>
-    public static readonly DataSize B4 = new("4B", 4);
-
-    /// <summary>100 bytes - sub-block input.</summary>
-    public static readonly DataSize B100 = new("100B", 100);
-
-    /// <summary>1000 bytes - just below the BLAKE3 chunk size (1024).</summary>
-    public static readonly DataSize B1000 = new("1000B", 1000);
 
     /// <summary>4 KB - one half BLAKE3 8-chunk batch (8192).</summary>
     public static readonly DataSize K4 = new("4KB", 4096);
@@ -108,13 +135,21 @@ public class DataSize : IFormattable
     /// <summary>10 MB (decimal, 10000000 bytes) - sustained throughput, exceeds L2 cache.</summary>
     public static readonly DataSize M10 = new("10MB", 10000000);
 
-    /// <summary>
-    /// Sizes for BLAKE3 benchmarks: extends <see cref="AllSizes"/> with sizes on and around
-    /// the 8 KB SIMD chunk-batch boundary, since the batching fast path makes BLAKE3
-    /// throughput sensitive to sizes other algorithms are indifferent to.
-    /// </summary>
+    /// <summary>Standard sizes for quick benchmarks.</summary>
+    public static readonly DataSize[] Standard = [B128, K1, K8, K128];
+
+    /// <summary>All sizes including edge cases.</summary>
+    public static readonly DataSize[] AllSizes = [B128, B137, K1, B1025, K8, K128];
+
+    /// <summary>Sizes for BLAKE2b and BLAKE2s.</summary>
+    public static readonly DataSize[] Blake2Sizes =
+        [B4, B64, B65, B128, B129, K1, B1025, K8, K64, K128, M1, M10];
+
+    /// <summary>Sizes for BLAKE3, which needs boundaries no other BLAKE variant has.</summary>
     public static readonly DataSize[] Blake3Sizes =
-        [B4, B100, B128, B137, B1000, K1, K2, B1025, K4, K6, K8, B10000, K64, B100000, K128, K256, K512, M1, M10];
+        [B4, B64, B65, B100, B128, B137, B1000, K1, B1025, K2, K3, K4, K5, K6, K8,
+         B9216, B10000, B10240, B11264, B12288, B15360, K16,
+         K64, B100000, K128, M1, M10];
 
     /// <summary>Edge case sizes only.</summary>
     public static readonly DataSize[] EdgeCases = [B137, B1025];
@@ -122,14 +157,8 @@ public class DataSize : IFormattable
     /// <summary>17 bytes - one AES block (16) + 1 byte partial block.</summary>
     public static readonly DataSize B17 = new("17B", 17);
 
-    /// <summary>65 bytes - 4 AES block (64) + 1 byte partial block.</summary>
-    public static readonly DataSize B65 = new("65B", 65);
-
     /// <summary>88 bytes - 4 + 1 AES block (80) + 8 byte partial block.</summary>
     public static readonly DataSize B88 = new("88B", 88);
-
-    /// <summary>129 bytes - 8 AES blocks (128) + 1 byte, tests pipelined block boundary.</summary>
-    public static readonly DataSize B129 = new("129B", 129);
 
     /// <summary>152 bytes - 8 + 1 AES blocks (144) + 8 byte, tests pipelined block boundary.</summary>
     public static readonly DataSize B152 = new("152B", 152);

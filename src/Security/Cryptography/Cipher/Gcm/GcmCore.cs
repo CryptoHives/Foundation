@@ -147,7 +147,7 @@ internal struct GcmCore
         Span<byte> zeroBlock = stackalloc byte[BlockSizeBytes];
         zeroBlock.Clear();
 
-        simdSupport &= SimdSupport;
+        simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #if NET8_0_OR_GREATER
         if ((simdSupport & SimdSupport.AesNi) != 0)
         {
@@ -185,7 +185,7 @@ internal struct GcmCore
         {
             _hClmul = PrepareH(_h);
             _hPowers = _useArmPmull ? PrepareHPowersPmull(_hClmul) : PrepareHPowers(_hClmul);
-            if (_useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAesNi)
             {
                 _usePipeline = _usePclmul || _usePclmulV256;
             }
@@ -828,7 +828,6 @@ internal struct GcmCore
         ReadOnlySpan<ulong> shoupTable, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
-        Span<byte> padded = stackalloc byte[BlockSizeBytes];
         while (offset < data.Length)
         {
             int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
@@ -840,10 +839,9 @@ internal struct GcmCore
             }
             else
             {
-                padded.Clear();
-                data.Slice(offset, blockLen).CopyTo(padded);
-                y0 ^= BinaryPrimitives.ReadUInt64BigEndian(padded);
-                y1 ^= BinaryPrimitives.ReadUInt64BigEndian(padded.Slice(sizeof(UInt64)));
+                BinaryLoad.ReadUInt64PairBigEndianPadded(data.Slice(offset, blockLen), out ulong m0, out ulong m1);
+                y0 ^= m0;
+                y1 ^= m1;
             }
 
             GfMulShoup(shoupTable, ref y0, ref y1);
@@ -858,7 +856,6 @@ internal struct GcmCore
     private static void ProcessBlocks(ulong h0, ulong h1, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
-        Span<byte> padded = stackalloc byte[BlockSizeBytes];
         while (offset < data.Length)
         {
             int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
@@ -870,10 +867,9 @@ internal struct GcmCore
             }
             else
             {
-                padded.Clear();
-                data.Slice(offset, blockLen).CopyTo(padded);
-                y0 ^= BinaryPrimitives.ReadUInt64BigEndian(padded);
-                y1 ^= BinaryPrimitives.ReadUInt64BigEndian(padded.Slice(sizeof(UInt64)));
+                BinaryLoad.ReadUInt64PairBigEndianPadded(data.Slice(offset, blockLen), out ulong m0, out ulong m1);
+                y0 ^= m0;
+                y1 ^= m1;
             }
 
             GfMulUlong(h0, h1, ref y0, ref y1);
@@ -922,13 +918,13 @@ internal struct GcmCore
     public void GctrDispatch(ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if (_useAesNi)
+        if (AesCoreAesNi.IsSupported && _useAesNi)
         {
             GctrAesNi(AesNiRoundKeys, _rounds, icb, input, output);
             return;
         }
 
-        if (_useArmAes)
+        if (AesCoreArm.IsSupported && _useArmAes)
         {
             GctrArmAes(AesNiRoundKeys, _rounds, icb, input, output);
             return;
@@ -941,13 +937,13 @@ internal struct GcmCore
     public void GHashDispatch(ReadOnlySpan<byte> aad, ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if (_usePclmul)
+        if (IsPclmulSupported && _usePclmul)
         {
             GHashCompletePclmul(_hPowers, aad, ciphertext, output);
             return;
         }
 
-        if (_useArmPmull)
+        if (IsPmullSupported && _useArmPmull)
         {
             GHashCompletePmull(_hPowers, aad, ciphertext, output);
             return;
@@ -963,7 +959,7 @@ internal struct GcmCore
         Span<byte> ciphertext, Span<byte> ghash)
     {
 #if NET8_0_OR_GREATER
-        if (_usePipeline)
+        if (AesCoreAesNi.IsSupported && _usePipeline)
         {
             // Fused GCTR+GHASH pipeline: 4-block interleaved AES + aggregated CLMUL
             EncryptPipelined(
@@ -986,7 +982,7 @@ internal struct GcmCore
         Span<byte> plaintext, Span<byte> ghash)
     {
 #if NET8_0_OR_GREATER
-        if (_usePipeline)
+        if (AesCoreAesNi.IsSupported && _usePipeline)
         {
             // Fused GHASH+GCTR pipeline: computes GHASH and decrypts simultaneously
             DecryptPipelined(
@@ -1028,7 +1024,8 @@ internal struct GcmCore
     /// </summary>
     private static bool IsPmullSupported
     {
-        get => ArmAes.IsSupported;
+        // The ARM kernels reinterpret caller bytes as native words, so they are little-endian only.
+        get => ArmAes.IsSupported && BitConverter.IsLittleEndian;
     }
 
     /// <summary>
@@ -1473,11 +1470,7 @@ internal struct GcmCore
 
         if (offset < data.Length)
         {
-            Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            data.Slice(offset).CopyTo(padded);
-            padded.Slice(data.Length - offset).Clear();
-            var block = Vector128.Create(padded);
-            block = Vector128.Shuffle(block, ByteSwapMask);
+            var block = Vector128.Shuffle(BinaryLoad.LoadTailPadded128(data, offset), ByteSwapMask);
             y ^= block;
             y = GfMulPmull(hSwapped, y);
         }
@@ -1566,11 +1559,7 @@ internal struct GcmCore
 
         if (offset < data.Length)
         {
-            Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            data.Slice(offset).CopyTo(padded);
-            padded.Slice(data.Length - offset).Clear();
-            var block = Vector128.Create(padded);
-            block = Ssse3.Shuffle(block, ByteSwapMask);
+            var block = Ssse3.Shuffle(BinaryLoad.LoadTailPadded128(data, offset), ByteSwapMask);
             y = Sse2.Xor(y, block);
             y = GfMulClmul(hSwapped, y);
         }
@@ -1942,7 +1931,7 @@ internal struct GcmCore
             Vector128<byte> g7 = Ssse3.Shuffle(c7, ByteSwapMask);
 
 #if NET10_0_OR_GREATER
-            y = _usePclmulV256 ?
+            y = IsPclmulV256Supported && _usePclmulV256 ?
                 GfMulReduce8Vpclmul(hPowers, g0, g1, g2, g3, g4, g5, g6, g7) :
                 GfMulReduce8(hPowers, g0, g1, g2, g3, g4, g5, g6, g7);
 #else
@@ -2019,10 +2008,8 @@ internal struct GcmCore
             for (int i = 0; i < remaining; i++)
                 ciphertext[offset + i] = (byte)(plaintext[offset + i] ^ ksBuf[i]);
 
-            Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            padded.Clear();
-            ciphertext.Slice(offset, remaining).CopyTo(padded);
-            Vector128<byte> block = Ssse3.Shuffle(Vector128.Create(padded), ByteSwapMask);
+            Vector128<byte> block = Ssse3.Shuffle(
+                BinaryLoad.LoadTailPadded128(ciphertext.Slice(0, len), offset), ByteSwapMask);
             y = Sse2.Xor(y, block);
             y = GfMulClmul(_hClmul, y);
         }
@@ -2081,7 +2068,7 @@ internal struct GcmCore
             // for maximum CPU port overlap (AES on port 0/1, CLMUL on port 0)
             // use non inlined functions which can be better
 #if NET10_0_OR_GREATER
-            if (_usePclmulV256)
+            if (IsPclmulV256Supported && _usePclmulV256)
             {
                 offset = DecryptStitchedPclmulV256Loop(roundKeys, rounds, hPowers,
                     ref counter, ref y, ciphertext, plaintext, offset, len);
@@ -2147,10 +2134,8 @@ internal struct GcmCore
         {
             int remaining = len - offset;
 
-            Span<byte> padded = stackalloc byte[BlockSizeBytes];
-            padded.Clear();
-            ciphertext.Slice(offset, remaining).CopyTo(padded);
-            Vector128<byte> block = Ssse3.Shuffle(Vector128.Create(padded), ByteSwapMask);
+            Vector128<byte> block = Ssse3.Shuffle(
+                BinaryLoad.LoadTailPadded128(ciphertext.Slice(0, len), offset), ByteSwapMask);
             y = Sse2.Xor(y, block);
             y = GfMulClmul(_hClmul, y);
 

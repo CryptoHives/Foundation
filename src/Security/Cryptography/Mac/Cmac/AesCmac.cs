@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
+using System.Buffers.Binary;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -184,28 +185,26 @@ public sealed class AesCmac : IMac
         if (destination.Length < BlockSize) throw new ArgumentException("Destination buffer is too small.", nameof(destination));
         if (_finalized) throw new InvalidOperationException("Already finalized. Call Reset() first.");
 
+        ulong low, high;
+        byte[] subkey;
         if (_bufferLength == BlockSize)
         {
-            // Complete block: XOR with K1
-            for (int i = 0; i < BlockSize; i++)
-            {
-                _buffer[i] ^= _k1[i];
-            }
+            BinaryLoad.ReadUInt64PairLittleEndianPadded(_buffer, out low, out high);
+            subkey = _k1;
         }
         else
         {
-            // Incomplete block: pad with 10*0 and XOR with K2
-            _buffer[_bufferLength] = 0x80;
-            for (int i = _bufferLength + 1; i < BlockSize; i++)
-            {
-                _buffer[i] = 0x00;
-            }
-
-            for (int i = 0; i < BlockSize; i++)
-            {
-                _buffer[i] ^= _k2[i];
-            }
+            // Incomplete block: 10* padding. Reading it padded also overwrites whatever
+            // the previous block left in the tail, which the old byte loop did by hand.
+            BinaryLoad.ReadUInt64PairLittleEndianPadded(_buffer.AsSpan(0, _bufferLength), 0x80, out low, out high);
+            subkey = _k2;
         }
+
+        // Read and written in the same order, so the bytes round-trip whatever the machine.
+        low ^= BinaryPrimitives.ReadUInt64LittleEndian(subkey);
+        high ^= BinaryPrimitives.ReadUInt64LittleEndian(subkey.AsSpan(sizeof(ulong)));
+        BinaryPrimitives.WriteUInt64LittleEndian(_buffer, low);
+        BinaryPrimitives.WriteUInt64LittleEndian(_buffer.AsSpan(sizeof(ulong)), high);
 
         XorAndEncrypt(_mac, _buffer);
         _mac.AsSpan().CopyTo(destination);
@@ -278,13 +277,13 @@ public sealed class AesCmac : IMac
     private void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if (_useAesNi)
+        if (AesCoreAesNi.IsSupported && _useAesNi)
         {
             AesCoreAesNi.EncryptBlock(input, output, _niRoundKeys, _rounds);
             return;
         }
 
-        if (_useArmAes)
+        if (AesCoreArm.IsSupported && _useArmAes)
         {
             AesCoreArm.EncryptBlock(input, output, _niRoundKeys, _rounds);
             return;

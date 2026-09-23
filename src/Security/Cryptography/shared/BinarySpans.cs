@@ -157,10 +157,23 @@ internal static class BinarySpans
     }
 
     /// <summary>
+    /// Writes a single <see cref="UInt32"/> to a byte pointer in little-endian order.
+    /// </summary>
+    /// <param name="destination">The destination bytes (must be at least 4 bytes).</param>
+    /// <param name="value">The word to write.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void WriteUInt32LittleEndian(byte* destination, uint value)
+    {
+        Unsafe.WriteUnaligned(
+            destination,
+            BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
+    }
+
+    /// <summary>
     /// Writes <see cref="UInt32"/> words to a byte span in little-endian order.
     /// </summary>
     /// <param name="source">The source word span.</param>
-    /// <param name="destination">The destination bytes (must be at least <paramref name="source"/>.Length × 4 bytes).</param>
+    /// <param name="destination">The destination bytes (must be at least <paramref name="count"/> × 4 bytes).</param>
     /// <param name="count">The number of words to write.</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static unsafe void WriteUInt32LittleEndian(uint* source, byte* destination, int count)
@@ -177,6 +190,19 @@ internal static class BinarySpans
                 BinaryPrimitives.WriteUInt32LittleEndian(dst.Slice(i * sizeof(uint)), source[i]);
             }
         }
+    }
+
+    /// <summary>
+    /// Writes a single <see cref="UInt64"/> to a byte pointer in little-endian order.
+    /// </summary>
+    /// <param name="destination">The destination bytes (must be at least 8 bytes).</param>
+    /// <param name="value">The word to write.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void WriteUInt64LittleEndian(byte* destination, ulong value)
+    {
+        Unsafe.WriteUnaligned(
+            destination,
+            BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
     }
 
     /// <summary>

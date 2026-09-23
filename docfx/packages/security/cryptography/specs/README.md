@@ -96,6 +96,10 @@ official sources.
 | Tree hashing | ❌ | ❌ | Optional (not implemented) |
 | Parallel variants | ❌ | ❌ | BLAKE2bp/BLAKE2sp (not implemented) |
 
+> **Hardware acceleration:** BLAKE2b uses an AVX2 kernel and BLAKE2s an SSSE3 one with an SSE2
+> fallback, both on .NET 8+, and both take AVX-512 VL rotates where the CPU offers them. A
+> portable scalar kernel is always available.
+
 ### BLAKE3
 
 | Algorithm | Hash Size | Features | Status | Class |
@@ -110,6 +114,10 @@ official sources.
 | Keyed Hash | ✅ | `Blake3.CreateKeyed(key)` | MAC with 32-byte key |
 | Derive Key | ✅ | `Blake3.CreateDeriveKey(context)` | Key derivation from a context string and key material |
 | XOF | ✅ | `Blake3.Create(outputBytes)` | Extendable output (any length) |
+
+> **Hardware acceleration:** on .NET 8+, AVX-512 hashes 16 chunks in parallel, AVX2 8, and
+> SSSE3 and NEON 4 each, with narrower kernels for inputs too small to fill one, and a scalar
+> fallback.
 
 ### RIPEMD Family
 

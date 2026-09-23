@@ -531,7 +531,8 @@ BLAKE2b and BLAKE2s support built-in keyed hashing mode for message authenticati
 ### Blake2b Keyed Mode
 
 ```csharp
-public static Blake2b Create(byte[]? key = null, int hashSize = 64)
+public static Blake2b CreateKeyed(ReadOnlySpan<byte> key)
+public static Blake2b CreateKeyed(int outputBytes, ReadOnlySpan<byte> key)
 ```
 
 **Properties:**
@@ -544,7 +545,7 @@ public static Blake2b Create(byte[]? key = null, int hashSize = 64)
 byte[] key = new byte[32]; // Up to 64 bytes
 RandomNumberGenerator.Fill(key);
 
-using var blake2b = Blake2b.Create(key: key, hashSize: 32);
+using var blake2b = Blake2b.CreateKeyed(outputBytes: 32, key: key);
 Span<byte> mac = stackalloc byte[32];
 blake2b.TryComputeHash(message, mac, out _);
 ```
@@ -552,7 +553,8 @@ blake2b.TryComputeHash(message, mac, out _);
 ### Blake2s Keyed Mode
 
 ```csharp
-public static Blake2s Create(byte[]? key = null, int hashSize = 32)
+public static Blake2s CreateKeyed(ReadOnlySpan<byte> key)
+public static Blake2s CreateKeyed(int outputBytes, ReadOnlySpan<byte> key)
 ```
 
 **Properties:**
@@ -565,7 +567,7 @@ public static Blake2s Create(byte[]? key = null, int hashSize = 32)
 byte[] key = new byte[16]; // Up to 32 bytes
 RandomNumberGenerator.Fill(key);
 
-using var blake2s = Blake2s.Create(key: key, hashSize: 16);
+using var blake2s = Blake2s.CreateKeyed(outputBytes: 16, key: key);
 Span<byte> mac = stackalloc byte[16];
 blake2s.TryComputeHash(message, mac, out _);
 ```

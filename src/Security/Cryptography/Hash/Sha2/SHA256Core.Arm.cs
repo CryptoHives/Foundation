@@ -47,7 +47,8 @@ internal static partial class SHA256Core
     /// </summary>
     internal static bool IsArmSha256Supported
     {
-        get => ArmSha256.IsSupported;
+        // The ARM kernels reinterpret caller bytes as native words, so they are little-endian only.
+        get => ArmSha256.IsSupported && BitConverter.IsLittleEndian;
     }
 
     /// <summary>

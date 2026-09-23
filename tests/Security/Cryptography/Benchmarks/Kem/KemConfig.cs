@@ -36,8 +36,8 @@ public class KemConfig : ManualConfig
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(
-                maxDepth: 3,
-                printSource: true,
+                maxDepth: 8,
+                printSource: false,
                 exportGithubMarkdown: true,
                 exportCombinedDisassemblyReport: true)));
         }

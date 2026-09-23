@@ -150,8 +150,8 @@ A Roslyn analyzer that catches common `ValueTask` usage mistakes ships as a stan
 
 ### 🔐 Managed Code Cryptography (Security.Cryptography)
 Fully managed hash, MAC, cipher and post-quantum KEM implementations, written from NIST/RFC/ISO specifications and checked against official test vectors. 
-No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics kick in 
-automatically — in some cases outperforming the OS-provided implementation.
+No OS crypto dependency, so results are deterministic on every platform. Where the hardware supports it, AES-NI, PCLMULQDQ/VPCLMULQDQ, SSE2, SSSE3, AVX2 and AVX-512 on x86/x64,
+and ARM AES, ARM SHA-1/SHA-2, PMULL and NEON on Arm64, kick in automatically — in some cases outperforming the OS-provided implementation.
 
 **Algorithms:**
 
@@ -163,7 +163,7 @@ automatically — in some cases outperforming the OS-provided implementation.
 | SHAKE / cSHAKE | SHAKE128, SHAKE256, cSHAKE128, cSHAKE256 |
 | ParallelHash (SP 800-185) | ParallelHash128, ParallelHash256 |
 | TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
-| BLAKE | BLAKE2b, BLAKE2s (SIMD-accelerated), BLAKE3 |
+| BLAKE | BLAKE2b, BLAKE2s, BLAKE3 (all SIMD-accelerated) |
 | Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
 | MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
 | Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |

@@ -20,8 +20,9 @@ using DissimilisHasher = Blake3.Managed.Hasher;
 /// </summary>
 /// <remarks>
 /// One-shot hashing goes through the library's static
-/// <c>Hasher.Hash(input, output)</c> (see <see cref="IOneShotHash"/>), which uses
-/// stack allocation for small inputs and multi-threaded subtree hashing for large
+/// <c>Hasher.Hash(input, output)</c> (overriding <c>CH.Hash.HashAlgorithm.TryComputeHash</c>,
+/// so the benchmarks measure this library's best single-call API rather than its streaming path),
+/// which uses stack allocation for small inputs and multi-threaded subtree hashing for large
 /// ones; streaming uses the incremental <c>Update</c>/<c>Finalize</c> hasher.
 /// <para>
 /// <b>This row is multi-threaded above roughly 72 KiB</b> and every other row in the
@@ -30,7 +31,7 @@ using DissimilisHasher = Blake3.Managed.Hasher;
 /// <see cref="Blake3DissimilisSerialAdapter"/>'s row for the like-for-like one.
 /// </para>
 /// </remarks>
-internal sealed class Blake3DissimilisAdapter : CH.Hash.HashAlgorithm, IOneShotHash
+internal sealed class Blake3DissimilisAdapter : CH.Hash.HashAlgorithm
 {
     private readonly int _outputBytes;
     private DissimilisHasher _hasher;
@@ -61,7 +62,7 @@ internal sealed class Blake3DissimilisAdapter : CH.Hash.HashAlgorithm, IOneShotH
     public override void Initialize() => _hasher.Reset();
 
     /// <inheritdoc/>
-    bool IOneShotHash.TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < _outputBytes)
         {
@@ -128,7 +129,7 @@ internal sealed class Blake3DissimilisAdapter : CH.Hash.HashAlgorithm, IOneShotH
 /// into the other by the order the adapters happen to be created in.
 /// </para>
 /// </remarks>
-internal sealed class Blake3DissimilisSerialAdapter : CH.Hash.HashAlgorithm, IOneShotHash
+internal sealed class Blake3DissimilisSerialAdapter : CH.Hash.HashAlgorithm
 {
     private readonly int _outputBytes;
     private DissimilisHasher _hasher;
@@ -159,7 +160,7 @@ internal sealed class Blake3DissimilisSerialAdapter : CH.Hash.HashAlgorithm, IOn
     public override void Initialize() => _hasher.Reset();
 
     /// <inheritdoc/>
-    bool IOneShotHash.TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < _outputBytes)
         {
