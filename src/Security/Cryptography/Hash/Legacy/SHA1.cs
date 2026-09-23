@@ -265,7 +265,7 @@ public sealed partial class SHA1 : HashAlgorithm
         ref uint wPtr = ref MemoryMarshalEx.GetArrayDataReference(_w);
 
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.ArmSha1) != 0)
+        if (IsArmSha1Supported && (_simdSupport & SimdSupport.ArmSha1) != 0)
         {
             ProcessBlockArm(block, _state);
             return;

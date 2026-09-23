@@ -29,9 +29,11 @@ using System.Buffers;
 public sealed class Blake2s : HashAlgorithm
 {
     /// <summary>
-    /// The default optimization to use for Blake2s based algorithms.
+    /// The default optimization to use for Blake2s based algorithms. Named explicitly rather
+    /// than written as <see cref="SimdSupport.All"/> minus the unwanted sets, because the
+    /// constructor runs <c>WithImplicit</c> over it and that would put them back.
     /// </summary>
-    internal const SimdSupport Blake2sDefault = SimdSupport.None;
+    internal const SimdSupport Blake2sDefault = SimdSupport.Ssse3 | SimdSupport.Sse2;
 
     /// <summary>
     /// The maximum hash size in bits.
@@ -222,6 +224,31 @@ public sealed class Blake2s : HashAlgorithm
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Blake2s));
         _core.Reset(_key);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Routes a whole-message hash through the one-shot path, which knows the total length up
+    /// front. Anything already appended to this instance, and any keyed instance, falls back to
+    /// the base streaming implementation; both paths leave the instance freshly initialized.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake2s));
+
+        if (!_core.IsFresh)
+        {
+            return base.TryComputeHash(source, destination, out bytesWritten);
+        }
+
+        if (!_core.TryHashOneShot(source, destination, out bytesWritten))
+        {
+            return false;
+        }
+
+        Initialize();
+        return true;
     }
 
     /// <inheritdoc/>

@@ -466,23 +466,11 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
     /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
     /// <remarks>
-    /// <para>
-    /// This is the fast path behind the public surface, not a separate API: it knows the
-    /// total length up front, so it picks one SIMD kernel instead of walking the dispatch
-    /// ladder per call and finalises inline. See <see cref="Blake3State.TryHashOneShot"/>
-    /// for exactly what the streaming <c>HashCore</c>/<c>TryHashFinal</c> pair does that
-    /// this skips. <see cref="TryComputeHash"/> dispatches here, and
-    /// the <c>TryHashData</c> and <c>HashData</c> statics call it on a pooled instance.
-    /// </para>
-    /// <para>
     /// <b>Precondition:</b> the instance must be freshly constructed or freshly
-    /// <see cref="Initialize"/>d — this hashes <paramref name="source"/> as a complete
-    /// message and cannot continue an in-progress tree, so calling it after
-    /// <see cref="Absorb"/> or any streaming write silently produces the wrong digest.
-    /// It is <c>internal</c> for that reason: every caller must establish the
-    /// precondition first, which <see cref="TryComputeHash"/> does by testing
-    /// <c>Blake3State.IsFresh</c> and falling back to the streaming path when it fails.
-    /// </para>
+    /// <see cref="Initialize"/>d. This hashes <paramref name="source"/> as a complete
+    /// message and cannot continue an in-progress tree, so calling it after a streaming
+    /// write silently produces the wrong digest — hence <c>internal</c>, with
+    /// <see cref="TryComputeHash"/> establishing the precondition for public callers.
     /// </remarks>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     internal bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
@@ -501,17 +489,9 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
 
     /// <inheritdoc/>
     /// <remarks>
-    /// <para>
-    /// Overridden to route a whole-message hash through BLAKE3's internal one-shot
-    /// path, which knows the total length up front: it picks one SIMD kernel instead
-    /// of walking the dispatch ladder per call and finalises inline.
-    /// </para>
-    /// <para>
-    /// The one-shot path hashes its source as a complete message and cannot continue
-    /// an in-progress tree, so when anything has already been appended to this instance
-    /// the base streaming implementation runs instead and the result is byte-identical
-    /// to what it always was. Both paths leave the instance freshly initialized.
-    /// </para>
+    /// Routes a whole-message hash through the one-shot path, which knows the total length
+    /// up front. Anything already appended to this instance falls back to the base
+    /// streaming implementation; both paths leave the instance freshly initialized.
     /// </remarks>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)

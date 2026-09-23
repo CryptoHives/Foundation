@@ -31,13 +31,17 @@ public sealed class Blake2b : HashAlgorithm
     /// <summary>
     /// The default optimization to use for Blake2b based algorithms. Excludes
     /// <see cref="SimdSupport.Neon"/>: the NEON kernel benchmarks consistently
-    /// ~1.9x-2.1x slower than the scalar fallback across every input size (128B
-    /// through 128KB), so it must not be selected by default even though it is
-    /// compiled in (<c>EXPERIMENTAL</c> is on by default - see <c>common.props</c>).
-    /// It remains reachable via the internal <see cref="Create(SimdSupport, int)"/>
-    /// factory for benchmarking.
+    /// slower than the scalar fallback at every input size, so it must not be
+    /// selected by default even though it is compiled in (<c>EXPERIMENTAL</c> is on
+    /// by default - see <c>common.props</c>). It remains reachable via the internal
+    /// <see cref="Create(SimdSupport, int)"/> factory for benchmarking.
     /// </summary>
-    internal const SimdSupport Blake2bDefault = SimdSupport.All & ~SimdSupport.Neon;
+    /// <remarks>
+    /// Named explicitly rather than written as <see cref="SimdSupport.All"/> minus the
+    /// unwanted set: the constructor runs <c>WithImplicit</c> over this value, and that
+    /// derives <see cref="SimdSupport.Neon"/> back from the AArch64 flags <c>All</c> carries.
+    /// </remarks>
+    internal const SimdSupport Blake2bDefault = SimdSupport.Avx2;
 
     /// <summary>
     /// The maximum hash size in bits.
@@ -228,6 +232,31 @@ public sealed class Blake2b : HashAlgorithm
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Blake2b));
         _core.Reset(_key);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Routes a whole-message hash through the one-shot path, which knows the total length up
+    /// front. Anything already appended to this instance, and any keyed instance, falls back to
+    /// the base streaming implementation; both paths leave the instance freshly initialized.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake2b));
+
+        if (!_core.IsFresh)
+        {
+            return base.TryComputeHash(source, destination, out bytesWritten);
+        }
+
+        if (!_core.TryHashOneShot(source, destination, out bytesWritten))
+        {
+            return false;
+        }
+
+        Initialize();
+        return true;
     }
 
     /// <inheritdoc/>
