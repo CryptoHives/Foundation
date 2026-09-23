@@ -185,6 +185,88 @@ public class Blake2bTests
         using var blake2b = Blake2b.Create();
         Assert.That(blake2b.BlockSize, Is.EqualTo(128));
     }
+    /// <summary>
+    /// <c>TryComputeHash</c> takes the one-shot path only from a freshly initialized, unkeyed
+    /// state. With data already appended it must fall back to the base streaming implementation
+    /// and still hash the concatenation.
+    /// </summary>
+    [TestCase(1, 1)]
+    [TestCase(128 - 1, 1)]
+    [TestCase(128, 128)]
+    [TestCase(128 + 1, 128 * 3)]
+    [TestCase(1000, 4000)]
+    public void TryComputeHashAfterAppendDataHashesTheConcatenation(int prefixLength, int suffixLength)
+    {
+        byte[] prefix = SequentialBytes(prefixLength);
+        byte[] suffix = SequentialBytes(suffixLength);
+
+        byte[] concatenated = new byte[prefixLength + suffixLength];
+        prefix.CopyTo(concatenated, 0);
+        suffix.CopyTo(concatenated, prefixLength);
+
+        // ComputeHash drives HashCore/HashFinal, so it is independent of the override.
+        using var reference = Blake2b.Create();
+        byte[] expected = reference.ComputeHash(concatenated);
+
+        using var hash = Blake2b.Create();
+        hash.AppendData(prefix);
+
+        byte[] actual = new byte[64];
+        Assert.That(hash.TryComputeHash(suffix, actual, out int bytesWritten), Is.True);
+        Assert.That(bytesWritten, Is.EqualTo(64));
+        Assert.That(actual, Is.EqualTo(expected),
+            "TryComputeHash after AppendData must continue the stream, not restart it");
+
+        using var freshReference = Blake2b.Create();
+        byte[] suffixOnly = freshReference.ComputeHash(suffix);
+        Assert.That(hash.TryComputeHash(suffix, actual, out _), Is.True);
+        Assert.That(actual, Is.EqualTo(suffixOnly),
+            "instance must be freshly initialized after the fallback path");
+    }
+
+    /// <summary>
+    /// The one-shot path must agree with the streaming path at every length around a block
+    /// boundary, and a keyed instance -- which is never fresh, because its first block is the
+    /// padded key -- must still produce the keyed digest.
+    /// </summary>
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(128 - 1)]
+    [TestCase(128)]
+    [TestCase(128 + 1)]
+    [TestCase(128 * 2)]
+    [TestCase(128 * 2 + 1)]
+    [TestCase(128 * 5 + 17)]
+    public void OneShotAgreesWithStreaming(int length)
+    {
+        byte[] input = SequentialBytes(length);
+
+        using var streaming = Blake2b.Create();
+        byte[] expected = streaming.ComputeHash(input);
+
+        using var oneShot = Blake2b.Create();
+        byte[] actual = new byte[64];
+        Assert.That(oneShot.TryComputeHash(input, actual, out _), Is.True);
+        Assert.That(actual, Is.EqualTo(expected), "one-shot and streaming must agree");
+
+        byte[] key = SequentialBytes(16);
+        using var keyedStreaming = Blake2b.CreateKeyed(key);
+        byte[] keyedExpected = keyedStreaming.ComputeHash(input);
+
+        using var keyedOneShot = Blake2b.CreateKeyed(key);
+        Assert.That(keyedOneShot.TryComputeHash(input, actual, out _), Is.True);
+        Assert.That(actual, Is.EqualTo(keyedExpected),
+            "a keyed instance must fall back and still key the digest");
+    }
+
+    private static byte[] SequentialBytes(int length)
+    {
+        byte[] data = new byte[length];
+        for (int i = 0; i < length; i++)
+        {
+            data[i] = (byte)(i % 251);
+        }
+
+        return data;
+    }
 }
-
-

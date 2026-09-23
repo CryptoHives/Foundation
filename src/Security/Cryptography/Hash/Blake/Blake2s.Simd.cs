@@ -9,7 +9,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
@@ -19,26 +18,27 @@ using System.Runtime.Intrinsics.X86;
 /// </summary>
 internal unsafe partial struct Blake2sState
 {
-    // Every SIMD path below is gated EXPERIMENTAL as they are not beating the scalar versions (yet).
-#if EXPERIMENTAL
-    // Pre-computed shuffle masks for byte-aligned rotations on 32-bit words
-    // Rotate right by 16 bits (swap high/low 16-bit halves within each 32-bit word)
-    private static readonly Vector128<byte> RotateMask16 = Vector128.Create(
-        (byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
+    // Properties rather than static fields: a getter that is Vector128.Create over literals
+    // materialises from the constant pool, where a static field costs a static-base access and
+    // a load at every use.
 
-    // Rotate right by 8 bits
-    private static readonly Vector128<byte> RotateMask8 = Vector128.Create(
-        (byte)1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
+    private static Vector128<uint> IVLow
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector128.Create(0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU);
+    }
 
-    private static readonly Vector128<uint> IVLow = Vector128.Create(
-        0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU);
+    private static Vector128<uint> IVHigh
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector128.Create(0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U);
+    }
 
-    private static readonly Vector128<uint> IVHigh = Vector128.Create(
-        0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U);
-
-    private static readonly Vector128<uint> FinalMask = Vector128.Create(0U, 0U, ~0U, 0U);
-
-#endif
+    private static Vector128<uint> FinalMask
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector128.Create(0U, 0U, ~0U, 0U);
+    }
 
     /// <summary>
     /// Gets the SIMD instruction sets supported by this algorithm on the current platform.
@@ -48,52 +48,17 @@ internal unsafe partial struct Blake2sState
         get
         {
             var support = SimdSupport.None;
-#if EXPERIMENTAL
             if (Ssse3.IsSupported) support |= SimdSupport.Ssse3;
-            if (Avx2.IsSupported) support |= SimdSupport.Avx2;
             if (Sse2.IsSupported) support |= SimdSupport.Sse2;
+#if EXPERIMENTAL
+            // The NEON kernel is yet slower than scalar, so it is offered only to the
+            // internal factory and never reaches Blake2sDefault.
             if (AdvSimd.Arm64.IsSupported && BitConverter.IsLittleEndian) support |= SimdSupport.Neon;
 #endif
             return support;
         }
     }
 
-#if EXPERIMENTAL
-    // Pre-computed Vector128<int> indices for gather operations (scaled by 4 for uint stride)
-    private static readonly Vector128<int>[] GatherIndicesX = InitGatherIndicesX();
-    private static readonly Vector128<int>[] GatherIndicesY = InitGatherIndicesY();
-
-    private static Vector128<int>[] InitGatherIndicesX()
-    {
-        var indices = new Vector128<int>[Rounds * 2];
-        for (int round = 0; round < Rounds; round++)
-        {
-            int offset = round * ScratchSize;
-            indices[round * 2] = Vector128.Create(
-                Sigma[offset + 0] * 4, Sigma[offset + 2] * 4,
-                Sigma[offset + 4] * 4, Sigma[offset + 6] * 4);
-            indices[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 8] * 4, Sigma[offset + 10] * 4,
-                Sigma[offset + 12] * 4, Sigma[offset + 14] * 4);
-        }
-        return indices;
-    }
-
-    private static Vector128<int>[] InitGatherIndicesY()
-    {
-        var indices = new Vector128<int>[Rounds * 2];
-        for (int round = 0; round < Rounds; round++)
-        {
-            int offset = round * ScratchSize;
-            indices[round * 2] = Vector128.Create(
-                Sigma[offset + 1] * 4, Sigma[offset + 3] * 4,
-                Sigma[offset + 5] * 4, Sigma[offset + 7] * 4);
-            indices[round * 2 + 1] = Vector128.Create(
-                Sigma[offset + 9] * 4, Sigma[offset + 11] * 4,
-                Sigma[offset + 13] * 4, Sigma[offset + 15] * 4);
-        }
-        return indices;
-    }
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -128,15 +93,17 @@ internal unsafe partial struct Blake2sState
                 GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx0, my0);
 
                 // Diagonal step: rotate rows
-                Permute(ref row1, ref row2, ref row3);
+                Blake3State.DiagPermute128(ref row0, ref row2, ref row3);
 
-                var mx1 = Vector128.Create(m[s[8]], m[s[10]], m[s[12]], m[s[14]]);
-                var my1 = Vector128.Create(m[s[9]], m[s[11]], m[s[13]], m[s[15]]);
+                // Rotated by 3: DiagPermute spares row1 the shuffle, which costs row0 a
+                // rotation, so lane i computes diagonal (i + 3) mod 4 and the message follows.
+                var mx1 = Vector128.Create(m[s[14]], m[s[8]], m[s[10]], m[s[12]]);
+                var my1 = Vector128.Create(m[s[15]], m[s[9]], m[s[11]], m[s[13]]);
 
                 GRoundSse2(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 
                 // Un-rotate rows
-                Permute(ref row3, ref row2, ref row1);
+                Blake3State.DiagPermute128(ref row2, ref row0, ref row3);
 
                 s += ScratchSize;
             }
@@ -176,75 +143,23 @@ internal unsafe partial struct Blake2sState
                 var mx0 = Vector128.Create(m[s[0]], m[s[2]], m[s[4]], m[s[6]]);
                 var my0 = Vector128.Create(m[s[1]], m[s[3]], m[s[5]], m[s[7]]);
 
-                GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx0, my0);
+                Blake3State.GRound128(ref row0, ref row1, ref row2, ref row3, mx0, my0);
 
                 // Diagonal step: rotate rows
-                Permute(ref row1, ref row2, ref row3);
+                Blake3State.DiagPermute128(ref row0, ref row2, ref row3);
 
-                var mx1 = Vector128.Create(m[s[8]], m[s[10]], m[s[12]], m[s[14]]);
-                var my1 = Vector128.Create(m[s[9]], m[s[11]], m[s[13]], m[s[15]]);
+                // Rotated by 3: DiagPermute spares row1 the shuffle, which costs row0 a
+                // rotation, so lane i computes diagonal (i + 3) mod 4 and the message follows.
+                var mx1 = Vector128.Create(m[s[14]], m[s[8]], m[s[10]], m[s[12]]);
+                var my1 = Vector128.Create(m[s[15]], m[s[9]], m[s[11]], m[s[13]]);
 
-                GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx1, my1);
+                Blake3State.GRound128(ref row0, ref row1, ref row2, ref row3, mx1, my1);
 
                 // Un-rotate rows
-                Permute(ref row3, ref row2, ref row1);
+                Blake3State.DiagPermute128(ref row2, ref row0, ref row3);
 
                 s += ScratchSize;
             }
-        }
-
-        row0 = Sse2.Xor(Sse2.Xor(row0, row2), orig0);
-        row1 = Sse2.Xor(Sse2.Xor(row1, row3), orig1);
-
-        Sse2.Store(state, row0);
-        Sse2.Store(state + 4, row1);
-    }
-
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void CompressAvx2(byte* mPtr, uint* state, ulong bytesCompressed, bool isFinal)
-    {
-        // Get base references for gather indices (avoids bounds checking in loop)
-        ref Vector128<int> gatherXBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesX);
-        ref Vector128<int> gatherYBase = ref MemoryMarshal.GetArrayDataReference(GatherIndicesY);
-
-        // Initialize rows from vector state
-        var row0 = Sse2.LoadVector128(state);
-        var row1 = Sse2.LoadVector128(state + 4);
-        var row2 = IVLow;
-
-        // row3 = IVHigh with counter/finalization applied
-        var counterVec = Vector128.Create((uint)bytesCompressed, (uint)(bytesCompressed >> 32), 0U, 0U);
-        var row3 = Sse2.Xor(IVHigh, counterVec);
-
-        if (isFinal)
-        {
-            row3 = Sse2.Xor(row3, FinalMask);
-        }
-
-        var orig0 = row0;
-        var orig1 = row1;
-
-        // 10 rounds of mixing
-        for (int gatherIdx = 0; gatherIdx < Rounds * 2; gatherIdx += 2)
-        {
-            // Column step - use AVX2 gather for message words
-            var mx0 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx), 1).AsUInt32();
-            var my0 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherYBase, gatherIdx), 1).AsUInt32();
-
-            GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx0, my0);
-
-            // Diagonal step: rotate rows to align diagonals
-            Permute(ref row1, ref row2, ref row3);
-
-            // Diagonal step - use AVX2 gather for message words
-            var mx1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherXBase, gatherIdx + 1), 1).AsUInt32();
-            var my1 = Avx2.GatherVector128((int*)mPtr, Unsafe.Add(ref gatherYBase, gatherIdx + 1), 1).AsUInt32();
-
-            GRoundSsse3(ref row0, ref row1, ref row2, ref row3, mx1, my1);
-
-            // Un-rotate rows to restore column order
-            Permute(ref row3, ref row2, ref row1);
         }
 
         row0 = Sse2.Xor(Sse2.Xor(row0, row2), orig0);
@@ -270,7 +185,7 @@ internal unsafe partial struct Blake2sState
         Vector128<uint> y)
     {
         // a = a + b + x
-        a = Sse2.Add(a, Sse2.Add(b, x));
+        a = Sse2.Add(Sse2.Add(a, x), b);
         // d = ror(d ^ a, 16) - use SSE2 shift+or (no SSSE3 shuffle)
         var t0 = Sse2.Xor(d, a);
         d = Sse2.Or(Sse2.ShiftRightLogical(t0, 16), Sse2.ShiftLeftLogical(t0, 16));
@@ -280,7 +195,7 @@ internal unsafe partial struct Blake2sState
         var t1 = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftRightLogical(t1, 12), Sse2.ShiftLeftLogical(t1, 20));
         // a = a + b + y
-        a = Sse2.Add(a, Sse2.Add(b, y));
+        a = Sse2.Add(Sse2.Add(a, y), b);
         // d = ror(d ^ a, 8) - use SSE2 shift+or (no SSSE3 shuffle)
         var t2 = Sse2.Xor(d, a);
         d = Sse2.Or(Sse2.ShiftRightLogical(t2, 8), Sse2.ShiftLeftLogical(t2, 24));
@@ -290,55 +205,6 @@ internal unsafe partial struct Blake2sState
         var t3 = Sse2.Xor(b, c);
         b = Sse2.Or(Sse2.ShiftRightLogical(t3, 7), Sse2.ShiftLeftLogical(t3, 25));
     }
-
-    /// <summary>
-    /// Performs one G round on 4 parallel lanes using SSSE3 shuffle for byte-aligned rotations.
-    /// </summary>
-    /// <remarks>
-    /// Uses SSSE3 byte shuffle for 16-bit and 8-bit rotations (faster than shift+or).
-    /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void GRoundSsse3(
-        ref Vector128<uint> a,
-        ref Vector128<uint> b,
-        ref Vector128<uint> c,
-        ref Vector128<uint> d,
-        Vector128<uint> x,
-        Vector128<uint> y)
-    {
-        // a = a + b + x
-        a = Sse2.Add(a, Sse2.Add(b, x));
-        // d = ror(d ^ a, 16) - use shuffle for byte-aligned rotation
-        d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), RotateMask16).AsUInt32();
-        // c = c + d
-        c = Sse2.Add(c, d);
-        // b = ror(b ^ c, 12) - must use shift+or (not byte-aligned)
-        var t1 = Sse2.Xor(b, c);
-        b = Sse2.Or(Sse2.ShiftRightLogical(t1, 12), Sse2.ShiftLeftLogical(t1, 20));
-        // a = a + b + y
-        a = Sse2.Add(a, Sse2.Add(b, y));
-        // d = ror(d ^ a, 8) - use shuffle for byte-aligned rotation
-        d = Ssse3.Shuffle(Sse2.Xor(d, a).AsByte(), RotateMask8).AsUInt32();
-        // c = c + d
-        c = Sse2.Add(c, d);
-        // b = ror(b ^ c, 7) - must use shift+or (not byte-aligned)
-        var t2 = Sse2.Xor(b, c);
-        b = Sse2.Or(Sse2.ShiftRightLogical(t2, 7), Sse2.ShiftLeftLogical(t2, 25));
-    }
-
-    /// <summary>
-    /// Diagonal permutation. Call as <c>Permute(ref row1, ref row2, ref row3)</c> to
-    /// diagonalize and <c>Permute(ref row3, ref row2, ref row1)</c> to un-diagonalize.
-    /// </summary>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void Permute(
-        ref Vector128<uint> a, ref Vector128<uint> b, ref Vector128<uint> c)
-    {
-        a = Sse2.Shuffle(a, 0b00_11_10_01);
-        b = Sse2.Shuffle(b, 0b01_00_11_10);
-        c = Sse2.Shuffle(c, 0b10_01_00_11);
-    }
-#endif
 }
 
 #endif

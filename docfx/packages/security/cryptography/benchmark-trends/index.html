@@ -322,14 +322,14 @@
   // Source of each entry:
   //   Keccak core   KeccakCoreState.cs:147   (Avx512F, Avx2 - dispatch behind the guard)
   //   BLAKE2b       Blake2bState.Avx2.cs:62  (Neon only; Avx2 is detected outside the guard)
-  //   BLAKE2s       Blake2s.Simd.cs:48       (Avx2, Sse2, Neon; Ssse3 is outside the guard)
+  //   BLAKE2s       Blake2s.Simd.cs:54       (Avx2, Neon; Sse2 and Ssse3 are outside the guard)
   //   BLAKE3        no guards - every path ships
   const KECCAK_FAMILIES = /^(SHA3-|SHAKE|cSHAKE|Keccak-|KMAC-|KT\d|TurboSHAKE|ParallelHash)/;
 
   function experimentalVariants(family) {
     if (KECCAK_FAMILIES.test(family)) return ["CryptoHives-AVX2", "CryptoHives-AVX512F"];
     if (family.startsWith("BLAKE2b")) return ["CryptoHives-Neon"];
-    if (family.startsWith("BLAKE2s")) return ["CryptoHives-AVX2", "CryptoHives-Sse2", "CryptoHives-Neon"];
+    if (family.startsWith("BLAKE2s")) return ["CryptoHives-AVX2", "CryptoHives-Neon"];
     return [];
   }
 
