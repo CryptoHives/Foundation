@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -58,13 +59,22 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     /// </summary>
     private const byte DomainFinalNode = 0x06;
 
-    private const int InitialBufferSize = 256;
-
     private readonly int _outputBytes;
     private readonly byte[] _customization;
-    private readonly TurboShake256 _turbo;
-    private byte[] _buffer;
-    private int _bufferLength;
+
+    // Two sponges are needed, not one: _outer accumulates the final node across the whole
+    // message while _inner is reset per chunk, so neither can serve as scratch for the other.
+    private readonly TurboShake256 _inner;
+    private readonly TurboShake256 _outer;
+
+    // S_0 is the prefix of the final node, so it is the one part of the message that must be
+    // kept. Exactly ChunkSize, never grown, and returned once the tree path is committed to.
+    private byte[]? _head;
+    private int _headLength;
+    private int _chunkFill;
+    private long _chunkCount;
+    private bool _treeMode;
+    private bool _squeezeFromOuter;
     private bool _finalized;
     private bool _disposed;
 
@@ -110,10 +120,8 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
         _outputBytes = outputBytes;
         HashSizeValue = outputBytes * 8;
         _customization = customization.ToArray();
-        _turbo = new TurboShake256(simdSupport, ChainingValueSize, DomainSingleNode);
-        // Rent initial buffer from shared pool to reduce allocations under benchmarks
-        _buffer = ArrayPool<byte>.Shared.Rent(InitialBufferSize);
-        _bufferLength = 0;
+        _inner = new TurboShake256(simdSupport, ChainingValueSize, DomainSingleNode);
+        _outer = new TurboShake256(simdSupport, ChainingValueSize, DomainFinalNode);
         Initialize();
     }
 
@@ -202,7 +210,12 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     {
         if (_disposed) throw new ObjectDisposedException(nameof(KT256));
 
-        _bufferLength = 0;
+        _head ??= ArrayPool<byte>.Shared.Rent(ChunkSize);
+        _headLength = 0;
+        _chunkFill = 0;
+        _chunkCount = 0;
+        _treeMode = false;
+        _squeezeFromOuter = false;
         _finalized = false;
     }
 
@@ -228,9 +241,7 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
             throw new InvalidOperationException("Cannot add data after finalization.");
         }
 
-        EnsureBufferCapacity(_bufferLength + source.Length);
-        source.CopyTo(_buffer.AsSpan(_bufferLength));
-        _bufferLength += source.Length;
+        AbsorbCore(source);
     }
 
     /// <inheritdoc/>
@@ -262,123 +273,117 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
             return;
         }
 
-        _turbo.Squeeze(output);
+        (_squeezeFromOuter ? _outer : _inner).Squeeze(output);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void EnsureBufferCapacity(int requiredCapacity)
+    /// <summary>
+    /// Absorbs message bytes, emitting a chaining value every time a chunk completes.
+    /// </summary>
+    /// <remarks>
+    /// Also used at finalization for <c>C || length_encode(|C|)</c>, because those bytes are part
+    /// of S and can themselves carry a short message over the chunk boundary.
+    /// </remarks>
+    private void AbsorbCore(ReadOnlySpan<byte> input)
     {
-        if (_buffer.Length >= requiredCapacity)
+        if (!_treeMode)
         {
-            return;
+            int take = Math.Min(ChunkSize - _headLength, input.Length);
+            input.Slice(0, take).CopyTo(_head!.AsSpan(_headLength));
+            _headLength += take;
+            input = input.Slice(take);
+
+            if (input.IsEmpty)
+            {
+                return;
+            }
+
+            // Bytes remain with S_0 already full, so S cannot be a single node.
+            EnterTreeMode();
         }
 
-        int newSize = _buffer.Length;
-        while (newSize < requiredCapacity)
+        while (!input.IsEmpty)
         {
-            newSize = Math.Max(newSize * 2, requiredCapacity);
-        }
+            int take = Math.Min(ChunkSize - _chunkFill, input.Length);
+            _inner.Absorb(input.Slice(0, take));
+            _chunkFill += take;
+            input = input.Slice(take);
 
-        byte[] newBuffer = ArrayPool<byte>.Shared.Rent(newSize);
-        Array.Copy(_buffer, 0, newBuffer, 0, _bufferLength);
-        // Return old buffer to pool and clear to avoid leaking sensitive data
-        ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
-        _buffer = newBuffer;
+            if (_chunkFill == ChunkSize)
+            {
+                FlushChunk();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Commits to the tree path: absorbs <c>S_0 || 0x03 || 0x00^7</c> into the final-node sponge
+    /// and releases the head buffer, which is dead from here on.
+    /// </summary>
+    private void EnterTreeMode()
+    {
+        Debug.Assert(_headLength == ChunkSize, "the tree path is only reachable once S_0 is full");
+
+        _outer.ResetWithDomainSeparator(DomainFinalNode);
+        _outer.Absorb(_head!.AsSpan(0, ChunkSize));
+
+        Span<byte> interiorMarker = stackalloc byte[8];
+        interiorMarker.Clear();
+        interiorMarker[0] = 0x03;
+        _outer.Absorb(interiorMarker);
+
+        ArrayPool<byte>.Shared.Return(_head!, clearArray: true);
+        _head = null;
+        _headLength = 0;
+
+        _inner.ResetWithDomainSeparator(DomainIntermediateNode);
+        _chunkFill = 0;
+        _treeMode = true;
+    }
+
+    /// <summary>
+    /// Squeezes the chaining value for the chunk currently in <c>_inner</c> straight into the
+    /// final-node sponge, so no chaining value is ever stored.
+    /// </summary>
+    private void FlushChunk()
+    {
+        Span<byte> chainingValue = stackalloc byte[ChainingValueSize];
+        _inner.Squeeze(chainingValue);
+        _outer.Absorb(chainingValue);
+        _chunkCount++;
+
+        _inner.ResetWithDomainSeparator(DomainIntermediateNode);
+        _chunkFill = 0;
     }
 
     private void FinalizeInternal(Span<byte> output)
     {
-        // Build S = M || C || length_encode(|C|)
-        int custLen = _customization.Length;
+        // S = M || C || length_encode(|C|)
         Span<byte> encodedLen = stackalloc byte[9];
-        int encLen = LengthEncode(encodedLen, (ulong)custLen);
+        int encLen = LengthEncode(encodedLen, (ulong)_customization.Length);
+        AbsorbCore(_customization);
+        AbsorbCore(encodedLen.Slice(0, encLen));
 
-        int totalLen = _bufferLength + custLen + encLen;
-        EnsureBufferCapacity(totalLen);
-
-        // Append customization string
-        _customization.AsSpan().CopyTo(_buffer.AsSpan(_bufferLength));
-        _bufferLength += custLen;
-
-        // Append length_encode(|C|)
-        encodedLen.Slice(0, encLen).CopyTo(_buffer.AsSpan(_bufferLength));
-        _bufferLength += encLen;
-
-        ReadOnlySpan<byte> s = _buffer.AsSpan(0, _bufferLength);
-
-        if (_bufferLength <= ChunkSize)
+        if (!_treeMode)
         {
-            // Single-node mode: TurboSHAKE256(S, 0x07, L)
-            ComputeTurboShake256(s, output, DomainSingleNode);
+            _inner.ResetWithDomainSeparator(DomainSingleNode);
+            _inner.Absorb(_head!.AsSpan(0, _headLength));
+            _inner.Squeeze(output);
+            _squeezeFromOuter = false;
+            return;
         }
-        else
+
+        if (_chunkFill > 0)
         {
-            // Tree hashing mode
-            ComputeTreeHash(s, output);
+            FlushChunk();
         }
-    }
 
-    private void ComputeTurboShake256(ReadOnlySpan<byte> input, Span<byte> output, byte domainSeparator)
-    {
-        _turbo.ResetWithDomainSeparator(domainSeparator);
-        _turbo.TransformBlock(input);
-        _turbo.Squeeze(output);
-    }
-
-    private void ComputeTreeHash(ReadOnlySpan<byte> s, Span<byte> output)
-    {
-        // Calculate number of chunks
-        int numChunks = (s.Length + ChunkSize - 1) / ChunkSize;
-
-        // Build FinalNode = S_0 || 0x03 || 0x00^7 || CV_1 || ... || CV_(n-1) || length_encode(n-1) || 0xFF || 0xFF
-        int finalNodeSize = ChunkSize + 8 + (numChunks - 1) * ChainingValueSize + 9 + 2;
-        byte[] finalNode = ArrayPool<byte>.Shared.Rent(finalNodeSize);
-        try
-        {
-            int finalNodeLen = 0;
-
-            // Copy S_0 (first chunk)
-            int firstChunkLen = Math.Min(ChunkSize, s.Length);
-            s.Slice(0, firstChunkLen).CopyTo(finalNode.AsSpan(finalNodeLen));
-            finalNodeLen += firstChunkLen;
-
-            // Append 0x03 || 0x00^7
-            finalNode[finalNodeLen++] = 0x03;
-            for (int i = 0; i < 7; i++)
-            {
-                finalNode[finalNodeLen++] = 0x00;
-            }
-
-            // Compute and append chaining values CV_1 to CV_(n-1)
-            for (int i = 1; i < numChunks; i++)
-            {
-                int chunkStart = i * ChunkSize;
-                int chunkLen = Math.Min(ChunkSize, s.Length - chunkStart);
-                ReadOnlySpan<byte> chunk = s.Slice(chunkStart, chunkLen);
-
-                // CV_i = TurboSHAKE256(S_i, 0x0B, 64)
-                Span<byte> cv = finalNode.AsSpan(finalNodeLen, ChainingValueSize);
-                ComputeTurboShake256(chunk, cv, DomainIntermediateNode);
-                finalNodeLen += ChainingValueSize;
-            }
-
-            // Append length_encode(n-1)
-            Span<byte> encodedNumBlocks = stackalloc byte[9];
-            int encLen = LengthEncode(encodedNumBlocks, (ulong)(numChunks - 1));
-            encodedNumBlocks.Slice(0, encLen).CopyTo(finalNode.AsSpan(finalNodeLen));
-            finalNodeLen += encLen;
-
-            // Append 0xFF || 0xFF
-            finalNode[finalNodeLen++] = 0xFF;
-            finalNode[finalNodeLen++] = 0xFF;
-
-            // Output = TurboSHAKE256(FinalNode, 0x06, L)
-            ComputeTurboShake256(finalNode.AsSpan(0, finalNodeLen), output, DomainFinalNode);
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(finalNode, clearArray: true);
-        }
+        Span<byte> trailer = stackalloc byte[11];
+        int trailerLen = LengthEncode(trailer, (ulong)_chunkCount);
+        trailer[trailerLen++] = 0xFF;
+        trailer[trailerLen++] = 0xFF;
+        _outer.Absorb(trailer.Slice(0, trailerLen));
+        _outer.Squeeze(output);
+        _squeezeFromOuter = true;
     }
 
     /// <summary>
@@ -418,13 +423,14 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     {
         if (disposing)
         {
-            _turbo.Dispose();
+            _inner.Dispose();
+            _outer.Dispose();
 
-            if (_buffer != null)
+            if (_head != null)
             {
                 // Clear and return to pool to avoid leaking sensitive data
-                ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
-                _buffer = null!;
+                ArrayPool<byte>.Shared.Return(_head, clearArray: true);
+                _head = null;
             }
 
             _disposed = true;

@@ -26,13 +26,13 @@ using System.Text;
 public static class ParallelHash
 {
     /// <summary>
-    /// Default block size in bytes (4 MiB).
+    /// Default block size in bytes (1 MiB).
     /// </summary>
     public const int DefaultBlockSizeBytes = 0x100_000;
 
-    private const int ChainingValue128Bytes = 32;
-    private const int ChainingValue256Bytes = 64;
-    private static readonly byte[] ParallelHashFunctionName = Encoding.ASCII.GetBytes("ParallelHash");
+    internal const int ChainingValue128Bytes = 32;
+    internal const int ChainingValue256Bytes = 64;
+    internal static readonly byte[] ParallelHashFunctionName = Encoding.ASCII.GetBytes("ParallelHash");
 
     /// <summary>
     /// Computes a hash using ParallelHash128.
@@ -184,7 +184,7 @@ public static class ParallelHash
         }
     }
 
-    private static void AbsorbEncodedLeft(IExtendableOutput xof, long value, Span<byte> encodeBuffer)
+    internal static void AbsorbEncodedLeft(IExtendableOutput xof, long value, Span<byte> encodeBuffer)
     {
         if (!CShake128.TryLeftEncode(encodeBuffer, value, out int written))
         {
@@ -194,7 +194,7 @@ public static class ParallelHash
         xof.Absorb(encodeBuffer[..written]);
     }
 
-    private static void AbsorbEncodedRight(IExtendableOutput xof, long value, Span<byte> encodeBuffer)
+    internal static void AbsorbEncodedRight(IExtendableOutput xof, long value, Span<byte> encodeBuffer)
     {
         if (!CShake128.TryRightEncode(encodeBuffer, value, out int written))
         {
