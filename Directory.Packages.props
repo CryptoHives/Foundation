@@ -26,16 +26,16 @@
     published package.
   -->
   <ItemGroup Label="Tests">
-    <PackageVersion Include="AsyncKeyedLock" Version="8.0.2" />
+    <PackageVersion Include="AsyncKeyedLock" Version="8.1.2" />
     <PackageVersion Include="AsyncUtilities" Version="1.1.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="Blake3" Version="3.0.2" />
-    <PackageVersion Include="Blake3.Managed" Version="1.7.4" />
+    <PackageVersion Include="Blake3.Managed" Version="1.8.0" />
     <PackageVersion Include="Blake3.Native" Version="3.0.2" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="Dao.IndividualLock" Version="3.1.1" />
-    <PackageVersion Include="DotNext.Threading" Version="6.7.1" />
+    <PackageVersion Include="DotNext.Threading" Version="6.8.0" />
     <PackageVersion Include="HashifyNET" Version="7.1.1" />
     <PackageVersion Include="IndexRange" Version="1.1.1" />
     <PackageVersion Include="KeyedSemaphores" Version="6.1.0" />
@@ -66,7 +66,7 @@
   -->
   <ItemGroup Label="Nuget">
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.401" />
-    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.91" />
+    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
   <!-- Activate with /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>  -->
   <PropertyGroup Condition="'$(UsePackedNuGetPackages)' == 'true' AND '$(Configuration)' == 'Debug'">
