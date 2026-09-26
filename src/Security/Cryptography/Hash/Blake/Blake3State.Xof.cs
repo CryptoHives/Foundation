@@ -106,10 +106,10 @@ internal unsafe partial struct Blake3State
         {
             // Multi-chunk case - finalize current chunk and push onto stack
 #if NET8_0_OR_GREATER
-            // A bulk SIMD path (AVX2 batching) may have already computed the
-            // pending chunk's CV without being able to commit it to the tree
-            // yet (see Append) — use it directly instead of re-deriving it
-            // from _chunkBuffer/_cv, which wouldn't hold this chunk's data.
+            // A bulk SIMD path may have held back the CV of the last chunk, or of
+            // the right half of the last aligned subtree, without being able to
+            // commit it to the tree yet (see Append) — use it directly instead of
+            // re-deriving it from _chunkBuffer/_cv, which wouldn't hold that data.
             if (_hasPendingCv)
             {
                 Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * KeySizeWords, core->_pendingCv, KeySizeBytes);

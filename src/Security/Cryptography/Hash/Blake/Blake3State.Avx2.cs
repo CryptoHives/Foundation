@@ -431,6 +431,7 @@ internal unsafe partial struct Blake3State
     /// The caller's guard tests both 64-chunk counter alignment and remaining length, but
     /// only length can change while looping: adding <see cref="ChunksPerSubtreeGroup"/> to
     /// an already-aligned counter leaves it aligned, so the loop re-tests length alone.
+    /// A group that ends the input is committed through <see cref="DeferRightHalf"/>.
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
@@ -455,11 +456,18 @@ internal unsafe partial struct Blake3State
                 offset += Avx2BatchSizeBytes;
             }
 
+            if (offset == length)
+            {
+                ReduceChunkCvsToHalvesAvx2(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+                DeferRightHalf(core, batchCvs, SubtreeGroupLevel - 1);
+                break;
+            }
+
             ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
             PushSubtreeCv(core, batchCvs, SubtreeGroupLevel);
             _chunkCounter += ChunksPerSubtreeGroup;
         }
-        while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
+        while (length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes);
 
         return offset;
     }
@@ -534,6 +542,17 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ReduceChunkCvsToSubtreeCvAvx2(Blake3State* core, uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
+        ReduceChunkCvsToHalvesAvx2(cvs, key, chunkCount, baseFlags);
+        core->ComputeParentCv(cvs, key, cvs);                  // 2 -> 1
+    }
+
+    /// <summary>
+    /// <see cref="ReduceChunkCvsToSubtreeCvAvx2"/> without the final merge: leaves the CVs of
+    /// the subtree's two halves at <paramref name="cvs"/>[0..16).
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void ReduceChunkCvsToHalvesAvx2(uint* cvs, uint* key, int chunkCount, uint baseFlags)
+    {
         // Full-width levels: every 8-parent group is fully populated.
         while (chunkCount >= 16)
         {
@@ -548,7 +567,6 @@ internal unsafe partial struct Blake3State
 
         CompressParents8Avx2(cvs, key, cvs, baseFlags);        // 8 -> 4 (upper 4 lanes ignored)
         CompressParents8Avx2(cvs, key, cvs, baseFlags);        // 4 -> 2 (upper 6 lanes ignored)
-        core->ComputeParentCv(cvs, key, cvs);                  // 2 -> 1
     }
 
     // Mirrors Blake3State.Compress(uint*, uint*) exactly (same message schedule,
@@ -723,10 +741,26 @@ internal unsafe partial struct Blake3State
         b = RotateRight7(Avx2.Xor(b, c));
     }
 
+    // vpshufb is lane-local, so each 128-bit half repeats the SSSE3 rotate pattern.
+    private static Vector256<byte> RotateMask16x2
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector256.Create(
+            (byte)2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13,
+            2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
+    }
+
+    private static Vector256<byte> RotateMask8x2
+    {
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
+        get => Vector256.Create(
+            (byte)1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12,
+            1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
+    }
+
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector256<uint> RotateRight16(Vector256<uint> value) => Avx512F.VL.IsSupported
-       ? Avx512F.VL.RotateRight(value, 16)
-       : Avx2.Or(Avx2.ShiftRightLogical(value, 16), Avx2.ShiftLeftLogical(value, 16));
+    private static Vector256<uint> RotateRight16(Vector256<uint> value) =>
+        Avx2.Shuffle(value.AsByte(), RotateMask16x2).AsUInt32();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<uint> RotateRight12(Vector256<uint> value) => Avx512F.VL.IsSupported
@@ -734,9 +768,8 @@ internal unsafe partial struct Blake3State
         : Avx2.Or(Avx2.ShiftRightLogical(value, 12), Avx2.ShiftLeftLogical(value, 20));
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector256<uint> RotateRight8(Vector256<uint> value) => Avx512F.VL.IsSupported
-        ? Avx512F.VL.RotateRight(value, 8)
-        : Avx2.Or(Avx2.ShiftRightLogical(value, 8), Avx2.ShiftLeftLogical(value, 24));
+    private static Vector256<uint> RotateRight8(Vector256<uint> value) =>
+        Avx2.Shuffle(value.AsByte(), RotateMask8x2).AsUInt32();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<uint> RotateRight7(Vector256<uint> value) => Avx512F.VL.IsSupported

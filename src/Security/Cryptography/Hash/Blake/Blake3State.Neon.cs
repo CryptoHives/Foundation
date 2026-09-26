@@ -341,11 +341,18 @@ internal unsafe partial struct Blake3State
                 offset += NeonBatchSizeBytes;
             }
 
+            if (offset == length)
+            {
+                ReduceChunkCvsToHalvesNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+                DeferRightHalf(core, batchCvs, SubtreeGroupLevel - 1);
+                break;
+            }
+
             ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
             PushSubtreeCv(core, batchCvs, SubtreeGroupLevel);
             _chunkCounter += ChunksPerSubtreeGroup;
         }
-        while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
+        while (length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes);
 
         return offset;
     }
@@ -396,6 +403,17 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ReduceChunkCvsToSubtreeCvNeon(Blake3State* core, uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
+        ReduceChunkCvsToHalvesNeon(cvs, key, chunkCount, baseFlags);
+        core->ComputeParentCv(cvs, key, cvs);             // 2 -> 1
+    }
+
+    /// <summary>
+    /// <see cref="ReduceChunkCvsToSubtreeCvNeon"/> without the final merge: leaves the CVs of
+    /// the subtree's two halves at <paramref name="cvs"/>[0..16).
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void ReduceChunkCvsToHalvesNeon(uint* cvs, uint* key, int chunkCount, uint baseFlags)
+    {
         // Full-width levels: every 4-parent group is fully populated.
         while (chunkCount >= 8)
         {
@@ -409,7 +427,6 @@ internal unsafe partial struct Blake3State
         }
 
         CompressParents4Neon(cvs, key, cvs, baseFlags);   // 4 -> 2 (upper 2 lanes ignored)
-        core->ComputeParentCv(cvs, key, cvs);             // 2 -> 1
     }
 
     // Mirrors Blake3State.Compress(uint*, uint*) exactly (same message schedule,
