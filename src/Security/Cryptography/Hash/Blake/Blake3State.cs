@@ -344,6 +344,23 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
         bytesWritten = _outputBytes;
 
+        // The first 32 output bytes are v[i] ^ v[i+8] of root block 0 - the same fold a
+        // chaining value gets - so the root compresses straight into a CV-sized buffer. The
+        // buffer's words are copied out as bytes, which is only the output on little-endian.
+        if (!_squeezed && _outputBytes <= DefaultHashSizeBytes && BitConverter.IsLittleEndian)
+        {
+            fixed (Blake3State* core = &this)
+            {
+                FinalizeRoot(core);
+                _squeezed = true;
+                uint* cv = stackalloc uint[KeySizeWords];
+                Unsafe.CopyBlock(cv, core->_rootCv, KeySizeBytes);
+                CompressBlock(cv, (byte*)core->_rootBlock, _rootBlockLen, 0, _rootFlags);
+                Unsafe.CopyBlockUnaligned(ref destination[0], ref *(byte*)cv, (uint)_outputBytes);
+                return true;
+            }
+        }
+
         if (!_squeezed && _outputBytes <= BlockSizeBytes)
         {
             fixed (Blake3State* core = &this)
@@ -795,8 +812,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // single chunk processing
             while (offset < length)
             {
-                // If chunk buffer is full, finalize the chunk
-                if (_chunkBufferLength == ChunkSizeBytes)
+                int chunkBytesAbsorbed = (_blocksCompressed * BlockSizeBytes) + _chunkBufferLength;
+
+                // If chunk is complete, finalize it
+                if (chunkBytesAbsorbed == ChunkSizeBytes)
                 {
                     FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * KeySizeWords);
 
@@ -813,9 +832,26 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         goto RestartBatching;
                     }
 #endif
+                    chunkBytesAbsorbed = 0;
                 }
 
-                int toCopy = Math.Min(ChunkSizeBytes - _chunkBufferLength, length - offset);
+                // Whole blocks go straight from the input into the running CV, bypassing the
+                // buffer, as long as at least one byte of this chunk stays behind: the block
+                // holding the chunk's last byte is compressed at finalization, with ChunkEnd.
+                if (_chunkBufferLength == 0)
+                {
+                    int blocks = (Math.Min(length - offset, ChunkSizeBytes - chunkBytesAbsorbed) - 1) / BlockSizeBytes;
+                    if (blocks > 0)
+                    {
+                        uint flags = _blocksCompressed == 0 ? _baseFlags | FlagChunkStart : _baseFlags;
+                        CompressBlocks(core->_cv, srcPtr + offset, blocks, BlockSizeBytes, _chunkCounter, flags);
+                        _blocksCompressed += blocks;
+                        chunkBytesAbsorbed += blocks * BlockSizeBytes;
+                        offset += blocks * BlockSizeBytes;
+                    }
+                }
+
+                int toCopy = Math.Min(ChunkSizeBytes - chunkBytesAbsorbed, length - offset);
                 Unsafe.CopyBlockUnaligned(
                     ref core->_chunkBuffer[_chunkBufferLength],
                     ref srcPtr[offset],

@@ -642,8 +642,9 @@ internal unsafe partial struct Blake3State
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector128<uint> RotateRight16(Vector128<uint> value) =>
-        Ssse3.Shuffle(value.AsByte(), RotateMask16).AsUInt32();
+    private static Vector128<uint> RotateRight16(Vector128<uint> value) => Avx512F.VL.IsSupported
+        ? Avx512F.VL.RotateRight(value, 16)
+        : Ssse3.Shuffle(value.AsByte(), RotateMask16).AsUInt32();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> RotateRight12(Vector128<uint> value) => Avx512F.VL.IsSupported
@@ -651,8 +652,9 @@ internal unsafe partial struct Blake3State
         : Sse2.Or(Sse2.ShiftRightLogical(value, 12), Sse2.ShiftLeftLogical(value, 20));
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector128<uint> RotateRight8(Vector128<uint> value) =>
-        Ssse3.Shuffle(value.AsByte(), RotateMask8).AsUInt32();
+    private static Vector128<uint> RotateRight8(Vector128<uint> value) => Avx512F.VL.IsSupported
+        ? Avx512F.VL.RotateRight(value, 8)
+        : Ssse3.Shuffle(value.AsByte(), RotateMask8).AsUInt32();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> RotateRight7(Vector128<uint> value) => Avx512F.VL.IsSupported

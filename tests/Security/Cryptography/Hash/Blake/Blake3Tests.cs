@@ -1304,6 +1304,63 @@ public class Blake3Tests
     }
 
     /// <summary>
+    /// <c>Absorb</c> compresses whole blocks of a chunk straight from its input and buffers only
+    /// the rest. Checks every tier, scalar included, against BouncyCastle, with write sizes that
+    /// start and end mid-block, on block boundaries and exactly on the chunk's last byte.
+    /// </summary>
+    /// <param name="inputLength">The total input length.</param>
+    /// <param name="writeSize">The size of each absorb.</param>
+    [TestCase(64, 64)]
+    [TestCase(65, 64)]
+    [TestCase(1024, 1024)]
+    [TestCase(1024, 960)]
+    [TestCase(1025, 1)]
+    [TestCase(1100, 1023)]
+    [TestCase(2048, 1088)]
+    [TestCase(2048, 97)]
+    [TestCase(3000, 1500)]
+    [TestCase(5000, 1024)]
+    [TestCase(5000, 2049)]
+    [TestCase(10000, 4097)]
+    [TestCase(40000, 777)]
+    public void StreamingMatchesBouncyCastle(int inputLength, int writeSize)
+    {
+        byte[] input = GenerateTestInput(inputLength);
+
+        var reference = new Org.BouncyCastle.Crypto.Digests.Blake3Digest(256);
+        reference.BlockUpdate(input, 0, input.Length);
+        byte[] expected = new byte[100];
+        reference.OutputFinal(expected, 0, expected.Length);
+
+        foreach (CH.SimdSupport tier in new[]
+        {
+            CH.SimdSupport.None,
+            CH.SimdSupport.Ssse3,
+            CH.SimdSupport.Avx2,
+            CH.SimdSupport.Avx512F | CH.SimdSupport.Avx2,
+            CH.SimdSupport.Neon,
+        })
+        {
+            if ((Blake3.SimdSupport & tier) != tier)
+            {
+                continue;
+            }
+
+            using var blake3 = Blake3.Create(tier, expected.Length);
+            for (int offset = 0; offset < inputLength; offset += writeSize)
+            {
+                blake3.Absorb(input.AsSpan(offset, Math.Min(writeSize, inputLength - offset)));
+            }
+
+            byte[] actual = new byte[expected.Length];
+            blake3.Squeeze(actual);
+
+            Assert.That(actual, Is.EqualTo(expected),
+                $"{tier} mismatch at {inputLength} bytes, writes of {writeSize}");
+        }
+    }
+
+    /// <summary>
     /// Generates test input using the official BLAKE3 pattern (index mod 251).
     /// </summary>
     private static byte[] GenerateTestInput(int length)

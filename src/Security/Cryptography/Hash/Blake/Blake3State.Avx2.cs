@@ -216,7 +216,7 @@ internal unsafe partial struct Blake3State
             var v14 = blockLenVec;
             var v15 = Vector256.Create(flags);
 
-            CompressVector256(
+            CompressVector256Stepped(
                 ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
                 ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
                 m);
@@ -664,6 +664,132 @@ internal unsafe partial struct Blake3State
         GVec(ref v3, ref v4, ref v9, ref v14, m7, m13);
     }
 
+    // CompressVector256 with each half-round's four G's advanced one step at a time. The JIT
+    // emits statements in source order, so this is what interleaves the four chains. Used only
+    // for full 8-chunk batches; the shared kernel keeps one G after another.
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void CompressVector256Stepped(
+        ref Vector256<uint> v0, ref Vector256<uint> v1, ref Vector256<uint> v2, ref Vector256<uint> v3,
+        ref Vector256<uint> v4, ref Vector256<uint> v5, ref Vector256<uint> v6, ref Vector256<uint> v7,
+        ref Vector256<uint> v8, ref Vector256<uint> v9, ref Vector256<uint> v10, ref Vector256<uint> v11,
+        ref Vector256<uint> v12, ref Vector256<uint> v13, ref Vector256<uint> v14, ref Vector256<uint> v15,
+        Vector256<uint>* m)
+    {
+        var m0 = m[0]; var m1 = m[1]; var m2 = m[2]; var m3 = m[3];
+        var m4 = m[4]; var m5 = m[5]; var m6 = m[6]; var m7 = m[7];
+        var m8 = m[8]; var m9 = m[9]; var m10 = m[10]; var m11 = m[11];
+        var m12 = m[12]; var m13 = m[13]; var m14 = m[14]; var m15 = m[15];
+
+        // Round 1
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m0, m2, m4, m6, m1, m3, m5, m7);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m8, m10, m12, m14, m9, m11, m13, m15);
+
+        // Round 2
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m2, m3, m7, m4, m6, m10, m0, m13);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m1, m12, m9, m15, m11, m5, m14, m8);
+
+        // Round 3
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m3, m10, m13, m7, m4, m12, m2, m14);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m6, m9, m11, m8, m5, m0, m15, m1);
+
+        // Round 4
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m10, m12, m14, m13, m7, m9, m3, m15);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m4, m11, m5, m1, m0, m2, m8, m6);
+
+        // Round 5
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m12, m9, m15, m14, m13, m11, m10, m8);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m7, m5, m0, m6, m2, m3, m1, m4);
+
+        // Round 6
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m9, m11, m8, m15, m14, m5, m12, m1);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m13, m0, m2, m4, m3, m10, m6, m7);
+
+        // Round 7
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m11, m5, m1, m8, m15, m0, m9, m6);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m14, m2, m3, m7, m10, m12, m4, m13);
+    }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void GVec4(
+        ref Vector256<uint> a0, ref Vector256<uint> a1, ref Vector256<uint> a2, ref Vector256<uint> a3,
+        ref Vector256<uint> b0, ref Vector256<uint> b1, ref Vector256<uint> b2, ref Vector256<uint> b3,
+        ref Vector256<uint> c0, ref Vector256<uint> c1, ref Vector256<uint> c2, ref Vector256<uint> c3,
+        ref Vector256<uint> d0, ref Vector256<uint> d1, ref Vector256<uint> d2, ref Vector256<uint> d3,
+        Vector256<uint> x0, Vector256<uint> x1, Vector256<uint> x2, Vector256<uint> x3,
+        Vector256<uint> y0, Vector256<uint> y1, Vector256<uint> y2, Vector256<uint> y3)
+    {
+        a0 = Avx2.Add(Avx2.Add(a0, x0), b0); a1 = Avx2.Add(Avx2.Add(a1, x1), b1);
+        a2 = Avx2.Add(Avx2.Add(a2, x2), b2); a3 = Avx2.Add(Avx2.Add(a3, x3), b3);
+        d0 = RotateRight16(Avx2.Xor(d0, a0)); d1 = RotateRight16(Avx2.Xor(d1, a1));
+        d2 = RotateRight16(Avx2.Xor(d2, a2)); d3 = RotateRight16(Avx2.Xor(d3, a3));
+        c0 = Avx2.Add(c0, d0); c1 = Avx2.Add(c1, d1); c2 = Avx2.Add(c2, d2); c3 = Avx2.Add(c3, d3);
+        b0 = RotateRight12(Avx2.Xor(b0, c0)); b1 = RotateRight12(Avx2.Xor(b1, c1));
+        b2 = RotateRight12(Avx2.Xor(b2, c2)); b3 = RotateRight12(Avx2.Xor(b3, c3));
+        a0 = Avx2.Add(Avx2.Add(a0, y0), b0); a1 = Avx2.Add(Avx2.Add(a1, y1), b1);
+        a2 = Avx2.Add(Avx2.Add(a2, y2), b2); a3 = Avx2.Add(Avx2.Add(a3, y3), b3);
+        d0 = RotateRight8(Avx2.Xor(d0, a0)); d1 = RotateRight8(Avx2.Xor(d1, a1));
+        d2 = RotateRight8(Avx2.Xor(d2, a2)); d3 = RotateRight8(Avx2.Xor(d3, a3));
+        c0 = Avx2.Add(c0, d0); c1 = Avx2.Add(c1, d1); c2 = Avx2.Add(c2, d2); c3 = Avx2.Add(c3, d3);
+        b0 = RotateRight7(Avx2.Xor(b0, c0)); b1 = RotateRight7(Avx2.Xor(b1, c1));
+        b2 = RotateRight7(Avx2.Xor(b2, c2)); b3 = RotateRight7(Avx2.Xor(b3, c3));
+    }
+
     /// <summary>
     /// In-place 8×8 transpose of 32-bit words: on input <c>vecs[j]</c> holds
     /// 8 consecutive words of chunk <c>j</c>; on output <c>vecs[w]</c> holds
@@ -759,8 +885,9 @@ internal unsafe partial struct Blake3State
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector256<uint> RotateRight16(Vector256<uint> value) =>
-        Avx2.Shuffle(value.AsByte(), RotateMask16x2).AsUInt32();
+    private static Vector256<uint> RotateRight16(Vector256<uint> value) => Avx512F.VL.IsSupported
+        ? Avx512F.VL.RotateRight(value, 16)
+        : Avx2.Shuffle(value.AsByte(), RotateMask16x2).AsUInt32();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<uint> RotateRight12(Vector256<uint> value) => Avx512F.VL.IsSupported
@@ -768,8 +895,9 @@ internal unsafe partial struct Blake3State
         : Avx2.Or(Avx2.ShiftRightLogical(value, 12), Avx2.ShiftLeftLogical(value, 20));
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static Vector256<uint> RotateRight8(Vector256<uint> value) =>
-        Avx2.Shuffle(value.AsByte(), RotateMask8x2).AsUInt32();
+    private static Vector256<uint> RotateRight8(Vector256<uint> value) => Avx512F.VL.IsSupported
+        ? Avx512F.VL.RotateRight(value, 8)
+        : Avx2.Shuffle(value.AsByte(), RotateMask8x2).AsUInt32();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<uint> RotateRight7(Vector256<uint> value) => Avx512F.VL.IsSupported

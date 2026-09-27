@@ -18,36 +18,54 @@ using System.Runtime.Intrinsics.Arm;
 internal unsafe partial struct Blake3State
 {
     /// <summary>
-    /// Performs one G round on 4 parallel lanes using ARM NEON intrinsics.
+    /// Four independent G's on 4 parallel lanes, advanced one step at a time.
     /// </summary>
+    /// <remarks>
+    /// The JIT emits statements in source order, so stepping the four G's together is what puts
+    /// independent work side by side; one G after another leaves each short chain exposed. The
+    /// message word is added before b, the value produced last. The rotate by 16 is a halfword
+    /// swap within each word (REV32), which needs no table register, unlike the TBL for 8.
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void GRoundNeon(
-        ref Vector128<uint> a,
-        ref Vector128<uint> b,
-        ref Vector128<uint> c,
-        ref Vector128<uint> d,
-        Vector128<uint> x,
-        Vector128<uint> y)
+    private static void GRound4Neon(
+        ref Vector128<uint> a0, ref Vector128<uint> a1, ref Vector128<uint> a2, ref Vector128<uint> a3,
+        ref Vector128<uint> b0, ref Vector128<uint> b1, ref Vector128<uint> b2, ref Vector128<uint> b3,
+        ref Vector128<uint> c0, ref Vector128<uint> c1, ref Vector128<uint> c2, ref Vector128<uint> c3,
+        ref Vector128<uint> d0, ref Vector128<uint> d1, ref Vector128<uint> d2, ref Vector128<uint> d3,
+        Vector128<uint> x0, Vector128<uint> x1, Vector128<uint> x2, Vector128<uint> x3,
+        Vector128<uint> y0, Vector128<uint> y1, Vector128<uint> y2, Vector128<uint> y3)
     {
-        // a = a + b + x
-        a = AdvSimd.Add(AdvSimd.Add(a, x), b);
-        // d = ror(d ^ a, 16) — TBL byte shuffle
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask16).AsUInt32();
-        // c = c + d
-        c = AdvSimd.Add(c, d);
-        // b = ror(b ^ c, 12) — shift+or (not byte-aligned)
-        var t1 = b ^ c;
-        b = AdvSimd.Or(AdvSimd.ShiftRightLogical(t1, 12), AdvSimd.ShiftLeftLogical(t1, 20));
-        // a = a + b + y
-        a = AdvSimd.Add(AdvSimd.Add(a, y), b);
-        // d = ror(d ^ a, 8) — TBL byte shuffle
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask8).AsUInt32();
-        // c = c + d
-        c = AdvSimd.Add(c, d);
-        // b = ror(b ^ c, 7) — shift+or (not byte-aligned)
-        var t2 = b ^ c;
-        b = AdvSimd.Or(AdvSimd.ShiftRightLogical(t2, 7), AdvSimd.ShiftLeftLogical(t2, 25));
+        a0 = AdvSimd.Add(AdvSimd.Add(a0, x0), b0); a1 = AdvSimd.Add(AdvSimd.Add(a1, x1), b1);
+        a2 = AdvSimd.Add(AdvSimd.Add(a2, x2), b2); a3 = AdvSimd.Add(AdvSimd.Add(a3, x3), b3);
+        d0 = RotateRight16Neon(d0 ^ a0); d1 = RotateRight16Neon(d1 ^ a1);
+        d2 = RotateRight16Neon(d2 ^ a2); d3 = RotateRight16Neon(d3 ^ a3);
+        c0 = AdvSimd.Add(c0, d0); c1 = AdvSimd.Add(c1, d1); c2 = AdvSimd.Add(c2, d2); c3 = AdvSimd.Add(c3, d3);
+        b0 = RotateRight12Neon(b0 ^ c0); b1 = RotateRight12Neon(b1 ^ c1);
+        b2 = RotateRight12Neon(b2 ^ c2); b3 = RotateRight12Neon(b3 ^ c3);
+        a0 = AdvSimd.Add(AdvSimd.Add(a0, y0), b0); a1 = AdvSimd.Add(AdvSimd.Add(a1, y1), b1);
+        a2 = AdvSimd.Add(AdvSimd.Add(a2, y2), b2); a3 = AdvSimd.Add(AdvSimd.Add(a3, y3), b3);
+        d0 = RotateRight8Neon(d0 ^ a0); d1 = RotateRight8Neon(d1 ^ a1);
+        d2 = RotateRight8Neon(d2 ^ a2); d3 = RotateRight8Neon(d3 ^ a3);
+        c0 = AdvSimd.Add(c0, d0); c1 = AdvSimd.Add(c1, d1); c2 = AdvSimd.Add(c2, d2); c3 = AdvSimd.Add(c3, d3);
+        b0 = RotateRight7Neon(b0 ^ c0); b1 = RotateRight7Neon(b1 ^ c1);
+        b2 = RotateRight7Neon(b2 ^ c2); b3 = RotateRight7Neon(b3 ^ c3);
     }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> RotateRight16Neon(Vector128<uint> value) =>
+        AdvSimd.ReverseElement16(value.AsInt32()).AsUInt32();
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> RotateRight8Neon(Vector128<uint> value) =>
+        AdvSimd.Arm64.VectorTableLookup(value.AsByte(), RotateMask8).AsUInt32();
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> RotateRight12Neon(Vector128<uint> value) =>
+        AdvSimd.Or(AdvSimd.ShiftRightLogical(value, 12), AdvSimd.ShiftLeftLogical(value, 20));
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> RotateRight7Neon(Vector128<uint> value) =>
+        AdvSimd.Or(AdvSimd.ShiftRightLogical(value, 7), AdvSimd.ShiftLeftLogical(value, 25));
 
     // ------------------------------------------------------------------
     // Chunk-parallel (4-wide) NEON compression.
@@ -446,74 +464,88 @@ internal unsafe partial struct Blake3State
         var m12 = m[12]; var m13 = m[13]; var m14 = m[14]; var m15 = m[15];
 
         // Round 1
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m0, m1);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m2, m3);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m4, m5);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m6, m7);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m8, m9);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m10, m11);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m12, m13);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m14, m15);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m0, m2, m4, m6, m1, m3, m5, m7);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m8, m10, m12, m14, m9, m11, m13, m15);
 
         // Round 2
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m2, m6);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m3, m10);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m7, m0);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m4, m13);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m1, m11);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m12, m5);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m9, m14);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m15, m8);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m2, m3, m7, m4, m6, m10, m0, m13);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m1, m12, m9, m15, m11, m5, m14, m8);
 
         // Round 3
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m3, m4);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m10, m12);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m13, m2);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m7, m14);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m6, m5);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m9, m0);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m11, m15);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m8, m1);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m3, m10, m13, m7, m4, m12, m2, m14);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m6, m9, m11, m8, m5, m0, m15, m1);
 
         // Round 4
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m10, m7);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m12, m9);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m14, m3);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m13, m15);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m4, m0);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m11, m2);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m5, m8);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m1, m6);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m10, m12, m14, m13, m7, m9, m3, m15);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m4, m11, m5, m1, m0, m2, m8, m6);
 
         // Round 5
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m12, m13);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m9, m11);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m15, m10);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m14, m8);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m7, m2);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m5, m3);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m0, m1);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m6, m4);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m12, m9, m15, m14, m13, m11, m10, m8);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m7, m5, m0, m6, m2, m3, m1, m4);
 
         // Round 6
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m9, m14);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m11, m5);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m8, m12);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m15, m1);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m13, m3);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m0, m10);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m2, m6);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m4, m7);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m9, m11, m8, m15, m14, m5, m12, m1);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m13, m0, m2, m4, m3, m10, m6, m7);
 
         // Round 7
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m11, m15);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m5, m0);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m1, m9);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m8, m6);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m14, m10);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m2, m12);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m3, m4);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m7, m13);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m11, m5, m1, m8, m15, m0, m9, m6);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m14, m2, m3, m7, m10, m12, m4, m13);
     }
 
     /// <summary>
