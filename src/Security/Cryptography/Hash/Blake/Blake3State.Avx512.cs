@@ -205,74 +205,88 @@ internal unsafe partial struct Blake3State
         var v15 = Vector512.Create(flags);
 
         // Round 1
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 0, 1);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 2, 3);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 4, 5);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 6, 7);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 8, 9);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 10, 11);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 12, 13);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 14, 15);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 0, 2, 4, 6, 1, 3, 5, 7);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 8, 10, 12, 14, 9, 11, 13, 15);
 
         // Round 2
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 2, 6);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 3, 10);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 7, 0);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 4, 13);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 1, 11);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 12, 5);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 9, 14);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 15, 8);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 2, 3, 7, 4, 6, 10, 0, 13);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 1, 12, 9, 15, 11, 5, 14, 8);
 
         // Round 3
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 3, 4);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 10, 12);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 13, 2);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 7, 14);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 6, 5);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 9, 0);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 11, 15);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 8, 1);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 3, 10, 13, 7, 4, 12, 2, 14);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 6, 9, 11, 8, 5, 0, 15, 1);
 
         // Round 4
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 10, 7);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 12, 9);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 14, 3);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 13, 15);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 4, 0);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 11, 2);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 5, 8);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 1, 6);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 10, 12, 14, 13, 7, 9, 3, 15);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 4, 11, 5, 1, 0, 2, 8, 6);
 
         // Round 5
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 12, 13);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 9, 11);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 15, 10);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 14, 8);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 7, 2);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 5, 3);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 0, 1);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 6, 4);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 12, 9, 15, 14, 13, 11, 10, 8);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 7, 5, 0, 6, 2, 3, 1, 4);
 
         // Round 6
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 9, 14);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 11, 5);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 8, 12);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 15, 1);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 13, 3);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 0, 10);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 2, 6);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 4, 7);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 9, 11, 8, 15, 14, 5, 12, 1);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 13, 0, 2, 4, 3, 10, 6, 7);
 
         // Round 7
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 11, 15);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 5, 0);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 1, 9);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 8, 6);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 14, 10);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 2, 12);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 3, 4);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 7, 13);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 11, 5, 1, 8, 15, 0, 9, 6);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 14, 2, 3, 7, 10, 12, 4, 13);
 
         cv[0] = Avx512F.Xor(v0, v8);
         cv[1] = Avx512F.Xor(v1, v9);
@@ -312,74 +326,88 @@ internal unsafe partial struct Blake3State
         var v15 = Vector512.Create(flags);
 
         // Round 1
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 0, 1);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 2, 3);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 4, 5);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 6, 7);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 8, 9);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 10, 11);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 12, 13);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 14, 15);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 0, 2, 4, 6, 1, 3, 5, 7);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 8, 10, 12, 14, 9, 11, 13, 15);
 
         // Round 2
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 2, 6);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 3, 10);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 7, 0);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 4, 13);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 1, 11);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 12, 5);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 9, 14);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 15, 8);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 2, 3, 7, 4, 6, 10, 0, 13);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 1, 12, 9, 15, 11, 5, 14, 8);
 
         // Round 3
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 3, 4);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 10, 12);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 13, 2);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 7, 14);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 6, 5);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 9, 0);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 11, 15);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 8, 1);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 3, 10, 13, 7, 4, 12, 2, 14);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 6, 9, 11, 8, 5, 0, 15, 1);
 
         // Round 4
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 10, 7);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 12, 9);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 14, 3);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 13, 15);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 4, 0);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 11, 2);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 5, 8);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 1, 6);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 10, 12, 14, 13, 7, 9, 3, 15);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 4, 11, 5, 1, 0, 2, 8, 6);
 
         // Round 5
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 12, 13);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 9, 11);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 15, 10);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 14, 8);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 7, 2);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 5, 3);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 0, 1);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 6, 4);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 12, 9, 15, 14, 13, 11, 10, 8);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 7, 5, 0, 6, 2, 3, 1, 4);
 
         // Round 6
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 9, 14);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 11, 5);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 8, 12);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 15, 1);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 13, 3);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 0, 10);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 2, 6);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 4, 7);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 9, 11, 8, 15, 14, 5, 12, 1);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 13, 0, 2, 4, 3, 10, 6, 7);
 
         // Round 7
-        GVec(ref v0, ref v4, ref v8, ref v12, m, 11, 15);
-        GVec(ref v1, ref v5, ref v9, ref v13, m, 5, 0);
-        GVec(ref v2, ref v6, ref v10, ref v14, m, 1, 9);
-        GVec(ref v3, ref v7, ref v11, ref v15, m, 8, 6);
-        GVec(ref v0, ref v5, ref v10, ref v15, m, 14, 10);
-        GVec(ref v1, ref v6, ref v11, ref v12, m, 2, 12);
-        GVec(ref v2, ref v7, ref v8, ref v13, m, 3, 4);
-        GVec(ref v3, ref v4, ref v9, ref v14, m, 7, 13);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m, 11, 5, 1, 8, 15, 0, 9, 6);
+        GVec4(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m, 14, 2, 3, 7, 10, 12, 4, 13);
 
         m[0] = Avx512F.Xor(v0, v8); m[8] = Avx512F.Xor(v8, cv[0]);
         m[1] = Avx512F.Xor(v1, v9); m[9] = Avx512F.Xor(v9, cv[1]);
@@ -561,21 +589,32 @@ internal unsafe partial struct Blake3State
         dst[15] = Avx512F.Shuffle4x128(abcdefgh7, ijklmnop7, 0xDD);
     }
 
+    // Four independent G's advanced one step at a time: the JIT emits statements in source
+    // order, so this is what places the four chains side by side.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void GVec(
-        ref Vector512<uint> a, ref Vector512<uint> b,
-        ref Vector512<uint> c, ref Vector512<uint> d,
+    private static void GVec4(
+        ref Vector512<uint> a0, ref Vector512<uint> a1, ref Vector512<uint> a2, ref Vector512<uint> a3,
+        ref Vector512<uint> b0, ref Vector512<uint> b1, ref Vector512<uint> b2, ref Vector512<uint> b3,
+        ref Vector512<uint> c0, ref Vector512<uint> c1, ref Vector512<uint> c2, ref Vector512<uint> c3,
+        ref Vector512<uint> d0, ref Vector512<uint> d1, ref Vector512<uint> d2, ref Vector512<uint> d3,
         Vector512<uint>* m,
-        int mx, int my)
+        int x0, int x1, int x2, int x3,
+        int y0, int y1, int y2, int y3)
     {
-        a = Avx512F.Add(Avx512F.Add(a, m[mx]), b);
-        d = Avx512F.RotateRight(Avx512F.Xor(d, a), 16);
-        c = Avx512F.Add(c, d);
-        b = Avx512F.RotateRight(Avx512F.Xor(b, c), 12);
-        a = Avx512F.Add(Avx512F.Add(a, m[my]), b);
-        d = Avx512F.RotateRight(Avx512F.Xor(d, a), 8);
-        c = Avx512F.Add(c, d);
-        b = Avx512F.RotateRight(Avx512F.Xor(b, c), 7);
+        a0 = Avx512F.Add(Avx512F.Add(a0, m[x0]), b0); a1 = Avx512F.Add(Avx512F.Add(a1, m[x1]), b1);
+        a2 = Avx512F.Add(Avx512F.Add(a2, m[x2]), b2); a3 = Avx512F.Add(Avx512F.Add(a3, m[x3]), b3);
+        d0 = Avx512F.RotateRight(Avx512F.Xor(d0, a0), 16); d1 = Avx512F.RotateRight(Avx512F.Xor(d1, a1), 16);
+        d2 = Avx512F.RotateRight(Avx512F.Xor(d2, a2), 16); d3 = Avx512F.RotateRight(Avx512F.Xor(d3, a3), 16);
+        c0 = Avx512F.Add(c0, d0); c1 = Avx512F.Add(c1, d1); c2 = Avx512F.Add(c2, d2); c3 = Avx512F.Add(c3, d3);
+        b0 = Avx512F.RotateRight(Avx512F.Xor(b0, c0), 12); b1 = Avx512F.RotateRight(Avx512F.Xor(b1, c1), 12);
+        b2 = Avx512F.RotateRight(Avx512F.Xor(b2, c2), 12); b3 = Avx512F.RotateRight(Avx512F.Xor(b3, c3), 12);
+        a0 = Avx512F.Add(Avx512F.Add(a0, m[y0]), b0); a1 = Avx512F.Add(Avx512F.Add(a1, m[y1]), b1);
+        a2 = Avx512F.Add(Avx512F.Add(a2, m[y2]), b2); a3 = Avx512F.Add(Avx512F.Add(a3, m[y3]), b3);
+        d0 = Avx512F.RotateRight(Avx512F.Xor(d0, a0), 8); d1 = Avx512F.RotateRight(Avx512F.Xor(d1, a1), 8);
+        d2 = Avx512F.RotateRight(Avx512F.Xor(d2, a2), 8); d3 = Avx512F.RotateRight(Avx512F.Xor(d3, a3), 8);
+        c0 = Avx512F.Add(c0, d0); c1 = Avx512F.Add(c1, d1); c2 = Avx512F.Add(c2, d2); c3 = Avx512F.Add(c3, d3);
+        b0 = Avx512F.RotateRight(Avx512F.Xor(b0, c0), 7); b1 = Avx512F.RotateRight(Avx512F.Xor(b1, c1), 7);
+        b2 = Avx512F.RotateRight(Avx512F.Xor(b2, c2), 7); b3 = Avx512F.RotateRight(Avx512F.Xor(b3, c3), 7);
     }
 }
 #endif
