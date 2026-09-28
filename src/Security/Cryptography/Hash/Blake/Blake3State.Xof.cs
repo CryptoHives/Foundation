@@ -106,10 +106,10 @@ internal unsafe partial struct Blake3State
         {
             // Multi-chunk case - finalize current chunk and push onto stack
 #if NET8_0_OR_GREATER
-            // A bulk SIMD path (AVX2 batching) may have already computed the
-            // pending chunk's CV without being able to commit it to the tree
-            // yet (see Append) — use it directly instead of re-deriving it
-            // from _chunkBuffer/_cv, which wouldn't hold this chunk's data.
+            // A bulk SIMD path may have held back the CV of the last chunk, or of
+            // the right half of the last aligned subtree, without being able to
+            // commit it to the tree yet (see Append) — use it directly instead of
+            // re-deriving it from _chunkBuffer/_cv, which wouldn't hold that data.
             if (_hasPendingCv)
             {
                 Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * KeySizeWords, core->_pendingCv, KeySizeBytes);
@@ -198,8 +198,9 @@ internal unsafe partial struct Blake3State
     /// caller's buffer directly, skipping the copy-in streaming requires).
     /// </summary>
     /// <remarks>
-    /// Requires <c>_chunkCounter == 0</c> and <c>_cv</c> holding the IV or key,
-    /// true for both call sites.
+    /// Requires <c>_chunkCounter == 0</c> and <c>_cv</c> holding the IV or key advanced by
+    /// the <c>_blocksCompressed</c> blocks that <c>Append</c> took straight from its input;
+    /// <paramref name="srcPtr"/> holds the rest of the chunk.
     /// </remarks>
     [SkipLocalsInit]
     private void SaveChunkAsRoot(Blake3State* core, byte* srcPtr, int length)
@@ -208,7 +209,7 @@ internal unsafe partial struct Blake3State
             : (length - 1) / BlockSizeBytes * BlockSizeBytes;
         int lastBlockLen = length - lastBlockOffset;
 
-        uint flags = _baseFlags | FlagChunkStart;
+        uint flags = _blocksCompressed == 0 ? _baseFlags | FlagChunkStart : _baseFlags;
 
         // Process all blocks except the last — compress directly from the source
         byte* p = srcPtr;
