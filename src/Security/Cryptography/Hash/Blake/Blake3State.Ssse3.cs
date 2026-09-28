@@ -643,8 +643,8 @@ internal unsafe partial struct Blake3State
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> RotateRight16(Vector128<uint> value) => Avx512F.VL.IsSupported
-       ? Avx512F.VL.RotateRight(value, 16)
-       : Ssse3.Shuffle(value.AsByte(), RotateMask16).AsUInt32();
+        ? Avx512F.VL.RotateRight(value, 16)
+        : Ssse3.Shuffle(value.AsByte(), RotateMask16).AsUInt32();
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<uint> RotateRight12(Vector128<uint> value) => Avx512F.VL.IsSupported
@@ -784,11 +784,18 @@ internal unsafe partial struct Blake3State
                 offset += Ssse3BatchSizeBytes;
             }
 
+            if (offset == length)
+            {
+                ReduceChunkCvsToHalvesSsse3(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+                DeferRightHalf(core, batchCvs, SubtreeGroupLevel - 1);
+                break;
+            }
+
             ReduceChunkCvsToSubtreeCvSsse3(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
             PushSubtreeCv(core, batchCvs, SubtreeGroupLevel);
             _chunkCounter += ChunksPerSubtreeGroup;
         }
-        while (length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes);
+        while (length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes);
 
         return offset;
     }
@@ -838,6 +845,17 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ReduceChunkCvsToSubtreeCvSsse3(Blake3State* core, uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
+        ReduceChunkCvsToHalvesSsse3(cvs, key, chunkCount, baseFlags);
+        core->ComputeParentCv(cvs, key, cvs);              // 2 -> 1
+    }
+
+    /// <summary>
+    /// <see cref="ReduceChunkCvsToSubtreeCvSsse3"/> without the final merge: leaves the CVs of
+    /// the subtree's two halves at <paramref name="cvs"/>[0..16).
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void ReduceChunkCvsToHalvesSsse3(uint* cvs, uint* key, int chunkCount, uint baseFlags)
+    {
         // Full-width levels: every 4-parent group is fully populated.
         while (chunkCount >= 8)
         {
@@ -851,7 +869,6 @@ internal unsafe partial struct Blake3State
         }
 
         CompressParents4Ssse3(cvs, key, cvs, baseFlags);   // 4 -> 2 (upper 2 lanes ignored)
-        core->ComputeParentCv(cvs, key, cvs);              // 2 -> 1
     }
 
     // Mirrors CompressVector256 exactly (same message schedule, same

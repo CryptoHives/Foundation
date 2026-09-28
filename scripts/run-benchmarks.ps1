@@ -133,7 +133,11 @@ param(
     [string[]]$PinToCore,
 
     [Parameter(HelpMessage = "Power plan for the run: UserPowerPlan (keep the active one), Balanced, PowerSaver, HighPerformance, UltimatePerformance, or a plan GUID. Windows only")]
-    [string]$PowerPlan
+    [string]$PowerPlan,
+
+    [Parameter(HelpMessage = "Seconds to idle before each benchmark case (after the first) so the CPU can cool down between cases")]
+    [ValidateRange(0, 3600)]
+    [int]$CooldownSeconds = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -165,6 +169,7 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - DisableIsa — AVX512 | AVX2 | SSE42 | SSSE3 | AES | AdvSimd (comma list) — none  "
     Write-Host "   - PinToCore — one or more 0-based logical CPUs (e.g. 4 or 4,6) — none (unpinned)  "
     Write-Host "   - PowerPlan — UserPowerPlan | Balanced | PowerSaver | HighPerformance | UltimatePerformance | GUID — none (BDN forces HighPerformance)  "
+    Write-Host "   - CooldownSeconds — int (0..3600), idle time before each benchmark case after the first — 0 (none)  "
     Write-Host ""
     exit 0
 }
@@ -690,6 +695,14 @@ if ($PowerPlan) {
         }
         Write-Host ""
     }
+}
+
+# The pause runs inside the BenchmarkDotNet host between cases (tests/Common/Main.cs), so it
+# never falls inside a measurement.
+if ($CooldownSeconds -gt 0) {
+    Set-BenchmarkEnv -Name "CRYPTOHIVES_BENCH_COOLDOWN" -Value "$CooldownSeconds"
+    Write-Host "Cooldown: $CooldownSeconds s before each benchmark case" -ForegroundColor Yellow
+    Write-Host ""
 }
 
 # Affinity is passed to BenchmarkDotNet rather than set on this process, so it lands on

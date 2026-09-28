@@ -441,7 +441,7 @@ public class Blake3Tests
     }
 
     /// <summary>
-    /// Cross-validates the AVX-512 16-chunk batching path (<c>CompressChunksPartialAvx512</c>)
+    /// Cross-validates the AVX-512 16-chunk batching path (<c>CompressChunks16Avx512</c>)
     /// against the scalar reference implementation across sizes chosen to land on and
     /// around 16-chunk (16384-byte) batch boundaries, plus AVX2-boundary sizes to cover
     /// the AVX-512 → AVX2 tail handoff.
@@ -496,7 +496,7 @@ public class Blake3Tests
     /// flag isolated (no explicit AVX2 flag). Since AVX-512 hardware implies AVX2,
     /// the Append fast path still batches 8 KB tails through the AVX2 loop and
     /// 9-15 chunk tails through the dedicated AVX-512 partial-batch kernel
-    /// (see <c>CompressChunksPartialAvx512</c>); only sub-8 KB tails go
+    /// (see <c>CompressChunks16Avx512</c>); only sub-8 KB tails go
     /// through the per-chunk path.
     /// </summary>
     /// <param name="inputLength">The length of the input.</param>
@@ -1233,6 +1233,130 @@ public class Blake3Tests
                         .SetName($"OfficialTestVectors({factory.Name}, {length})");
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// An <c>Absorb</c> that ends exactly on an aligned batch or 64-chunk group holds back the
+    /// right half of that subtree, not just its last chunk. Checks every SIMD tier against the
+    /// scalar reference when the input stops there, and when more input follows at, just past,
+    /// or well beyond the boundary, including extended output.
+    /// </summary>
+    /// <param name="firstLength">Length of the first absorb, which ends on the subtree boundary.</param>
+    /// <param name="secondLength">Length of the absorb that follows it; 0 for none.</param>
+    [TestCase(4096, 0)]
+    [TestCase(4096, 1)]
+    [TestCase(4096, 4096)]
+    [TestCase(8192, 0)]
+    [TestCase(8192, 1)]
+    [TestCase(8192, 1024)]
+    [TestCase(8192, 16384)]     // the 16-chunk AVX-512 batch then drains at a counter of 8, not 16
+    [TestCase(12288, 4096)]
+    [TestCase(16384, 0)]
+    [TestCase(16384, 1)]
+    [TestCase(16384, 16384)]
+    [TestCase(24576, 8192)]
+    [TestCase(65536, 0)]
+    [TestCase(65536, 1)]
+    [TestCase(65536, 3072)]
+    [TestCase(65536, 65536)]
+    [TestCase(131072, 0)]
+    [TestCase(131072, 1025)]
+    [TestCase(196608, 65536)]
+    public void DrainedAlignedSubtreeMatchesScalarReference(int firstLength, int secondLength)
+    {
+        byte[] input = GenerateTestInput(firstLength + secondLength);
+
+        foreach (CH.SimdSupport tier in new[]
+        {
+            CH.SimdSupport.Ssse3,
+            CH.SimdSupport.Avx2,
+            CH.SimdSupport.Avx512F | CH.SimdSupport.Avx2,
+            CH.SimdSupport.Neon,
+        })
+        {
+            if ((Blake3.SimdSupport & tier) != tier)
+            {
+                continue;
+            }
+
+            foreach (int outputLength in new[] { 32, 200 })
+            {
+                using var scalar = Blake3.Create(CH.SimdSupport.None, outputLength);
+                using var simd = Blake3.Create(tier, outputLength);
+
+                scalar.Absorb(input);
+                simd.Absorb(input.AsSpan(0, firstLength));
+                if (secondLength > 0)
+                {
+                    simd.Absorb(input.AsSpan(firstLength, secondLength));
+                }
+
+                byte[] expected = new byte[outputLength];
+                byte[] actual = new byte[outputLength];
+                scalar.Squeeze(expected);
+                simd.Squeeze(actual);
+
+                Assert.That(actual, Is.EqualTo(expected),
+                    $"{tier} mismatch for {firstLength} + {secondLength} bytes, {outputLength}-byte output");
+            }
+        }
+    }
+
+    /// <summary>
+    /// <c>Absorb</c> compresses whole blocks of a chunk straight from its input and buffers only
+    /// the rest. Checks every tier, scalar included, against BouncyCastle, with write sizes that
+    /// start and end mid-block, on block boundaries and exactly on the chunk's last byte.
+    /// </summary>
+    /// <param name="inputLength">The total input length.</param>
+    /// <param name="writeSize">The size of each absorb.</param>
+    [TestCase(64, 64)]
+    [TestCase(65, 64)]
+    [TestCase(1024, 1024)]
+    [TestCase(1024, 960)]
+    [TestCase(1025, 1)]
+    [TestCase(1100, 1023)]
+    [TestCase(2048, 1088)]
+    [TestCase(2048, 97)]
+    [TestCase(3000, 1500)]
+    [TestCase(5000, 1024)]
+    [TestCase(5000, 2049)]
+    [TestCase(10000, 4097)]
+    [TestCase(40000, 777)]
+    public void StreamingMatchesBouncyCastle(int inputLength, int writeSize)
+    {
+        byte[] input = GenerateTestInput(inputLength);
+
+        var reference = new Org.BouncyCastle.Crypto.Digests.Blake3Digest(256);
+        reference.BlockUpdate(input, 0, input.Length);
+        byte[] expected = new byte[100];
+        reference.OutputFinal(expected, 0, expected.Length);
+
+        foreach (CH.SimdSupport tier in new[]
+        {
+            CH.SimdSupport.None,
+            CH.SimdSupport.Ssse3,
+            CH.SimdSupport.Avx2,
+            CH.SimdSupport.Avx512F | CH.SimdSupport.Avx2,
+            CH.SimdSupport.Neon,
+        })
+        {
+            if ((Blake3.SimdSupport & tier) != tier)
+            {
+                continue;
+            }
+
+            using var blake3 = Blake3.Create(tier, expected.Length);
+            for (int offset = 0; offset < inputLength; offset += writeSize)
+            {
+                blake3.Absorb(input.AsSpan(offset, Math.Min(writeSize, inputLength - offset)));
+            }
+
+            byte[] actual = new byte[expected.Length];
+            blake3.Squeeze(actual);
+
+            Assert.That(actual, Is.EqualTo(expected),
+                $"{tier} mismatch at {inputLength} bytes, writes of {writeSize}");
         }
     }
 
