@@ -502,9 +502,9 @@ internal unsafe partial struct Blake3State
             CompressChunks2Avx2(
                 srcPtr + offset, Avx2PairChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
         }
-        else if (fullChunks <= Avx2PairX2ChunksPerBatch
-            && Avx512F.VL.IsSupported
-            && (_simdSupport & SimdSupport.Avx512F) != 0)
+        // The two-chain kernel needs the 32-register file, a property of the CPU rather than of
+        // the selected tier, so it is gated on the hardware alone, like the rotate helpers.
+        else if (fullChunks <= Avx2PairX2ChunksPerBatch && Avx512F.VL.IsSupported)
         {
             CompressChunks4Avx2(
                 srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
