@@ -6,7 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
 using System.Buffers.Binary;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Implements the Concatenation Key Derivation Function (Concat KDF) as defined in
@@ -23,8 +23,8 @@ using System.Security.Cryptography;
 /// </para>
 /// <list type="bullet">
 /// <item><b>Hash-based</b> (SP 800-56A §5.8.1): Uses a plain hash function as the
-/// auxiliary function. The <see cref="DeriveKey(HashAlgorithm, ReadOnlySpan{byte}, Span{byte}, ReadOnlySpan{byte})"/>
-/// overloads accept any <see cref="HashAlgorithm"/>.</item>
+/// auxiliary function. The <see cref="DeriveKey(OS.HashAlgorithm, ReadOnlySpan{byte}, Span{byte}, ReadOnlySpan{byte})"/>
+/// overloads accept any <see cref="OS.HashAlgorithm"/>.</item>
 /// <item><b>HMAC-based</b> (SP 800-56C rev2 Option 1): Uses an HMAC keyed with an
 /// optional salt as the auxiliary function. The <see cref="DeriveKey(HmacFactory, ReadOnlySpan{byte}, Span{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte})"/>
 /// overloads accept an <see cref="HmacFactory"/>.</item>
@@ -57,7 +57,7 @@ public static class ConcatKdf
     /// </summary>
     /// <param name="hash">
     /// The hash algorithm to use. The instance is reused across iterations via
-    /// <see cref="HashAlgorithm.ComputeHash(byte[])"/>.
+    /// <see cref="OS.HashAlgorithm.ComputeHash(byte[])"/>.
     /// </param>
     /// <param name="sharedSecret">
     /// The shared secret (Z), typically from a key agreement such as ECDH.
@@ -69,7 +69,7 @@ public static class ConcatKdf
     /// <exception cref="ArgumentNullException"><paramref name="hash"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="output"/> is empty.</exception>
     public static void DeriveKey(
-        HashAlgorithm hash,
+        OS.HashAlgorithm hash,
         ReadOnlySpan<byte> sharedSecret,
         Span<byte> output,
         ReadOnlySpan<byte> otherInfo)
@@ -119,7 +119,7 @@ public static class ConcatKdf
     /// <paramref name="outputLength"/> is less than 1.
     /// </exception>
     public static byte[] DeriveKey(
-        HashAlgorithm hash,
+        OS.HashAlgorithm hash,
         byte[] sharedSecret,
         int outputLength,
         byte[]? otherInfo = null)

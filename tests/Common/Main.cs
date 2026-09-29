@@ -3,10 +3,13 @@
 
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Environments;
+using BenchmarkDotNet.EventProcessors;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using System;
+using System.Globalization;
 using System.Linq;
+using System.Threading;
 
 static class Program
 {
@@ -18,6 +21,13 @@ static class Program
     /// Accepts a <see cref="PowerPlan"/> name or a raw plan GUID.
     /// </summary>
     private const string PowerPlanVariable = "CRYPTOHIVES_BENCH_POWERPLAN";
+
+    /// <summary>
+    /// Set by <c>scripts/run-benchmarks.ps1 -CooldownSeconds</c>: seconds to idle before each
+    /// benchmark case after the first, so a long run does not measure a CPU that is still
+    /// heat-soaked from the previous case and clocking down.
+    /// </summary>
+    private const string CooldownVariable = "CRYPTOHIVES_BENCH_COOLDOWN";
 
     // Main Method
     public static void Main(string[] args)
@@ -53,7 +63,46 @@ static class Program
             config = config.AddJob(powerPlanJob);
         }
 
+        string? cooldown = Environment.GetEnvironmentVariable(CooldownVariable);
+        if (!string.IsNullOrWhiteSpace(cooldown))
+        {
+            if (!int.TryParse(cooldown, NumberStyles.None, CultureInfo.InvariantCulture, out int seconds) || seconds > 3600)
+            {
+                Console.Error.WriteLine($"ERROR: {CooldownVariable}='{cooldown}' is not a whole number of seconds (0..3600).");
+                Environment.Exit(2);
+            }
+
+            if (seconds > 0)
+            {
+                Console.WriteLine($"// Cooldown: {seconds} s before each benchmark case (requested via {CooldownVariable})");
+                config = config.AddEventProcessor(new CooldownEventProcessor(TimeSpan.FromSeconds(seconds)));
+            }
+        }
+
         _ = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
+    }
+
+    /// <summary>
+    /// Idles the host before every benchmark case except the first. The host launches each
+    /// case in its own process, so the pause falls between cases, never inside a measurement.
+    /// </summary>
+    private sealed class CooldownEventProcessor : EventProcessor
+    {
+        private readonly TimeSpan _pause;
+        private bool _first = true;
+
+        public CooldownEventProcessor(TimeSpan pause) => _pause = pause;
+
+        public override void OnStartRunBenchmark(BenchmarkCase benchmarkCase)
+        {
+            if (_first)
+            {
+                _first = false;
+                return;
+            }
+
+            Thread.Sleep(_pause);
+        }
     }
 
     private static Job? TryCreatePowerPlanMutator()

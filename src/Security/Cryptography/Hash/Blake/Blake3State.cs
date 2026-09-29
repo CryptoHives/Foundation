@@ -5,7 +5,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
-using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -13,7 +12,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 #endif
-using System.Threading;
 
 /// <summary>
 /// Core state for the BLAKE3 hash computation.
@@ -163,6 +161,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     // chunk (see FinalizeRoot). Distinct from _cv, the in-progress accumulator
     // for a chunk still being buffered byte-by-byte.
     private fixed uint _pendingCv[KeySizeWords];
+
+    // Tree level of the subtree _pendingCv stands for: 0 for a single chunk, higher when an
+    // aligned subtree drained the input and only its right half was held back.
+    private int _pendingLevel;
 #endif
 
     // Bulk buffers (streaming/multi-chunk path only)
@@ -340,6 +342,23 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
         bytesWritten = _outputBytes;
 
+        // The first 32 output bytes are v[i] ^ v[i+8] of root block 0 - the same fold a
+        // chaining value gets - so the root compresses straight into a CV-sized buffer. The
+        // buffer's words are copied out as bytes, which is only the output on little-endian.
+        if (!_squeezed && _outputBytes <= DefaultHashSizeBytes && BitConverter.IsLittleEndian)
+        {
+            fixed (Blake3State* core = &this)
+            {
+                FinalizeRoot(core);
+                _squeezed = true;
+                uint* cv = stackalloc uint[KeySizeWords];
+                Unsafe.CopyBlock(cv, core->_rootCv, KeySizeBytes);
+                CompressBlock(cv, (byte*)core->_rootBlock, _rootBlockLen, 0, _rootFlags);
+                Unsafe.CopyBlockUnaligned(ref destination[0], ref *(byte*)cv, (uint)_outputBytes);
+                return true;
+            }
+        }
+
         if (!_squeezed && _outputBytes <= BlockSizeBytes)
         {
             fixed (Blake3State* core = &this)
@@ -405,7 +424,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             {
 #if NET8_0_OR_GREATER
                 if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
-                { 
+                {
                     HashRootIv32Ssse3(srcPtr, source.Length, dstPtr);
                 }
                 else
@@ -517,8 +536,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             if (_hasPendingCv && length > 0)
             {
                 Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * KeySizeWords, core->_pendingCv, KeySizeBytes);
-                AddChunkToTree(core);
-                _chunkCounter++;
+                AddSubtreeToTree(core, _pendingLevel);
+                _chunkCounter += 1UL << _pendingLevel;
                 _hasPendingCv = false;
             }
 
@@ -537,27 +556,35 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 if (Avx512F.IsSupported && ((_simdSupport & SimdSupport.Avx512F) != 0))
                 {
                     // Groups of 16 independent chunks compressed together. A
-                    // batch that exactly drains the input holds back its last
-                    // chunk as pending instead of committing it (see FinalizeRoot).
+                    // batch or group that exactly drains the input holds back its
+                    // right half as pending instead of committing it (see FinalizeRoot).
                     if (length - offset >= Avx512BatchSizeBytes)
                     {
                         // 64-chunk subtree groups: 4 batches reduce to one CV,
-                        // one tree push per 64 KB. Strictly-greater guard keeps
-                        // the group clear of the message tail.
+                        // one tree push per 64 KB.
                         // Alignment is loop-invariant once true (adding exactly 64 to a
                         // multiple of 64 leaves one), so it is tested once here and the
                         // loop over further groups lives inside.
                         if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                            length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroupsAvx512(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Avx512BatchSizeBytes)
                         {
-                            CompressChunksPartialAvx512(srcPtr + offset, Avx512ChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+                            CompressChunks16Avx512(srcPtr + offset, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx512BatchSizeBytes == length;
+
+                            if (drainsRemainingInput && (_chunkCounter & (Avx512ChunksPerBatch / 2 - 1)) == 0)
+                            {
+                                // Both 8-chunk halves are complete aligned subtrees, whether or
+                                // not the batch itself is aligned to 16.
+                                ReduceChunkCvsToHalvesAvx2(batchCvs, core->_keyWords, Avx512ChunksPerBatch, _baseFlags);
+                                DeferRightHalf(core, batchCvs, Avx512BatchLevel - 1);
+                                return;
+                            }
 
                             if (!drainsRemainingInput && (_chunkCounter & (Avx512ChunksPerBatch - 1)) == 0)
                             {
@@ -570,25 +597,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             }
                             else
                             {
-                                int firstChunk = 0;
-                                if (drainsRemainingInput && (_chunkCounter & (Avx2ChunksPerBatch - 1)) == 0)
-                                {
-                                    // Even in the final batch, the first 8 chunks form
-                                    // an aligned complete subtree (chunks 8..15 follow
-                                    // them, so none can be the message tail): reduce
-                                    // them wide; only the last 7 commit serially. The
-                                    // in-place reduction never writes past the first
-                                    // 8 CV slots, so CVs 8..15 stay intact.
-                                    ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, Avx2ChunksPerBatch, _baseFlags);
-                                    PushSubtreeCv(core, batchCvs, Avx2BatchLevel);
-                                    _chunkCounter += Avx2ChunksPerBatch;
-                                    firstChunk = Avx2ChunksPerBatch;
-                                }
-
                                 int chunksToCommit = drainsRemainingInput ? Avx512ChunksPerBatch - 1 : Avx512ChunksPerBatch;
 
                                 // Draining means offset == length; return directly.
-                                if (CommitBatchChunks(core, batchCvs, firstChunk, chunksToCommit, drainsRemainingInput))
+                                if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
                                 {
                                     return;
                                 }
@@ -612,7 +624,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     {
                         // 64-chunk subtree groups 
                         if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                            length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroupsAvx2(core, srcPtr, offset, length, batchCvs);
                         }
@@ -628,6 +640,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx2BatchSizeBytes == length;
+                            if (drainsRemainingInput && (_chunkCounter & (Avx2ChunksPerBatch / 2 - 1)) == 0)
+                            {
+                                ReduceChunkCvsToHalvesAvx2(batchCvs, core->_keyWords, Avx2ChunksPerBatch, _baseFlags);
+                                DeferRightHalf(core, batchCvs, Avx2BatchLevel - 1);
+                                return;
+                            }
+
                             if (!drainsRemainingInput && (_chunkCounter & (Avx2ChunksPerBatch - 1)) == 0)
                             {
                                 // Complete aligned 8-chunk subtree, not the tail.
@@ -672,7 +691,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         // 64-chunk subtree groups: 16 batches reduce to one CV,
                         // so the tree only sees one push per 64 KB instead of 64.
                         if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                            length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroupsSsse3(core, srcPtr, offset, length, batchCvs);
                         }
@@ -688,6 +707,13 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Ssse3BatchSizeBytes == length;
+                            if (drainsRemainingInput && (_chunkCounter & (Ssse3ChunksPerBatch / 2 - 1)) == 0)
+                            {
+                                ReduceChunkCvsToHalvesSsse3(batchCvs, core->_keyWords, Ssse3ChunksPerBatch, _baseFlags);
+                                DeferRightHalf(core, batchCvs, Ssse3BatchLevel - 1);
+                                return;
+                            }
+
                             if (!drainsRemainingInput && (_chunkCounter & (Ssse3ChunksPerBatch - 1)) == 0)
                             {
                                 // Complete aligned 4-chunk subtree, not the tail:
@@ -729,7 +755,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     {
                         // 64-chunk subtree groups
                         if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                            length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
                             offset = CompressSubtreeGroupsNeon(core, srcPtr, offset, length, batchCvs);
                         }
@@ -739,6 +765,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                             CompressChunksPartialNeon(srcPtr + offset, NeonChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
                             bool drainsRemainingInput = offset + NeonBatchSizeBytes == length;
+                            if (drainsRemainingInput && (_chunkCounter & (NeonChunksPerBatch / 2 - 1)) == 0)
+                            {
+                                ReduceChunkCvsToHalvesNeon(batchCvs, core->_keyWords, NeonChunksPerBatch, _baseFlags);
+                                DeferRightHalf(core, batchCvs, NeonBatchLevel - 1);
+                                return;
+                            }
 
                             if (!drainsRemainingInput && (_chunkCounter & (NeonChunksPerBatch - 1)) == 0)
                             {
@@ -778,8 +810,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // single chunk processing
             while (offset < length)
             {
-                // If chunk buffer is full, finalize the chunk
-                if (_chunkBufferLength == ChunkSizeBytes)
+                int chunkBytesAbsorbed = (_blocksCompressed * BlockSizeBytes) + _chunkBufferLength;
+
+                // If chunk is complete, finalize it
+                if (chunkBytesAbsorbed == ChunkSizeBytes)
                 {
                     FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * KeySizeWords);
 
@@ -796,9 +830,26 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         goto RestartBatching;
                     }
 #endif
+                    chunkBytesAbsorbed = 0;
                 }
 
-                int toCopy = Math.Min(ChunkSizeBytes - _chunkBufferLength, length - offset);
+                // Whole blocks go straight from the input into the running CV, bypassing the
+                // buffer, as long as at least one byte of this chunk stays behind: the block
+                // holding the chunk's last byte is compressed at finalization, with ChunkEnd.
+                if (_chunkBufferLength == 0)
+                {
+                    int blocks = (Math.Min(length - offset, ChunkSizeBytes - chunkBytesAbsorbed) - 1) / BlockSizeBytes;
+                    if (blocks > 0)
+                    {
+                        uint flags = _blocksCompressed == 0 ? _baseFlags | FlagChunkStart : _baseFlags;
+                        CompressBlocks(core->_cv, srcPtr + offset, blocks, BlockSizeBytes, _chunkCounter, flags);
+                        _blocksCompressed += blocks;
+                        chunkBytesAbsorbed += blocks * BlockSizeBytes;
+                        offset += blocks * BlockSizeBytes;
+                    }
+                }
+
+                int toCopy = Math.Min(ChunkSizeBytes - chunkBytesAbsorbed, length - offset);
                 Unsafe.CopyBlockUnaligned(
                     ref core->_chunkBuffer[_chunkBufferLength],
                     ref srcPtr[offset],
@@ -840,11 +891,30 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 core->_pendingCv,
                 batchCvs + chunksToCommit * KeySizeWords,
                 KeySizeBytes);
+            _pendingLevel = 0;
             _hasPendingCv = true;
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Commits an aligned subtree that ends exactly at the end of the input, given as the
+    /// CVs of its two halves: the left half goes onto the tree, the right half is held back
+    /// as pending, because it becomes the root's right child if no more input follows.
+    /// </summary>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="halves">The two half-subtree CVs, left then right (16 words).</param>
+    /// <param name="level">Tree level of each half; <c>_chunkCounter</c> must be at the left half's first chunk.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void DeferRightHalf(Blake3State* core, uint* halves, int level)
+    {
+        PushSubtreeCv(core, halves, level);
+        _chunkCounter += 1UL << level;
+        Unsafe.CopyBlock(core->_pendingCv, halves + KeySizeWords, KeySizeBytes);
+        _pendingLevel = level;
+        _hasPendingCv = true;
     }
 
     /// <summary>
@@ -1185,89 +1255,116 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
        uint* m)
     {
         // Round 1
-        G(ref v0, ref v4, ref v8, ref v12, m[0], m[1]);
-        G(ref v1, ref v5, ref v9, ref v13, m[2], m[3]);
-        G(ref v2, ref v6, ref v10, ref v14, m[4], m[5]);
-        G(ref v3, ref v7, ref v11, ref v15, m[6], m[7]);
-        G(ref v0, ref v5, ref v10, ref v15, m[8], m[9]);
-        G(ref v1, ref v6, ref v11, ref v12, m[10], m[11]);
-        G(ref v2, ref v7, ref v8, ref v13, m[12], m[13]);
-        G(ref v3, ref v4, ref v9, ref v14, m[14], m[15]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[0], m[2], m[4], m[6], m[1], m[3], m[5], m[7]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[8], m[10], m[12], m[14], m[9], m[11], m[13], m[15]);
 
         // Round 2
-        G(ref v0, ref v4, ref v8, ref v12, m[2], m[6]);
-        G(ref v1, ref v5, ref v9, ref v13, m[3], m[10]);
-        G(ref v2, ref v6, ref v10, ref v14, m[7], m[0]);
-        G(ref v3, ref v7, ref v11, ref v15, m[4], m[13]);
-        G(ref v0, ref v5, ref v10, ref v15, m[1], m[11]);
-        G(ref v1, ref v6, ref v11, ref v12, m[12], m[5]);
-        G(ref v2, ref v7, ref v8, ref v13, m[9], m[14]);
-        G(ref v3, ref v4, ref v9, ref v14, m[15], m[8]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[2], m[3], m[7], m[4], m[6], m[10], m[0], m[13]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[1], m[12], m[9], m[15], m[11], m[5], m[14], m[8]);
 
         // Round 3
-        G(ref v0, ref v4, ref v8, ref v12, m[3], m[4]);
-        G(ref v1, ref v5, ref v9, ref v13, m[10], m[12]);
-        G(ref v2, ref v6, ref v10, ref v14, m[13], m[2]);
-        G(ref v3, ref v7, ref v11, ref v15, m[7], m[14]);
-        G(ref v0, ref v5, ref v10, ref v15, m[6], m[5]);
-        G(ref v1, ref v6, ref v11, ref v12, m[9], m[0]);
-        G(ref v2, ref v7, ref v8, ref v13, m[11], m[15]);
-        G(ref v3, ref v4, ref v9, ref v14, m[8], m[1]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[3], m[10], m[13], m[7], m[4], m[12], m[2], m[14]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[6], m[9], m[11], m[8], m[5], m[0], m[15], m[1]);
 
         // Round 4
-        G(ref v0, ref v4, ref v8, ref v12, m[10], m[7]);
-        G(ref v1, ref v5, ref v9, ref v13, m[12], m[9]);
-        G(ref v2, ref v6, ref v10, ref v14, m[14], m[3]);
-        G(ref v3, ref v7, ref v11, ref v15, m[13], m[15]);
-        G(ref v0, ref v5, ref v10, ref v15, m[4], m[0]);
-        G(ref v1, ref v6, ref v11, ref v12, m[11], m[2]);
-        G(ref v2, ref v7, ref v8, ref v13, m[5], m[8]);
-        G(ref v3, ref v4, ref v9, ref v14, m[1], m[6]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[10], m[12], m[14], m[13], m[7], m[9], m[3], m[15]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[4], m[11], m[5], m[1], m[0], m[2], m[8], m[6]);
 
         // Round 5
-        G(ref v0, ref v4, ref v8, ref v12, m[12], m[13]);
-        G(ref v1, ref v5, ref v9, ref v13, m[9], m[11]);
-        G(ref v2, ref v6, ref v10, ref v14, m[15], m[10]);
-        G(ref v3, ref v7, ref v11, ref v15, m[14], m[8]);
-        G(ref v0, ref v5, ref v10, ref v15, m[7], m[2]);
-        G(ref v1, ref v6, ref v11, ref v12, m[5], m[3]);
-        G(ref v2, ref v7, ref v8, ref v13, m[0], m[1]);
-        G(ref v3, ref v4, ref v9, ref v14, m[6], m[4]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[12], m[9], m[15], m[14], m[13], m[11], m[10], m[8]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[7], m[5], m[0], m[6], m[2], m[3], m[1], m[4]);
 
         // Round 6
-        G(ref v0, ref v4, ref v8, ref v12, m[9], m[14]);
-        G(ref v1, ref v5, ref v9, ref v13, m[11], m[5]);
-        G(ref v2, ref v6, ref v10, ref v14, m[8], m[12]);
-        G(ref v3, ref v7, ref v11, ref v15, m[15], m[1]);
-        G(ref v0, ref v5, ref v10, ref v15, m[13], m[3]);
-        G(ref v1, ref v6, ref v11, ref v12, m[0], m[10]);
-        G(ref v2, ref v7, ref v8, ref v13, m[2], m[6]);
-        G(ref v3, ref v4, ref v9, ref v14, m[4], m[7]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[9], m[11], m[8], m[15], m[14], m[5], m[12], m[1]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[13], m[0], m[2], m[4], m[3], m[10], m[6], m[7]);
 
         // Round 7
-        G(ref v0, ref v4, ref v8, ref v12, m[11], m[15]);
-        G(ref v1, ref v5, ref v9, ref v13, m[5], m[0]);
-        G(ref v2, ref v6, ref v10, ref v14, m[1], m[9]);
-        G(ref v3, ref v7, ref v11, ref v15, m[8], m[6]);
-        G(ref v0, ref v5, ref v10, ref v15, m[14], m[10]);
-        G(ref v1, ref v6, ref v11, ref v12, m[2], m[12]);
-        G(ref v2, ref v7, ref v8, ref v13, m[3], m[4]);
-        G(ref v3, ref v4, ref v9, ref v14, m[7], m[13]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[11], m[5], m[1], m[8], m[15], m[0], m[9], m[6]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[14], m[2], m[3], m[7], m[10], m[12], m[4], m[13]);
     }
 
+    // Four independent G's advanced one step at a time rather than one G after another: the JIT
+    // emits statements in source order, so this is what places independent work side by side.
+    // The message word is added before b, the value produced last, to keep one add off the chain.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void G(ref uint a, ref uint b, ref uint c, ref uint d, uint mx, uint my)
+    private static void G4(
+        ref uint a0, ref uint a1, ref uint a2, ref uint a3,
+        ref uint b0, ref uint b1, ref uint b2, ref uint b3,
+        ref uint c0, ref uint c1, ref uint c2, ref uint c3,
+        ref uint d0, ref uint d1, ref uint d2, ref uint d3,
+        uint mx0, uint mx1, uint mx2, uint mx3,
+        uint my0, uint my1, uint my2, uint my3)
     {
         unchecked
         {
-            a = a + b + mx;
-            d = BitOperations.RotateRight(d ^ a, 16);
-            c = c + d;
-            b = BitOperations.RotateRight(b ^ c, 12);
-            a = a + b + my;
-            d = BitOperations.RotateRight(d ^ a, 8);
-            c = c + d;
-            b = BitOperations.RotateRight(b ^ c, 7);
+            a0 = a0 + mx0 + b0; a1 = a1 + mx1 + b1; a2 = a2 + mx2 + b2; a3 = a3 + mx3 + b3;
+            d0 = BitOperations.RotateRight(d0 ^ a0, 16); d1 = BitOperations.RotateRight(d1 ^ a1, 16);
+            d2 = BitOperations.RotateRight(d2 ^ a2, 16); d3 = BitOperations.RotateRight(d3 ^ a3, 16);
+            c0 += d0; c1 += d1; c2 += d2; c3 += d3;
+            b0 = BitOperations.RotateRight(b0 ^ c0, 12); b1 = BitOperations.RotateRight(b1 ^ c1, 12);
+            b2 = BitOperations.RotateRight(b2 ^ c2, 12); b3 = BitOperations.RotateRight(b3 ^ c3, 12);
+            a0 = a0 + my0 + b0; a1 = a1 + my1 + b1; a2 = a2 + my2 + b2; a3 = a3 + my3 + b3;
+            d0 = BitOperations.RotateRight(d0 ^ a0, 8); d1 = BitOperations.RotateRight(d1 ^ a1, 8);
+            d2 = BitOperations.RotateRight(d2 ^ a2, 8); d3 = BitOperations.RotateRight(d3 ^ a3, 8);
+            c0 += d0; c1 += d1; c2 += d2; c3 += d3;
+            b0 = BitOperations.RotateRight(b0 ^ c0, 7); b1 = BitOperations.RotateRight(b1 ^ c1, 7);
+            b2 = BitOperations.RotateRight(b2 ^ c2, 7); b3 = BitOperations.RotateRight(b3 ^ c3, 7);
         }
     }
 }

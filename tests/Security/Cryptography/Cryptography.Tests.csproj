@@ -23,6 +23,11 @@
     <DefineConstants>$(DefineConstants);OBSOLETE_SECRET_AS_STRING_API</DefineConstants>
   </PropertyGroup>
 
+  <!-- The library is built for netstandard while the tests run on net8.0, so NET8_0_OR_GREATER-only library types are absent. -->
+  <PropertyGroup Condition="'$(CustomTestTarget)' == 'netstandard2.0' Or '$(CustomTestTarget)' == 'netstandard2.1'">
+    <DefineConstants>$(DefineConstants);LIB_NETSTANDARD</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="BouncyCastle.Cryptography" />

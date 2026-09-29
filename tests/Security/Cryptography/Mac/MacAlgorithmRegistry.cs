@@ -11,11 +11,11 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using BC = Org.BouncyCastle.Crypto.Digests;
 using BCEngines = Org.BouncyCastle.Crypto.Engines;
 using BCMacs = Org.BouncyCastle.Crypto.Macs;
 using CH = CryptoHives.Foundation.Security.Cryptography.Mac;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Central registry of all MAC algorithm implementations for testing and benchmarking.
@@ -153,27 +153,27 @@ public static class MacAlgorithmRegistry
     private static void AddHmac(List<MacImplementation> list)
     {
         list.Add(new("HMAC-MD5", "CryptoHives-Scalar", () => CH.HmacMd5.Create(SharedKey), Source.Managed));
-        list.Add(new("HMAC-MD5", "OS", () => new SystemHmacAdapter(new HMACMD5(SharedKey)), Source.OS));
+        list.Add(new("HMAC-MD5", "OS", () => new SystemHmacAdapter(new OS.HMACMD5(SharedKey)), Source.OS));
         list.Add(new("HMAC-MD5", "BouncyCastle",
             () => new BouncyCastleMacAdapter(new BCMacs.HMac(new BC.MD5Digest()), SharedKey), Source.BouncyCastle));
 
         list.Add(new("HMAC-SHA1", "CryptoHives-Scalar", () => CH.HmacSha1.Create(SharedKey), Source.Managed));
-        list.Add(new("HMAC-SHA1", "OS", () => new SystemHmacAdapter(new HMACSHA1(SharedKey)), Source.OS));
+        list.Add(new("HMAC-SHA1", "OS", () => new SystemHmacAdapter(new OS.HMACSHA1(SharedKey)), Source.OS));
         list.Add(new("HMAC-SHA1", "BouncyCastle",
             () => new BouncyCastleMacAdapter(new BCMacs.HMac(new BC.Sha1Digest()), SharedKey), Source.BouncyCastle));
 
         list.Add(new("HMAC-SHA256", "CryptoHives-Scalar", () => CH.HmacSha256.Create(SharedKey), Source.Managed));
-        list.Add(new("HMAC-SHA256", "OS", () => new SystemHmacAdapter(new HMACSHA256(SharedKey)), Source.OS));
+        list.Add(new("HMAC-SHA256", "OS", () => new SystemHmacAdapter(new OS.HMACSHA256(SharedKey)), Source.OS));
         list.Add(new("HMAC-SHA256", "BouncyCastle",
             () => new BouncyCastleMacAdapter(new BCMacs.HMac(new BC.Sha256Digest()), SharedKey), Source.BouncyCastle));
 
         list.Add(new("HMAC-SHA384", "CryptoHives-Scalar", () => CH.HmacSha384.Create(SharedKey), Source.Managed));
-        list.Add(new("HMAC-SHA384", "OS", () => new SystemHmacAdapter(new HMACSHA384(SharedKey)), Source.OS));
+        list.Add(new("HMAC-SHA384", "OS", () => new SystemHmacAdapter(new OS.HMACSHA384(SharedKey)), Source.OS));
         list.Add(new("HMAC-SHA384", "BouncyCastle",
             () => new BouncyCastleMacAdapter(new BCMacs.HMac(new BC.Sha384Digest()), SharedKey), Source.BouncyCastle));
 
         list.Add(new("HMAC-SHA512", "CryptoHives-Scalar", () => CH.HmacSha512.Create(SharedKey), Source.Managed));
-        list.Add(new("HMAC-SHA512", "OS", () => new SystemHmacAdapter(new HMACSHA512(SharedKey)), Source.OS));
+        list.Add(new("HMAC-SHA512", "OS", () => new SystemHmacAdapter(new OS.HMACSHA512(SharedKey)), Source.OS));
         list.Add(new("HMAC-SHA512", "BouncyCastle",
             () => new BouncyCastleMacAdapter(new BCMacs.HMac(new BC.Sha512Digest()), SharedKey), Source.BouncyCastle));
 
