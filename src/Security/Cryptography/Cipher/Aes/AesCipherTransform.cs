@@ -5,7 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 #if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -172,10 +172,10 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     public int BlockSize => AesCore.BlockSizeBytes;
 
     /// <inheritdoc/>
-    int ICryptoTransform.InputBlockSize => AesCore.BlockSizeBytes;
+    int OS.ICryptoTransform.InputBlockSize => AesCore.BlockSizeBytes;
 
     /// <inheritdoc/>
-    int ICryptoTransform.OutputBlockSize => AesCore.BlockSizeBytes;
+    int OS.ICryptoTransform.OutputBlockSize => AesCore.BlockSizeBytes;
 
     /// <inheritdoc/>
     public bool CanTransformMultipleBlocks => true;
@@ -309,7 +309,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
             }
             else if (remainder > 0)
             {
-                throw new CryptographicException("Input length must be a multiple of block size when no padding is used.");
+                throw new OS.CryptographicException("Input length must be a multiple of block size when no padding is used.");
             }
         }
         else
@@ -342,7 +342,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
                 if (!IsPkcs7PaddingValid(output.Slice(written - BlockSize, BlockSize), padValue))
                 {
-                    throw new CryptographicException("Invalid padding.");
+                    throw new OS.CryptographicException("Invalid padding.");
                 }
 
                 written -= padValue;

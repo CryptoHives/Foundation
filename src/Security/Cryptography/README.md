@@ -32,7 +32,7 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 - **XOF streaming** — `IExtendableOutput` (`Absorb` / `Squeeze` / `Reset`) on all XOF algorithms
 - **`HashAlgorithm` compatible** — drop-in for anything consuming `System.Security.Cryptography.HashAlgorithm`
 - **Broad algorithm coverage** — SHA-2/3, Keccak, SHAKE, BLAKE2/3, Ascon, regional ciphers, and more
-- 
+
 ---
 
 ## 🧬 Supported Algorithms

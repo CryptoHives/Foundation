@@ -6,7 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// ChaCha20 cipher transform for encryption or decryption operations.
@@ -70,10 +70,10 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     public int BlockSize => 1; // Stream cipher - can process any byte count
 
     /// <inheritdoc/>
-    int ICryptoTransform.InputBlockSize => 1;
+    int OS.ICryptoTransform.InputBlockSize => 1;
 
     /// <inheritdoc/>
-    int ICryptoTransform.OutputBlockSize => 1;
+    int OS.ICryptoTransform.OutputBlockSize => 1;
 
     /// <inheritdoc/>
     public bool CanTransformMultipleBlocks => true;

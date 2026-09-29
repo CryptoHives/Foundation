@@ -7,7 +7,6 @@ namespace Cryptography.Tests.Adapter.Cipher;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
-using System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 using OS = System.Security.Cryptography;
 
@@ -33,7 +32,7 @@ internal sealed class OSAesCbcAdapter : SymmetricCipher
         _algorithmName = $"AES-{keySizeBytes * 8}-CBC (OS)";
         BlockSizeValue = 128;
         KeySizeValue = keySizeBytes * 8;
-        LegalKeySizesValue = [new KeySizes(keySizeBytes * 8, keySizeBytes * 8, 0)];
+        LegalKeySizesValue = [new OS.KeySizes(keySizeBytes * 8, keySizeBytes * 8, 0)];
         Mode = CH.Cipher.CipherMode.CBC;
         Padding = CH.Cipher.PaddingMode.PKCS7;
     }
@@ -96,16 +95,16 @@ internal sealed class OSAesCbcTransform : ICipherTransform
     public int BlockSize => 16;
 
     /// <inheritdoc/>
-    int ICryptoTransform.InputBlockSize => BlockSize;
+    int OS.ICryptoTransform.InputBlockSize => BlockSize;
 
     /// <inheritdoc/>
-    int ICryptoTransform.OutputBlockSize => BlockSize;
+    int OS.ICryptoTransform.OutputBlockSize => BlockSize;
 
     /// <inheritdoc/>
-    bool ICryptoTransform.CanTransformMultipleBlocks => true;
+    bool OS.ICryptoTransform.CanTransformMultipleBlocks => true;
 
     /// <inheritdoc/>
-    bool ICryptoTransform.CanReuseTransform => true;
+    bool OS.ICryptoTransform.CanReuseTransform => true;
 
     /// <inheritdoc/>
     public int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
@@ -117,7 +116,7 @@ internal sealed class OSAesCbcTransform : ICipherTransform
     }
 
     /// <inheritdoc/>
-    int ICryptoTransform.TransformBlock(
+    int OS.ICryptoTransform.TransformBlock(
         byte[] inputBuffer, int inputOffset, int inputCount,
         byte[] outputBuffer, int outputOffset)
     {
@@ -131,7 +130,7 @@ internal sealed class OSAesCbcTransform : ICipherTransform
         => TransformBlock(input, output);
 
     /// <inheritdoc/>
-    byte[] ICryptoTransform.TransformFinalBlock(
+    byte[] OS.ICryptoTransform.TransformFinalBlock(
         byte[] inputBuffer, int inputOffset, int inputCount)
     {
         byte[] output = new byte[inputCount + BlockSize];

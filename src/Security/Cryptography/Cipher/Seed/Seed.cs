@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// SEED symmetric cipher implementation (KISA, RFC 4269).
@@ -49,8 +49,8 @@ public sealed class Seed : SymmetricCipher
     {
         BlockSizeValue = SeedCore.BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(128, 128, 0)];
-        LegalBlockSizesValue = [new KeySizes(128, 128, 0)];
+        LegalKeySizesValue = [new OS.KeySizes(128, 128, 0)];
+        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
     }
 
     /// <inheritdoc/>
