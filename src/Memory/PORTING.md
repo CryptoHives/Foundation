@@ -22,6 +22,8 @@ against the shipped source. Do not invent members. Human-oriented docs live in `
 | `ArrayPool<T>.Shared.Rent(n)` with manual return; caller owns a fixed-size `T[]` slice | `PooledSegment<T>.Rent(n)` — same pool, no manual return |
 | `new T[n]` handed to a method that needs to signal "no data" via `null` or length 0 | `AllocatedSegment<T>.Create(buffer)` / `EmptySegment<T>.Instance` |
 | `IMemoryOwner<T>` patterns where `ArraySegment<T>` is preferred over `Memory<T>` | `ISegmentOwner<T>` |
+| A `ReadOnlySequence<T>` that must outlive the scope that built it, without copying | `ISequenceOwner<T>` / `SequenceLease<T>` (from `LeaseSequence()`) |
+| Repeated `new ArrayPoolBufferWriter<T>(...)` calls with the same settings | `ArrayPoolBufferWriterProvider<T>` — one profile, `Rent()` per use |
 
 ---
 
@@ -90,6 +92,36 @@ sealed class EmptySegment<T> : ISegmentOwner<T> {
     static ISegmentOwner<T> Instance { get; }
 }
 
+// ── Sequence ownership ───────────────────────────────────────────────────────
+// ISequenceOwner<T> is the sequence-shaped counterpart to ISegmentOwner<T> (same idea as
+// IMemoryOwner<T>: the interface carries the payload, IDisposable carries the lifetime).
+// No indexer, no re-window method - a ReadOnlySequence<T> is read-only, and Slice() is
+// already a cheap value operation that leaves ownership untouched.
+
+interface ISequenceOwner<T> : IDisposable {
+    ReadOnlySequence<T> Sequence { get; }
+    long Length { get; }
+    bool IsEmpty { get; }
+}
+
+readonly struct SequenceLease<T> : ISequenceOwner<T> {
+    // What LeaseSequence() on ArrayPoolBufferWriter<T>/ArrayPoolMemoryStream hands out.
+    // Holds no buffers itself - it holds the producer, and disposing it disposes the
+    // producer. A struct: using it through ISequenceOwner<T> boxes it (measured 48 bytes),
+    // so take it by its own type unless several owner kinds must be treated uniformly.
+}
+
+sealed class SegmentSequence<T> : ISequenceOwner<T> {
+    // Adopts one ISegmentOwner<T> and disposes it in turn. Bridges the two families so code
+    // written against ISequenceOwner<T> works with every segment strategy underneath.
+    static ISequenceOwner<T> Create(ISegmentOwner<T> owner);
+}
+
+sealed class EmptySequence<T> : ISequenceOwner<T> {
+    // Null-object singleton. Sequence == ReadOnlySequence<T>.Empty. Dispose is a no-op.
+    static ISequenceOwner<T> Instance { get; }
+}
+
 namespace CryptoHives.Foundation.Memory.Pools;
 
 readonly struct ObjectOwner<T> : IDisposable where T : class {
@@ -101,6 +133,23 @@ readonly struct ObjectOwner<T> : IDisposable where T : class {
 static class ObjectPools {
     static ObjectOwner<StringBuilder> GetStringBuilder();
     static ArrayPoolBufferWriter<T>   RentBufferWriter<T>();  // writer returns ITSELF on Dispose
+}
+
+sealed class ArrayPoolBufferWriterProvider<T> {
+    // An immutable settings profile (clearArray, chunk budgets) that hands out writers already
+    // configured with it. Writers are configured when rented, not when constructed, so pooled
+    // instances are interchangeable and one pool can serve differently configured providers.
+    ArrayPoolBufferWriterProvider(bool clearArray = false, int defaultChunkBytes = …,
+        int maxChunkBytes = …, ObjectPool<ArrayPoolBufferWriter<T>>? pool = null);
+    ArrayPoolBufferWriter<T> Rent();   // dispose returns it to this provider's pool
+}
+
+static class PoolFactory {
+    static ObjectPool<T> CreatePool<T>(Func<T> create, Func<T, bool> reset, int maximumRetained = 0) where T : class;
+    static ObjectPool<ArrayPoolBufferWriter<T>> CreateBufferWriterPool<T>(int maximumRetained = 0);  // isolated pool
+    static ObjectPool<ArrayPoolBufferWriter<T>> SharedBufferWriterPool<T>();   // process-wide default, one per T
+    static ObjectPool<StringBuilder> CreateStringBuilderPool(int maxCapacity = …, int maxStringBuilderCapacity = …);
+    static ObjectPool<StringBuilder> SharedStringBuilderPool { get; }
 }
 ```
 

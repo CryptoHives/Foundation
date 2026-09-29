@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// ARIA-256 symmetric cipher implementation.
@@ -30,8 +30,8 @@ public sealed class Aria256 : SymmetricCipher
     {
         BlockSizeValue = 128;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(256, 256, 0)];
-        LegalBlockSizesValue = [new KeySizes(128, 128, 0)];
+        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0)];
+        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
     }
 
     /// <inheritdoc/>

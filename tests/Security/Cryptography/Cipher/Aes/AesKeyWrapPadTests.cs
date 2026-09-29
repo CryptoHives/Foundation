@@ -6,7 +6,7 @@ namespace Cryptography.Tests.Cipher.Aes;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Tests for <see cref="AesKeyWrapPad"/> (RFC 5649) and AES Key Wrap (RFC 3394).
@@ -287,7 +287,7 @@ public class AesKeyWrapPadTests
         // Corrupt a byte
         wrapped[wrapped.Length / 2] ^= 0xFF;
 
-        Assert.Throws<CryptographicException>(() => kwp.UnwrapKey(wrapped));
+        Assert.Throws<OS.CryptographicException>(() => kwp.UnwrapKey(wrapped));
     }
 
     [Test]
@@ -302,7 +302,7 @@ public class AesKeyWrapPadTests
         // Corrupt a byte
         wrapped[0] ^= 0xFF;
 
-        Assert.Throws<CryptographicException>(() => kwp.UnwrapKeyNoPad(wrapped));
+        Assert.Throws<OS.CryptographicException>(() => kwp.UnwrapKeyNoPad(wrapped));
     }
 
     [Test]
@@ -318,7 +318,7 @@ public class AesKeyWrapPadTests
 
         byte[] wrapped = kwp1.WrapKey(key);
 
-        Assert.Throws<CryptographicException>(() => kwp2.UnwrapKey(wrapped));
+        Assert.Throws<OS.CryptographicException>(() => kwp2.UnwrapKey(wrapped));
     }
 
     [Test]
@@ -333,7 +333,7 @@ public class AesKeyWrapPadTests
         Assert.That(wrapped, Has.Length.EqualTo(16), "Single semiblock case produces 16-byte output");
 
         wrapped[0] ^= 0xFF;
-        Assert.Throws<CryptographicException>(() => kwp.UnwrapKey(wrapped));
+        Assert.Throws<OS.CryptographicException>(() => kwp.UnwrapKey(wrapped));
     }
 
     // ========================================================================

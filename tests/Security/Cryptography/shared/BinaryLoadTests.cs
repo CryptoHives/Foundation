@@ -398,7 +398,7 @@ public unsafe class BinaryLoadTests
         }
     }
 
-#if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER && !LIB_NETSTANDARD
     [Test]
     public void LoadPadded128_MatchesAZeroPaddedBlock()
     {

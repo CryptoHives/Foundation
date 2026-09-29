@@ -6,7 +6,7 @@ namespace Cryptography.Tests.Hash;
 using Cryptography.Tests.Adapter.Hash;
 using NUnit.Framework;
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Tests for <see cref="HashAlgorithmAdapter"/>, which presents an in-box
@@ -28,9 +28,9 @@ public class HashAlgorithmAdapterTests
     private static byte[] Expected(byte[] data)
     {
 #if NET5_0_OR_GREATER
-        return SHA256.HashData(data);
+        return OS.SHA256.HashData(data);
 #else
-        using var sha256 = SHA256.Create();
+        using var sha256 = OS.SHA256.Create();
         return sha256.ComputeHash(data);
 #endif
     }
@@ -43,7 +43,7 @@ public class HashAlgorithmAdapterTests
     public void TryComputeHashMatchesTheWrappedAlgorithm([ValueSource(nameof(Sizes))] int size)
     {
         byte[] data = Data(size);
-        using var adapter = new HashAlgorithmAdapter(SHA256.Create());
+        using var adapter = new HashAlgorithmAdapter(OS.SHA256.Create());
 
         Span<byte> actual = stackalloc byte[32];
         Assert.That(adapter.TryComputeHash(data, actual, out int bytesWritten), Is.True);
@@ -60,7 +60,7 @@ public class HashAlgorithmAdapterTests
     public void StreamingMatchesTheWrappedAlgorithm([ValueSource(nameof(Sizes))] int size)
     {
         byte[] data = Data(size);
-        using var adapter = new HashAlgorithmAdapter(SHA256.Create());
+        using var adapter = new HashAlgorithmAdapter(OS.SHA256.Create());
 
         for (int offset = 0; offset < data.Length; offset += 97)
         {
@@ -81,7 +81,7 @@ public class HashAlgorithmAdapterTests
     public void TryComputeHashHonoursPendingAppendedData()
     {
         byte[] data = Data(1000);
-        using var adapter = new HashAlgorithmAdapter(SHA256.Create());
+        using var adapter = new HashAlgorithmAdapter(OS.SHA256.Create());
 
         adapter.AppendData(data.AsSpan(0, 400));
 
@@ -99,7 +99,7 @@ public class HashAlgorithmAdapterTests
     {
         byte[] first = Data(1000);
         byte[] second = Data(64);
-        using var adapter = new HashAlgorithmAdapter(SHA256.Create());
+        using var adapter = new HashAlgorithmAdapter(OS.SHA256.Create());
 
         Span<byte> actual = stackalloc byte[32];
         Assert.That(adapter.TryComputeHash(first, actual, out _), Is.True);
@@ -120,7 +120,7 @@ public class HashAlgorithmAdapterTests
     public void ComputeHashMatchesTheWrappedAlgorithm()
     {
         byte[] data = Data(1000);
-        using var adapter = new HashAlgorithmAdapter(SHA256.Create());
+        using var adapter = new HashAlgorithmAdapter(OS.SHA256.Create());
 
         Assert.That(adapter.ComputeHash(data), Is.EqualTo(Expected(data)));
     }
@@ -133,7 +133,7 @@ public class HashAlgorithmAdapterTests
     public void SuppliedOneShotMatchesTheInstancePath()
     {
         byte[] data = Data(1000);
-        using var adapter = new HashAlgorithmAdapter(SHA256.Create(), "SHA-256", oneShot: SHA256.HashData);
+        using var adapter = new HashAlgorithmAdapter(OS.SHA256.Create(), "SHA-256", oneShot: OS.SHA256.HashData);
 
         Span<byte> actual = stackalloc byte[32];
         Assert.That(adapter.TryComputeHash(data, actual, out int bytesWritten), Is.True);
@@ -154,7 +154,7 @@ public class HashAlgorithmAdapterTests
     public void ShortDestinationReturnsFalse()
     {
         byte[] data = Data(64);
-        using var adapter = new HashAlgorithmAdapter(SHA256.Create());
+        using var adapter = new HashAlgorithmAdapter(OS.SHA256.Create());
 
         Span<byte> tooShort = stackalloc byte[31];
         Assert.That(adapter.TryComputeHash(data, tooShort, out int bytesWritten), Is.False);
@@ -167,21 +167,21 @@ public class HashAlgorithmAdapterTests
     [Test]
     public void MetadataIsInferredFromTheWrappedAlgorithm()
     {
-        using (var sha256 = new HashAlgorithmAdapter(SHA256.Create()))
+        using (var sha256 = new HashAlgorithmAdapter(OS.SHA256.Create()))
         {
             Assert.That(sha256.AlgorithmName, Is.EqualTo("SHA256"));
             Assert.That(sha256.BlockSize, Is.EqualTo(64));
             Assert.That(sha256.HashSize, Is.EqualTo(256));
         }
 
-        using (var sha512 = new HashAlgorithmAdapter(SHA512.Create()))
+        using (var sha512 = new HashAlgorithmAdapter(OS.SHA512.Create()))
         {
             Assert.That(sha512.AlgorithmName, Is.EqualTo("SHA512"));
             Assert.That(sha512.BlockSize, Is.EqualTo(128));
             Assert.That(sha512.HashSize, Is.EqualTo(512));
         }
 
-        using var named = new HashAlgorithmAdapter(SHA256.Create(), "SHA-256", blockSize: 64);
+        using var named = new HashAlgorithmAdapter(OS.SHA256.Create(), "SHA-256", blockSize: 64);
         Assert.That(named.AlgorithmName, Is.EqualTo("SHA-256"));
         Assert.That(named.BlockSize, Is.EqualTo(64));
     }
@@ -192,7 +192,7 @@ public class HashAlgorithmAdapterTests
     [Test]
     public void DisposeDisposesTheWrappedAlgorithm()
     {
-        var inner = SHA256.Create();
+        var inner = OS.SHA256.Create();
         var adapter = new HashAlgorithmAdapter(inner);
         adapter.Dispose();
 

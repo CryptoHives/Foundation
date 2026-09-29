@@ -11,7 +11,7 @@ using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// AES Key Wrap with Padding as specified in RFC 5649 (and AES Key Wrap per RFC 3394).
@@ -210,7 +210,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// <param name="wrappedKey">The wrapped key to unwrap (minimum 16 bytes, multiple of 8).</param>
     /// <returns>The original key material.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="wrappedKey"/> has invalid length.</exception>
-    /// <exception cref="CryptographicException">Thrown when integrity check fails.</exception>
+    /// <exception cref="OS.CryptographicException">Thrown when integrity check fails.</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public byte[] UnwrapKey(ReadOnlySpan<byte> wrappedKey)
     {
@@ -287,7 +287,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// <exception cref="ArgumentException">
     /// Thrown when <paramref name="wrappedKey"/> has invalid length.
     /// </exception>
-    /// <exception cref="CryptographicException">Thrown when integrity check fails.</exception>
+    /// <exception cref="OS.CryptographicException">Thrown when integrity check fails.</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
     public byte[] UnwrapKeyNoPad(ReadOnlySpan<byte> wrappedKey)
     {
@@ -305,7 +305,7 @@ public unsafe class AesKeyWrapPad : IDisposable
         // Verify default IV
         ulong recovered = BinaryPrimitives.ReadUInt64BigEndian(a);
         if (recovered != DefaultIV)
-            throw new CryptographicException("AES Key Wrap integrity check failed.");
+            throw new OS.CryptographicException("AES Key Wrap integrity check failed.");
 
         return buffer.AsSpan(SemiblockSize, n * SemiblockSize).ToArray();
     }
@@ -392,26 +392,26 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// <param name="a">The recovered 8-byte AIV.</param>
     /// <param name="data">The padded plaintext data.</param>
     /// <param name="n">Number of 64-bit semiblocks of padded data.</param>
-    /// <exception cref="CryptographicException">Thrown when AIV verification fails.</exception>
+    /// <exception cref="OS.CryptographicException">Thrown when AIV verification fails.</exception>
     private static void VerifyAiv(ReadOnlySpan<byte> a, ReadOnlySpan<byte> data, int n)
     {
         // Check AIV prefix
         uint prefix = BinaryPrimitives.ReadUInt32BigEndian(a);
         if (prefix != AIVPrefix)
-            throw new CryptographicException("AES Key Wrap with Padding integrity check failed.");
+            throw new OS.CryptographicException("AES Key Wrap with Padding integrity check failed.");
 
         // Check MLI range: n*8 - 7 <= m <= n*8
         uint mli = BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
         uint maxLen = (uint)(n * SemiblockSize);
         uint minLen = maxLen - 7;
         if (mli < minLen || mli > maxLen)
-            throw new CryptographicException("AES Key Wrap with Padding integrity check failed.");
+            throw new OS.CryptographicException("AES Key Wrap with Padding integrity check failed.");
 
         // Check padding bytes are all zero
         for (int i = (int)mli; i < (int)maxLen; i++)
         {
             if (data[i] != 0)
-                throw new CryptographicException("AES Key Wrap with Padding integrity check failed.");
+                throw new OS.CryptographicException("AES Key Wrap with Padding integrity check failed.");
         }
     }
 

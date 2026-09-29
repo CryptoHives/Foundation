@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Camellia-256 symmetric cipher implementation.
@@ -57,8 +57,8 @@ public sealed class Camellia256 : SymmetricCipher
     {
         BlockSizeValue = CamelliaCore.BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(256, 256, 0)];
-        LegalBlockSizesValue = [new KeySizes(128, 128, 0)];
+        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0)];
+        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
     }
 
     /// <inheritdoc/>

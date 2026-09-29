@@ -5,7 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Generic block cipher transform that provides ECB, CBC, and CTR mode dispatch
@@ -60,10 +60,10 @@ internal abstract class BlockCipherTransform : ICipherTransform
     public int BlockSize => _blockSize;
 
     /// <inheritdoc/>
-    int ICryptoTransform.InputBlockSize => _blockSize;
+    int OS.ICryptoTransform.InputBlockSize => _blockSize;
 
     /// <inheritdoc/>
-    int ICryptoTransform.OutputBlockSize => _blockSize;
+    int OS.ICryptoTransform.OutputBlockSize => _blockSize;
 
     /// <inheritdoc/>
     public bool CanTransformMultipleBlocks => true;
@@ -208,7 +208,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
             }
             else if (remainder > 0)
             {
-                throw new CryptographicException("Input length must be a multiple of block size when no padding is used.");
+                throw new OS.CryptographicException("Input length must be a multiple of block size when no padding is used.");
             }
         }
         else
@@ -233,7 +233,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
                 byte padValue = output[written - 1];
 
                 if (!IsPkcs7PaddingValid(output.Slice(written - _blockSize, _blockSize), padValue, _blockSize))
-                    throw new CryptographicException("Invalid padding.");
+                    throw new OS.CryptographicException("Invalid padding.");
 
                 written -= padValue;
             }

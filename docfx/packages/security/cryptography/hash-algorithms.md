@@ -732,6 +732,10 @@ blake3Kdf.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 
 > **XOF Mode:** BLAKE3 implements [`IExtendableOutput`](xof-mode.md) using counter-mode output expansion for streaming variable-length output via `Absorb` / `Squeeze`.
 
+> **Hardware acceleration:** AVX2 on .NET 8+, widening to AVX-512 where the CPU offers it,
+> with an SSSE3 kernel on older x86 and a NEON kernel on Arm. Falls back to a portable
+> scalar kernel on other targets and CPUs.
+
 ---
 
 ## RIPEMD

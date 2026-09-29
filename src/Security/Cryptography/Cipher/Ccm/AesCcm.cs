@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// AES-CCM (Counter with CBC-MAC) authenticated encryption implementation.
@@ -180,7 +180,7 @@ public abstract class AesCcm : IAeadCipher
         ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytes)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytes;
         byte[] plaintext = new byte[ciphertextLength];
@@ -189,7 +189,7 @@ public abstract class AesCcm : IAeadCipher
                     ciphertextWithTag.Slice(ciphertextLength, TagSizeBytes),
                     plaintext, associatedData))
         {
-            throw new CryptographicException("Authentication tag mismatch.");
+            throw new OS.CryptographicException("Authentication tag mismatch.");
         }
 
         return plaintext;

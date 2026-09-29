@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 #if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -184,7 +184,7 @@ public abstract class AesGcm : IAeadCipher
         ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytes)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytes;
         ReadOnlySpan<byte> ciphertext = ciphertextWithTag.Slice(0, ciphertextLength);
@@ -194,7 +194,7 @@ public abstract class AesGcm : IAeadCipher
 
         if (!Decrypt(nonce, ciphertext, tag, plaintext, associatedData))
         {
-            throw new CryptographicException("Authentication failed.");
+            throw new OS.CryptographicException("Authentication failed.");
         }
 
         return plaintext;
