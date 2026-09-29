@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Kalyna-128 symmetric cipher implementation (DSTU 7624:2014).
@@ -30,8 +30,8 @@ public sealed class Kalyna128 : SymmetricCipher
     {
         BlockSizeValue = 128;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(128, 128, 0)];
-        LegalBlockSizesValue = [new KeySizes(128, 128, 0)];
+        LegalKeySizesValue = [new OS.KeySizes(128, 128, 0)];
+        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
     }
 
     /// <inheritdoc/>

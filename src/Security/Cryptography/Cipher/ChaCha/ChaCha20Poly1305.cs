@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// ChaCha20-Poly1305 authenticated encryption as specified in RFC 8439.
@@ -204,7 +204,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
                           ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytesConst)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytesConst;
         ReadOnlySpan<byte> ciphertext = ciphertextWithTag.Slice(0, ciphertextLength);
@@ -214,7 +214,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 
         if (!Decrypt(nonce, ciphertext, tag, plaintext, associatedData))
         {
-            throw new CryptographicException("Authentication failed.");
+            throw new OS.CryptographicException("Authentication failed.");
         }
 
         return plaintext;
