@@ -6,7 +6,7 @@ namespace Cryptography.Tests.Hash;
 using System;
 using System.Collections;
 using System.Linq;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Represents a factory for creating hash algorithm instances for testing.
@@ -17,14 +17,14 @@ using System.Security.Cryptography;
 /// </remarks>
 public sealed class HashAlgorithmFactory
 {
-    private readonly Func<HashAlgorithm> _factory;
+    private readonly Func<OS.HashAlgorithm> _factory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="HashAlgorithmFactory"/> class.
     /// </summary>
     /// <param name="name">A descriptive name for the implementation.</param>
     /// <param name="factory">A factory function that creates the hash algorithm.</param>
-    public HashAlgorithmFactory(string name, Func<HashAlgorithm> factory)
+    public HashAlgorithmFactory(string name, Func<OS.HashAlgorithm> factory)
     {
         Name = name ?? throw new ArgumentNullException(nameof(name));
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
@@ -39,7 +39,7 @@ public sealed class HashAlgorithmFactory
     /// Creates a new instance of the hash algorithm.
     /// </summary>
     /// <returns>A new hash algorithm instance.</returns>
-    public HashAlgorithm Create() => _factory();
+    public OS.HashAlgorithm Create() => _factory();
 
     /// <inheritdoc/>
     public override string ToString() => Name;

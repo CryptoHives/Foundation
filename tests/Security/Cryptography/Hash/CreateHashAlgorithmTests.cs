@@ -7,7 +7,7 @@ namespace Cryptography.Tests.Hash;
 
 using NUnit.Framework;
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 using CryptoHivesHash = CryptoHives.Foundation.Security.Cryptography.Hash;
 
 /// <summary>
@@ -28,7 +28,7 @@ public class CreateHashAlgorithmTests
     [TestCase("SHA-512", typeof(CryptoHivesHash.SHA512))]
     public void CreateReturnsSHA2Types(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -41,7 +41,7 @@ public class CreateHashAlgorithmTests
     [TestCase("SHA3512", typeof(CryptoHivesHash.SHA3_512))]
     public void CreateReturnsSHA3Types(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -52,7 +52,7 @@ public class CreateHashAlgorithmTests
     [TestCase("SHAKE256", typeof(CryptoHivesHash.Shake256))]
     public void CreateReturnsShakeTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -63,7 +63,7 @@ public class CreateHashAlgorithmTests
     [TestCase("CSHAKE256", typeof(CryptoHivesHash.CShake256))]
     public void CreateReturnsCShakeTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -74,7 +74,7 @@ public class CreateHashAlgorithmTests
     [TestCase("KECCAK256", typeof(CryptoHivesHash.Keccak256))]
     public void CreateReturnsKeccakTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -88,7 +88,7 @@ public class CreateHashAlgorithmTests
     [TestCase("BLAKE3", typeof(CryptoHivesHash.Blake3))]
     public void CreateReturnsBlakeTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -99,7 +99,7 @@ public class CreateHashAlgorithmTests
     [TestCase("RIPEMD160", typeof(CryptoHivesHash.Ripemd160))]
     public void CreateReturnsRipemdTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -109,7 +109,7 @@ public class CreateHashAlgorithmTests
     [TestCase("SM3", typeof(CryptoHivesHash.SM3))]
     public void CreateReturnsSM3Types(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -119,7 +119,7 @@ public class CreateHashAlgorithmTests
     [TestCase("WHIRLPOOL", typeof(CryptoHivesHash.Whirlpool))]
     public void CreateReturnsWhirlpoolTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -135,7 +135,7 @@ public class CreateHashAlgorithmTests
     [TestCase("STREEBOG", 64)]
     public void CreateReturnsStreebogTypes(string name, int expectedHashSizeBytes)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf<CryptoHivesHash.Streebog>());
         Assert.That(hash.HashSize, Is.EqualTo(expectedHashSizeBytes * 8));
     }
@@ -148,7 +148,7 @@ public class CreateHashAlgorithmTests
     [TestCase("MD5", typeof(CryptoHivesHash.MD5))]
     public void CreateReturnsLegacyTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -161,7 +161,7 @@ public class CreateHashAlgorithmTests
     [TestCase("ASCONXOF128", typeof(CryptoHivesHash.AsconXof128))]
     public void CreateReturnsAsconTypes(string name, Type expectedType)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
     }
 
@@ -178,7 +178,7 @@ public class CreateHashAlgorithmTests
     [TestCase("LSH-512", typeof(CryptoHivesHash.Lsh512), 64)]
     public void CreateReturnsLshTypes(string name, Type expectedType, int expectedHashSizeBytes)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf(expectedType));
         Assert.That(hash.HashSize, Is.EqualTo(expectedHashSizeBytes * 8));
     }
@@ -210,7 +210,7 @@ public class CreateHashAlgorithmTests
     [TestCase("SHA256")]
     public void CreateIsCaseInsensitive(string name)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(name);
         Assert.That(hash, Is.InstanceOf<CryptoHivesHash.SHA256>());
     }
 }

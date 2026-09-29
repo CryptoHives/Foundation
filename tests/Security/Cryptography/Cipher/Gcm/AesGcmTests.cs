@@ -6,7 +6,7 @@ namespace Cryptography.Tests.Cipher.Gcm;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Tests for AES-GCM implementation using NIST test vectors.
@@ -212,7 +212,7 @@ public class AesGcmTests
         // Tamper with ciphertext
         ciphertextWithTag[0] ^= 0x01;
 
-        Assert.Throws<CryptographicException>(() => aesGcm.Decrypt(nonce, ciphertextWithTag));
+        Assert.Throws<OS.CryptographicException>(() => aesGcm.Decrypt(nonce, ciphertextWithTag));
     }
 
     [Test]
@@ -229,7 +229,7 @@ public class AesGcmTests
         // Tamper with tag (last 16 bytes)
         ciphertextWithTag[^1] ^= 0x01;
 
-        Assert.Throws<CryptographicException>(() => aesGcm.Decrypt(nonce, ciphertextWithTag));
+        Assert.Throws<OS.CryptographicException>(() => aesGcm.Decrypt(nonce, ciphertextWithTag));
     }
 
     [Test]
@@ -245,7 +245,7 @@ public class AesGcmTests
 
         byte[] ciphertextWithTag = aesGcm.Encrypt(nonce, plaintext, aad);
 
-        Assert.Throws<CryptographicException>(() => aesGcm.Decrypt(nonce, ciphertextWithTag, wrongAad));
+        Assert.Throws<OS.CryptographicException>(() => aesGcm.Decrypt(nonce, ciphertextWithTag, wrongAad));
     }
 
     [Test]
@@ -261,7 +261,7 @@ public class AesGcmTests
 
         byte[] ciphertextWithTag = aesGcm.Encrypt(nonce, plaintext);
 
-        Assert.Throws<CryptographicException>(() => aesGcm.Decrypt(wrongNonce, ciphertextWithTag));
+        Assert.Throws<OS.CryptographicException>(() => aesGcm.Decrypt(wrongNonce, ciphertextWithTag));
     }
 
     [Test]

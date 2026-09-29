@@ -5,7 +5,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
-using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -13,7 +12,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 #endif
-using System.Threading;
 
 /// <summary>
 /// Core state for the BLAKE3 hash computation.
@@ -426,7 +424,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             {
 #if NET8_0_OR_GREATER
                 if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
-                { 
+                {
                     HashRootIv32Ssse3(srcPtr, source.Length, dstPtr);
                 }
                 else

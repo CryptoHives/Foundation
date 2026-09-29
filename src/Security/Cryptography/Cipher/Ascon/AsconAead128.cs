@@ -7,7 +7,7 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Ascon-AEAD128 authenticated encryption as specified in NIST SP 800-232.
@@ -226,7 +226,7 @@ public sealed class AsconAead128 : IAeadCipher
         if (_disposed)
             throw new ObjectDisposedException(GetType().Name);
         if (ciphertextWithTag.Length < TagSizeBytesConst)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytesConst;
         ReadOnlySpan<byte> ciphertext = ciphertextWithTag.Slice(0, ciphertextLength);
@@ -235,7 +235,7 @@ public sealed class AsconAead128 : IAeadCipher
         byte[] plaintext = new byte[ciphertextLength];
 
         if (!Decrypt(nonce, ciphertext, tag, plaintext, associatedData))
-            throw new CryptographicException("Authentication failed.");
+            throw new OS.CryptographicException("Authentication failed.");
 
         return plaintext;
     }

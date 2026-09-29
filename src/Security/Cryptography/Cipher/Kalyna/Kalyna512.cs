@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Kalyna-512 symmetric cipher implementation (DSTU 7624:2014).
@@ -36,8 +36,8 @@ public sealed class Kalyna512 : SymmetricCipher
     {
         BlockSizeValue = BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(256, 256, 0), new KeySizes(512, 512, 0)];
-        LegalBlockSizesValue = [new KeySizes(BlockSizeBits, BlockSizeBits, 0)];
+        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0), new OS.KeySizes(512, 512, 0)];
+        LegalBlockSizesValue = [new OS.KeySizes(BlockSizeBits, BlockSizeBits, 0)];
     }
 
     /// <inheritdoc/>
@@ -54,7 +54,7 @@ public sealed class Kalyna512 : SymmetricCipher
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             if (value.Length != KeySizeBytes)
-                throw new CryptographicException($"Invalid key size: {value.Length * 8} bits. Expected: {KeySizeBits} bits.");
+                throw new OS.CryptographicException($"Invalid key size: {value.Length * 8} bits. Expected: {KeySizeBits} bits.");
 
             KeySizeValue = KeySizeBits;
             KeyValue = (byte[])value.Clone();

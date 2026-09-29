@@ -4,7 +4,7 @@
 namespace Cryptography.Tests.Hash;
 
 using NUnit.Framework;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 using System.Text;
 using CryptoHivesHash = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CryptoHivesMac = CryptoHives.Foundation.Security.Cryptography.Mac;
@@ -78,7 +78,7 @@ public class HashAlgorithmFactoryTests
     [TestCase("SHAKE128")]
     public void FactoryCreateReturnsCorrectTypes(string algorithmName)
     {
-        using HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(algorithmName);
+        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(algorithmName);
         Assert.That(hash.GetType().Namespace, Is.EqualTo("CryptoHives.Foundation.Security.Cryptography.Hash"));
     }
 

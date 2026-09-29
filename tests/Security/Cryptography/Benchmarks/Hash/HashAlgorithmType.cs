@@ -11,7 +11,7 @@ using Cryptography.Tests.Hash;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 using System.Text;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 
@@ -26,13 +26,13 @@ using CH = CryptoHives.Foundation.Security.Cryptography;
 /// </remarks>
 public sealed class HashAlgorithmType : IFormattable
 {
-    private readonly Func<HashAlgorithm> _factory;
+    private readonly Func<OS.HashAlgorithm> _factory;
     private readonly Func<bool>? _isSupported;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="HashAlgorithmType"/> class.
     /// </summary>
-    public HashAlgorithmType(string category, string name, Func<HashAlgorithm> factory, Func<bool>? isSupported = null)
+    public HashAlgorithmType(string category, string name, Func<OS.HashAlgorithm> factory, Func<bool>? isSupported = null)
     {
         Category = category;
         Name = name;
@@ -342,11 +342,11 @@ public sealed class HashAlgorithmType : IFormattable
             () => new BouncyCastleKMacAdapter(128, _sharedKMacKey, _sharedKMacCustomization, 32));
 
 #if NET9_0_OR_GREATER
-        if (Kmac128.IsSupported)
+        if (OS.Kmac128.IsSupported)
         {
             yield return new("KMAC-128", "KMAC-128 (OS)",
                 () => new KMac128HashAdapter(_sharedKMacKey, 32, _sharedKMacCustomization),
-                () => Kmac128.IsSupported);
+                () => OS.Kmac128.IsSupported);
         }
 #endif
     }

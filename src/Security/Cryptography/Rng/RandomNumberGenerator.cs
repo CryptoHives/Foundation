@@ -5,22 +5,22 @@ namespace CryptoHives.Foundation.Security.Cryptography.Rng;
 
 using System;
 using System.Buffers;
-using Sys = System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Polyfill for <see cref="System.Security.Cryptography.RandomNumberGenerator"/>.
 /// </summary>
 public class RandomNumberGenerator : IDisposable
 {
-    private Sys.RandomNumberGenerator? _rng;
+    private OS.RandomNumberGenerator? _rng;
     private static readonly RandomNumberGenerator? _instance = new RandomNumberGenerator();
 
     private RandomNumberGenerator()
     {
-        _rng = Sys.RandomNumberGenerator.Create();
+        _rng = OS.RandomNumberGenerator.Create();
     }
 
-    /// <inheritdoc cref="Sys.RandomNumberGenerator.Create()"/>
+    /// <inheritdoc cref="OS.RandomNumberGenerator.Create()"/>
     public static RandomNumberGenerator Create() => new RandomNumberGenerator();
 
     /// <inheritdoc/>
@@ -30,7 +30,7 @@ public class RandomNumberGenerator : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    /// <inheritdoc cref="Sys.RandomNumberGenerator.Dispose(bool)"/>
+    /// <inheritdoc cref="OS.RandomNumberGenerator.Dispose(bool)"/>
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
@@ -50,13 +50,13 @@ public class RandomNumberGenerator : IDisposable
     /// </summary>
     public static void Fill(byte[] data) => _instance!._rng!.GetBytes(data);
 
-    /// <inheritdoc cref="Sys.RandomNumberGenerator.GetBytes(byte[])"/>
+    /// <inheritdoc cref="OS.RandomNumberGenerator.GetBytes(byte[])"/>
     public void GetBytes(byte[] data)
     {
         _rng!.GetBytes(data);
     }
 
-    /// <inheritdoc cref="Sys.RandomNumberGenerator.GetBytes(byte[], int, int)"/>
+    /// <inheritdoc cref="OS.RandomNumberGenerator.GetBytes(byte[], int, int)"/>
     public void GetBytes(byte[] data, int offset, int count)
     {
         _rng!.GetBytes(data, offset, count);

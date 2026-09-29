@@ -6,7 +6,7 @@ namespace Cryptography.Tests.Dsa.SlhDsa;
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using NUnit.Framework;
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 using SlhDsa = CryptoHives.Foundation.Security.Cryptography.Dsa.SlhDsa;
 using SlhDsaAlgorithm = CryptoHives.Foundation.Security.Cryptography.Dsa.SlhDsaAlgorithm;
 
@@ -98,8 +98,8 @@ public class SlhDsaTests
 
         using var verifier = SlhDsa.ImportSlhDsaPublicKey(SlhDsaAlgorithm.SlhDsaShake128f, signer.ExportSlhDsaPublicKey());
         Assert.That(verifier.VerifyData(message, signature), Is.True);
-        Assert.That(() => verifier.SignData(message), Throws.InstanceOf<CryptographicException>());
-        Assert.That(() => verifier.ExportSlhDsaPrivateKey(), Throws.InstanceOf<CryptographicException>());
+        Assert.That(() => verifier.SignData(message), Throws.InstanceOf<OS.CryptographicException>());
+        Assert.That(() => verifier.ExportSlhDsaPrivateKey(), Throws.InstanceOf<OS.CryptographicException>());
     }
 
     [Test]
