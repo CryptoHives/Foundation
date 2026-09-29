@@ -3,10 +3,10 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
-using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -147,7 +147,7 @@ public sealed class AsconAead128 : IAeadCipher
         ulong s2 = _k1;
         ulong s3 = BinaryPrimitives.ReadUInt64LittleEndian(nonce);
         ulong s4 = BinaryPrimitives.ReadUInt64LittleEndian(nonce.Slice(8));
-        AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
+        CH.Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
         s3 ^= _k0;
         s4 ^= _k1;
 
@@ -181,7 +181,7 @@ public sealed class AsconAead128 : IAeadCipher
         ulong s2 = _k1;
         ulong s3 = BinaryPrimitives.ReadUInt64LittleEndian(nonce);
         ulong s4 = BinaryPrimitives.ReadUInt64LittleEndian(nonce.Slice(8));
-        AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
+        CH.Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
         s3 ^= _k0;
         s4 ^= _k1;
 
@@ -267,7 +267,7 @@ public sealed class AsconAead128 : IAeadCipher
             {
                 s0 ^= BinaryPrimitives.ReadUInt64LittleEndian(associatedData.Slice(offset));
                 s1 ^= BinaryPrimitives.ReadUInt64LittleEndian(associatedData.Slice(offset + 8));
-                AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
+                CH.Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
                 offset += RateBytes;
             }
 
@@ -284,7 +284,7 @@ public sealed class AsconAead128 : IAeadCipher
                 s0 ^= PadPartialWord(associatedData.Slice(offset, remaining), remaining);
             }
 
-            AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
+            CH.Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
         }
 
         // Domain separation
@@ -309,7 +309,7 @@ public sealed class AsconAead128 : IAeadCipher
             s1 ^= BinaryPrimitives.ReadUInt64LittleEndian(plaintext.Slice(offset + 8));
             BinaryPrimitives.WriteUInt64LittleEndian(ciphertext.Slice(offset + 8), s1);
 
-            AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
+            CH.Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
             offset += RateBytes;
         }
 
@@ -360,7 +360,7 @@ public sealed class AsconAead128 : IAeadCipher
             BinaryPrimitives.WriteUInt64LittleEndian(plaintext.Slice(offset + 8), s1 ^ c1);
             s1 = c1;
 
-            AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
+            CH.Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
             offset += RateBytes;
         }
 
@@ -399,7 +399,7 @@ public sealed class AsconAead128 : IAeadCipher
     {
         s2 ^= _k0;
         s3 ^= _k1;
-        AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
+        CH.Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
         s3 ^= _k0;
         s4 ^= _k1;
 

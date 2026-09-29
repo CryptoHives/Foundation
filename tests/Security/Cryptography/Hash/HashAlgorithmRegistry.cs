@@ -12,10 +12,10 @@ using Cryptography.Tests.Adapter.Hash;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OS = System.Security.Cryptography;
 using BC = Org.BouncyCastle.Crypto.Digests;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CHRoot = CryptoHives.Foundation.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Central registry of all hash algorithm implementations for testing and benchmarking.

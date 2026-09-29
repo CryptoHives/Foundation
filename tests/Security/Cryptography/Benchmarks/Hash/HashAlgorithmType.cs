@@ -11,9 +11,9 @@ using Cryptography.Tests.Hash;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OS = System.Security.Cryptography;
 using System.Text;
 using CH = CryptoHives.Foundation.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Factory for creating hash algorithm instances for benchmarking.

@@ -4,10 +4,9 @@
 namespace Cryptography.Tests.Hash;
 
 using NUnit.Framework;
-using OS = System.Security.Cryptography;
 using System.Text;
-using CryptoHivesHash = CryptoHives.Foundation.Security.Cryptography.Hash;
-using CryptoHivesMac = CryptoHives.Foundation.Security.Cryptography.Mac;
+using CH = CryptoHives.Foundation.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Tests for hash algorithm factory and instantiation.
@@ -59,8 +58,8 @@ public class HashAlgorithmFactoryTests
     [Test]
     public void Shake128SupportsVariableOutput()
     {
-        using var shake32 = CryptoHivesHash.Shake128.Create(32);
-        using var shake64 = CryptoHivesHash.Shake128.Create(64);
+        using var shake32 = CH.Hash.Shake128.Create(32);
+        using var shake64 = CH.Hash.Shake128.Create(64);
 
         byte[] result32 = shake32.ComputeHash(TestData);
         byte[] result64 = shake64.ComputeHash(TestData);
@@ -78,7 +77,7 @@ public class HashAlgorithmFactoryTests
     [TestCase("SHAKE128")]
     public void FactoryCreateReturnsCorrectTypes(string algorithmName)
     {
-        using OS.HashAlgorithm hash = CryptoHivesHash.HashAlgorithm.Create(algorithmName);
+        using OS.HashAlgorithm hash = CH.Hash.HashAlgorithm.Create(algorithmName);
         Assert.That(hash.GetType().Namespace, Is.EqualTo("CryptoHives.Foundation.Security.Cryptography.Hash"));
     }
 
@@ -89,7 +88,7 @@ public class HashAlgorithmFactoryTests
     public void KMac128ForwardsConstructorParameters()
     {
         byte[] key = Encoding.UTF8.GetBytes("test-key-12345678");
-        using var kmac = CryptoHivesMac.KMac128.Create(key, 64, "custom");
+        using var kmac = CH.Mac.KMac128.Create(key, 64, "custom");
 
         Assert.That(kmac.HashSize, Is.EqualTo(512)); // 64 bytes = 512 bits
     }

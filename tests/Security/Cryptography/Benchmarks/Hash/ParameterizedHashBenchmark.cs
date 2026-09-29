@@ -8,8 +8,8 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OS = System.Security.Cryptography;
 using CH = CryptoHives.Foundation.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Base class for parameterized hash algorithm benchmarks.

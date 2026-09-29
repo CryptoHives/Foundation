@@ -11,11 +11,11 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OS = System.Security.Cryptography;
 using BC = Org.BouncyCastle.Crypto.Digests;
 using BCEngines = Org.BouncyCastle.Crypto.Engines;
 using BCMacs = Org.BouncyCastle.Crypto.Macs;
 using CH = CryptoHives.Foundation.Security.Cryptography.Mac;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Central registry of all MAC algorithm implementations for testing and benchmarking.
