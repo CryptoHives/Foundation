@@ -4,7 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// ChaCha20 stream cipher implementation as specified in RFC 8439.
@@ -80,8 +80,8 @@ public sealed class ChaCha20 : SymmetricCipher
         _simdSupport = simdSupport & ChaChaCore.SimdSupport;
         BlockSizeValue = ChaChaCore.BlockSizeBytes * 8;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(256, 256, 0)];
-        LegalBlockSizesValue = [new KeySizes(512, 512, 0)];
+        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0)];
+        LegalBlockSizesValue = [new OS.KeySizes(512, 512, 0)];
         Mode = CipherMode.Stream;
         Padding = PaddingMode.None;
     }
@@ -143,7 +143,7 @@ public sealed class ChaCha20 : SymmetricCipher
     {
         if (byteLength != NonceSizeConst)
         {
-            throw new CryptographicException($"Invalid nonce size: {byteLength} bytes. Expected: {NonceSizeConst} bytes.");
+            throw new OS.CryptographicException($"Invalid nonce size: {byteLength} bytes. Expected: {NonceSizeConst} bytes.");
         }
     }
 

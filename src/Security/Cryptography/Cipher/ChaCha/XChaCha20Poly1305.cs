@@ -5,7 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// XChaCha20-Poly1305 authenticated encryption with extended nonce.
@@ -233,7 +233,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytesConst)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytesConst;
         byte[] plaintext = new byte[ciphertextLength];
@@ -242,7 +242,7 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
             ciphertextWithTag.Slice(ciphertextLength, TagSizeBytesConst),
             plaintext, associatedData))
         {
-            throw new CryptographicException("Authentication tag mismatch.");
+            throw new OS.CryptographicException("Authentication tag mismatch.");
         }
 
         return plaintext;

@@ -7,7 +7,6 @@ namespace Cryptography.Tests.Adapter.Cipher;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
-using System.Security.Cryptography;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -84,7 +83,7 @@ internal sealed class OSAesGcmAdapter : IAeadCipher
             _cipher.Decrypt(nonce, ciphertext, tag, plaintext, associatedData);
             return true;
         }
-        catch (CryptographicException)
+        catch (OS.CryptographicException)
         {
             // Authentication failed
             plaintext.Clear();
@@ -111,7 +110,7 @@ internal sealed class OSAesGcmAdapter : IAeadCipher
         ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytes)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytes;
         byte[] plaintext = new byte[ciphertextLength];
@@ -120,7 +119,7 @@ internal sealed class OSAesGcmAdapter : IAeadCipher
                     ciphertextWithTag.Slice(ciphertextLength, TagSizeBytes),
                     plaintext, associatedData))
         {
-            throw new CryptographicException("Authentication tag mismatch.");
+            throw new OS.CryptographicException("Authentication tag mismatch.");
         }
 
         return plaintext;
@@ -201,7 +200,7 @@ internal sealed class OSChaCha20Poly1305Adapter : IAeadCipher
             _cipher.Decrypt(nonce, ciphertext, tag, plaintext, associatedData);
             return true;
         }
-        catch (CryptographicException)
+        catch (OS.CryptographicException)
         {
             plaintext.Clear();
             return false;
@@ -227,7 +226,7 @@ internal sealed class OSChaCha20Poly1305Adapter : IAeadCipher
         ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytes)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytes;
         byte[] plaintext = new byte[ciphertextLength];
@@ -236,7 +235,7 @@ internal sealed class OSChaCha20Poly1305Adapter : IAeadCipher
                     ciphertextWithTag.Slice(ciphertextLength, TagSizeBytes),
                     plaintext, associatedData))
         {
-            throw new CryptographicException("Authentication tag mismatch.");
+            throw new OS.CryptographicException("Authentication tag mismatch.");
         }
 
         return plaintext;

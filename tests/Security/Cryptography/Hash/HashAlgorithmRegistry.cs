@@ -12,10 +12,10 @@ using Cryptography.Tests.Adapter.Hash;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using BC = Org.BouncyCastle.Crypto.Digests;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CHRoot = CryptoHives.Foundation.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Central registry of all hash algorithm implementations for testing and benchmarking.
@@ -78,7 +78,7 @@ public static class HashAlgorithmRegistry
             string algorithmFamily,
             string variant,
             int hashSizeBits,
-            Func<HashAlgorithm> factory,
+            Func<OS.HashAlgorithm> factory,
             Source source,
             Func<bool>? supportCheck = null,
             bool excludeFromBenchmark = false)
@@ -110,7 +110,7 @@ public static class HashAlgorithmRegistry
         /// <summary>
         /// Gets the factory function.
         /// </summary>
-        public Func<HashAlgorithm> Factory { get; }
+        public Func<OS.HashAlgorithm> Factory { get; }
 
         /// <summary>
         /// Gets the implementation source type.
@@ -146,7 +146,7 @@ public static class HashAlgorithmRegistry
         /// <summary>
         /// Creates a new instance of the hash algorithm.
         /// </summary>
-        public HashAlgorithm Create() => Factory();
+        public OS.HashAlgorithm Create() => Factory();
 
         /// <inheritdoc/>
         public override string ToString() => Name;
@@ -262,7 +262,7 @@ public static class HashAlgorithmRegistry
 
     private static void AddSha1(List<HashImplementation> list)
     {
-        list.Add(new HashImplementation("SHA-1", "OS", 160, SHA1.Create, Source.OS));
+        list.Add(new HashImplementation("SHA-1", "OS", 160, OS.SHA1.Create, Source.OS));
         var sha1Simd = CH.SHA1.SimdSupport;
         if ((sha1Simd & CHRoot.SimdSupport.ArmSha1) != 0)
         {
@@ -294,7 +294,7 @@ public static class HashAlgorithmRegistry
             () => new BouncyCastleHashAdapter(new BC.Sha224Digest()), Source.BouncyCastle));
 
         // SHA-256
-        list.Add(new HashImplementation("SHA-256", "OS", 256, SHA256.Create, Source.OS));
+        list.Add(new HashImplementation("SHA-256", "OS", 256, OS.SHA256.Create, Source.OS));
         if ((sha256Simd & CHRoot.SimdSupport.ArmSha256) != 0)
         {
             list.Add(new("SHA-256", "ArmSha256", 256,
@@ -306,13 +306,13 @@ public static class HashAlgorithmRegistry
             () => new BouncyCastleHashAdapter(new BC.Sha256Digest()), Source.BouncyCastle));
 
         // SHA-384
-        list.Add(new HashImplementation("SHA-384", "OS", 384, SHA384.Create, Source.OS));
+        list.Add(new HashImplementation("SHA-384", "OS", 384, OS.SHA384.Create, Source.OS));
         list.Add(new("SHA-384", "CryptoHives-Scalar", 384, CH.SHA384.Create, Source.Managed));
         list.Add(new("SHA-384", "BouncyCastle", 384,
             () => new BouncyCastleHashAdapter(new BC.Sha384Digest()), Source.BouncyCastle));
 
         // SHA-512
-        list.Add(new HashImplementation("SHA-512", "OS", 512, SHA512.Create, Source.OS));
+        list.Add(new HashImplementation("SHA-512", "OS", 512, OS.SHA512.Create, Source.OS));
         list.Add(new("SHA-512", "CryptoHives-Scalar", 512,
             CH.SHA512.Create, Source.Managed));
         list.Add(new("SHA-512", "BouncyCastle", 512,
@@ -345,7 +345,7 @@ public static class HashAlgorithmRegistry
         AddKeccakFamilyVariant(list, "SHA3-256", 256, simdSupport,
             CH.SHA3_256.Create, () => new BC.Sha3Digest(256),
 #if NET8_0_OR_GREATER
-            () => SHA3_256.IsSupported ? SHA3_256.Create() : null
+            () => OS.SHA3_256.IsSupported ? OS.SHA3_256.Create() : null
 #else
             null
 #endif
@@ -354,7 +354,7 @@ public static class HashAlgorithmRegistry
         AddKeccakFamilyVariant(list, "SHA3-384", 384, simdSupport,
             CH.SHA3_384.Create, () => new BC.Sha3Digest(384),
 #if NET8_0_OR_GREATER
-            () => SHA3_384.IsSupported ? SHA3_384.Create() : null
+            () => OS.SHA3_384.IsSupported ? OS.SHA3_384.Create() : null
 #else
             null
 #endif
@@ -363,7 +363,7 @@ public static class HashAlgorithmRegistry
         AddKeccakFamilyVariant(list, "SHA3-512", 512, simdSupport,
             CH.SHA3_512.Create, () => new BC.Sha3Digest(512),
 #if NET8_0_OR_GREATER
-            () => SHA3_512.IsSupported ? SHA3_512.Create() : null
+            () => OS.SHA3_512.IsSupported ? OS.SHA3_512.Create() : null
 #else
             null
 #endif
@@ -375,9 +375,9 @@ public static class HashAlgorithmRegistry
         string family,
         int hashSizeBits,
         CHRoot.SimdSupport simdSupport,
-        Func<CHRoot.SimdSupport, HashAlgorithm> factory,
+        Func<CHRoot.SimdSupport, OS.HashAlgorithm> factory,
         Func<Org.BouncyCastle.Crypto.IDigest>? bcFactory = null,
-        Func<HashAlgorithm?>? osFactory = null)
+        Func<OS.HashAlgorithm?>? osFactory = null)
     {
 #if NET8_0_OR_GREATER
         if (osFactory != null)
@@ -420,11 +420,11 @@ public static class HashAlgorithmRegistry
 #if NET8_0_OR_GREATER
         list.Add(new("SHAKE128", "OS", 256,
             () => new Shake128HashAdapter(32), Source.OS,
-            () => Shake128.IsSupported));
+            () => OS.Shake128.IsSupported));
 
         list.Add(new("SHAKE256", "OS", 512,
             () => new Shake256HashAdapter(64), Source.OS,
-            () => Shake256.IsSupported));
+            () => OS.Shake256.IsSupported));
 #endif
 
         AddKeccakFamilyVariant(list, "SHAKE128", 256, simdSupport,
@@ -564,7 +564,7 @@ public static class HashAlgorithmRegistry
 
     private static void AddMd5(List<HashImplementation> list)
     {
-        list.Add(new HashImplementation("MD5", "OS", 128, MD5.Create, Source.OS));
+        list.Add(new HashImplementation("MD5", "OS", 128, OS.MD5.Create, Source.OS));
         list.Add(new HashImplementation("MD5", "CryptoHives-Scalar", 128, CH.MD5.Create, Source.Managed));
         list.Add(new("MD5", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.MD5Digest()), Source.BouncyCastle));

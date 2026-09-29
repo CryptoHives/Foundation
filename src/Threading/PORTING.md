@@ -63,6 +63,7 @@ sealed class AsyncSemaphore {
     AsyncSemaphore(int initialCount, bool runContinuationAsynchronously = true, …);
     ValueTask WaitAsync(CancellationToken cancellationToken = default);
     ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryWait();     // takes a permit only if one is free right now; never waits, never allocates
     void Release();
     void Release(int releaseCount);
     int CurrentCount { get; }
@@ -72,8 +73,28 @@ sealed class AsyncSemaphore {
 new AsyncManualResetEvent(set: false);           // Set() releases ALL waiters, stays set until Reset()
 new AsyncAutoResetEvent(initialState: false);    // Set() releases ONE waiter, auto-resets
 //   .Set(); .Reset(); ValueTask WaitAsync(CancellationToken); ValueTask WaitAsync(TimeSpan, CancellationToken);
+//   bool TryReset();   // AsyncManualResetEvent/AsyncAutoResetEvent — resets only if currently set
+//   bool TryWait();    // AsyncManualResetEvent/AsyncCountdownEvent: non-consuming alias of IsSet
+//                      // AsyncAutoResetEvent: CONSUMES the signal, like a completed WaitAsync()
+
+// AsyncCountdownEvent
+sealed class AsyncCountdownEvent {
+    AsyncCountdownEvent(int initialCount, bool runContinuationAsynchronously = true, …);
+    ValueTask WaitAsync(CancellationToken cancellationToken = default);
+    ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryWait();               // non-consuming alias of IsSet; never waits, never allocates
+    void Signal(int signalCount = 1);
+    bool TryAddCount(int signalCount = 1);
+    bool IsSet { get; }
+}
 
 // AsyncReaderWriterLock — using (await rw.ReaderLockAsync(ct)) / (await rw.WriterLockAsync(ct))
+//   bool TryReaderLock(out Releaser releaser);
+//   bool TryUpgradeableReaderLock(out Releaser releaser);
+//   bool TryWriterLock(out Releaser releaser);
+//   Releaser.TryUpgradeToWriterLock(out Releaser releaser);   // on the upgradeable-reader Releaser
+// All four probe synchronously — never wait, never allocate — and return false on contention
+// rather than throwing. A failed probe hands back `default`; never dispose it.
 
 // AsyncConditionVariable — must pair with an AsyncLock the caller already holds.
 sealed class AsyncConditionVariable {
@@ -139,7 +160,9 @@ public async Task FetchAsync(CancellationToken ct)
 6. **`AsyncLock` is not reentrant** — re-acquiring on the same call stack deadlocks. If the
    source lock was reentrant, do **not** port it; flag it for human review.
 7. There is **no** `SemaphoreSlim`-style `bool WaitAsync(timeout)`. Rewrite
-   `if (await sem.WaitAsync(timeout))` to try/catch `TimeoutException` or use a token.
+   `if (await sem.WaitAsync(timeout))` to try/catch `TimeoutException` or use a token — except
+   the `timeout == 0` / `Wait(0)` case, which is a non-blocking probe: use the primitive's
+   `Try*` method instead (`TryWait`, `TryReaderLock`, `TryWriterLock`, …), not a caught exception.
 
 ---
 
