@@ -8,6 +8,7 @@ Newest first.
 
 | Version | Tag | Date | Headline |
 |---|---|---|---|
+| [0.7.37](0.7.37.md) | `0.7.37.24694` | 2026-09-30 | ML-DSA and SLH-DSA (FIPS 204/205), PQC key formats, BLAKE2/BLAKE3 kernel work |
 | [0.6.101](0.6.101.md) | `0.6.101.8500` | 2026-09-01 | ML-KEM (FIPS 203), pooled buffer writers and `SequenceLease<T>`, KMAC key leak fix |
 | [0.6.79](0.6.79.md) | `0.6.79.4022` | 2026-08-12 | `AsyncKeyedLock<TKey>`, ARM SHA-1, `AsyncBarrier` deadlock fix |
 | [0.6.51](0.6.51.md) | `0.6.51.25133` | 2026-07-30 | BLAKE3 on AVX-512/AVX2/SSSE3/NEON, `ISegmentOwner<T>`, porting guides |
@@ -59,3 +60,8 @@ does.
 0.6.101 opens the post-quantum chapter with ML-KEM, and turns the Memory package's attention from
 pooling *buffers* to pooling the objects that own them — and to letting a payload outlive the scope
 that produced it without paying for a copy.
+
+0.7.37 completes the NIST trio with ML-DSA and SLH-DSA, together with their pre-hash variants and
+the PKCS#8/SPKI/PEM key formats. All three post-quantum types can now replace the .NET 10 in-box
+types with only a `using` change, down to net462. Secrets on the key-format surface pass only
+through memory that can be erased.
