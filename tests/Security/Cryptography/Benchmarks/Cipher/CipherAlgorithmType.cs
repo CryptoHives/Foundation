@@ -368,6 +368,121 @@ public sealed class CipherAlgorithmType : IFormattable
         foreach (var alg in SeedCbc()) yield return alg;
     }
 
+    /// <summary>
+    /// Returns SM4-GCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> Sm4Gcm()
+    {
+        return FromRegistry("SM4-GCM", CipherAlgorithmRegistry.Mode.GCM, 128);
+    }
+
+    /// <summary>
+    /// Returns SM4-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> Sm4Ccm()
+    {
+        return FromRegistry("SM4-CCM", CipherAlgorithmRegistry.Mode.CCM, 128);
+    }
+
+    /// <summary>
+    /// Returns ARIA-128-GCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AriaGcm128()
+    {
+        return FromRegistry("ARIA-128-GCM", CipherAlgorithmRegistry.Mode.GCM, 128);
+    }
+
+    /// <summary>
+    /// Returns ARIA-256-GCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AriaGcm256()
+    {
+        return FromRegistry("ARIA-256-GCM", CipherAlgorithmRegistry.Mode.GCM, 256);
+    }
+
+    /// <summary>
+    /// Returns ARIA-128-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AriaCcm128()
+    {
+        return FromRegistry("ARIA-128-CCM", CipherAlgorithmRegistry.Mode.CCM, 128);
+    }
+
+    /// <summary>
+    /// Returns ARIA-256-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AriaCcm256()
+    {
+        return FromRegistry("ARIA-256-CCM", CipherAlgorithmRegistry.Mode.CCM, 256);
+    }
+
+    /// <summary>
+    /// Returns Camellia-128-GCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> CamelliaGcm128()
+    {
+        return FromRegistry("Camellia-128-GCM", CipherAlgorithmRegistry.Mode.GCM, 128);
+    }
+
+    /// <summary>
+    /// Returns Camellia-256-GCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> CamelliaGcm256()
+    {
+        return FromRegistry("Camellia-256-GCM", CipherAlgorithmRegistry.Mode.GCM, 256);
+    }
+
+    /// <summary>
+    /// Returns Camellia-128-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> CamelliaCcm128()
+    {
+        return FromRegistry("Camellia-128-CCM", CipherAlgorithmRegistry.Mode.CCM, 128);
+    }
+
+    /// <summary>
+    /// Returns Camellia-256-CCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> CamelliaCcm256()
+    {
+        return FromRegistry("Camellia-256-CCM", CipherAlgorithmRegistry.Mode.CCM, 256);
+    }
+
+    /// <summary>
+    /// Returns SEED-GCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> SeedGcm()
+    {
+        return FromRegistry("SEED-GCM", CipherAlgorithmRegistry.Mode.GCM, 128);
+    }
+
+    /// <summary>
+    /// Returns Kuznyechik-GCM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> KuznyechikGcm()
+    {
+        return FromRegistry("Kuznyechik-GCM", CipherAlgorithmRegistry.Mode.GCM, 256);
+    }
+
+    /// <summary>
+    /// Returns all GCM and CCM implementations over the regional block ciphers for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> RegionalAead()
+    {
+        foreach (var alg in Sm4Gcm()) yield return alg;
+        foreach (var alg in Sm4Ccm()) yield return alg;
+        foreach (var alg in AriaGcm128()) yield return alg;
+        foreach (var alg in AriaGcm256()) yield return alg;
+        foreach (var alg in AriaCcm128()) yield return alg;
+        foreach (var alg in AriaCcm256()) yield return alg;
+        foreach (var alg in CamelliaGcm128()) yield return alg;
+        foreach (var alg in CamelliaGcm256()) yield return alg;
+        foreach (var alg in CamelliaCcm128()) yield return alg;
+        foreach (var alg in CamelliaCcm256()) yield return alg;
+        foreach (var alg in SeedGcm()) yield return alg;
+        foreach (var alg in KuznyechikGcm()) yield return alg;
+    }
+
     // ========================================================================
     // Helper Methods
     // ========================================================================
