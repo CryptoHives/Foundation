@@ -693,7 +693,7 @@ public sealed partial class Blake3 : HashAlgorithm, IExtendableOutput
 
 **Properties:**
 - Output Size: Variable (default 32 bytes)
-- Designed for parallelism
+- Designed for parallelism; this implementation uses it across SIMD lanes and stays single-threaded
 - Supports: Hash, Keyed Hash, Derive Key modes
 - Implements [`IExtendableOutput`](xof-mode.md) for streaming XOF output
 
@@ -740,10 +740,12 @@ blake3Kdf.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 > [BLAKE3 reference implementation](https://github.com/BLAKE3-team/BLAKE3), of
 > [Blake3.NET](https://github.com/xoofx/Blake3.NET), which brings it to .NET as a native binding and a
 > managed port, and of
-> [Blake3.Managed](https://github.com/Dissimilis/Blake3.Managed). Blake3.Managed's recent performance
-> work, and the write-up that came with it, prompted another optimisation pass here, and several of
-> the resulting techniques follow their ideas. The implementations are independent, and all of them are
-> competitive with one another; the [benchmark pages](benchmarks.md) show how they compare.
+> [Blake3.Managed](https://github.com/Dissimilis/Blake3.Managed). Comparing against these libraries,
+> and Blake3.Managed's recent performance write-up in particular, showed where this implementation
+> could improve and prompted another optimisation pass. The resulting ideas, such as the
+> phase-interleaved "stepped" rounds Blake3.Managed documents for its kernels, were reimplemented
+> here and kept where our own benchmarks confirmed them. The implementations are independent, and all
+> of them are competitive with one another; the [benchmark pages](benchmarks.md) show how they compare.
 
 ---
 
