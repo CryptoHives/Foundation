@@ -66,6 +66,8 @@ public static class CipherAlgorithmRegistry
         XChaCha20Poly1305,
         /// <summary>Ascon-AEAD128 (AEAD).</summary>
         AsconAead128,
+        /// <summary>AES-GCM-SIV, RFC 8452 (AEAD).</summary>
+        GcmSiv,
         /// <summary>Stream cipher.</summary>
         Stream
     }
@@ -259,6 +261,9 @@ public static class CipherAlgorithmRegistry
 
         // Ascon Implementations
         AddAsconImplementations(implementations);
+
+        // AES-GCM-SIV Implementations
+        AddAesGcmSivImplementations(implementations);
 
         // OS Implementations (.NET 8.0+)
         AddOSImplementations(implementations);
@@ -1214,5 +1219,57 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateCbc(new AriaEngine(), 24, "ARIA-192-CBC"),
             Source.BouncyCastle));
 
+    }
+
+    private static void AddAesGcmSivImplementations(List<CipherImplementation> implementations)
+    {
+        var sivSimd = CH.Cipher.AesGcmSiv128.SimdSupport;
+
+        void Add(string family, int keySizeBits, Func<byte[], CH.SimdSupport, object> factory)
+        {
+            // Each flag alone isolates one tier for testing; only ARM AES is also a real deployment.
+            foreach (var flag in AlgorithmRegistry.GetSimdVariantFlags(sivSimd))
+            {
+                implementations.Add(new CipherImplementation(
+                    family,
+                    AlgorithmRegistry.GetSimdVariantName(flag),
+                    keySizeBits,
+                    Mode.GcmSiv,
+                    (byte[] key) => factory(key, flag),
+                    Source.Simd,
+                    excludeFromBenchmark: flag != CH.SimdSupport.ArmAes));
+            }
+
+            implementations.Add(new CipherImplementation(
+                family,
+                "CryptoHives-Scalar",
+                keySizeBits,
+                Mode.GcmSiv,
+                (byte[] key) => factory(key, CH.SimdSupport.None),
+                Source.Managed));
+
+            // AES-NI with PCLMULQDQ POLYVAL, the default on x86.
+            if ((sivSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul)) == (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul))
+            {
+                implementations.Add(new CipherImplementation(
+                    family,
+                    "CryptoHives-AES-NI+PClMul",
+                    keySizeBits,
+                    Mode.GcmSiv,
+                    (byte[] key) => factory(key, CH.SimdSupport.AesNi | CH.SimdSupport.PClMul),
+                    Source.Simd));
+            }
+
+            implementations.Add(new CipherImplementation(
+                family,
+                "BouncyCastle",
+                keySizeBits,
+                Mode.GcmSiv,
+                (byte[] key) => new BouncyCastleAeadAdapter(new GcmSivBlockCipher(new AesEngine()), key, tagSizeBits: 128, nonceSizeBytes: 12),
+                Source.BouncyCastle));
+        }
+
+        Add("AES-128-GCM-SIV", 128, (key, support) => CH.Cipher.AesGcmSiv128.Create(support, key));
+        Add("AES-256-GCM-SIV", 256, (key, support) => CH.Cipher.AesGcmSiv256.Create(support, key));
     }
 }

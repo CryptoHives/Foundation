@@ -216,6 +216,36 @@ bool valid = ascon.Decrypt(nonce, ciphertext, tag, decrypted, aad);
 **See Also:**
 - [Ascon Hash/XOF](hash-algorithms.md#ascon)
 
+### AES-GCM-SIV (nonce-misuse resistant)
+
+```csharp
+public abstract class AesGcmSiv : IAeadCipher
+public sealed class AesGcmSiv128 : AesGcmSiv
+public sealed class AesGcmSiv256 : AesGcmSiv
+```
+
+**Properties:**
+- Key Size: 128 or 256 bits (RFC 8452 defines no 192-bit variant)
+- Nonce Size: 96 bits (12 bytes)
+- Tag Size: 128 bits (16 bytes)
+- Standard: RFC 8452
+- Performance: two passes over the plaintext (POLYVAL, then CTR), so slower than AES-GCM;
+  AES-NI and ARM AES for the block cipher, PCLMULQDQ for POLYVAL on x86
+
+**Security:**
+- ✅ A repeated nonce reveals only whether the same (associated data, plaintext) pair was
+  sealed twice; it does not leak plaintext or enable forgeries as it does under AES-GCM
+- ✅ Per-message authentication and encryption keys derived from the key and nonce
+- ⚠️ Still use a unique nonce per message: misuse resistance is a safety net, not a licence
+- ⚠️ .NET has no in-box AES-GCM-SIV; this is a managed implementation on every target framework
+
+**Usage:**
+```csharp
+using var siv = AesGcmSiv256.Create(key);                      // 32 bytes
+byte[] sealedData = siv.Encrypt(nonce, plaintext, associatedData);  // ciphertext || 16-byte tag
+byte[] opened = siv.Decrypt(nonce, sealedData, associatedData);     // throws on a bad tag
+```
+
 ---
 
 ## Key Wrap Utilities
