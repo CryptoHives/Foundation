@@ -736,6 +736,13 @@ blake3Kdf.TryComputeHash(inputKeyMaterial, derivedKey, out _);
 > with an SSSE3 kernel on older x86 and a NEON kernel on Arm. Falls back to a portable
 > scalar kernel on other targets and CPUs.
 
+> **Acknowledgements:** thanks to the authors of the
+> [BLAKE3 reference implementation](https://github.com/BLAKE3-team/BLAKE3) and of
+> [Blake3.Managed](https://github.com/Dissimilis/Blake3.Managed). Blake3.Managed's recent performance
+> work, and the write-up that came with it, prompted another optimisation pass here, and several of
+> the resulting techniques follow their ideas. The implementations are independent, and all of them are
+> competitive with one another; the [benchmark pages](benchmarks.md) show how they compare.
+
 ---
 
 ## RIPEMD
