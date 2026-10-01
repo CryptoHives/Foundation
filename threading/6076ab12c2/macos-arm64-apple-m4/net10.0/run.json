@@ -1,0 +1,29 @@
+{
+  "codeCommit": "6076ab12c2b786f6b957f0067b444d4361297206",
+  "recordedAt": "2026-10-01T16:57:58Z",
+  "package": "threading",
+  "platform": "macos-arm64-apple-m4",
+  "framework": "net10.0",
+  "branch": "main",
+  "packagesFramework": "net10.0",
+  "packagesSource": "project.assets.json",
+  "packages": {
+    "AsyncKeyedLock": "8.1.2",
+    "AsyncUtilities": "1.1.1",
+    "BenchmarkDotNet": "0.15.8",
+    "coverlet.collector": "10.1.0",
+    "Dao.IndividualLock": "3.1.1",
+    "DotNext.Threading": "6.8.0",
+    "KeyedSemaphores": "6.1.0",
+    "Microsoft.NET.Test.Sdk": "18.10.1",
+    "Microsoft.VisualStudio.Threading": "18.7.23",
+    "NeoSmart.AsyncLock": "3.3.0-preview1",
+    "Nerdbank.GitVersioning": "3.10.94",
+    "Nito.AsyncEx": "5.1.2",
+    "NUnit": "4.6.1",
+    "NUnit.Analyzers": "4.15.0",
+    "NUnit.Console": "3.22.0",
+    "NUnit3TestAdapter": "6.3.0",
+    "ProtoPromise": "3.5.2"
+  }
+}
