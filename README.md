@@ -292,7 +292,7 @@ public void DoWorkIfIdle()
 
 ## 🚨 Security Policy
 
-Security comes first here. If you find a vulnerability, please don't open a public issue — follow the process described on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
+Security comes first here. If you find a vulnerability, please don't open a public issue — report it privately through [GitHub's private vulnerability reporting](https://github.com/CryptoHives/Foundation/security/advisories/new). The [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) has the details.
 
 ---
 
@@ -334,7 +334,7 @@ The CryptoHives Open Source Initiative is maintained by **The Keepers of the Cry
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome. Please read the [Contributing Guide](https://github.com/CryptoHives/.github/blob/main/CONTRIBUTING.md) before sending a PR.
+Issues, questions and pull requests are all welcome — small ones just as much as big ones. Issues labelled [`good first issue`](https://github.com/CryptoHives/Foundation/labels/good%20first%20issue) or [`help wanted`](https://github.com/CryptoHives/Foundation/labels/help%20wanted) are a good place to start. Have a look at the [Contributing Guide](https://github.com/CryptoHives/.github/blob/main/CONTRIBUTING.md) and our short [Code of Conduct](https://github.com/CryptoHives/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ---
 
