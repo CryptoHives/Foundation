@@ -13,3 +13,17 @@
       href: cryptography/cipher-algorithms.md
     - name: MAC Algorithms
       href: cryptography/mac-algorithms.md
+    - name: KDF Algorithms
+      href: cryptography/kdf-algorithms.md
+    - name: KEM Algorithms
+      href: cryptography/kem-algorithms.md
+    - name: Signature Algorithms
+      href: cryptography/signature-algorithms.md
+    - name: Erasable Memory
+      href: cryptography/erasable-memory.md
+    - name: XOF Mode
+      href: cryptography/xof-mode.md
+    - name: Pooled Hash API
+      href: cryptography/pooled-hash-api.md
+    - name: Specifications
+      href: cryptography/specs/README.md

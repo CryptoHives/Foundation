@@ -11,10 +11,10 @@ All of them target `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0` and `n
 
 | Package | What it gives you | NuGet |
 |---------|-------------------|-------|
-| [Memory](memory/index.md) | Pooled buffers and streams on top of `ArrayPool<T>`: `ArrayPoolMemoryStream`, `ArrayPoolBufferWriter<T>`, `ReadOnlySequenceMemoryStream`, and RAII ownership helpers | [CryptoHives.Foundation.Memory](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) |
-| [Threading](threading/index.md) | `ValueTask`-based async synchronization primitives with pooled waiters: `AsyncLock`, `AsyncKeyedLock<TKey>`, `AsyncSemaphore`, the events, the barrier, the countdown, and the reader-writer lock | [CryptoHives.Foundation.Threading](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) |
+| [Memory](memory/index.md) | Pooled buffers and streams on top of `ArrayPool<T>`: `ArrayPoolMemoryStream`, `ArrayPoolBufferWriter<T>`, `ReadOnlySequenceMemoryStream`, `SequenceLease<T>`, and segment/sequence ownership helpers | [CryptoHives.Foundation.Memory](https://www.nuget.org/packages/CryptoHives.Foundation.Memory) |
+| [Threading](threading/index.md) | `ValueTask`-based async synchronization primitives with pooled waiters: `AsyncLock`, `AsyncKeyedLock<TKey>`, `AsyncSemaphore`, the events, the barrier, the countdown, the reader-writer lock, `AsyncConditionVariable`, and `AsyncExchange<T>` | [CryptoHives.Foundation.Threading](https://www.nuget.org/packages/CryptoHives.Foundation.Threading) |
 | [Threading.Analyzers](threading.analyzers/index.md) | Roslyn analyzers that catch `ValueTask` misuse at compile time. Ships separately — install it alongside the Threading package | [CryptoHives.Foundation.Threading.Analyzers](https://www.nuget.org/packages/CryptoHives.Foundation.Threading.Analyzers) |
-| [Security.Cryptography](security/cryptography/index.md) | Fully managed hash, MAC, KDF and cipher implementations written from the specifications, with no OS crypto dependency | [CryptoHives.Foundation.Security.Cryptography](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) |
+| [Security.Cryptography](security/cryptography/index.md) | Fully managed hash, MAC, KDF and cipher implementations plus post-quantum ML-KEM, ML-DSA and SLH-DSA with PKCS#8/PEM key formats, written from the specifications, with no OS crypto dependency | [CryptoHives.Foundation.Security.Cryptography](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography) |
 
 ## Where to start
 

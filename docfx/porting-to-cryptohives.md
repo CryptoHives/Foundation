@@ -82,6 +82,10 @@ If the target project uses Central Package Management (`Directory.Packages.props
 | `Dictionary<TKey, SemaphoreSlim>` / a registry of one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other; released keys stay cached, so repeat acquisitions allocate nothing. |
 | `AsyncKeyedLock` (the third-party package), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | Same per-key semantics, without the striping some libraries use. |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify the source did not rely on reentrancy. |
+| `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | DotNext releases with an explicit `Release()`; here the lock is released by disposing the `Releaser`, so wrap the critical section in `using`. |
+| `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern for reader and writer locks; upgradeable readers are a distinct mode here. |
+| `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | The same-named type in this package | DotNext's types are net10.0-only; these run on every target down to net462. |
+| `DotNext.Threading.AsyncExchanger<T>` | `AsyncExchange<T>` | Same two-party rendezvous. |
 
 ### 2.2 `AsyncLock` — exact usage
 
