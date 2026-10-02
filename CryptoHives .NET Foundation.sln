@@ -137,6 +137,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "releases", "releases", "{99
 		releases\0.6.21.md = releases\0.6.21.md
 		releases\0.6.51.md = releases\0.6.51.md
 		releases\0.6.79.md = releases\0.6.79.md
+		releases\0.7.37.md = releases\0.7.37.md
 		releases\README.md = releases\README.md
 	EndProjectSection
 EndProject
