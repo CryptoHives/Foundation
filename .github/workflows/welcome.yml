@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT
+
+# Greets people on their first issue or pull request in this repository.
+# pull_request_target is needed so the comment can be posted on PRs from forks; the job never
+# checks out or runs any PR code.
+
+name: Welcome First-Time Contributors
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v3
+        with:
+          issue_message: |
+            🐝 Welcome to the CryptoHives, and thanks for opening your first issue!
+
+            A Keeper will take a look soon. If it's a question, a half-formed idea or a "this surprised me", that's
+            perfectly fine — every report helps. If it turns out to be a security problem, please move it to a
+            [private report](https://github.com/CryptoHives/Foundation/security/advisories/new) instead.
+          pr_message: |
+            🐝 Welcome to the CryptoHives, and thank you for your first pull request!
+
+            A few things that make the review quick:
+            - The CLA assistant will ask you to sign the contributor agreement once — after that you're set.
+            - CI builds and tests every target framework; don't worry if something fails, we'll help sort it out.
+            - Questions are welcome right here in the PR.
+
+            See [CONTRIBUTING.md](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md) for the details.
