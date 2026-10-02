@@ -21,6 +21,8 @@ Germany
 
 Email: info@cryptohives.org
 
+Wirtschafts-Identifikationsnummer gemäß § 139c AO: DE462489712-00001
+
 ---
 
 ### Project Information
@@ -33,7 +35,7 @@ Email: info@cryptohives.org
 
 ---
 
-### Responsible for Content (pursuant to §55 Abs. 2 RStV)
+### Responsible for Content (pursuant to § 18 Abs. 2 MStV)
 
 **Dipl.-Phys. Univ. Martin Regen**  
 Schwarzer Gundweg 10  
@@ -61,14 +63,6 @@ This project is licensed under the **MIT License**. See the [LICENSE](https://gi
 ```
 
 For details on contributing and the CLA, see [CONTRIBUTING.md](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md) and [CLA.txt](https://github.com/CryptoHives/Foundation/blob/main/CLA.txt).
-
----
-
-### Copyright and Licensing
-
-This project is licensed under the **MIT License**. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
-
-All code contributions are subject to the project's open source license and Contributor License Agreement (CLA).
 
 ---
 
