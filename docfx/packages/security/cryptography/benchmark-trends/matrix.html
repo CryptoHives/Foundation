@@ -63,8 +63,8 @@
   Data source: <code>benchmark-history.sqlite</code>, generated at build time by
   <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code> from the run archive on
   the <code>benchmarks</code> branch. "Fastest" is the arg-min of each variant's mean time
-  averaged across every method and data size that family was measured with in the selected run;
-  it says nothing about variants excluded from benchmarking or never run on this platform.
+  averaged across every method and data size that family was measured with in the selected run,
+  so the largest sizes weigh most. It says nothing about variants excluded from benchmarking or never run on this platform.
   See the <a href="index.html">trends dashboard</a> for per-size detail and history, and the
   <a href="speed-diff.html">speed differences</a> page for how far apart implementations
   typically land.

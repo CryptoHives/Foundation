@@ -33,13 +33,9 @@
 <body>
 <h1>CryptoHives Threading Library Matrix</h1>
 <p>
-  Which library implements which synchronization primitive, and which one measured fastest in a
-  given benchmark run. A checkmark means that library has ever been benchmarked against that
-  primitive (in any recorded run, on any platform); the highlighted <strong>★</strong> cell in
-  each row is whichever <em>ranked</em> variant had the lowest mean time in the run selected
-  below. A <strong>n/c</strong> ("non-competing") cell is an implementation shown for scale but
-  left out of that comparison, because it lacks something the others in the row pay for on every
-  call - a disposable releaser, a cancellation token, or being async at all.
+  Which library implements which primitive, and which was fastest in the selected run. A checkmark
+  means the library has been benchmarked for that primitive in some recorded run; the
+  <strong>★</strong> marks the fastest <em>ranked</em> implementation in each row.
 </p>
 
 <div class="controls">
@@ -61,41 +57,29 @@
 <thead><tr id="matrix-head"></tr></thead><tbody id="matrix-body"></tbody></table></div>
 
 <p class="hint">
-  Data source: <code>benchmark-history.sqlite</code>, generated at build time from the run archive
-  on the <code>benchmarks</code> branch. "Fastest" is the arg-min of each variant's mean time in
-  the scenario closest to normal use - one contending party (not zero, and not a bare uncontended
-  call some benchmark classes also record) with a live, uncancelled token where one was measured
-  - rather than an average across every contention level and cancellation state: a "Multiple"
-  benchmark's mean time at high contention is the time for many concurrent operations, not a
-  per-operation cost, so blending it in would let whichever variant scales worst under load
-  dominate the result. It says nothing about variants never run on this platform, or about how
-  implementations compare under load - see the <a href="index.html">trends dashboard</a>'s
-  "Scaling by contention" view for that, and the <a href="speed-diff.html">speed differences</a>
-  page for how far apart implementations typically land in this same representative scenario. Only
-  <em>ranked</em> variants are eligible for the ★; <strong>n/c</strong> cells (see below) are held
-  out. The raw baseline comparison table (Interlocked.*, lock(), SpinLock, SpinOnce) a
-  few benchmark classes measure alongside the real primitives isn't a synchronization primitive
-  itself and is excluded from this matrix.
+  "Fastest" is taken from the scenario closest to normal use: one contending party with a live, uncancelled token where measured. Averaging over every
+  contention level would let whichever variant scales worst dominate; the trends dashboard's
+  "Scaling by contention" view shows that instead.
+  See also the <a href="index.html">trends dashboard</a> and the
+  <a href="speed-diff.html">speed differences</a>. The raw baselines some classes record
+  (Interlocked, <code>lock</code>, SpinLock) are not primitives and are left out.
 </p>
 <p class="hint">
-  <strong>n/c</strong> ("non-competing") marks a cell that is benchmarked and shown for scale but
-  excluded from the ★: the vendored <code>RefImpl</code> reference implementation (no cancellation,
-  no timeout, no pooling - it allocates per call); DotNext's <code>AsyncExclusiveLock</code> and
-  reader-writer lock in the lock rows (no disposable releaser, so it is measured doing less work
-  per operation); and "System" in the AutoResetEvent, ManualResetEvent, Barrier and
-  ReaderWriterLockSlim rows (a blocking wait, not an awaited one). Hover a cell for the specific
-  reason. It is the same idea as marking an entrant <em>hors concours</em> / <em>ausser
-  Konkurrenz</em>.
+  <strong>n/c</strong> (non-competing, <em>hors concours</em>) cells are measured and shown for scale
+  but held out of the comparison, because they skip work the others pay for on every call: the
+  vendored <code>RefImpl</code> (no cancellation, timeout or pooling); DotNext's
+  <code>AsyncExclusiveLock</code> and reader-writer lock (no disposable releaser); and "System" in
+  the AutoResetEvent, ManualResetEvent, Barrier and ReaderWriterLockSlim rows (a blocking wait).
+  Hover a cell for the reason.
 </p>
 <p class="hint">
-  <strong>†</strong> marks a "System" cell whose primitive may have no true async wait API - its
-  benchmark measures a blocking wait rather than an awaited one, so the number is a baseline
-  reference rather than a fair race against the async implementations in the other columns. (Where
-  that is definitely the case, the cell is <strong>n/c</strong> instead.)
-  <strong>‡</strong> marks "ProtoPromise" - it builds on its own Promise/Promise&lt;T&gt; type and
-  its own cancellation token rather than <code>System.Threading.Tasks.ValueTask</code> and
-  <code>CancellationToken</code>, so it is not drop-in compatible with code written against the
-  BCL types the other columns share.
+  <strong>†</strong> "System" primitive that may lack a true async wait, so its number is a
+  baseline rather than a fair race. <strong>‡</strong> ProtoPromise, which uses its own
+  <code>Promise</code> and cancellation token types rather than <code>ValueTask</code> and
+  <code>CancellationToken</code>, so it is not drop-in compatible.
+</p>
+<p class="hint">
+  Data: <code>benchmark-history.sqlite</code>, built from the <code>benchmarks</code> branch.
 </p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>

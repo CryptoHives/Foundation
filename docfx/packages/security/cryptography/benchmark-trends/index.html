@@ -49,6 +49,7 @@
      error state - the number is real - so it is marked rather than coloured. */
   table.data-table td .pkg-changed { color: #92400e; cursor: help; margin-left: 0.3rem; }
   table.data-table td.better { color: #15803d; }
+  .notice { font-size: 0.85rem; background: #fff8e1; border-left: 3px solid #d4a017; padding: 0.4rem 0.7rem; margin: 0.6rem 0; }
   .table-note { font-size: 0.8rem; color: #666; margin: 0 0 0.6rem; }
 </style>
 </head>
@@ -56,15 +57,20 @@
 <h1>CryptoHives Cryptography Benchmark Trends</h1>
 <p>
   Benchmark history for the hash, cipher, MAC, KEM and signature implementations in
-  <code>CryptoHives.Foundation.Security.Cryptography</code>, measured against reference
-  implementations (the operating system's own, BouncyCastle, and others) across platforms, target
-  frameworks and data sizes.
+  <code>CryptoHives.Foundation.Security.Cryptography</code>, measured against the operating
+  system's own implementations, BouncyCastle, NaCl.Core, HashifyNET, Blake2Fast, Konscious,
+  OpenGost, KyberNET and the BLAKE3 packages.
 </p>
 <p>
-  Select a platform, category, algorithm family and method; each implementation is drawn as its
-  own series, including the separate SIMD paths — AVX2, AVX-512, SSSE3, NEON and the portable
-  scalar fallback — where an algorithm provides them. The page runs entirely in the browser,
-  with no server and no external database.
+  Pick a platform, category, family and method; each implementation is its own series, with
+  separate lines for the AVX-512, AVX2, SSSE3, NEON and scalar paths where an algorithm has them.
+  Everything runs in your browser — no server, no external database.
+</p>
+<p class="notice">
+  <strong>Windows runs from 29 September 2026 on</strong> cap the maximum processor state at 99%,
+  which keeps the CPU out of its boost clocks. Results are steadier from run to run, but about 10%
+  slower across the board — a step down in a Windows trend line at that date is the measurement
+  setup, not a regression.
 </p>
 
 <fieldset class="mode-toggle">
@@ -130,28 +136,22 @@
 <thead><tr id="data-table-head"></tr></thead><tbody id="data-table-body"></tbody></table></div>
 
 <p class="hint">
-  Data source: <code>benchmark-history.sqlite</code>, generated at build time by
-  <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code> from the run archive on
-  the <code>benchmarks</code> branch.
-  </p>
-
-  <p class="hint">
-  <strong>Table (one run)</strong> reproduces a single run's report, grouped by data size. Rows
-  for this library's own implementations are shaded, and the baseline row more deeply; Ratio is
-  each row's mean over that baseline. Rows marked <em>not in package</em> are compiled in for
-  measurement only and are excluded from the published NuGet package. Any recorded run can be
-  shown, and a second one compared against it — two dates on one machine, or one commit on two
-  machines, which the run list marks as <em>(same commit)</em>.
-  </p>
-
-  <p class="hint">
-  Hovering a point gives the commit, the value, the .NET runtime it was measured on, and the
-  version of the reference library where one applies. <strong>Trend over time</strong> plots one
-  point per recorded run, for every recorded data size under the current filters; the line-style
-  legend hides individual sizes, and Metric and Date range apply here. <strong>Scaling by
-  size</strong> plots data size on the X axis for a single run — the newest by default, any
-  recorded one through the Run picker — drawing both metrics together: mean time is read from the
-  left axis and allocation from the right, with point shape distinguishing the two.</p>
+  <strong>Table (one run)</strong> reproduces one run's report, grouped by data size. Our own rows
+  are shaded, the baseline more deeply; Ratio is each row's mean over that baseline.
+  <em>Not in package</em> rows are measurement-only code paths excluded from the NuGet package.
+  Pick any run, and optionally a second to compare — runs of the same commit on two machines are
+  marked <em>(same commit)</em>.
+</p>
+<p class="hint">
+  <strong>Trend over time</strong> plots one point per recorded run for every data size; the
+  line-style legend hides sizes. <strong>Scaling by size</strong> plots data size for one run, mean
+  time on the left axis and allocation on the right. Hover a point for the commit, the value, the
+  .NET runtime and the reference library's version.
+</p>
+<p class="hint">
+  Data: <code>benchmark-history.sqlite</code>, built from the <code>benchmarks</code> branch by
+  <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code>.
+</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
