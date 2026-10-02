@@ -47,26 +47,27 @@
      the number is real - so it is marked rather than coloured, and carries its own tooltip. */
   table.data-table td .pkg-changed { color: #92400e; cursor: help; margin-left: 0.3rem; }
   table.data-table td.better { color: #15803d; }
+  .notice { font-size: 0.85rem; background: #fff8e1; border-left: 3px solid #d4a017; padding: 0.4rem 0.7rem; margin: 0.6rem 0; }
   .table-note { font-size: 0.8rem; color: #666; margin: 0 0 0.6rem; }
 </style>
 </head>
 <body>
 <h1>CryptoHives Threading Benchmark Trends</h1>
 <p>
-  Benchmark history for the async synchronization primitives in
-  <code>CryptoHives.Foundation.Threading</code>, measured against reference libraries
-  (Nito.AsyncEx, NeoSmart, ProtoPromise, Microsoft.VisualStudio.Threading) and against the
-  synchronous BCL primitives they replace (<code>lock</code>/<code>Monitor</code>,
-  <code>SpinLock</code>, <code>Interlocked</code>, <code>ReaderWriterLockSlim</code>,
-  <code>Barrier</code>, <code>CountdownEvent</code>), across platforms, target frameworks and
-  contention levels.
+  Benchmark history for the async primitives in <code>CryptoHives.Foundation.Threading</code>,
+  measured against Nito.AsyncEx, ProtoPromise, Microsoft.VisualStudio.Threading, NeoSmart.AsyncLock,
+  DotNext.Threading, the keyed-lock libraries (AsyncKeyedLock, KeyedSemaphores, Dao.IndividualLock,
+  AsyncUtilities) and the BCL primitives they replace.
 </p>
 <p>
-  Select a platform, primitive family and operation; each implementation is drawn as its own
-  series. Where a benchmark varies by <code>CancellationToken</code> state, the Cancellation
-  selector chooses the state to plot: a live but unfired token carries measurable overhead
-  relative to <code>CancellationToken.None</code>. The page runs entirely in the browser, with no
-  server and no external database.
+  Pick a platform, family and method; each implementation is its own series. Everything runs in
+  your browser — no server, no external database.
+</p>
+<p class="notice">
+  <strong>Windows runs from 29 September 2026 on</strong> cap the maximum processor state at 99%,
+  which keeps the CPU out of its boost clocks. Results are steadier from run to run, but about 10%
+  slower across the board — a step down in a Windows trend line at that date is the measurement
+  setup, not a regression.
 </p>
 
 <fieldset class="mode-toggle">
@@ -131,33 +132,25 @@
 <div id="table-container" hidden><table class="data-table" id="data-table"><thead><tr id="data-table-head"></tr></thead><tbody id="data-table-body"></tbody></table></div>
 
 <p class="hint">
-  Data source: <code>benchmark-history.sqlite</code>, generated at build time by
-  <code>scripts/threading-benchmark-trends/import_run_archive.py</code> from the run archive on
-  the <code>benchmarks</code> branch.
-  </p>
-
-  <p class="hint">
-  <strong>Table (one run)</strong> reproduces a single run's report: every dimension that run
-  carried as its own column, grouped and ordered as BenchmarkDotNet ordered it. Rows for this
-  library's own implementations are shaded, and the row the benchmark class declares as its
-  baseline more deeply. Ratio is the figure the report recorded, relative to that declared
-  baseline; BenchmarkDotNet fixes one baseline per benchmark class, so for some families the
-  reference row falls outside the current selection. Any recorded run can be shown, and a second
-  one compared against it — two dates on one machine, or one commit on two machines, which the
-  run list marks as <em>(same commit)</em>.
-  </p>
-
-  <p class="hint">
-  Hovering a point gives the commit, the value, the .NET runtime it was measured on, and the
-  version of the reference library where one applies. <strong>Trend over time</strong> plots one
-  point per recorded run, for every recorded parameter combination under the current filters; the
-  line-style legend hides individual combinations, and Cancellation, Metric and Date range apply
-  here. <strong>Scaling by contention</strong> plots the benchmark's parameterized axis — queued
-  waiters for most classes, distinct keys or threads for the keyed locks — for a single run, the
-  newest by default and any recorded one through the Run picker. It draws every cancellation state
-  and both metrics together: color identifies the implementation, line style the cancellation
-  state, mean time is read from the left axis and allocation from the right. All three legends
-  toggle. Methods with no parameterized axis show a single point per implementation.</p>
+  <strong>Table (one run)</strong> reproduces one run's report as BenchmarkDotNet wrote it. Our own
+  rows are shaded, the declared baseline more deeply; Ratio is relative to that baseline, which for
+  some families falls outside the current selection. Pick any run, and optionally a second to
+  compare — runs of the same commit on two machines are marked <em>(same commit)</em>.
+</p>
+<p class="hint">
+  <strong>Trend over time</strong> plots one point per recorded run for every parameter
+  combination; the line-style legend hides combinations.
+  <strong>Scaling by contention</strong> plots the parameterized axis (queued waiters, or distinct
+  keys/threads for the keyed locks) for one run: color is the implementation, line style the
+  cancellation state, mean time on the left axis and allocation on the right.
+</p>
+<p class="hint">
+  Hover a point for the commit, the value, the .NET runtime and the reference library's version.
+  A live but unfired <code>CancellationToken</code> has measurable overhead over
+  <code>CancellationToken.None</code>, which is why Cancellation is a selector of its own.
+  Data: <code>benchmark-history.sqlite</code>, built from the <code>benchmarks</code> branch by
+  <code>scripts/threading-benchmark-trends/import_run_archive.py</code>.
+</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
