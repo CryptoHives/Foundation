@@ -95,6 +95,9 @@ LEGACY_KMAC_TOKEN_PATTERN = re.compile(r"^Kmac(?:128|256)_\w+$")
 SIZE_MULTIPLIERS = {"B": 1, "KB": 1024, "MB": 1024 * 1024}
 SIZE_PATTERN = re.compile(r"^(?P<value>\d+)(?P<unit>B|KB|MB)$")
 MEASUREMENT_PATTERN = re.compile(r"^([\d,]+\.?\d*)\s*(ns|μs|us|ms)$")
+# BenchmarkDotNet switches the Allocated column to KB/MB for large values, in binary units.
+ALLOCATED_PATTERN = re.compile(r"^(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>B|KB|MB|GB)?$")
+ALLOCATED_UNITS = {"B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3}
 
 # BenchmarkDotNet keeps job characteristics in the preamble only while they are constant across
 # the report; the moment one varies it becomes a table column instead. A single-runtime run says
@@ -239,11 +242,10 @@ def parse_allocated_bytes(cell: str) -> int | None:
         return 0
     if cell in ("", "NA"):
         return None
-    cell = cell.rstrip("B").strip()
-    try:
-        return int(round(float(cell)))
-    except ValueError:
+    match = ALLOCATED_PATTERN.match(cell)
+    if not match:
         return None
+    return int(round(float(match.group("value")) * ALLOCATED_UNITS[match.group("unit") or "B"]))
 
 
 def parse_markdown_table(content: str):
