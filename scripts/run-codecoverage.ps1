@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # run-codecoverage.ps1
 # Runs tests with code coverage and generates HTML reports

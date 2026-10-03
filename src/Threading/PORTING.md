@@ -31,6 +31,10 @@ Use these when an `await` must happen inside a critical section, or to remove
 | `Dictionary<TKey, SemaphoreSlim>` / one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other. Not reentrant. |
 | `AsyncKeyedLock` (third-party), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify no reentrancy. |
+| `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | Replace the explicit `Release()` with disposing the `Releaser`. |
+| `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern. |
+| `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | Same-named type | |
+| `DotNext.Threading.AsyncExchanger<T>` | `AsyncExchange<T>` | |
 
 ---
 
