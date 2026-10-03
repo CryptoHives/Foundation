@@ -35,6 +35,7 @@ Closes #
 - [ ] I added or updated tests covering the change.
 - [ ] Public API changes are documented (XML docs, package `README.md`, and/or docfx).
 - [ ] The code stays AOT-safe for the .NET 8+ targets (no new trim/AOT warnings).
+- [ ] Every commit is signed off (`git commit -s`), see [CONTRIBUTING.md](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md#sign-off-your-commits).
 
 ## Notes for reviewers
 

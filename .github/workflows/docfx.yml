@@ -120,6 +120,11 @@ jobs:
           fi
         done
 
+    # Served from the site itself so no visitor request reaches a third-party CDN; pinned by hash.
+    - name: Fetch dashboard libraries
+      shell: pwsh
+      run: ./scripts/fetch-docfx-vendor.ps1
+
     - run: dotnet tool update -g docfx
     - run: docfx docfx/docfx.json
 

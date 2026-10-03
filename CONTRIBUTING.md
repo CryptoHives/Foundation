@@ -9,10 +9,20 @@ Not sure where to start? Look for issues labelled
 [`help wanted`](https://github.com/CryptoHives/Foundation/labels/help%20wanted), or just open an
 issue and ask.
 
-## Before your first pull request
+## Sign off your commits
 
-When you open it, the CLA assistant will ask you to sign the Contribution License Agreement. It's a
-one-time click, and then you're set.
+We use the [Developer Certificate of Origin](https://github.com/CryptoHives/.github/blob/main/DCO.txt) (DCO) instead of a contributor
+agreement: you keep the copyright in your work and contribute it under the project's MIT License.
+Add a sign-off to each commit — `git commit -s` does it for you:
+
+```
+Signed-off-by: Your Name <you@example.com>
+```
+
+With it you confirm that you wrote the change, or otherwise have the right to submit it under the
+project's license. Forgot it? `git commit --amend -s` fixes the last commit, `git rebase --signoff main`
+all commits on your branch — or just push one more commit whose message says you sign off the earlier
+ones; the DCO check accepts that too.
 
 ## How we work
 
@@ -39,6 +49,10 @@ for boilerplate, tests, documentation and review. The one rule is ownership:
 - You are responsible for the correctness, licensing and quality of what you submit, however it was
   written, and you should be able to explain every line of it.
 - Cryptographic code must be checked against its specification and official test vectors.
+- Make sure the tool hasn't reproduced someone else's code: keep its public-code filter on (for example
+  GitHub Copilot's "block suggestions matching public code") or run a similarity check, and name the
+  tool in the commit message with a `Co-authored-by:` line.
+- An AI tool never adds a `Signed-off-by` line itself — only you can, after you have checked the code.
 - Purely machine-generated pull requests without human understanding will be closed.
 
 Treat AI output like a pull request from someone you don't know yet: verify it, test it, understand

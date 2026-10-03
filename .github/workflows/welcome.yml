@@ -33,7 +33,7 @@ jobs:
             🐝 Welcome to the CryptoHives, and thank you for your first pull request!
 
             A few things that make the review quick:
-            - The CLA assistant will ask you to sign the contributor agreement once — after that you're set.
+            - Please sign off each commit (`git commit -s`) — see [Sign off your commits](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md#sign-off-your-commits).
             - CI builds and tests every target framework; don't worry if something fails, we'll help sort it out.
             - Questions are welcome right here in the PR.
 
