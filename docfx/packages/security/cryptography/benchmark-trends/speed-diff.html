@@ -110,6 +110,10 @@
     if (variant.includes("CryptoHives") || variant === "ArmSha1" || variant === "ArmSha256") {
       return "CryptoHives";
     }
+    // The single-threaded Blake3.Managed row measures the same package as the default one.
+    if (variant === "Blake3DissimilisSerial") {
+      return "Blake3Dissimilis";
+    }
     return variant;
   }
 

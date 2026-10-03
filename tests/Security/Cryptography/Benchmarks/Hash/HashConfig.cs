@@ -99,7 +99,7 @@ public class HashConfig : ManualConfig
             if (name.EndsWith("(Blake3Managed)", StringComparison.InvariantCultureIgnoreCase))
                 return "Blake3.NET-Managed";
             if (name.EndsWith("(Blake3DissimilisSerial)", StringComparison.InvariantCultureIgnoreCase))
-                return "Blake3.Managed (1 thread)";
+                return "Blake3.Managed-Serial";
             if (name.EndsWith("(Blake3Dissimilis)", StringComparison.InvariantCultureIgnoreCase))
                 return "Blake3.Managed";
             if (name.EndsWith("(CryptoHives-Arm64)", StringComparison.InvariantCultureIgnoreCase))

@@ -153,6 +153,7 @@ NORMALIZE_VARIANT = {
     "Blake3.NET-Native": "Blake3Native",
     "Blake3.NET-Managed": "Blake3Managed",
     "Blake3.Managed": "Blake3Dissimilis",
+    "Blake3.Managed-Serial": "Blake3DissimilisSerial",
     "Hashify .NET": "HashifyNET",
     "AES-NI": "CryptoHives-AES-NI",
     "AES-NI+PClMul": "CryptoHives-AES-NI+PClMul",
@@ -307,12 +308,14 @@ def parse_markdown_table(content: str):
             continue
 
         method = normalize_method(desc_parts[0])
-        # Hash/Cipher embed "Family (Variant)" in the last part (family repeats the middle
-        # "category" part, which is ignored). Mac's last part instead is a bare implementation
-        # name (no parens) with category as the real family — detected by the absence of a
-        # trailing "(...)".
+        # The older Hash/Cipher format embeds "Family (Variant)" in the last part, with the family
+        # repeating the middle "category" part. Today's "Method · Family · Variant" puts the bare
+        # implementation name last, and that name may itself end in parentheses - so the old
+        # format is recognised by the repeated family, not by the parentheses alone.
         last = desc_parts[-1]
-        if len(desc_parts) >= 3 and not FAMILY_VARIANT_PATTERN.match(last):
+        old_format = FAMILY_VARIANT_PATTERN.match(last)
+        if len(desc_parts) >= 3 and not (
+                old_format and old_format.group("family").strip().lower() == desc_parts[1].lower()):
             family, variant = desc_parts[1], last
         else:
             family, variant = parse_family_variant(last)
