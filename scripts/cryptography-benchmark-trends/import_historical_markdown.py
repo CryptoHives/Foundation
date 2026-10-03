@@ -141,8 +141,10 @@ def normalize_framework(value):
 # e.g. "SHA-256 (OS)" (raw) vs. "OS Native" (cosmetic), or Blake3's three comparator libraries
 # showing up under either their raw or cosmetic name depending on which commit. Old rows are
 # normalized to today's raw registry names so a family's trend line stays continuous instead
-# of forking across a rename. The x86 SIMD tiers follow the .NET intrinsics class names (Avx2,
-# Avx512F, Sse2, Ssse3) whichever casing a report used.
+# of forking across a rename. The SIMD tiers follow the .NET intrinsics class names (Avx2,
+# Avx512F, Sse2, Ssse3, Aes, Pclmulqdq) whichever spelling a report used; the Arm crypto
+# extensions get an "Arm" prefix because .NET has an Aes class on both architectures, and Neon
+# and Arm64 keep their familiar names.
 NORMALIZE_VARIANT = {
     "Managed": "CryptoHives-Scalar",
     "AVX2": "CryptoHives-Avx2",
@@ -163,11 +165,18 @@ NORMALIZE_VARIANT = {
     "Blake3.Managed": "Blake3Dissimilis",
     "Blake3.Managed-Serial": "Blake3DissimilisSerial",
     "Hashify .NET": "HashifyNET",
-    "AES-NI": "CryptoHives-AES-NI",
-    "AES-NI+PClMul": "CryptoHives-AES-NI+PClMul",
-    "AES-NI+PClMulV256": "CryptoHives-AES-NI+PClMulV256",
-    "ArmAes": "CryptoHives-ARM-AES",
-    "ArmAes+ArmPmull": "CryptoHives-ARM-AES+PMULL",
+    "AES-NI": "CryptoHives-Aes",
+    "AES-NI+PClMul": "CryptoHives-Aes+Pclmulqdq",
+    "AES-NI+PClMulV256": "CryptoHives-Aes+Pclmulqdq.V256",
+    "CryptoHives-AES-NI": "CryptoHives-Aes",
+    "CryptoHives-AES-NI+PClMul": "CryptoHives-Aes+Pclmulqdq",
+    "CryptoHives-AES-NI+PClMulV256": "CryptoHives-Aes+Pclmulqdq.V256",
+    "ArmAes": "CryptoHives-ArmAes",
+    "ArmAes+ArmPmull": "CryptoHives-ArmAes+Pmull",
+    "CryptoHives-ARM-AES": "CryptoHives-ArmAes",
+    "CryptoHives-ARM-AES+PMULL": "CryptoHives-ArmAes+Pmull",
+    "ArmSha1": "CryptoHives-ArmSha1",
+    "ArmSha256": "CryptoHives-ArmSha256",
 }
 
 

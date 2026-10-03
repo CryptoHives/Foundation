@@ -99,13 +99,11 @@
   // Collapses implementation-detail variants down to the library they belong to, so the matrix's
   // columns are "which library" rather than "which internal code path". Our own registries name
   // every SIMD path separately (CryptoHives-Scalar, CryptoHives-Avx2, CryptoHives-Avx512F, ...),
-  // which would otherwise turn one column into five; two ARM crypto-extension probes
-  // (HashAlgorithmRegistry.cs) break the "CryptoHives-" prefix convention entirely and are called
-  // out by name. Every third-party variant is already 1:1 with a real library/package - including
+  // which would otherwise turn one column into five. Every third-party variant is already 1:1 with a real library/package - including
   // the three distinct BLAKE3 packages below (Managed/Native/Dissimilis), which must stay separate
   // columns since they are not three builds of one thing.
   function libraryOf(variant) {
-    if (variant.includes("CryptoHives") || variant === "ArmSha1" || variant === "ArmSha256") {
+    if (variant.includes("CryptoHives")) {
       return "CryptoHives";
     }
     // The single-threaded Blake3.Managed row measures the same package as the default one.

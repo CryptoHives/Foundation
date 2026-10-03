@@ -102,12 +102,11 @@
   const hiddenLibraries = new Set();
 
   // Collapses implementation-detail variants down to the library they belong to - see the same
-  // helper in matrix.html for the full rationale (SIMD paths, the ArmSha1/ArmSha256 probes that
-  // break the "CryptoHives-" naming convention, and why the three BLAKE3 packages must stay
-  // separate). Kept in sync with that page rather than shared, per this dashboard's convention of
+  // helper in matrix.html for the full rationale (SIMD paths, and why the three BLAKE3 packages
+  // must stay separate). Kept in sync with that page rather than shared, per this dashboard's convention of
   // self-contained pages with no shared JS module.
   function libraryOf(variant) {
-    if (variant.includes("CryptoHives") || variant === "ArmSha1" || variant === "ArmSha256") {
+    if (variant.includes("CryptoHives")) {
       return "CryptoHives";
     }
     // The single-threaded Blake3.Managed row measures the same package as the default one.
