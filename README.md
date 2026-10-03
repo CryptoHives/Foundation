@@ -304,25 +304,34 @@ Packages aren't code-signed yet. The Keepers plan to add signing once there's en
 
 ## 📝 No-Nonsense License Matters
 
-This project is MIT-licensed because we believe in open collaboration. That said, we're aware MIT code gets sometimes copied, repackaged, and resold without credit — if you use this code, we'd appreciate it if you didn't do that:
+This project is permissively licensed because we believe in open collaboration. That said, we're aware permissively licensed code sometimes gets copied, repackaged, and resold without credit — if you use this code, we'd appreciate it if you didn't do that:
 
 - Give visible credit to the **CryptoHives Open Source Initiative** / **The Keepers of the CryptoHives** and link back to the source.
 - Send improvements back upstream and report issues rather than silently forking.
 
-None of that is legally required under MIT — it's just what makes open source worth doing.
+None of that is legally required under either license — it's just what makes open source worth doing.
 
 ---
 
 ## ⚖️ License
 
-Every component is licensed under MIT. Source files carry the following SPDX header by default:
+Every component is licensed under either of
+
+- the MIT License ([LICENSE-MIT](LICENSE-MIT)), or
+- the Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE)),
+
+at your option. Apache-2.0 adds an explicit patent grant, which some organizations require for a cryptography library; MIT is the shortest. Releases up to and including 0.7.37 were published under MIT only and stay that way.
+
+Unless you explicitly state otherwise, any contribution you submit is licensed the same way, without additional terms or conditions.
+
+Source files carry the following SPDX header by default:
 
 ```csharp
 // SPDX-FileCopyrightText: <year> The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 ```
 
-A few inherited components use their original MIT-style headers instead, kept as-is for provenance.
+A few inherited components — the test-only reference implementations under `tests/Threading/Async/RefImpl/` — keep their original MIT headers for provenance.
 
 ---
 

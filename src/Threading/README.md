@@ -400,4 +400,4 @@ If you discover a vulnerability, please don't open a public issue — report it 
 
 ## ⚖️ License
 
-MIT — © 2026 The Keepers of the CryptoHives
+MIT OR Apache-2.0 — © 2026 The Keepers of the CryptoHives

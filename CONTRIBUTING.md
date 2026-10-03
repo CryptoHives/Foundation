@@ -12,7 +12,8 @@ issue and ask.
 ## Sign off your commits
 
 We use the [Developer Certificate of Origin](https://github.com/CryptoHives/.github/blob/main/DCO.txt) (DCO) instead of a contributor
-agreement: you keep the copyright in your work and contribute it under the project's MIT License.
+agreement: you keep the copyright in your work and contribute it under the project's license,
+MIT OR Apache-2.0.
 Add a sign-off to each commit — `git commit -s` does it for you:
 
 ```
