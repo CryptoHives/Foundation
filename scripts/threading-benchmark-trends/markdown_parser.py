@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 """
 Shared markdown-table parsing for Threading's benchmark trends pipeline, used by both
 import_run_archive.py (the run archive on the `benchmarks` branch, which builds the published
