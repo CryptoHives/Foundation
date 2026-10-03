@@ -235,12 +235,13 @@
   // "Blake3" is xoofx's binding (aliased Blake3Managed in the csproj), "Blake3.Native" carries
   // its native assets, and "Blake3.Managed" is Dissimilis's independent pure-C# implementation.
   //
-  // No entry for CryptoHives-*, for "OS" (the platform's own System.Security.Cryptography, which
-  // moves with the runtime that benchmark_runs records) or for "ArmSha256" (an intrinsics probe
-  // in tests/, not a package).
+  // No entry for CryptoHives-* (which includes the CryptoHives-ArmSha1/ArmSha256 intrinsics
+  // probes in tests/) or for "OS" (the platform's own System.Security.Cryptography, which moves
+  // with the runtime that benchmark_runs records).
   const VARIANT_PACKAGES = {
     "Blake2Fast": "SauceControl.Blake2Fast",
     "Blake3Dissimilis": "Blake3.Managed",
+    "Blake3DissimilisSerial": "Blake3.Managed",
     "Blake3Managed": "Blake3",
     "Blake3Native": "Blake3.Native",
     "BouncyCastle": "BouncyCastle.Cryptography",
@@ -327,9 +328,9 @@
   const KECCAK_FAMILIES = /^(SHA3-|SHAKE|cSHAKE|Keccak-|KMAC-|KT\d|TurboSHAKE|ParallelHash)/;
 
   function experimentalVariants(family) {
-    if (KECCAK_FAMILIES.test(family)) return ["CryptoHives-AVX2", "CryptoHives-AVX512F"];
+    if (KECCAK_FAMILIES.test(family)) return ["CryptoHives-Avx2", "CryptoHives-Avx512F"];
     if (family.startsWith("BLAKE2b")) return ["CryptoHives-Neon"];
-    if (family.startsWith("BLAKE2s")) return ["CryptoHives-AVX2", "CryptoHives-Neon"];
+    if (family.startsWith("BLAKE2s")) return ["CryptoHives-Avx2", "CryptoHives-Neon"];
     return [];
   }
 
