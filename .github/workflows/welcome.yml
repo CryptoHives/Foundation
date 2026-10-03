@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Greets people on their first issue or pull request in this repository.
 # pull_request_target is needed so the comment can be posted on PRs from forks; the job never

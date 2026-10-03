@@ -269,7 +269,7 @@ appear side by side rather than only those from a fixed set of CI hosts.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
+This project is licensed under either the MIT License or the Apache License, Version 2.0, at your option. See [LICENSE-MIT](https://github.com/CryptoHives/Foundation/blob/main/LICENSE-MIT) and [LICENSE-APACHE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE-APACHE) for details.
 
 ---
 

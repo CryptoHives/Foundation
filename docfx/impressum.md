@@ -29,7 +29,7 @@ Wirtschafts-Identifikationsnummer gemäß § 139c AO: DE462489712-00001
 
 **Github Organisation:** CryptoHives Open Source Initiative  
 **Project Name:** CryptoHives .NET Foundation  
-**Project Type:** Open Source Initiative (MIT License)  
+**Project Type:** Open Source Initiative (MIT OR Apache-2.0)  
 **Nature:** Educational and community-driven open source project  
 **Maintainer Group:** The Keepers of the CryptoHives
 
@@ -48,18 +48,18 @@ Germany
 
 **Rights Holder:** the person named above, on behalf of the CryptoHives Open Source Initiative
 
-The CryptoHives Open Source Initiative is not a registered legal entity; it is maintained by the person named above, who holds the rights in the project on its behalf. Contributors keep the copyright in their contributions and contribute them under the MIT License, certified per commit by the Developer Certificate of Origin (DCO).
+The CryptoHives Open Source Initiative is not a registered legal entity; it is maintained by the person named above, who holds the rights in the project on its behalf. Contributors keep the copyright in their contributions and contribute them under the project's license (MIT OR Apache-2.0), certified per commit by the Developer Certificate of Origin (DCO).
 
 **Collective Attribution:**  
 Code and contributions are published under the collective name "The Keepers of the CryptoHives", while individual contributors may be recognized in contributor listings, release notes, or metadata.
 
 **Licensing:**  
-This project is licensed under the **MIT License**. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
+This project is licensed under either the **MIT License** or the **Apache License, Version 2.0**, at your option. See [LICENSE-MIT](https://github.com/CryptoHives/Foundation/blob/main/LICENSE-MIT) and [LICENSE-APACHE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE-APACHE) for details.
 
 **SPDX Header:**
 ```
 // SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 ```
 
 For details on contributing and the sign-off, see [CONTRIBUTING.md](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md).

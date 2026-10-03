@@ -10,9 +10,9 @@ The **CryptoHives Open Source Initiative** is not a registered legal entity. It 
 
 ## 📜 Contributions (Developer Certificate of Origin)
 
-Contributors keep the copyright in their contributions and contribute them under the project's license (MIT). Each commit carries a `Signed-off-by` line certifying the [Developer Certificate of Origin](https://github.com/CryptoHives/.github/blob/main/DCO.txt): that the contributor wrote the change or otherwise has the right to submit it under that license.
+Contributors keep the copyright in their contributions and contribute them under the project's license (MIT OR Apache-2.0). Each commit carries a `Signed-off-by` line certifying the [Developer Certificate of Origin](https://github.com/CryptoHives/.github/blob/main/DCO.txt): that the contributor wrote the change or otherwise has the right to submit it under that license.
 
-Because the MIT License lets anyone use, modify, sublicense and redistribute the code, the projects can move to a future foundation or association without asking contributors again.
+Because both the MIT and the Apache 2.0 license let anyone use, modify, sublicense and redistribute the code, the projects can move to a future foundation or association without asking contributors again.
 
 ---
 

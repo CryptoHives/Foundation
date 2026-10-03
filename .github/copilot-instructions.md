@@ -13,7 +13,7 @@ The CryptoHives Open Source Initiative develops secure high-performance .NET lib
 - **Language:** C# with .NET 8.0/10.0 target framework, legacy .NET Standard 2.0/2.1 and .NET Framework 4.6.2/4.8 support
 - **Architecture:** Modular design with projects for memory management, threading, security and more
 - **Type:** High-performance security focused class libraries and console applications
-- **License:** MIT License
+- **License:** MIT OR Apache-2.0 (dual license, at the user's option)
 
 ## Project Structure
 
@@ -48,7 +48,7 @@ tests/
 - Never change NuGet.Config files unless explicitly asked to.
 - Always trim trailing whitespace, and do not have whitespace on otherwise empty lines.
 - Always save files as UTF-8 with BOM.
-- Always preserve the SPDX file header found at the top of source files. Example: `// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives` followed by `// SPDX-License-Identifier: MIT`.
+- Always preserve the SPDX file header found at the top of source files. Example: `// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives` followed by `// SPDX-License-Identifier: MIT OR Apache-2.0`.
 - Follow the existing file layout: preprocessor directives (e.g. `#if ...`) come first, then the `namespace` declaration, then `using` directives. Keep a single blank line between these regions as in existing files.
 - Try to use `namespace` declarations that match the file path, unless a package works otherwise described. For example, files under `src/Threading/Async` use `namespace CryptoHives.Foundation.Threading.Async;`.
 - Use PascalCase for public types and members, camelCase for local variables, and `_underscore` prefix for private fields (example: `_mutex`).

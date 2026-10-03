@@ -1,5 +1,5 @@
 <!-- SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives -->
-<!-- SPDX-License-Identifier: MIT -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -9,8 +9,6 @@
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <Description>Pooled buffer management for .NET that keeps allocations and GC pressure out of high-throughput pipelines. Provides a pooled memory stream backed by ArrayPool segments (ArrayPoolMemoryStream), an IBufferWriter buffer writer that builds a ReadOnlySequence without copying (ArrayPoolBufferWriter), a read-only Stream over an existing ReadOnlySequence, RAII ownership of pooled objects (ObjectOwner), and segment ownership primitives over pooled or GC-managed arrays. Zero-copy handoff to Utf8JsonWriter, PipeWriter, sockets and System.IO.Pipelines — a recyclable memory stream alternative for Span and Memory based code. Supports .NET Framework 4.6.2, netstandard2.0, netstandard2.1, .NET 8 and .NET 10, AOT-compatible and trim-safe on .NET 8+.</Description>
     <IsPackable>true</IsPackable>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageLicenseFile></PackageLicenseFile>
     <PackageTags>$(PackageTags) Memory MemoryStream RecyclableMemoryStream ArrayPool MemoryPool BufferWriter IBufferWriter ArrayPoolBufferWriter ReadOnlySequence Span Memory Buffers Buffer Pooling ObjectPool Pooled ZeroCopy ZeroAllocation Allocation-Free GC Streams Pipelines HighPerformance Performance AOT TrimSafe</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeSourceFile>$(MSBuildThisFileDirectory)README.md</PackageReadmeSourceFile>

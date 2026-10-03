@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 """
 One-time backfill: walks git history for every commit that touched the (now-retired)
 per-platform benchmark markdown tables and imports each commit's numbers into the trends
