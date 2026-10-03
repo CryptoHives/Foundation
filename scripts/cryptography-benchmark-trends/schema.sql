@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS benchmark_runs (
     branch          TEXT,
     bdn_version     TEXT,           -- e.g. '0.15.8'
     os              TEXT,           -- e.g. 'Windows 10 (10.0.19045.6456/22H2/2022Update)'
-    cpu             TEXT,           -- e.g. 'Intel Xeon CPU E3-1240 v5 3.50GHz'
+    cpu             TEXT,           -- e.g. 'AMD Ryzen 5 7600X 4.70GHz'
     logical_cores   INTEGER,
     physical_cores  INTEGER,
     sdk_version     TEXT,           -- e.g. '10.0.102'
