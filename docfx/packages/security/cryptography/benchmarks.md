@@ -95,7 +95,7 @@ block by block - those are marked *+ input* and are the only ones whose footprin
 >| Row | What it measures |
 >|---|---|
 >| `Blake3.Managed` | its default one-shot API — multi-threaded above ~72 KiB |
->| `Blake3.Managed (1 thread)` | the same API with `Hasher.MaxDegreeOfParallelism = 1` |
+>| `Blake3.Managed-Serial` | the same API with `Hasher.MaxDegreeOfParallelism = 1` |
 
 ### Cipher Algorithms
 

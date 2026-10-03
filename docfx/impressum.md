@@ -21,19 +21,21 @@ Germany
 
 Email: info@cryptohives.org
 
+Wirtschafts-Identifikationsnummer gemäß § 139c AO: DE462489712-00001
+
 ---
 
 ### Project Information
 
 **Github Organisation:** CryptoHives Open Source Initiative  
 **Project Name:** CryptoHives .NET Foundation  
-**Project Type:** Open Source Initiative (MIT License)  
+**Project Type:** Open Source Initiative (MIT OR Apache-2.0)  
 **Nature:** Educational and community-driven open source project  
 **Maintainer Group:** The Keepers of the CryptoHives
 
 ---
 
-### Responsible for Content (pursuant to §55 Abs. 2 RStV)
+### Responsible for Content (pursuant to § 18 Abs. 2 MStV)
 
 **Dipl.-Phys. Univ. Martin Regen**  
 Schwarzer Gundweg 10  
@@ -44,31 +46,23 @@ Germany
 
 ### Copyright and Intellectual Property
 
-**Rights Holder:** CryptoHives Open Source Initiative
+**Rights Holder:** the person named above, on behalf of the CryptoHives Open Source Initiative
 
-All contributors to this project assign their copyright and intellectual property rights to the CryptoHives Open Source Initiative through the Contributor License Agreement (CLA). This ensures unified ownership and stewardship of the project's intellectual property.
+The CryptoHives Open Source Initiative is not a registered legal entity; it is maintained by the person named above, who holds the rights in the project on its behalf. Contributors keep the copyright in their contributions and contribute them under the project's license (MIT OR Apache-2.0), certified per commit by the Developer Certificate of Origin (DCO).
 
 **Collective Attribution:**  
-Code and contributions are attributed under the collective pseudonym "The Keepers of the CryptoHives", while individual contributors may be recognized in contributor listings, release notes, or metadata.
+Code and contributions are published under the collective name "The Keepers of the CryptoHives", while individual contributors may be recognized in contributor listings, release notes, or metadata.
 
 **Licensing:**  
-This project is licensed under the **MIT License**. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
+This project is licensed under either the **MIT License** or the **Apache License, Version 2.0**, at your option. See [LICENSE-MIT](https://github.com/CryptoHives/Foundation/blob/main/LICENSE-MIT) and [LICENSE-APACHE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE-APACHE) for details.
 
 **SPDX Header:**
 ```
 // SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 ```
 
-For details on contributing and the CLA, see [CONTRIBUTING.md](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md) and [CLA.txt](https://github.com/CryptoHives/Foundation/blob/main/CLA.txt).
-
----
-
-### Copyright and Licensing
-
-This project is licensed under the **MIT License**. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
-
-All code contributions are subject to the project's open source license and Contributor License Agreement (CLA).
+For details on contributing and the sign-off, see [CONTRIBUTING.md](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md).
 
 ---
 

@@ -8,10 +8,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
-		CLA.txt = CLA.txt
 		CLAUDE.md = CLAUDE.md
 		CONTRIBUTING.md = CONTRIBUTING.md
-		LICENSE = LICENSE
+		LICENSE-APACHE = LICENSE-APACHE
+		LICENSE-MIT = LICENSE-MIT
 		ORG-OWNERSHIP.md = ORG-OWNERSHIP.md
 		README.md = README.md
 		SECURITY.md = SECURITY.md
@@ -54,7 +54,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{7E3ADE36
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nuget", "nuget", "{51D53384-310F-4754-8C6D-99A9177C9DB2}"
 	ProjectSection(SolutionItems) = preProject
-		licenses\CryptoHives MIT License.txt = licenses\CryptoHives MIT License.txt
 		nuget\logo.jpg = nuget\logo.jpg
 	EndProjectSection
 EndProject
@@ -137,6 +136,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "releases", "releases", "{99
 		releases\0.6.21.md = releases\0.6.21.md
 		releases\0.6.51.md = releases\0.6.51.md
 		releases\0.6.79.md = releases\0.6.79.md
+		releases\0.7.37.md = releases\0.7.37.md
 		releases\README.md = releases\README.md
 	EndProjectSection
 EndProject

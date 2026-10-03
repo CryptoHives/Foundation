@@ -175,6 +175,14 @@ else
 }
 ```
 
+## Benchmark Results
+
+The BCL has no two-party exchanger, so the rendezvous benchmark compares the pooled `AsyncExchange<T>` against a `TaskCompletionSource`-based reference implementation and against `DotNext.Threading.AsyncExchanger<T>` (net10.0 only) — the only third-party library with a genuine equivalent of this primitive.
+
+The pooled implementation is measured three ways: plain, with a cancellation token that never fires, and with a timeout that never elapses, so the cost of a timer per waiting party shows up as its own row.
+
+See [Benchmarks](benchmarks.md) for how the suites run and [Benchmark Trends](benchmark-trends/index.html) for the recorded history.
+
 ## Best Practices
 
 ### ✓ DO: Await the returned `ValueTask<T>` exactly once

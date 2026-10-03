@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA1859 // Use concrete types when possible for improved performance
 #pragma warning disable CA2000 // Dispose called explicitly inside lambda bodies; false positive
