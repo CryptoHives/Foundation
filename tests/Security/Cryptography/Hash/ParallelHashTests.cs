@@ -320,4 +320,61 @@ public class ParallelHashTests
         byte[] output = new byte[32];
         Assert.Throws<ObjectDisposedException>(() => incremental.Squeeze(output));
     }
+    /// <summary>
+    /// The streaming absorber must agree with the one-shot for every way the same message can be
+    /// split, including segments that straddle a block boundary and single calls that span
+    /// several whole blocks.
+    /// </summary>
+    [TestCase(1)]
+    [TestCase(7)]
+    [TestCase(8)]
+    [TestCase(9)]
+    [TestCase(16)]
+    [TestCase(31)]
+    [TestCase(200)]
+    public void IncrementalSegmentedAbsorbMatchesOneShot(int segmentLength)
+    {
+        byte[] input = new byte[200];
+        for (int i = 0; i < input.Length; i++)
+        {
+            input[i] = (byte)(i % 251);
+        }
+
+        byte[] expected = new byte[32];
+        ParallelHash.ComputeHash128(expected, input, blockSizeBytes: 8);
+
+        byte[] actual = new byte[32];
+        using var incremental = new IncrementalParallelHash(blockSizeBytes: 8);
+        for (int offset = 0; offset < input.Length; offset += segmentLength)
+        {
+            incremental.Absorb(input.AsSpan(offset, Math.Min(segmentLength, input.Length - offset)));
+        }
+
+        incremental.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// ParallelHash encodes the requested output length into the digest, so a second squeeze
+    /// would silently mean something different; both it and absorbing afterwards are refused.
+    /// </summary>
+    [Test]
+    public void IncrementalRefusesReuseWithoutReset()
+    {
+        using var incremental = new IncrementalParallelHash(blockSizeBytes: 8);
+        incremental.Absorb(SampleData24);
+
+        byte[] output = new byte[32];
+        incremental.Squeeze(output);
+
+        Assert.Throws<InvalidOperationException>(() => incremental.Squeeze(output));
+        Assert.Throws<InvalidOperationException>(() => incremental.Absorb(SampleData24));
+
+        incremental.Reset();
+        incremental.Absorb(SampleData24);
+        byte[] afterReset = new byte[32];
+        incremental.Squeeze(afterReset);
+        Assert.That(afterReset, Is.EqualTo(output), "Reset must restore a usable instance");
+    }
 }
