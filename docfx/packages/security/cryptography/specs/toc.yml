@@ -8,7 +8,7 @@
       href: NIST-FIPS-197.md
     - name: FIPS 202 (SHA-3, SHAKE)
       href: NIST-FIPS-202.md
-    - name: SP 800-185 (cSHAKE, KMAC)
+    - name: SP 800-185 (cSHAKE, KMAC, ParallelHash)
       href: NIST-SP-800-185.md
     - name: SP 800-232 (Ascon)
       href: NIST-SP-800-232.md
@@ -32,6 +32,8 @@
       href: SHA3-vectors.md
     - name: SHAKE XOF
       href: SHAKE-vectors.md
+    - name: ParallelHash (SP 800-185)
+      href: ParallelHash-vectors.md
     - name: TurboSHAKE
       href: TurboSHAKE-vectors.md
     - name: KT (KangarooTwelve)

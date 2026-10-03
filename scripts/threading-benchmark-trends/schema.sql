@@ -1,5 +1,5 @@
 -- SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: MIT OR Apache-2.0
 --
 -- Schema for the Threading package's benchmark trend-history database. A sibling of
 -- scripts/benchmark-trends/schema.sql (Cryptography's) — deliberately a separate database,

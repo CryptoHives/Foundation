@@ -1,47 +1,66 @@
-Contributions
-=============
+# Contributing
 
-The Keepers are glad to accept patches and contributions to the project. There are just a few guidelines we ask you to follow.
+🐝 Thanks for stopping by! The Keepers are glad about every contribution — a bug report, a question,
+a typo fix, a benchmark run on hardware we don't have, or a whole new algorithm. Small pull requests
+and questions are just as welcome as big features.
 
-Contribution License Agreement
-==============================
+Not sure where to start? Look for issues labelled
+[`good first issue`](https://github.com/CryptoHives/Foundation/labels/good%20first%20issue) or
+[`help wanted`](https://github.com/CryptoHives/Foundation/labels/help%20wanted), or just open an
+issue and ask.
 
-If you want/plan to contribute, please sign the Contribution License Agreement. A link to the CLA assistant will be provided once you open your first pull request. Then you are ready to go!
+## Sign off your commits
 
-Submitting a contribution
-=========================
+We use the [Developer Certificate of Origin](https://github.com/CryptoHives/.github/blob/main/DCO.txt) (DCO) instead of a contributor
+agreement: you keep the copyright in your work and contribute it under the project's license,
+MIT OR Apache-2.0.
+Add a sign-off to each commit — `git commit -s` does it for you:
 
-It's generally best to start by [opening a new issue](https://help.github.com/articles/creating-an-issue) describing the work you intend to submit. Even for minor tasks, it's helpful to know what contributors are working on. Please mention in the initial issue that you are planning to work on it, so that it can be assigned to you.
-
-Follow the usual GitHub flow process of [forking the project](https://help.github.com/articles/fork-a-repo), and setup a new branch to work in. Each group of changes should be done in separate branches, in order to ensure that a pull request only includes the changes related to one issue.
-
-Any significant change should almost always be accompanied by tests. Look at the existing tests to see the testing approach and style used.  
-
-Follow the project coding style, to ensure consistency and quick code reviews.
-
-Do your best to have clear commit messages for each change, in order to keep consistency throughout the project. Reference the issue number (#num). A good commit message serves at least these purposes:
-* Speed up the pull request review process
-* Help future developers to understand the purpose of your code
-* Help the maintainer write release notes
-
-One-line messages are fine for small changes, but bigger changes should look like this:
 ```
-$ git commit -m "A brief summary of the commit
->
-> A paragraph describing what changed and its impact."
+Signed-off-by: Your Name <you@example.com>
 ```
 
-Finally, push the commits to your fork, submit a pull request, wait for all gates to pass and fix any issues found as part of the gate process.  The team might ask for some [changes](https://help.github.com/articles/committing-changes-to-a-pull-request-branch-created-from-a-fork) before merging the pull request.
+With it you confirm that you wrote the change, or otherwise have the right to submit it under the
+project's license. Forgot it? `git commit --amend -s` fixes the last commit, `git rebase --signoff main`
+all commits on your branch — or just push one more commit whose message says you sign off the earlier
+ones; the DCO check accepts that too.
 
-AI Usage in Contributions
-=========================
+## How we work
 
-AI coding assistants (such as Claude and GitHub Copilot) are welcome as productivity tools for drafting boilerplate, tests, documentation, and code review — the same way they are used by the maintainers themselves.
+- **Say hello in an issue first** for anything bigger than a small fix, and mention that you'd like
+  to work on it. That way nobody duplicates effort, and we can point you at the right corner of the
+  code.
+- **One topic per branch.** Fork the repo, branch off `main`, and keep each pull request to one
+  issue — it makes the review much quicker.
+- **Bring tests along.** The existing tests show the style; for cryptography that means the official
+  test vectors from the specification, ideally cross-checked against a reference implementation.
+- **Follow the surrounding code style.** The format check in CI will nudge you if something's off.
+- **Write a commit message that explains why.** A one-line summary is fine for small changes; for
+  bigger ones add a short paragraph on what changed and its impact, and reference the issue (`#123`).
 
-If you use AI tools as part of your contribution:
-* You are responsible for the correctness, licensing, and quality of everything you submit, regardless of how it was authored.
-* You must be able to fully explain and stand behind every line of your pull request; reviewers will ask questions, and "the AI wrote it" is not an acceptable answer.
-* Any cryptographic logic must be verified against the relevant specification and official test vectors before submission, no exceptions.
-* Purely machine-generated pull requests submitted without human understanding or review will be rejected.
+Then push to your fork and open the pull request. CI builds and tests every target framework — if
+something fails and it isn't obvious why, just ask in the PR and we'll help. We may suggest a few
+changes before merging; that's a normal part of the conversation, not a rejection.
 
-When in doubt, treat AI output the same way you would treat a pull request from an unfamiliar contributor: verify it, test it, and understand it before putting your name on it.
+## Using AI tools
+
+AI coding assistants (such as Claude and GitHub Copilot) are welcome — the maintainers use them too,
+for boilerplate, tests, documentation and review. The one rule is ownership:
+
+- You are responsible for the correctness, licensing and quality of what you submit, however it was
+  written, and you should be able to explain every line of it.
+- Cryptographic code must be checked against its specification and official test vectors.
+- Make sure the tool hasn't reproduced someone else's code: keep its public-code filter on (for example
+  GitHub Copilot's "block suggestions matching public code") or run a similarity check, and name the
+  tool in the commit message with a `Co-authored-by:` line.
+- An AI tool never adds a `Signed-off-by` line itself — only you can, after you have checked the code.
+- Purely machine-generated pull requests without human understanding will be closed.
+
+Treat AI output like a pull request from someone you don't know yet: verify it, test it, understand
+it, then put your name on it.
+
+## Be nice
+
+Everyone here follows our short [Code of Conduct](https://github.com/CryptoHives/.github/blob/main/CODE_OF_CONDUCT.md).
+Security problems go through a [private report](https://github.com/CryptoHives/Foundation/security/advisories/new),
+never a public issue.

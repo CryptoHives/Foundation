@@ -1,5 +1,5 @@
 ﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # run-docfx.ps1
 # Compiles DocFX documentation and optionally serves the content
@@ -138,6 +138,19 @@ if ($Clean -and (Test-Path $siteOutput)) {
         Write-Host "[DRY RUN] Would remove: $siteOutput" -ForegroundColor Yellow
     }
     Write-Host ""
+}
+
+# The dashboards' browser libraries are served from the site itself; they are downloaded, not committed.
+if (-not $NoBuild) {
+    $vendorScript = Join-Path $scriptPath "fetch-docfx-vendor.ps1"
+    if ($DryRun) {
+        Write-Host "[DRY RUN] Would run: $vendorScript" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "Fetching dashboard libraries..." -ForegroundColor Green
+        & $vendorScript
+        Write-Host ""
+    }
 }
 
 # Build documentation

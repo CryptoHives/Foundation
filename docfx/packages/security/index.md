@@ -20,19 +20,23 @@ These packages are fully managed and cross-platform — they don't call into OS 
 
 ### Cryptography Package
 
-**CryptoHives.Foundation.Security.Cryptography** — hash and MAC implementations
+**CryptoHives.Foundation.Security.Cryptography** — hashes, MACs, ciphers, KDFs and post-quantum algorithms
 
-A broad set of cryptographic hash algorithms and message authentication codes, all fully managed and OS-independent.
+A broad set of cryptographic algorithms, all fully managed and OS-independent.
 
 **Key features:**
 - SHA-1, SHA-2, SHA-3 families
-- SHAKE and cSHAKE extendable-output functions (XOF)
-- KMAC (Keccak Message Authentication Code)
-- Keccak (Ethereum), TurboShake, and KangarooTwelve
-- Ascon hashing and MAC
+- SHAKE, cSHAKE, TurboSHAKE and KangarooTwelve extendable-output functions (XOF), plus ParallelHash
+- Keccak-256/384/512 (Ethereum compatible)
 - BLAKE2 and BLAKE3, tuned for high throughput
-- Legacy algorithms (MD5, RIPEMD-160)
-- Regional standards (SM3, Streebog, Kupyna, LSH, Whirlpool)
+- Ascon-Hash256, Ascon-XOF128 and Ascon-AEAD128 (NIST SP 800-232)
+- MACs: HMAC, KMAC, AES-CMAC, AES-GMAC, Poly1305, keyed BLAKE2/BLAKE3
+- AEAD: AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305
+- Block and stream ciphers: AES (ECB/CBC/CTR), ChaCha20, and the regional ciphers SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED
+- Key derivation: HKDF, KBKDF, Concat KDF, PBKDF2; AES Key Wrap (RFC 3394/5649)
+- Post-quantum: ML-KEM (FIPS 203), ML-DSA (FIPS 204) and SLH-DSA (FIPS 205), mirroring the .NET 10 in-box APIs on every target framework
+- PKCS#8, SubjectPublicKeyInfo and PEM import/export for the post-quantum keys, with PBES2-encrypted private keys and an [erasable-memory](cryptography/erasable-memory.md) API that never takes a secret as a `string`
+- Regional hash standards (SM3, Streebog, Kupyna, LSH, Whirlpool) and legacy algorithms (MD5, RIPEMD-160)
 
 **[Cryptography Package Documentation](cryptography/index.md)**
 
@@ -68,13 +72,10 @@ blake3.TryComputeHash(data, longHash, out _);
 - Certificate chain building and validation
 - CRL and OCSP support
 
-### Encryption (Planned)
+### Classical Public-Key Algorithms (Planned)
 
-**CryptoHives.Foundation.Security.Encryption** — symmetric and asymmetric encryption
-
-- AES, ChaCha20-Poly1305
 - RSA, ECDH, ECDSA
-- Key derivation functions (HKDF, PBKDF2, Argon2)
+- Argon2 password hashing
 
 ---
 
@@ -97,14 +98,18 @@ Unlike `System.Security.Cryptography`, these implementations:
 
 ### Standards Compliance
 
-- NIST FIPS 180-4, FIPS 202, SP 800-185
-- RFCs (7693 for BLAKE2, 6986 for Streebog)
+- NIST FIPS 180-4, FIPS 197, FIPS 202, FIPS 203, FIPS 204, FIPS 205
+- NIST SP 800-38B/D, SP 800-108r1, SP 800-56A/C, SP 800-185, SP 800-232
+- RFCs (2104 HMAC, 5869 HKDF, 7693 BLAKE2, 8018 PBKDF2, 8439 ChaCha20-Poly1305, 6986 Streebog)
 - ISO/IEC standards where applicable
+
+The full list, with the test vectors behind each entry, is on the [Cryptography package page](cryptography/index.md#standards-compliance).
 
 ## Target Frameworks
 
 - .NET 10.0
 - .NET 8.0
+- .NET Framework 4.7.2
 - .NET Framework 4.6.2
 - .NET Standard 2.0
 - .NET Standard 2.1
@@ -119,6 +124,7 @@ Unlike `System.Security.Cryptography`, these implementations:
 ## See Also
 
 - [Cryptography Package](cryptography/index.md)
+- [Porting Guide](../../porting-to-cryptohives.md)
 - [Specifications](cryptography/specs/README.md)
 
 ---

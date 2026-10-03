@@ -1,24 +1,26 @@
 ---
 title: Security.Cryptography Package
-_description: CryptoHives.Foundation.Security.Cryptography — fully managed, OS-independent implementations of hashes, MACs, ciphers, AEAD, KDFs and ML-KEM (FIPS 203), drop-in for System.Security.Cryptography, with optional hardware acceleration. Targets net462 through net10.0.
+_description: CryptoHives.Foundation.Security.Cryptography — fully managed, OS-independent implementations of hashes, MACs, ciphers, AEAD, KDFs, ML-KEM (FIPS 203), ML-DSA (FIPS 204) and SLH-DSA (FIPS 205), drop-in for System.Security.Cryptography, with optional hardware acceleration. Targets net462 through net10.0.
 ---
 
 # CryptoHives.Foundation.Security.Cryptography Package
 
 ## Overview
 
-The Cryptography package implements hash algorithms, message authentication codes, and ciphers for .NET. The core is fully managed code, with optional hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics — dispatched automatically where the hardware supports it, with consistent behavior everywhere else.
+The Cryptography package implements hash algorithms, message authentication codes, ciphers, key derivation functions, and the NIST post-quantum KEM and signature schemes for .NET. The core is fully managed code, with optional hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, AVX2 and AVX-512 on x86/x64 and ARM AES, ARM SHA, PMULL and NEON on Arm64 — dispatched automatically where the hardware supports it, with consistent behavior everywhere else.
 
 ## Key Features
 
 - **Specification-based** — implemented from official NIST, RFC, and ISO specifications
 - **No OS dependencies** — behaves identically on every platform without calling OS crypto APIs
-- **Hardware acceleration** — optional AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics, with automatic fallback
+- **Hardware acceleration** — optional x86/x64 (AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, AVX2, AVX-512) and Arm64 (ARM AES, ARM SHA, PMULL, NEON) intrinsics, with automatic scalar fallback
 - **Broad coverage** — SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, Ascon-AEAD128, and more
 - **AEAD support** — AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, and GCM/CCM over the regional block ciphers (SM4, ARIA, Camellia, SEED, Kuznyechik)
 - **Key management** — AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
 - **Post-quantum KEM** — ML-KEM-512/768/1024 (FIPS 203) on every target framework, mirroring the .NET 10 `MLKem` API
 - **Post-quantum signatures** — ML-DSA-44/65/87 (FIPS 204) and SLH-DSA (FIPS 205, all 12 parameter sets) on every target framework, mirroring the .NET 10 `MLDsa`/`SlhDsa` APIs — the complete NIST PQC trio
+- **Key formats** — PKCS#8, SubjectPublicKeyInfo and PEM import/export for ML-KEM, ML-DSA and SLH-DSA keys, including PBES2-encrypted PKCS#8, matching .NET 10 byte for byte
+- **Erasable memory** — no member takes a password or returns a plaintext private key as a `string`; secrets stay in spans the caller can wipe with the public `CryptographicOperations.ZeroMemory` (see [Erasable Memory](erasable-memory.md))
 - **Variable-length output** — XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
 - **Keyed hashing** — built-in MAC modes for BLAKE2, BLAKE3, and KMAC
 - **Standards compliant** — verified against NIST, RFC, and ISO test vectors
@@ -68,6 +70,14 @@ using CryptoHives.Foundation.Security.Cryptography.Kem;
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Dsa;
+```
+
+### Key Formats, Password-Based Encryption and Helpers
+
+`PbeOptions`, `PbeEncryptionAlgorithm`, `Pbkdf2Prf` and `CryptographicOperations` (`ZeroMemory`, `FixedTimeEquals`) live in the root namespace. The key-format members themselves are on `MLKem`, `MLDsa` and `SlhDsa`.
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography;
 ```
 
 ## Implemented Algorithms
@@ -476,6 +486,8 @@ Every implementation uses fixed-size internal buffers sized to its block size �
 | ML-KEM (FIPS 203) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |
 | ML-DSA (FIPS 204) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |
 | SLH-DSA (FIPS 205) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |
+| PKCS#8 / SPKI / PEM for PQC keys | Yes (all TFMs, `Span<char>` PEM exports, no `string` secrets) | .NET 10+ only |
+| `ZeroMemory` / `FixedTimeEquals` | Yes (all TFMs, incl. `char` overloads) | .NET Core 2.1+ / netstandard2.1+, no `char` overloads |
 | XOF (SHAKE/cSHAKE/TurboSHAKE/BLAKE3) | Yes (Absorb/Squeeze API) | SHAKE only (.NET 9+) |
 | SM3/Streebog/Kupyna/LSH/Whirlpool | Yes | No |
 
@@ -500,9 +512,11 @@ public bool ComputeHashThreadSafe(ReadOnlySpan<byte> data, Span<byte> destinatio
 - [KDF Algorithms Reference](kdf-algorithms.md)
 - [KEM Algorithms Reference](kem-algorithms.md)
 - [Signature Algorithms Reference](signature-algorithms.md)
+- [Erasable Memory](erasable-memory.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
-- [Hash Benchmarks](benchmarks.md)
-- [Cipher Benchmarks](benchmarks.md)
+- [Pooled Hash API](pooled-hash-api.md)
+- [Benchmarks](benchmarks.md)
+- [Porting Guide](../../../porting-to-cryptohives.md)
 - [Cryptographic Specifications](specs/README.md)
 - [Security Package Overview](../index.md)
 

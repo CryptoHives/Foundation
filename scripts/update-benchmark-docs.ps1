@@ -1,5 +1,5 @@
 ﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # update-benchmark-docs.ps1
 # Records a BenchmarkDotNet run into the archive on the `benchmarks` branch, as
