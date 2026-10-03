@@ -46,12 +46,12 @@ Germany
 
 ### Copyright and Intellectual Property
 
-**Rights Holder:** CryptoHives Open Source Initiative
+**Rights Holder:** the person named above, on behalf of the CryptoHives Open Source Initiative
 
-All contributors to this project assign their copyright and intellectual property rights to the CryptoHives Open Source Initiative through the Contributor License Agreement (CLA). This ensures unified ownership and stewardship of the project's intellectual property.
+The CryptoHives Open Source Initiative is not a registered legal entity; it is maintained by the person named above, who holds the rights in the project on its behalf. Contributors keep the copyright in their contributions and contribute them under the MIT License, certified per commit by the Developer Certificate of Origin (DCO).
 
 **Collective Attribution:**  
-Code and contributions are attributed under the collective pseudonym "The Keepers of the CryptoHives", while individual contributors may be recognized in contributor listings, release notes, or metadata.
+Code and contributions are published under the collective name "The Keepers of the CryptoHives", while individual contributors may be recognized in contributor listings, release notes, or metadata.
 
 **Licensing:**  
 This project is licensed under the **MIT License**. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
@@ -62,7 +62,7 @@ This project is licensed under the **MIT License**. See the [LICENSE](https://gi
 // SPDX-License-Identifier: MIT
 ```
 
-For details on contributing and the CLA, see [CONTRIBUTING.md](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md) and [CLA.txt](https://github.com/CryptoHives/Foundation/blob/main/CLA.txt).
+For details on contributing and the sign-off, see [CONTRIBUTING.md](https://github.com/CryptoHives/Foundation/blob/main/CONTRIBUTING.md).
 
 ---
 
