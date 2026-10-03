@@ -187,7 +187,8 @@ public class CipherReferenceImplementationTests
     [
         "AES-128-GCM", "AES-192-GCM", "AES-256-GCM",
         "AES-128-CCM", "AES-192-CCM", "AES-256-CCM",
-        "ChaCha20-Poly1305", "XChaCha20-Poly1305"
+        "ChaCha20-Poly1305", "XChaCha20-Poly1305",
+        "AES-128-GCM-SIV", "AES-256-GCM-SIV"
     ];
 
     private static readonly string[] StreamFamilies = ["ChaCha20"];
