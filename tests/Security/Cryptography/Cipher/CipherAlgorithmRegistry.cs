@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CH = CryptoHives.Foundation.Security.Cryptography;
+using BC = Org.BouncyCastle.Crypto;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -265,6 +266,9 @@ public static class CipherAlgorithmRegistry
 
         // Regional Cipher Implementations
         AddRegionalImplementations(implementations);
+
+        // GCM and CCM over the regional 128-bit block ciphers
+        AddRegionalAeadImplementations(implementations);
 
         return implementations;
     }
@@ -1214,5 +1218,51 @@ public static class CipherAlgorithmRegistry
             () => BouncyCastleCipherAdapter.CreateCbc(new AriaEngine(), 24, "ARIA-192-CBC"),
             Source.BouncyCastle));
 
+    }
+
+    private static void AddRegionalAeadImplementations(List<CipherImplementation> implementations)
+    {
+        // Only the GHASH multiply has a SIMD tier; the block ciphers run managed.
+        var ghashSimd = CH.Cipher.Sm4Gcm.SimdSupport & (CH.SimdSupport.PClMul | CH.SimdSupport.ArmPmull);
+
+        void AddGcm(string family, int keySizeBits, Func<byte[], CH.SimdSupport, object> factory, Func<BC.IBlockCipher> engine, Source referenceSource, string referenceName, bool benchmarkReference = true)
+        {
+            AddSimdAndManagedVariants(implementations, family, keySizeBits, Mode.GCM, ghashSimd, factory);
+            implementations.Add(new CipherImplementation(
+                family,
+                referenceName,
+                keySizeBits,
+                Mode.GCM,
+                (byte[] key) => new BouncyCastleAeadAdapter(new GcmBlockCipher(engine()), key, tagSizeBits: 128, nonceSizeBytes: 12),
+                referenceSource,
+                excludeFromBenchmark: !benchmarkReference));
+        }
+
+        void AddCcm(string family, int keySizeBits, Func<byte[], object> factory, Func<BC.IBlockCipher> engine)
+        {
+            implementations.Add(new CipherImplementation(family, "CryptoHives-Scalar", keySizeBits, Mode.CCM, factory, Source.Managed));
+            implementations.Add(new CipherImplementation(
+                family,
+                "BouncyCastle",
+                keySizeBits,
+                Mode.CCM,
+                (byte[] key) => new BouncyCastleAeadAdapter(new CcmBlockCipher(engine()), key, tagSizeBits: 128, nonceSizeBytes: 12),
+                Source.BouncyCastle));
+        }
+
+        foreach (int bits in new[] { 128, 192, 256 })
+        {
+            AddGcm($"ARIA-{bits}-GCM", bits, (key, s) => CH.Cipher.AriaGcm.Create(s, key), () => new AriaEngine(), Source.BouncyCastle, "BouncyCastle");
+            AddCcm($"ARIA-{bits}-CCM", bits, key => CH.Cipher.AriaCcm.Create(key), () => new AriaEngine());
+            AddGcm($"Camellia-{bits}-GCM", bits, (key, s) => CH.Cipher.CamelliaGcm.Create(s, key), () => new CamelliaEngine(), Source.BouncyCastle, "BouncyCastle");
+            AddCcm($"Camellia-{bits}-CCM", bits, key => CH.Cipher.CamelliaCcm.Create(key), () => new CamelliaEngine());
+        }
+
+        AddGcm("SM4-GCM", 128, (key, s) => CH.Cipher.Sm4Gcm.Create(s, key), () => new SM4Engine(), Source.BouncyCastle, "BouncyCastle");
+        AddCcm("SM4-CCM", 128, key => CH.Cipher.Sm4Ccm.Create(key), () => new SM4Engine());
+        AddGcm("SEED-GCM", 128, (key, s) => CH.Cipher.SeedGcm.Create(s, key), () => new SeedEngine(), Source.BouncyCastle, "BouncyCastle");
+        // A correctness reference only: every block goes through an ICryptoTransform adapter, so
+        // its timing would measure the adapter rather than OpenGost.
+        AddGcm("Kuznyechik-GCM", 256, (key, s) => CH.Cipher.KuznyechikGcm.Create(s, key), () => new OpenGostKuznyechikEngine(), Source.Regional, "OpenGost", benchmarkReference: false);
     }
 }

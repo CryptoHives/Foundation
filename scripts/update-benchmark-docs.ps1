@@ -222,6 +222,20 @@ $packageConfigurations = @{
             @{ Source = "KalynaCbc512Benchmark-report.md"; Target = "kalyna-cbc-512.md" }
             @{ Source = "SeedCbcBenchmark-report.md"; Target = "seed-cbc.md" }
 
+            # Cipher benchmarks - GCM and CCM over the regional ciphers
+            @{ Source = "Sm4GcmBenchmark-report.md"; Target = "sm4-gcm.md" }
+            @{ Source = "Sm4CcmBenchmark-report.md"; Target = "sm4-ccm.md" }
+            @{ Source = "AriaGcm128Benchmark-report.md"; Target = "aria-gcm-128.md" }
+            @{ Source = "AriaGcm256Benchmark-report.md"; Target = "aria-gcm-256.md" }
+            @{ Source = "AriaCcm128Benchmark-report.md"; Target = "aria-ccm-128.md" }
+            @{ Source = "AriaCcm256Benchmark-report.md"; Target = "aria-ccm-256.md" }
+            @{ Source = "CamelliaGcm128Benchmark-report.md"; Target = "camellia-gcm-128.md" }
+            @{ Source = "CamelliaGcm256Benchmark-report.md"; Target = "camellia-gcm-256.md" }
+            @{ Source = "CamelliaCcm128Benchmark-report.md"; Target = "camellia-ccm-128.md" }
+            @{ Source = "CamelliaCcm256Benchmark-report.md"; Target = "camellia-ccm-256.md" }
+            @{ Source = "SeedGcmBenchmark-report.md"; Target = "seed-gcm.md" }
+            @{ Source = "KuznyechikGcmBenchmark-report.md"; Target = "kuznyechik-gcm.md" }
+
             # MAC benchmarks - HMAC
             @{ Source = "HmacMd5Benchmark-report.md"; Target = "hmac-md5.md" }
             @{ Source = "HmacSha1Benchmark-report.md"; Target = "hmac-sha1.md" }

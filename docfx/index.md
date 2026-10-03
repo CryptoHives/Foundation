@@ -154,7 +154,7 @@ Specification-based implementations of hash algorithms, MACs, ciphers, key deriv
 - Keccak-256/384/512 for Ethereum compatibility
 - Regional standards: SM3 (China), Streebog/GOST (Russia), Kupyna/DSTU (Ukraine), LSH/KS (Korea), Whirlpool (ISO)
 - Legacy algorithms MD5, SHA-1, RIPEMD-160, kept for compatibility only
-- AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128 ciphers
+- AES-CBC, AES-GCM, AES-CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128 ciphers, plus GCM/CCM over SM4, ARIA, Camellia, SEED and Kuznyechik
 - Regional block ciphers: SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED
 - Key derivation: HKDF, KBKDF, Concat KDF, PBKDF2, BLAKE3 DeriveKey
 - MACs: HMAC, AES-CMAC, AES-GMAC, Poly1305, KMAC, BLAKE2/3 keyed
