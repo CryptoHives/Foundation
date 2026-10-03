@@ -141,11 +141,16 @@ def normalize_framework(value):
 # e.g. "SHA-256 (OS)" (raw) vs. "OS Native" (cosmetic), or Blake3's three comparator libraries
 # showing up under either their raw or cosmetic name depending on which commit. Old rows are
 # normalized to today's raw registry names so a family's trend line stays continuous instead
-# of forking across a rename.
+# of forking across a rename. The x86 SIMD tiers follow the .NET intrinsics class names (Avx2,
+# Avx512F, Sse2, Ssse3) whichever casing a report used.
 NORMALIZE_VARIANT = {
     "Managed": "CryptoHives-Scalar",
-    "AVX2": "CryptoHives-AVX2",
-    "AVX512F": "CryptoHives-AVX512F",
+    "AVX2": "CryptoHives-Avx2",
+    "AVX512F": "CryptoHives-Avx512F",
+    "CryptoHives-AVX2": "CryptoHives-Avx2",
+    "CryptoHives-AVX512F": "CryptoHives-Avx512F",
+    "CryptoHives-SSE2": "CryptoHives-Sse2",
+    "CryptoHives-SSSE3": "CryptoHives-Ssse3",
     "SSE2": "CryptoHives-Sse2",
     "Sse2": "CryptoHives-Sse2",
     "SSSE3": "CryptoHives-Ssse3",

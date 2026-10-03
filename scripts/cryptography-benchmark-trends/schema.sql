@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     class_name      TEXT    NOT NULL,  -- e.g. 'Blake3Benchmark'
     method          TEXT    NOT NULL,  -- e.g. 'TryComputeHash', 'ComputeMac'
     family          TEXT    NOT NULL,  -- e.g. 'BLAKE3', 'HMAC-SHA256'
-    variant         TEXT    NOT NULL,  -- e.g. 'CryptoHives-AVX512F', 'BouncyCastle', 'OS'
+    variant         TEXT    NOT NULL,  -- e.g. 'CryptoHives-Avx512F', 'BouncyCastle', 'OS'
     -- The target framework the row executed on, e.g. 'net10.0', 'net8.0', 'net462'. Part of the
     -- primary key: the same commit measured on the same machine under two frameworks is two
     -- distinct results, and without this the second silently overwrites the first. NOT NULL and
