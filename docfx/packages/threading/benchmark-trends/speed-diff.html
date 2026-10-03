@@ -93,7 +93,7 @@
   Data: <code>benchmark-history.sqlite</code>, built from the <code>benchmarks</code> branch.
 </p>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="../../../vendor/sql-wasm.js"></script>
 <script>
 (async function () {
   const statusEl = document.getElementById("status");
@@ -501,7 +501,7 @@
 
   try {
     const SQL = await initSqlJs({
-      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`,
+      locateFile: (file) => `../../../vendor/${file}`,
     });
     const response = await fetch("benchmark-history.sqlite");
     if (!response.ok) throw new Error(`fetch failed: ${response.status}`);

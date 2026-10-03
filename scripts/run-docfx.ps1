@@ -140,6 +140,19 @@ if ($Clean -and (Test-Path $siteOutput)) {
     Write-Host ""
 }
 
+# The dashboards' browser libraries are served from the site itself; they are downloaded, not committed.
+if (-not $NoBuild) {
+    $vendorScript = Join-Path $scriptPath "fetch-docfx-vendor.ps1"
+    if ($DryRun) {
+        Write-Host "[DRY RUN] Would run: $vendorScript" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "Fetching dashboard libraries..." -ForegroundColor Green
+        & $vendorScript
+        Write-Host ""
+    }
+}
+
 # Build documentation
 if (-not $NoBuild) {
     $buildArgs = @($docfxJson)

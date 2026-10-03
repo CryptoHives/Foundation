@@ -273,6 +273,6 @@ This project is licensed under the MIT License. See the [LICENSE](https://github
 
 ---
 
-[Impressum (Legal Notice)](impressum.md)
+[Impressum (Legal Notice)](impressum.md) · [Datenschutz (Privacy Policy)](datenschutz.md)
 
 © 2026 The Keepers of the CryptoHives
