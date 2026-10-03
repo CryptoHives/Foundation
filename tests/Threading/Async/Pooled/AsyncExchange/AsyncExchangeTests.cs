@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA2012 // ValueTask instances should only be consumed once — intentional in race tests
 #pragma warning disable CA1031 // Catch a more specific exception type — intentional in race tests

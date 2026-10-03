@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA2000 // Dispose objects before losing scope, this is handled by the caller
 #pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms

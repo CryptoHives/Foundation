@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 // CA1508 fires on the null-check after StripedAsyncKeyedLocker.LockOrNullAsync specifically, since that
 // overload's nullability annotations differ from the other libraries' otherwise-identical-shaped APIs

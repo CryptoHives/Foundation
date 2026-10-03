@@ -444,6 +444,8 @@ FodyWeavers.xsd
 # DocFX generated documentation
 !docfx/packages/*
 docfx/_site/
+# Dashboard libraries, downloaded by scripts/fetch-docfx-vendor.ps1
+docfx/vendor/
 # Everything under api/ is generated from the XML doc comments, except the hand-written landing
 # page. Ignoring the contents rather than the directory is what makes that exception possible -
 # git cannot re-include a file whose parent directory is excluded.

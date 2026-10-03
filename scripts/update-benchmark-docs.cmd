@@ -1,6 +1,6 @@
 @echo off
 REM SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-REM SPDX-License-Identifier: MIT
+REM SPDX-License-Identifier: MIT OR Apache-2.0
 
 REM update-benchmark-docs.cmd - Wrapper for update-benchmark-docs.ps1
 REM Copies BenchmarkDotNet results to docfx benchmark documentation folder

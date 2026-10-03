@@ -394,10 +394,10 @@ The separate **Threading.Analyzers** package enforces these rules at compile tim
 
 ## 🚨 Security Policy
 
-If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
+If you discover a vulnerability, please don't open a public issue — report it privately through [GitHub's private vulnerability reporting](https://github.com/CryptoHives/Foundation/security/advisories/new). The [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) has the details.
 
 ---
 
 ## ⚖️ License
 
-MIT — © 2026 The Keepers of the CryptoHives
+MIT OR Apache-2.0 — © 2026 The Keepers of the CryptoHives

@@ -32,6 +32,7 @@
       {
         "files": [
           "images/**",
+          "vendor/**",
           "googled2fe7d86cf779a1b.html",
           "7c2e1cbd9afe450880c3e3e3d0b35728.txt",
           "packages/security/cryptography/benchmark-trends/**",
@@ -67,7 +68,7 @@
     "globalMetadata": {
       "_appName": "CryptoHives .NET Foundation",
       "_appTitle": "CryptoHives .NET Foundation",
-      "_appFooter": "© 2026 The Keepers of the CryptoHives",
+      "_appFooter": "© 2026 The Keepers of the CryptoHives · <a href=\"https://cryptohives.github.io/Foundation/impressum.html\">Impressum</a> · <a href=\"https://cryptohives.github.io/Foundation/datenschutz.html\">Datenschutz</a>",
       "_enableSearch": true,
       "_enableNewTab": true,
       "pdf": false

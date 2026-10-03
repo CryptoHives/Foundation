@@ -1,7 +1,7 @@
 ---
 _layout: landing
 title: Foundation — Cryptography, Threading & Memory Libraries for .NET
-_description: CryptoHives .NET Foundation is a suite of independent NuGet libraries for .NET — OS-independent System.Security.Cryptography implementations, allocation-free ValueTask synchronization primitives, and ArrayPool-based buffer utilities. Targets net462 through net10.0.
+_description: CryptoHives .NET Foundation is a suite of independent NuGet libraries for .NET — OS-independent System.Security.Cryptography implementations including the NIST post-quantum ML-KEM, ML-DSA and SLH-DSA, allocation-free ValueTask synchronization primitives, and ArrayPool-based buffer utilities. Targets net462 through net10.0.
 ---
 
 # CryptoHives .NET Foundation
@@ -26,6 +26,78 @@ The initiative currently includes four packages:
 - [Memory](packages/memory/index.md) — buffer management on top of `ArrayPool<T>` and the modern .NET memory APIs, for transformation pipelines and crypto workloads that work in terms of `ReadOnlySpan` or `IBufferWriter`
 - [Cryptography](packages/security/cryptography/index.md) — OS-independent reimplementations of `System.Security.Cryptography` algorithms, usable as drop-in replacements
 - [Threading.Analyzers](packages/threading.analyzers/index.md) — the optional `CHT0xx` Roslyn rules that catch `ValueTask` misuse at compile time
+
+## Architecture Overview
+
+Four independent packages, none of which depends on another. The cryptography package shares one Keccak-p[1600] sponge across every SHA-3-derived algorithm, shown below the package map.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        CryptoHives .NET Foundation                              │
+│                    CryptoHives Open Source Initiative                           │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                     │
+         ┌───────────────────────────┼────────────────────────────┐
+         │                           │                            │
+         ▼                           ▼                            ▼
+┌────────────────────┐   ┌───────────────────────┐   ┌────────────────────────────┐
+│     Memory         │   │      Threading        │   │  Security.Cryptography     │
+├────────────────────┤   ├───────────────────────┤   ├────────────────────────────┤
+│ ArrayPool-         │   │ AsyncLock             │   │ Hash                       │
+│    MemoryStream    │   │ AsyncKeyedLock<TKey>  │   │  SHA-2 · SHA-3             │
+│ ArrayPool-         │   │ AsyncSemaphore        │   │  SHAKE · cSHAKE            │
+│    BufferWriter<T> │   │ AsyncAutoResetEvent   │   │  TurboSHAKE · KT128/256    │
+│ ReadOnlySequence-  │   │ AsyncManualResetEvent │   │  ParallelHash (SP 800-185) │
+│    MemoryStream    │   │ AsyncReaderWriterLock │   │  KMAC128 · KMAC256         │
+│ ISegmentOwner<T>   │   │ AsyncBarrier          │   │  Keccak · BLAKE2 · BLAKE3  │
+│  PooledSegment     │   │ AsyncCountdownEvent   │   │  Ascon · Regional · Legacy │
+│  AllocatedSegment  │   │ AsyncConditionVariable│   │                            │
+│  EmptySegment      │   │ AsyncExchange<T>      │   │ MAC                        │
+│                    │   │                       │   │  HMAC · KMAC               │
+│ SequenceLease<T>   │   │ IValueTaskSource<T>   │   │  AES-CMAC · AES-GMAC       │
+│ ISequenceOwner<T>  │   │    backed by          │   │  Poly1305 · BLAKE2/3       │
+│ PoolFactory        │   │   ObjectPool<T>       │   │                            │
+│ ObjectOwner<T>     │   │                       │   │ Cipher                     │
+│                    │   ├───────────────────────┤   │  AES-GCM/CCM (AEAD)        │
+│                    │   │ Threading.Analyzers   │   │  ChaCha20-Poly1305         │
+│                    │   │   ValueTask Roslyn    │   │  XChaCha20-Poly1305        │
+│                    │   │   analyzers           │   │  Ascon-AEAD128             │
+└────────────────────┘   └───────────────────────┘   │  AES-128/192/256           │
+                                                     │  ChaCha20 (stream)         │
+                                                     │  SM4 · ARIA · Camellia     │
+                                                     │  Kuznyechik · Kalyna       │
+                                                     │  SEED                      │
+                                                     │                            │
+                                                     │ Key Derivation             │
+                                                     │  HKDF · KBKDF              │
+                                                     │  ConcatKDF · PBKDF2        │
+                                                     │                            │
+                                                     │ Post-Quantum               │
+                                                     │  ML-KEM (FIPS 203)         │
+                                                     │  ML-DSA (FIPS 204)         │
+                                                     │  SLH-DSA (FIPS 205)        │
+                                                     │  PKCS#8 · SPKI · PEM       │
+                                                     └────────────────────────────┘
+
+Keccak class hierarchy (Security.Cryptography):
+
+  HashAlgorithm
+  └── KeccakCore  (Keccak-p[1600] sponge, AVX2/SSSE3/scalar dispatch)
+      ├── KeccakHashCore  (fixed-length)
+      │   ├── SHA3_{224,256,384,512}
+      │   └── Keccak{256,384,512}  (Ethereum-compatible, domain sep 0x01)
+      ├── KeccakXofCore : IExtendableOutput  (variable-length)
+      │   ├── Shake{128,256}        (domain sep 0x1F, rate 168/136 bytes)
+      │   ├── TurboShake{128,256}   (12-round Keccak, domain sep 0x7F/0x7E)
+      │   └── KT{128,256}           (KangarooTwelve tree-hashing XOF)
+      └── CShake{128,256} : IExtendableOutput  (bytepad prefix, domain sep 0x04)
+
+  ParallelHash  (static, NIST SP 800-185)
+    per-block inner hash ─── Shake{128,256}
+    finalization         ─── CShake{128,256}  (N="ParallelHash", S=user)
+
+  IncrementalParallelHash  (streaming wrapper, buffers input until Squeeze)
+```
 
 ## Available Packages
 
@@ -61,6 +133,7 @@ Async synchronization primitives built for low allocation and high throughput.
 - Pooled `AsyncReaderWriterLock`, `AsyncSemaphore`, and `AsyncCountdownEvent`, all with async wait support
 - `AsyncConditionVariable` for "wait until condition" semantics paired with an `AsyncLock`
 - `AsyncExchange<T>` for a two-party value rendezvous
+- Synchronous non-blocking attempts — `TryLock`, `TryWait`, `TryReaderLock`, `TryWriterLock` and friends — that return `false` on a miss instead of throwing
 - Fast-path optimizations for the uncontended case
 - No-allocation design for hot-path code and cancellation tokens (see [Benchmarks](packages/threading/benchmarks.md))
 
@@ -68,7 +141,7 @@ Async synchronization primitives built for low allocation and high throughput.
 
 ### [Security.Cryptography Package](packages/security/cryptography/index.md)
 
-Specification-based implementations of hash algorithms, MACs, ciphers, key derivation functions and post-quantum key encapsulation, all fully managed and OS-independent.
+Specification-based implementations of hash algorithms, MACs, ciphers, key derivation functions and the NIST post-quantum KEM and signature schemes, all fully managed and OS-independent.
 
 **Key features:**
 - SHA-1, SHA-2, SHA-3 families, all validated against full test vectors
@@ -87,6 +160,8 @@ Specification-based implementations of hash algorithms, MACs, ciphers, key deriv
 - MACs: HMAC, AES-CMAC, AES-GMAC, Poly1305, KMAC, BLAKE2/3 keyed
 - AES Key Wrap with Padding (RFC 3394/5649)
 - ML-KEM-512/768/1024 (FIPS 203) post-quantum key encapsulation, mirroring the .NET 10 `MLKem` API shape — and always supported, since nothing here depends on Windows CNG or OpenSSL
+- ML-DSA-44/65/87 (FIPS 204) and SLH-DSA, all 12 parameter sets (FIPS 205), mirroring the .NET 10 `MLDsa` and `SlhDsa` APIs, including the pre-hash variants
+- PKCS#8, SubjectPublicKeyInfo and PEM import/export for all post-quantum keys, with PBES2-encrypted private keys — and no member that takes a password or returns a private key as a `string` ([Erasable Memory](packages/security/cryptography/erasable-memory.md))
 - Cross-platform consistency with no dependency on OS crypto APIs
 
 [Explore the Security.Cryptography package →](packages/security/cryptography/index.md)
@@ -145,7 +220,7 @@ public void DoWorkIfIdle()
 - **No steady-state allocations.** Every package targets high throughput with no per-operation
   heap allocations, for both transformation pipelines and cryptographic workloads.
 - **SIMD with a scalar fallback.** Where it helps, algorithms use managed hardware intrinsics
-  (AES-NI, PCLMULQDQ, SSE/SSSE3, AVX2, NEON) and fall back to portable scalar code everywhere else,
+  (AES-NI, PCLMULQDQ, SSE/SSSE3, AVX2, AVX-512 on x86/x64; ARM AES, SHA, PMULL, NEON on Arm64) and fall back to portable scalar code everywhere else,
   so behaviour stays identical across platforms and runtimes.
 - **Orthogonal by design.** Packages stand on their own — none depends on another, and
   dependencies outside CryptoHives are kept minimal and limited to widely adopted libraries.
@@ -156,7 +231,8 @@ public void DoWorkIfIdle()
 
 Both the Threading and the Cryptography package are measured with BenchmarkDotNet against the
 reference implementations people actually use — the OS-provided algorithms, BouncyCastle,
-Nito.AsyncEx, Microsoft.VisualStudio.Threading and others — and every recorded run is published.
+Nito.AsyncEx, ProtoPromise, Microsoft.VisualStudio.Threading, DotNext.Threading and others — and
+every recorded run is published.
 
 The results are browsable rather than pasted into a table: each page embeds an interactive
 dashboard that loads the run history as a small SQLite database in your browser, with no server
@@ -178,22 +254,25 @@ appear side by side rather than only those from a fixed set of CI hosts.
 
 - .NET 10.0
 - .NET 8.0
+- .NET Framework 4.7.2 (Cryptography only)
 - .NET Framework 4.6.2
 - .NET Standard 2.1
 - .NET Standard 2.0
 
 ## Resources
 
+- [Getting Started](getting-started.md)
+- [Porting Guide](porting-to-cryptohives.md)
 - [Cryptographic Specifications](packages/security/cryptography/specs/README.md)
 - [Report Issues](https://github.com/CryptoHives/Foundation/issues)
 - [Security Policy](https://github.com/CryptoHives/.github/blob/main/SECURITY.md)
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE) file for details.
+This project is licensed under either the MIT License or the Apache License, Version 2.0, at your option. See [LICENSE-MIT](https://github.com/CryptoHives/Foundation/blob/main/LICENSE-MIT) and [LICENSE-APACHE](https://github.com/CryptoHives/Foundation/blob/main/LICENSE-APACHE) for details.
 
 ---
 
-[Impressum (Legal Notice)](impressum.md)
+[Impressum (Legal Notice)](impressum.md) · [Datenschutz (Privacy Policy)](datenschutz.md)
 
 © 2026 The Keepers of the CryptoHives
