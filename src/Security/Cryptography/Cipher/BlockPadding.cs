@@ -68,7 +68,7 @@ internal static class BlockPadding
     /// <exception cref="OS.CryptographicException">The padding is malformed.</exception>
     public static int GetPaddingLength(ReadOnlySpan<byte> unit, PaddingMode padding)
     {
-        byte padValue = unit[unit.Length - 1];
+        byte padValue = unit[^1];
         bool valid = padding switch {
             PaddingMode.None or PaddingMode.Zeros => true,
             PaddingMode.PKCS7 => IsPaddingValid(unit, padValue, fill: padValue, checkFill: true),
