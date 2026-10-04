@@ -72,14 +72,15 @@ jobs:
         --filter "FullyQualifiedName~SlhDsaAcvpTests"
         --logger "console;verbosity=normal"
 
-    - name: Confirm the committed selection still regenerates byte-identically
-      # Compression is deterministic (mtime zeroed, compact separators), so regenerating the
-      # stratified profile must reproduce the committed file exactly. A diff here means either
-      # NIST republished a vector file or the script's selection rule drifted — both are things
-      # to notice on a schedule rather than discover in a pull request.
+    - name: Confirm the committed selection still regenerates identically
+      # Regenerating the stratified profile must reproduce the committed JSON exactly. A difference
+      # here means either NIST republished a vector file or the script's selection rule drifted —
+      # both are things to notice on a schedule rather than discover in a pull request. The
+      # decompressed content is compared because deflate output differs between zlib builds.
       run: |
         python scripts/fetch-slhdsa-acvp-vectors.py --profile stratified
-        git diff --exit-code -- tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.json.gz
+        f=tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.json.gz
+        cmp <(git show "HEAD:$f" | gunzip) <(gunzip -c "$f")
 
   pre-hash:
     name: HashML-DSA and HashSLH-DSA, full ACVP sets
@@ -116,9 +117,11 @@ jobs:
         --filter "FullyQualifiedName~PreHashAcvpTests"
         --logger "console;verbosity=normal"
 
-    - name: Confirm the committed selections still regenerate byte-identically
+    - name: Confirm the committed selections still regenerate identically
       run: |
         python scripts/fetch-mldsa-acvp-vectors.py --profile prehash
         python scripts/fetch-slhdsa-acvp-vectors.py --profile prehash
-        git diff --exit-code -- tests/Security/Cryptography/TestData/mldsa-prehash-acvp-fips204.json.gz
-        git diff --exit-code -- tests/Security/Cryptography/TestData/slhdsa-prehash-acvp-fips205.json.gz
+        for f in tests/Security/Cryptography/TestData/mldsa-prehash-acvp-fips204.json.gz \
+                 tests/Security/Cryptography/TestData/slhdsa-prehash-acvp-fips205.json.gz; do
+          cmp <(git show "HEAD:$f" | gunzip) <(gunzip -c "$f")
+        done
