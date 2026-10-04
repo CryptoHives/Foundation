@@ -64,7 +64,8 @@ jobs:
       env:
         # The loader also finds this file at its default path on its own; setting the variable
         # makes the choice explicit in the log and fails loudly if the fetch step wrote nothing.
-        CRYPTOHIVES_SLHDSA_ACVP_VECTORS: tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.full.json.gz
+        # Absolute, because the test host resolves a relative path against its output directory.
+        CRYPTOHIVES_SLHDSA_ACVP_VECTORS: ${{ github.workspace }}/tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.full.json.gz
       run: >
         dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj
         -c Release --framework net10.0
@@ -107,8 +108,8 @@ jobs:
 
     - name: Run the pre-hash conformance suites
       env:
-        CRYPTOHIVES_MLDSA_PREHASH_ACVP_VECTORS: tests/Security/Cryptography/TestData/mldsa-prehash-acvp-fips204.full.json.gz
-        CRYPTOHIVES_SLHDSA_PREHASH_ACVP_VECTORS: tests/Security/Cryptography/TestData/slhdsa-prehash-acvp-fips205.full.json.gz
+        CRYPTOHIVES_MLDSA_PREHASH_ACVP_VECTORS: ${{ github.workspace }}/tests/Security/Cryptography/TestData/mldsa-prehash-acvp-fips204.full.json.gz
+        CRYPTOHIVES_SLHDSA_PREHASH_ACVP_VECTORS: ${{ github.workspace }}/tests/Security/Cryptography/TestData/slhdsa-prehash-acvp-fips205.full.json.gz
       run: >
         dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj
         -c Release --framework net10.0
