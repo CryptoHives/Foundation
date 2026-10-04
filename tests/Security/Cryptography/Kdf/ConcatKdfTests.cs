@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
+namespace Cryptography.Tests.Kdf;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using NUnit.Framework;
 using System;
