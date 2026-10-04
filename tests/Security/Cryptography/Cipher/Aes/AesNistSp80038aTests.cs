@@ -674,44 +674,34 @@ internal class AesNistSp80038aTests
             byte[] pt = new byte[size];
             for (int i = 0; i < size; i++) pt[i] = unchecked((byte)(i ^ 0x5A));
 
-            SymmetricCipher? managed = null;
-            SymmetricCipher? simd = null;
-            try
-            {
-                managed = CreateAes(keyLen, SimdSupport.None);
-                managed.Mode = mode;
-                managed.Padding = PaddingMode.None;
-                managed.Key = key;
-                managed.IV = iv;
+            using var managed = CreateAes(keyLen, SimdSupport.None);
+            managed.Mode = mode;
+            managed.Padding = PaddingMode.None;
+            managed.Key = key;
+            managed.IV = iv;
 
-                simd = CreateAes(keyLen, tier);
-                simd.Mode = mode;
-                simd.Padding = PaddingMode.None;
-                simd.Key = key;
-                simd.IV = iv;
+            using var simd = CreateAes(keyLen, tier);
+            simd.Mode = mode;
+            simd.Padding = PaddingMode.None;
+            simd.Key = key;
+            simd.IV = iv;
 
-                byte[] ctManaged = managed.Encrypt(pt);
-                byte[] ctSimd = simd.Encrypt(pt);
+            byte[] ctManaged = managed.Encrypt(pt);
+            byte[] ctSimd = simd.Encrypt(pt);
 
-                Assert.That(ctSimd, Is.EqualTo(ctManaged),
-                    $"{mode} AES-{keyLen * 8} size={size}: {tier} ciphertext differs from Managed");
+            Assert.That(ctSimd, Is.EqualTo(ctManaged),
+                $"{mode} AES-{keyLen * 8} size={size}: {tier} ciphertext differs from Managed");
 
-                managed.IV = iv;
-                simd.IV = iv;
+            managed.IV = iv;
+            simd.IV = iv;
 
-                byte[] ptManaged = managed.Decrypt(ctManaged);
-                byte[] ptSimd = simd.Decrypt(ctSimd);
+            byte[] ptManaged = managed.Decrypt(ctManaged);
+            byte[] ptSimd = simd.Decrypt(ctSimd);
 
-                Assert.That(ptManaged, Is.EqualTo(pt),
-                    $"{mode} AES-{keyLen * 8} size={size}: Managed decrypt mismatch");
-                Assert.That(ptSimd, Is.EqualTo(pt),
-                    $"{mode} AES-{keyLen * 8} size={size}: {tier} decrypt mismatch");
-            }
-            finally
-            {
-                managed?.Dispose();
-                simd?.Dispose();
-            }
+            Assert.That(ptManaged, Is.EqualTo(pt),
+                $"{mode} AES-{keyLen * 8} size={size}: Managed decrypt mismatch");
+            Assert.That(ptSimd, Is.EqualTo(pt),
+                $"{mode} AES-{keyLen * 8} size={size}: {tier} decrypt mismatch");
         }
     }
 
