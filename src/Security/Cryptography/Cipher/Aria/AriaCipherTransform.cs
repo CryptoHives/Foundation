@@ -17,14 +17,14 @@ internal sealed class AriaCipherTransform : BlockCipherTransform
     /// <summary>
     /// Initializes a new instance of the <see cref="AriaCipherTransform"/> class.
     /// </summary>
-    public AriaCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
-        : base(iv, encrypting, mode, padding)
+    public AriaCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding, int feedbackSizeBytes)
+        : base(iv, encrypting, mode, padding, feedbackSizeBytes)
     {
         // Max round keys: (16+1) * 16 = 272 bytes
         byte[] encKeys = new byte[17 * 16];
         _rounds = AriaCore.ExpandKey(key, encKeys);
 
-        if (!encrypting && mode != CipherMode.CTR)
+        if (NeedsInverseCipher(encrypting, mode))
         {
             _roundKeys = new byte[(_rounds + 1) * 16];
             AriaCore.CreateDecryptionKeys(encKeys, _roundKeys, _rounds);
