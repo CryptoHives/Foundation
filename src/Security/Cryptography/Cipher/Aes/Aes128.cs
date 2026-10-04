@@ -91,13 +91,13 @@ public sealed class Aes128 : SymmetricCipher
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new AesCipherTransform(_simdSupport, key, iv, encrypting: true, Mode, Padding);
+        return AesCipherTransform.Create(_simdSupport, key, iv, encrypting: true, Mode, Padding, FeedbackSize / 8);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new AesCipherTransform(_simdSupport, key, iv, encrypting: false, Mode, Padding);
+        return AesCipherTransform.Create(_simdSupport, key, iv, encrypting: false, Mode, Padding, FeedbackSize / 8);
     }
 }
