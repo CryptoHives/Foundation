@@ -29,9 +29,10 @@ internal sealed class CamelliaCipherTransform : BlockCipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
+    /// <param name="feedbackSizeBytes">The CFB feedback size in bytes.</param>
     public CamelliaCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv,
-        bool encrypting, CipherMode mode, PaddingMode padding)
-        : base(iv, encrypting, mode, padding)
+        bool encrypting, CipherMode mode, PaddingMode padding, int feedbackSizeBytes)
+        : base(iv, encrypting, mode, padding, feedbackSizeBytes)
     {
         _subkeys = new ulong[CamelliaCore.MaxSubkeys];
         _rounds = CamelliaCore.ExpandKey(key, _subkeys);

@@ -32,9 +32,9 @@ prehash-full and point CRYPTOHIVES_MLDSA_PREHASH_ACVP_VECTORS at the result to
 execute all 135.
 
 The output is gzipped because the vectors run to megabytes of hex -- ACVP
-messages alone are up to ~7 KB each. Compression is deterministic (mtime zeroed),
-so regenerating unchanged vectors produces a byte-identical file rather than a
-spurious diff.
+messages alone are up to ~7 KB each. The JSON is deterministic, so regenerating
+unchanged vectors reproduces it exactly; the gzip bytes are stable only on the
+same zlib build, so compare the decompressed content.
 
 Source (public, no authentication):
   https://github.com/usnistgov/ACVP-Server
