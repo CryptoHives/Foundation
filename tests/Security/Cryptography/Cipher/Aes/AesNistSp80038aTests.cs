@@ -118,7 +118,9 @@ internal class AesNistSp80038aTests
     // SIMD variant sources
     // ========================================================================
 
-    private static readonly SimdSupport[] SimdVariants = [SimdSupport.None, SimdSupport.AesNi];
+    // Scalar plus each AES tier this machine supports, enumerated as the cipher registry does.
+    private static readonly SimdSupport[] SimdVariants =
+        [SimdSupport.None, .. AlgorithmRegistry.GetSimdVariantFlags(Aes128.SimdSupport)];
 
     // ========================================================================
     // F.1 ECB Mode Tests
@@ -638,7 +640,7 @@ internal class AesNistSp80038aTests
     }
 
     // ========================================================================
-    // Managed vs AES-NI Cross-Validation
+    // Managed vs SIMD Cross-Validation
     // ========================================================================
 
     private static System.Collections.IEnumerable CrossValidationTestCases()
@@ -650,12 +652,12 @@ internal class AesNistSp80038aTests
     }
 
     /// <summary>
-    /// Verifies Managed and AES-NI produce identical ciphertext for all modes.
+    /// Verifies every supported SIMD tier produces the same ciphertext as the scalar path, for all modes.
     /// </summary>
     [Test]
     [TestCaseSource(nameof(CrossValidationTestCases))]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Factory method; disposed in finally block")]
-    public void ManagedMatchesAesNi(CipherMode mode, int keyLen)
+    public void ManagedMatchesEverySimdTier(CipherMode mode, int keyLen)
     {
         byte[] key = new byte[keyLen];
         byte[] iv = new byte[16];
@@ -666,13 +668,14 @@ internal class AesNistSp80038aTests
             ? [1, 7, 15, 16, 17, 31, 32, 33, 63, 64, 65, 128, 255, 256, 1024]
             : [16, 32, 48, 64, 128, 256, 1024];
 
+        foreach (SimdSupport tier in AlgorithmRegistry.GetSimdVariantFlags(Aes128.SimdSupport))
         foreach (int size in sizes)
         {
             byte[] pt = new byte[size];
             for (int i = 0; i < size; i++) pt[i] = unchecked((byte)(i ^ 0x5A));
 
             SymmetricCipher? managed = null;
-            SymmetricCipher? aesni = null;
+            SymmetricCipher? simd = null;
             try
             {
                 managed = CreateAes(keyLen, SimdSupport.None);
@@ -681,33 +684,33 @@ internal class AesNistSp80038aTests
                 managed.Key = key;
                 managed.IV = iv;
 
-                aesni = CreateAes(keyLen, SimdSupport.AesNi);
-                aesni.Mode = mode;
-                aesni.Padding = PaddingMode.None;
-                aesni.Key = key;
-                aesni.IV = iv;
+                simd = CreateAes(keyLen, tier);
+                simd.Mode = mode;
+                simd.Padding = PaddingMode.None;
+                simd.Key = key;
+                simd.IV = iv;
 
                 byte[] ctManaged = managed.Encrypt(pt);
-                byte[] ctAesNi = aesni.Encrypt(pt);
+                byte[] ctSimd = simd.Encrypt(pt);
 
-                Assert.That(ctAesNi, Is.EqualTo(ctManaged),
-                    $"{mode} AES-{keyLen * 8} size={size}: AES-NI ciphertext differs from Managed");
+                Assert.That(ctSimd, Is.EqualTo(ctManaged),
+                    $"{mode} AES-{keyLen * 8} size={size}: {tier} ciphertext differs from Managed");
 
                 managed.IV = iv;
-                aesni.IV = iv;
+                simd.IV = iv;
 
                 byte[] ptManaged = managed.Decrypt(ctManaged);
-                byte[] ptAesNi = aesni.Decrypt(ctAesNi);
+                byte[] ptSimd = simd.Decrypt(ctSimd);
 
                 Assert.That(ptManaged, Is.EqualTo(pt),
                     $"{mode} AES-{keyLen * 8} size={size}: Managed decrypt mismatch");
-                Assert.That(ptAesNi, Is.EqualTo(pt),
-                    $"{mode} AES-{keyLen * 8} size={size}: AES-NI decrypt mismatch");
+                Assert.That(ptSimd, Is.EqualTo(pt),
+                    $"{mode} AES-{keyLen * 8} size={size}: {tier} decrypt mismatch");
             }
             finally
             {
                 managed?.Dispose();
-                aesni?.Dispose();
+                simd?.Dispose();
             }
         }
     }
