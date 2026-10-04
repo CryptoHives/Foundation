@@ -3,24 +3,34 @@
 
 namespace Cryptography.Tests.Cipher.GcmSiv;
 
-using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
-using Org.BouncyCastle.Crypto.Engines;
-using Org.BouncyCastle.Crypto.Modes;
-using Org.BouncyCastle.Crypto.Parameters;
 using System;
-using System.Collections.Generic;
+using System.Linq;
+using static Cryptography.Tests.Cipher.CipherAlgorithmRegistry;
+using static Cryptography.Tests.Cipher.GcmSiv.AesGcmSivTestHelpers;
 using CryptographicException = System.Security.Cryptography.CryptographicException;
 
 /// <summary>
-/// AES-GCM-SIV (RFC 8452): known answers on every SIMD tier, POLYVAL on its own, agreement with
-/// BouncyCastle, and the nonce-misuse behaviour the mode exists for.
+/// AES-GCM-SIV (RFC 8452) on every registered implementation: known answers, in-place use,
+/// tampering, and the nonce-misuse behaviour the mode exists for.
 /// </summary>
 [TestFixture]
+[TestFixtureSource(nameof(CipherImplementationArgs))]
 [Parallelizable(ParallelScope.All)]
 public class AesGcmSivTests
 {
+    /// <summary>
+    /// Gets the cipher implementations of both AES-GCM-SIV key sizes.
+    /// </summary>
+    public static readonly CipherImplementation[] AesGcmSivAll =
+        ByFamily("AES-128-GCM-SIV").Concat(ByFamily("AES-256-GCM-SIV")).ToArray();
+
+    /// <summary>
+    /// Cipher implementations to test.
+    /// </summary>
+    public static readonly object[] CipherImplementationArgs = AesGcmSivAll.Select(impl => new object[] { impl.Name }).ToArray();
+
     // key, nonce, aad, plaintext, ciphertext ‖ tag. RFC 8452 Appendix C, the counter-wrap cases of
     // C.3 included; each was reproduced with an independent implementation before being added.
     private static readonly string[][] Rfc8452Vectors =
@@ -45,74 +55,30 @@ public class AesGcmSivTests
             "18ce4f0b8cb4d0cac65fea8f79257b20888e53e72299e56dffffffff000000000000000000000000"],
     ];
 
-    /// <summary>Every SIMD combination this machine supports, scalar included.</summary>
-    private static IEnumerable<SimdSupport> Tiers()
+    private readonly CipherImplementation _implementation;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AesGcmSivTests"/> class.
+    /// </summary>
+    public AesGcmSivTests(string name)
     {
-        SimdSupport supported = AesGcmSiv.SimdSupport;
-        foreach (SimdSupport tier in new[]
-        {
-            SimdSupport.None, SimdSupport.AesNi, SimdSupport.PClMul,
-            SimdSupport.AesNi | SimdSupport.PClMul, SimdSupport.ArmAes,
-        })
-        {
-            if ((tier & supported) == tier)
-                yield return tier;
-        }
+        _implementation = AesGcmSivAll.FirstOrDefault(impl => impl.Name == name) ?? throw new ArgumentNullException(name);
     }
+
+    private int KeySizeBytes => _implementation.KeySizeBits / 8;
 
     [Test]
-    public void Rfc8452_KnownAnswers_EveryTier()
+    public void Rfc8452_KnownAnswers()
     {
-        foreach (SimdSupport tier in Tiers())
+        foreach (string[] v in Rfc8452Vectors.Where(v => v[0].Length / 2 == KeySizeBytes))
         {
-            foreach (string[] v in Rfc8452Vectors)
-            {
-                byte[] key = FromHex(v[0]), nonce = FromHex(v[1]), aad = FromHex(v[2]), plaintext = FromHex(v[3]);
-                byte[] expected = FromHex(v[4]);
+            byte[] key = FromHex(v[0]), nonce = FromHex(v[1]);
+            byte[] aad = FromHex(v[2]), plaintext = FromHex(v[3]);
+            byte[] expected = FromHex(v[4]);
 
-                using AesGcmSiv siv = Create(tier, key);
-                Assert.That(siv.Encrypt(nonce, plaintext, aad), Is.EqualTo(expected), $"{siv.AlgorithmName} {tier} encrypt {v[3]}");
-                Assert.That(siv.Decrypt(nonce, expected, aad), Is.EqualTo(plaintext), $"{siv.AlgorithmName} {tier} decrypt {v[3]}");
-            }
-        }
-    }
-
-    /// <summary>RFC 8452 Appendix A, on both the PCLMULQDQ and the scalar path.</summary>
-    [TestCase(false)]
-    [TestCase(true)]
-    public void Polyval_Rfc8452AppendixA(bool usePclmul)
-    {
-        byte[] h = FromHex("25629347589242761d31f826ba4b757b");
-        byte[] x = FromHex("4f4f95668c83dfb6401762bb2d01a262d1a24ddd2721d006bbe45f20d3c9f362");
-        byte[] output = new byte[16];
-
-        Polyval.Compute(h, x, output, usePclmul);
-
-        Assert.That(output, Is.EqualTo(FromHex("f7a3b47b846119fae5b7866cf5e5b77e")));
-    }
-
-    [Test]
-    public void MatchesBouncyCastle_AcrossLengths([Values(16, 32)] int keySize)
-    {
-        var rng = new Random(8452 + keySize);
-        int[] lengths = [0, 1, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 128, 129, 1000, 4096];
-
-        foreach (SimdSupport tier in Tiers())
-        {
-            foreach (int length in lengths)
-            {
-                byte[] key = RandomBytes(rng, keySize);
-                byte[] nonce = RandomBytes(rng, 12);
-                byte[] aad = RandomBytes(rng, rng.Next(0, 70));
-                byte[] plaintext = RandomBytes(rng, length);
-
-                using AesGcmSiv siv = Create(tier, key);
-                byte[] ours = siv.Encrypt(nonce, plaintext, aad);
-
-                Assert.That(ours, Is.EqualTo(BouncyCastleEncrypt(key, nonce, aad, plaintext)),
-                    $"{siv.AlgorithmName} {tier} length {length} aad {aad.Length}");
-                Assert.That(siv.Decrypt(nonce, ours, aad), Is.EqualTo(plaintext));
-            }
+            using var siv = (IAeadCipher)_implementation.Create(key);
+            Assert.That(siv.Encrypt(nonce, plaintext, aad), Is.EqualTo(expected), $"{_implementation.Name} encrypt {v[3]}");
+            Assert.That(siv.Decrypt(nonce, expected, aad), Is.EqualTo(plaintext), $"{_implementation.Name} decrypt {v[3]}");
         }
     }
 
@@ -123,13 +89,13 @@ public class AesGcmSivTests
     [Test]
     public void RepeatedNonce_RevealsOnlyEquality()
     {
-        byte[] key = new byte[16];
+        byte[] key = new byte[KeySizeBytes];
         byte[] nonce = new byte[12];
         byte[] a = new byte[64];
         byte[] b = new byte[64];
         b[63] = 1;
 
-        using var siv = AesGcmSiv128.Create(key);
+        using var siv = (IAeadCipher)_implementation.Create(key);
         byte[] sealedA = siv.Encrypt(nonce, a);
         byte[] sealedAAgain = siv.Encrypt(nonce, a);
         byte[] sealedB = siv.Encrypt(nonce, b);
@@ -146,12 +112,12 @@ public class AesGcmSivTests
     public void InPlace_EncryptAndDecrypt([Values(0, 5, 16, 100)] int length)
     {
         var rng = new Random(length);
-        byte[] key = RandomBytes(rng, 32);
+        byte[] key = RandomBytes(rng, KeySizeBytes);
         byte[] nonce = RandomBytes(rng, 12);
         byte[] aad = RandomBytes(rng, 9);
         byte[] plaintext = RandomBytes(rng, length);
 
-        using var siv = AesGcmSiv256.Create(key);
+        using var siv = (IAeadCipher)_implementation.Create(key);
         byte[] expected = siv.Encrypt(nonce, plaintext, aad);
 
         byte[] buffer = (byte[])plaintext.Clone();
@@ -169,12 +135,12 @@ public class AesGcmSivTests
     public void Tampering_FailsAndClearsPlaintext(int what)
     {
         var rng = new Random(what);
-        byte[] key = RandomBytes(rng, 16);
+        byte[] key = RandomBytes(rng, KeySizeBytes);
         byte[] nonce = RandomBytes(rng, 12);
         byte[] aad = RandomBytes(rng, 20);
         byte[] plaintext = RandomBytes(rng, 48);
 
-        using var siv = AesGcmSiv128.Create(key);
+        using var siv = (IAeadCipher)_implementation.Create(key);
         byte[] ciphertext = new byte[plaintext.Length];
         byte[] tag = new byte[16];
         siv.Encrypt(nonce, plaintext, ciphertext, tag, aad);
@@ -190,6 +156,29 @@ public class AesGcmSivTests
         Assert.That(siv.Decrypt(nonce, ciphertext, tag, decrypted, aad), Is.False);
         Assert.That(decrypted, Is.All.EqualTo(0));
         Assert.Throws<CryptographicException>(() => siv.Decrypt(nonce, Concat(ciphertext, tag), aad));
+    }
+}
+
+/// <summary>
+/// AES-GCM-SIV behaviour that belongs to the concrete types rather than to a registry entry:
+/// POLYVAL on its own, argument validation and disposal.
+/// </summary>
+[TestFixture]
+[Parallelizable(ParallelScope.All)]
+public class AesGcmSivApiTests
+{
+    /// <summary>RFC 8452 Appendix A, on both the PCLMULQDQ and the scalar path.</summary>
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Polyval_Rfc8452AppendixA(bool usePclmul)
+    {
+        byte[] h = FromHex("25629347589242761d31f826ba4b757b");
+        byte[] x = FromHex("4f4f95668c83dfb6401762bb2d01a262d1a24ddd2721d006bbe45f20d3c9f362");
+        byte[] output = new byte[16];
+
+        Polyval.Compute(h, x, output, usePclmul);
+
+        Assert.That(output, Is.EqualTo(FromHex("f7a3b47b846119fae5b7866cf5e5b77e")));
     }
 
     [Test]
@@ -219,23 +208,11 @@ public class AesGcmSivTests
         Assert.Throws<ObjectDisposedException>(() => siv.Encrypt(new byte[12], new byte[1]));
         Assert.Throws<ObjectDisposedException>(() => siv.Decrypt(new byte[12], new byte[16]));
     }
+}
 
-    private static AesGcmSiv Create(SimdSupport tier, byte[] key) => key.Length == 16
-        ? AesGcmSiv128.Create(tier, key)
-        : AesGcmSiv256.Create(tier, key);
-
-    private static byte[] BouncyCastleEncrypt(byte[] key, byte[] nonce, byte[] aad, byte[] plaintext)
-    {
-        var cipher = new GcmSivBlockCipher(new AesEngine());
-        cipher.Init(true, new AeadParameters(new KeyParameter(key), 128, nonce, aad));
-        byte[] output = new byte[cipher.GetOutputSize(plaintext.Length)];
-        int written = cipher.ProcessBytes(plaintext, 0, plaintext.Length, output, 0);
-        written += cipher.DoFinal(output, written);
-        Array.Resize(ref output, written);
-        return output;
-    }
-
-    private static byte[] Concat(byte[] a, byte[] b)
+internal static class AesGcmSivTestHelpers
+{
+    public static byte[] Concat(byte[] a, byte[] b)
     {
         byte[] result = new byte[a.Length + b.Length];
         a.CopyTo(result, 0);
@@ -243,14 +220,14 @@ public class AesGcmSivTests
         return result;
     }
 
-    private static byte[] RandomBytes(Random rng, int length)
+    public static byte[] RandomBytes(Random rng, int length)
     {
         byte[] bytes = new byte[length];
         rng.NextBytes(bytes);
         return bytes;
     }
 
-    private static byte[] FromHex(string hex)
+    public static byte[] FromHex(string hex)
     {
         byte[] bytes = new byte[hex.Length / 2];
         for (int i = 0; i < bytes.Length; i++)
