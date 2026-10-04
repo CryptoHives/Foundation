@@ -48,6 +48,7 @@ param(
         # Cipher algorithms (individual)
         "AesGcm128", "AesGcm192", "AesGcm256",
         "AesCcm128", "AesCcm256",
+        "AesGcmSiv128", "AesGcmSiv256",
         "AesCbc128", "AesCbc256",
         "ChaCha20",
         "ChaCha20Poly1305", "XChaCha20Poly1305",
@@ -72,7 +73,7 @@ param(
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
         "Legacy", "RegionalHash", "Kupyna", "LSH", "Ascon", "ParallelHash", "KMAC",
         "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
-        "AES-GCM", "AES-CCM", "AES-CBC", "ChaCha",
+        "AES-GCM", "AES-CCM", "AES-GCM-SIV", "AES-CBC", "ChaCha",
         "RegionalCipher", "SimdArm",
         "Cipher", "AEAD", "HMAC", "MAC",
         "KEM", "DSA",
@@ -265,6 +266,9 @@ $AlgorithmBenchmarkMap = @{
     # Ciphers - AES-CCM
     "AesCcm128"         = "AesCcm128"
     "AesCcm256"         = "AesCcm256"
+    # Ciphers - AES-GCM-SIV
+    "AesGcmSiv128"      = "AesGcmSiv128"
+    "AesGcmSiv256"      = "AesGcmSiv256"
     # Ciphers - AES-CBC
     "AesCbc128"         = "AesCbc128"
     "AesCbc256"         = "AesCbc256"
@@ -347,12 +351,13 @@ $GroupAliases = @{
     "AsconXOF"       = @("AsconXof128Xof")
     "AES-GCM"        = @("AesGcm128", "AesGcm192", "AesGcm256")
     "AES-CCM"        = @("AesCcm128", "AesCcm256")
+    "AES-GCM-SIV"    = @("AesGcmSiv128", "AesGcmSiv256")
     "AES-CBC"        = @("AesCbc128", "AesCbc256")
     "ChaCha"         = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
-    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128")
-    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "AesKeyWrap", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
-    "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128")
+    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "AesCbc128", "AesCbc256", "AesKeyWrap", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
+    "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
     "MLKem"          = @("MLKemKeyGen", "MLKemOps")
     "KEM"            = @("MLKemKeyGen", "MLKemOps", "MLKemInternals")
@@ -475,6 +480,7 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host ""
     Write-Host "  AES-GCM:       -Family AesGcm128, AesGcm192, AesGcm256"
     Write-Host "  AES-CCM:       -Family AesCcm128, AesCcm256"
+    Write-Host "  AES-GCM-SIV:   -Family AesGcmSiv128, AesGcmSiv256"
     Write-Host "  AES-CBC:       -Family AesCbc128, AesCbc256"
     Write-Host "  AES-KeyWrap:   -Family AesKeyWrap"
     Write-Host "  ChaCha:        -Family ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
@@ -534,9 +540,10 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family AsconXOF   runs: AsconXof128Xof"
     Write-Host "  -Family AES-GCM    runs: AesGcm128, AesGcm192, AesGcm256"
     Write-Host "  -Family AES-CCM    runs: AesCcm128, AesCcm256"
+    Write-Host "  -Family AES-GCM-SIV runs: AesGcmSiv128, AesGcmSiv256"
     Write-Host "  -Family AES-CBC    runs: AesCbc128, AesCbc256"
     Write-Host "  -Family ChaCha     runs: ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
-    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128)"
+    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, AES-GCM-SIV, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128)"
     Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA-128/192/256, Camellia-128/192/256, Kuznyechik, Kalyna-128/256/512, SEED)"
     Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
     Write-Host "  -Family HMAC       runs: HmacMd5, HmacSha1, HmacSha256, HmacSha384, HmacSha512, HmacSha3_256, HmacSha3_384, HmacSha3_512"

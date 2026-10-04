@@ -193,6 +193,10 @@ $packageConfigurations = @{
             @{ Source = "AesCcm128Benchmark-report.md"; Target = "aes-ccm-128.md" }
             @{ Source = "AesCcm256Benchmark-report.md"; Target = "aes-ccm-256.md" }
 
+            # Cipher benchmarks - AES-GCM-SIV. Filed under Cipher by the importer's "aes-gcm" prefix.
+            @{ Source = "AesGcmSiv128Benchmark-report.md"; Target = "aes-gcm-siv-128.md" }
+            @{ Source = "AesGcmSiv256Benchmark-report.md"; Target = "aes-gcm-siv-256.md" }
+
             # Cipher benchmarks - AES-CBC
             @{ Source = "AesCbc128Benchmark-report.md"; Target = "aes-cbc-128.md" }
             @{ Source = "AesCbc256Benchmark-report.md"; Target = "aes-cbc-256.md" }
