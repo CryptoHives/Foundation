@@ -18,8 +18,8 @@ internal sealed class KalynaCipherTransform : BlockCipherTransform
     /// <summary>
     /// Initializes a new instance of the <see cref="KalynaCipherTransform"/> class.
     /// </summary>
-    public KalynaCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding, int blockSizeBytes)
-        : base(iv, encrypting, mode, padding, blockSizeBytes)
+    public KalynaCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding, int feedbackSizeBytes, int blockSizeBytes)
+        : base(iv, encrypting, mode, padding, feedbackSizeBytes, blockSizeBytes)
     {
         _blockSizeBytes = blockSizeBytes;
         _core = KalynaCore.Create(key, blockSizeBytes);

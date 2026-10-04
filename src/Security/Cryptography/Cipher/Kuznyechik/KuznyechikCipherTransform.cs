@@ -27,13 +27,15 @@ internal sealed class KuznyechikCipherTransform : BlockCipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
+    /// <param name="feedbackSizeBytes">The CFB feedback size in bytes.</param>
     public KuznyechikCipherTransform(
         ReadOnlySpan<byte> key,
         ReadOnlySpan<byte> iv,
         bool encrypting,
         CipherMode mode,
-        PaddingMode padding)
-        : base(iv, encrypting, mode, padding)
+        PaddingMode padding,
+        int feedbackSizeBytes)
+        : base(iv, encrypting, mode, padding, feedbackSizeBytes)
     {
         // Both schedules are derived up front rather than per direction: a transform is created
         // for one direction, but deriving the decryption keys costs nine L^(-1) evaluations once,

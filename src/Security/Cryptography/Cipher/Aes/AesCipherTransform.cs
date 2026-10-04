@@ -19,7 +19,8 @@ using System.Runtime.Intrinsics.Arm;
 /// <remarks>
 /// <para>
 /// This class implements <see cref="ICipherTransform"/> for AES block cipher operations.
-/// It supports ECB, CBC, and CTR modes with PKCS#7 padding.
+/// It supports ECB, CBC, and CTR modes; <see cref="Create"/> routes OFB, CFB and CTS to
+/// <see cref="AesGenericModeTransform"/>.
 /// </para>
 /// <para>
 /// When AES-NI (x86) or ARM AES crypto extension hardware acceleration is available,
@@ -168,6 +169,21 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         SimdSupport.None;
 #endif
 
+    /// <summary>
+    /// Creates the AES transform for <paramref name="mode"/>.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The cipher key.</param>
+    /// <param name="iv">The initialization vector.</param>
+    /// <param name="encrypting">True for encryption, false for decryption.</param>
+    /// <param name="mode">The cipher mode.</param>
+    /// <param name="padding">The padding mode.</param>
+    /// <param name="feedbackSizeBytes">The CFB feedback size in bytes.</param>
+    internal static ICipherTransform Create(SimdSupport simdSupport, ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding, int feedbackSizeBytes)
+        => mode is CipherMode.OFB or CipherMode.CFB or CipherMode.CTS
+            ? new AesGenericModeTransform(simdSupport, key, iv, encrypting, mode, padding, feedbackSizeBytes)
+            : new AesCipherTransform(simdSupport, key, iv, encrypting, mode, padding);
+
     /// <inheritdoc/>
     public int BlockSize => AesCore.BlockSizeBytes;
 
@@ -284,32 +300,14 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     written += remainder;
                 }
             }
-            else if (_padding != PaddingMode.None)
+            else
             {
-                // Apply PKCS#7 padding
                 Span<byte> paddedBlock = stackalloc byte[BlockSize];
-                int paddingLength = BlockSize - remainder;
-
-                // Copy remaining plaintext
-                if (remainder > 0)
+                if (BlockPadding.Pad(input.Slice(fullBlocks * BlockSize), paddedBlock, _padding) > 0)
                 {
-                    input.Slice(fullBlocks * BlockSize, remainder).CopyTo(paddedBlock);
+                    TransformBlock(paddedBlock, output.Slice(written));
+                    written += BlockSize;
                 }
-
-                // Add padding bytes
-                byte padValue = (byte)paddingLength;
-                for (int i = remainder; i < BlockSize; i++)
-                {
-                    paddedBlock[i] = padValue;
-                }
-
-                // Encrypt padded block
-                TransformBlock(paddedBlock, output.Slice(written));
-                written += BlockSize;
-            }
-            else if (remainder > 0)
-            {
-                throw new OS.CryptographicException("Input length must be a multiple of block size when no padding is used.");
             }
         }
         else
@@ -335,51 +333,21 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     written += remainder;
                 }
             }
-            else if (_padding != PaddingMode.None && written > 0)
+            else
             {
-                // Validate and remove PKCS#7 padding
-                byte padValue = output[written - 1];
-
-                if (!IsPkcs7PaddingValid(output.Slice(written - BlockSize, BlockSize), padValue))
+                if (remainder > 0)
                 {
-                    throw new OS.CryptographicException("Invalid padding.");
+                    throw new OS.CryptographicException("The input data is not a complete block.");
                 }
 
-                written -= padValue;
+                if (written > 0)
+                {
+                    written -= BlockPadding.GetPaddingLength(output.Slice(written - BlockSize, BlockSize), _padding);
+                }
             }
         }
 
         return written;
-    }
-
-    /// <summary>
-    /// Validates PKCS#7 padding on a full block in constant time.
-    /// </summary>
-    /// <remarks>
-    /// Scans every byte of <paramref name="block"/> unconditionally (no early exit) and combines
-    /// the result with a single bitwise OR, so execution time does not depend on the position of
-    /// the first invalid pad byte. A data-dependent early exit here is the classical CBC
-    /// padding-oracle side channel (Vaudenay 2002; exploited in practice by POODLE/Lucky 13-style
-    /// attacks) - even without a distinguishable error message, the timing difference alone is
-    /// enough to decrypt ciphertext one byte at a time.
-    /// </remarks>
-    /// <param name="block">The last decrypted block (exactly <see cref="BlockSize"/> bytes).</param>
-    /// <param name="padValue">The claimed pad length (<c>block[^1]</c>).</param>
-    /// <returns><see langword="true"/> if the padding is well-formed.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool IsPkcs7PaddingValid(ReadOnlySpan<byte> block, byte padValue)
-    {
-        int blockSize = BlockSize;
-        int badLength = ((uint)(padValue - 1) > (uint)(blockSize - 1)) ? 1 : 0;
-
-        int mismatch = 0;
-        for (int i = 0; i < blockSize; i++)
-        {
-            byte expected = i < padValue ? padValue : block[blockSize - 1 - i];
-            mismatch |= expected ^ block[blockSize - 1 - i];
-        }
-
-        return badLength == 0 && mismatch == 0;
     }
 
     /// <inheritdoc/>
