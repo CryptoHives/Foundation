@@ -331,7 +331,7 @@ public class AesTests
 
     /// <summary>
     /// PKCS#7 padding must be rejected regardless of which byte in the pad is corrupted,
-    /// covering the constant-time rewrite of <c>IsPkcs7PaddingValid</c> - a naive
+    /// covering the constant-time check in <c>BlockPadding</c> - a naive
     /// early-exit implementation would still throw in every case here, but with a timing
     /// signature that differs by corruption position (the classical padding-oracle side
     /// channel this rewrite closes).

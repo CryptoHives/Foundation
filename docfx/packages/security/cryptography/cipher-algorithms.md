@@ -313,8 +313,8 @@ public sealed class Aes256 : SymmetricCipher
 **Properties:**
 - Key Sizes: 128, 192, or 256 bits
 - Block Size: 128 bits (16 bytes)
-- IV Size: 16 bytes (CBC, CTR) or none (ECB)
-- Modes: ECB, CBC, CTR
+- IV Size: 16 bytes (CBC, CTR, OFB, CFB, CTS) or none (ECB)
+- Modes: ECB, CBC, CTR; OFB, CFB and CTS for interoperability
 - Padding: PKCS#7, None, Zeros, ANSIX923, ISO10126
 - Performance: Hardware accelerated with AES-NI; vectorized CBC decrypt (4/8-block interleaved)
 
@@ -471,6 +471,9 @@ chacha.IV = nonce;
 | **ECB** | Block | Required | ✅ | ✅ | ⚠️ Insecure for multi-block |
 | **CBC** | Block | Required | ❌ | ✅ | Needs unpredictable IV |
 | **CTR** | Stream | None | ✅ | ✅ | Recommended for most uses |
+| **OFB** | Stream | None | ❌ | ❌ | Interoperability only |
+| **CFB** | Segment | To segment size | ❌ | ✅ | `FeedbackSize` 8 (default) up to the block size |
+| **CTS** | Block | None | ❌ | ✅ | CBC-CS3 (RFC 3962); input of at least one block |
 | **Stream** | Stream | None | ✅ | ✅ | ChaCha20 native mode |
 
 

@@ -233,13 +233,12 @@ official sources.
 
 | Algorithm | Key Size | Mode | Status | Class |
 |-----------|----------|------|--------|-------|
-| AES-128 | 128 bits | ECB/CBC/CTR | ✅ Implemented | `Aes128` |
-| AES-192 | 192 bits | ECB/CBC/CTR | ✅ Implemented | `Aes192` |
-| AES-256 | 256 bits | ECB/CBC/CTR | ✅ Implemented | `Aes256` |
+| AES-128 | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | ✅ Implemented | `Aes128` |
+| AES-192 | 192 bits | ECB/CBC/CTR/OFB/CFB/CTS | ✅ Implemented | `Aes192` |
+| AES-256 | 256 bits | ECB/CBC/CTR/OFB/CFB/CTS | ✅ Implemented | `Aes256` |
 
 > **Hardware acceleration:** AES-NI (`AESENC`/`AESDEC`) on .NET 8+. CBC decrypt uses 8-block interleaving.
-> OFB, CFB, and CTS modes are defined for compatibility but marked `[Obsolete]` and not implemented —
-> modern protocols use AEAD modes (GCM, CCM) or CTR instead.
+> OFB, CFB and CTS are implemented for interoperability; new designs should use an AEAD mode (GCM, CCM) or CTR.
 
 ### SP 800-38D (AES-GCM)
 
@@ -294,22 +293,22 @@ official sources.
 
 | Algorithm | Key Size | Block Size | Mode | Standard | Status | Class |
 |-----------|----------|------------|------|----------|--------|-------|
-| SM4 | 128 bits | 128 bits | ECB/CBC/CTR | GB/T 32907-2016 (China) | ✅ Implemented | `Sm4` |
-| ARIA-128 | 128 bits | 128 bits | ECB/CBC/CTR | RFC 5794 (Korea) | ✅ Implemented | `Aria128` |
-| ARIA-192 | 192 bits | 128 bits | ECB/CBC/CTR | RFC 5794 (Korea) | ✅ Implemented | `Aria192` |
-| ARIA-256 | 256 bits | 128 bits | ECB/CBC/CTR | RFC 5794 (Korea) | ✅ Implemented | `Aria256` |
-| SEED | 128 bits | 128 bits | ECB/CBC/CTR | RFC 4269 (Korea) | ✅ Implemented | `Seed` |
-| Camellia-128 | 128 bits | 128 bits | ECB/CBC/CTR | RFC 3713 (Japan) | ✅ Implemented | `Camellia128` |
-| Camellia-192 | 192 bits | 128 bits | ECB/CBC/CTR | RFC 3713 (Japan) | ✅ Implemented | `Camellia192` |
-| Camellia-256 | 256 bits | 128 bits | ECB/CBC/CTR | RFC 3713 (Japan) | ✅ Implemented | `Camellia256` |
-| Kuznyechik | 256 bits | 128 bits | ECB/CBC/CTR | GOST R 34.12-2015 (Russia) | ✅ Implemented | `Kuznyechik` |
-| Kalyna-128/128 | 128 bits | 128 bits | ECB/CBC/CTR | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna128` |
-| Kalyna-128/256 | 256 bits | 128 bits | ECB/CBC/CTR | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna256` |
-| Kalyna-256/256, -256/512 | 256/512 bits | 256 bits | ECB/CBC/CTR | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna512` |
+| SM4 | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | GB/T 32907-2016 (China) | ✅ Implemented | `Sm4` |
+| ARIA-128 | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 5794 (Korea) | ✅ Implemented | `Aria128` |
+| ARIA-192 | 192 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 5794 (Korea) | ✅ Implemented | `Aria192` |
+| ARIA-256 | 256 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 5794 (Korea) | ✅ Implemented | `Aria256` |
+| SEED | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 4269 (Korea) | ✅ Implemented | `Seed` |
+| Camellia-128 | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 3713 (Japan) | ✅ Implemented | `Camellia128` |
+| Camellia-192 | 192 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 3713 (Japan) | ✅ Implemented | `Camellia192` |
+| Camellia-256 | 256 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 3713 (Japan) | ✅ Implemented | `Camellia256` |
+| Kuznyechik | 256 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | GOST R 34.12-2015 (Russia) | ✅ Implemented | `Kuznyechik` |
+| Kalyna-128/128 | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna128` |
+| Kalyna-128/256 | 256 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna256` |
+| Kalyna-256/256, -256/512 | 256/512 bits | 256 bits | ECB/CBC/CTR/OFB/CFB/CTS | DSTU 7624:2014 (Ukraine) | ✅ Implemented | `Kalyna512` |
 
-> **Modes:** every block cipher here supports ECB (testing only), CBC and CTR. CFB and OFB exist as
-> `[Obsolete]` values on `CipherMode` and throw `NotSupportedException`; Kalyna's 512-bit block
-> variant, and the GCM/CCM/XTS/MGM modes the regional standards define, are not implemented.
+> **Modes:** every block cipher here supports ECB (testing only), CBC and CTR, plus OFB, CFB and CTS
+> (CBC-CS3) for interoperability. Kalyna's 512-bit block variant, and the GCM/CCM/XTS/MGM modes the
+> regional standards define, are not implemented.
 
 ### Key Derivation Functions
 
