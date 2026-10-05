@@ -24,8 +24,7 @@ internal abstract class BlockCipher128
     public abstract void Clear();
 
     /// <summary>Returns the forward cipher for <paramref name="algorithm"/> keyed with <paramref name="key"/>.</summary>
-    public static BlockCipher128 Create(BlockCipher128Algorithm algorithm, ReadOnlySpan<byte> key) => algorithm switch
-    {
+    public static BlockCipher128 Create(BlockCipher128Algorithm algorithm, ReadOnlySpan<byte> key) => algorithm switch {
         BlockCipher128Algorithm.Aria => new AriaBlockCipher(key),
         BlockCipher128Algorithm.Camellia => new CamelliaBlockCipher(key),
         BlockCipher128Algorithm.Kuznyechik => new KuznyechikBlockCipher(key),

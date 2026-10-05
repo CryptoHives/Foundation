@@ -13,8 +13,8 @@ using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Collections.Generic;
 using BC = Org.BouncyCastle.Crypto;
+using OS = System.Security.Cryptography;
 using IAeadCipher = CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher;
-using CryptographicException = System.Security.Cryptography.CryptographicException;
 
 /// <summary>
 /// GCM and CCM over the non-AES 128-bit block ciphers: known answers, and the parameter ranges
@@ -129,7 +129,7 @@ public class BlockCipherAeadTests
         Assert.That(decrypted, Is.All.EqualTo(0));
 
         byte[] withTag = Concat(ciphertext, tag);
-        Assert.Throws<CryptographicException>(() => cipher.Decrypt(nonce, withTag));
+        Assert.Throws<OS.CryptographicException>(() => cipher.Decrypt(nonce, withTag));
     }
 
     [Test]

@@ -9,8 +9,8 @@ using Org.BouncyCastle.Crypto.Modes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CH = CryptoHives.Foundation.Security.Cryptography;
 using BC = Org.BouncyCastle.Crypto;
+using CH = CryptoHives.Foundation.Security.Cryptography;
 using OS = System.Security.Cryptography;
 
 /// <summary>
