@@ -709,7 +709,7 @@ public class PooledHashApiTests
         Span<byte> tooSmall = stackalloc byte[31]; // SHA-256 needs 32
         bool ok = SHA256.TryHashData(Abc, tooSmall, out int written);
         Assert.That(ok, Is.False);
-        Assert.That(written, Is.EqualTo(0));
+        Assert.That(written, Is.Zero);
     }
 
     [Test]
@@ -717,7 +717,7 @@ public class PooledHashApiTests
     {
         bool ok = SHA256.TryHashData(Abc, Span<byte>.Empty, out int written);
         Assert.That(ok, Is.False);
-        Assert.That(written, Is.EqualTo(0));
+        Assert.That(written, Is.Zero);
     }
 
     [Test]

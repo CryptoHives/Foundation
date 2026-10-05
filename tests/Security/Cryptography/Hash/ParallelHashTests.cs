@@ -20,10 +20,10 @@ using System.Text;
 public class ParallelHashTests
 {
     // NIST SP 800-185 sample input data used across multiple test cases.
-    private static readonly byte[] SampleData24 = TestHelpers.FromHexString(
+    public static readonly byte[] SampleData24 = TestHelpers.FromHexString(
         "000102030405060710111213141516172021222324252627");
 
-    private static readonly byte[] SampleData72 = TestHelpers.FromHexString(
+    public static readonly byte[] SampleData72 = TestHelpers.FromHexString(
         "000102030405060708090A0B" +
         "101112131415161718191A1B" +
         "202122232425262728292A2B" +
@@ -209,8 +209,8 @@ public class ParallelHashTests
     [Test]
     public void EmptyOutputSpanReturnsEmpty()
     {
-        var result = ParallelHash.ComputeHash128(Span<byte>.Empty, SampleData24);
-        Assert.That(result.Length, Is.EqualTo(0));
+        Span<byte> result = ParallelHash.ComputeHash128(Span<byte>.Empty, SampleData24);
+        Assert.That(result.Length, Is.Zero);
     }
 
     /// <summary>

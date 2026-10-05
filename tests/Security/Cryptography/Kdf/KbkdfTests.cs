@@ -182,8 +182,11 @@ public sealed class KbkdfTests
             Encoding.UTF8.GetBytes("iv"), TestContext);
 
         Assert.That(enc, Is.Not.EqualTo(auth));
-        Assert.That(enc, Is.Not.EqualTo(iv));
-        Assert.That(auth, Is.Not.EqualTo(iv));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(enc, Is.Not.EqualTo(iv));
+            Assert.That(auth, Is.Not.EqualTo(iv));
+        }
     }
 
     [Test]
