@@ -330,7 +330,7 @@ internal unsafe struct CcmCore
         // Message length (big-endian)
         for (int i = 0; i < L; i++)
         {
-            b0[BlockSizeBytes - 1 - i] = (byte)(messageLength >> (i * 8));
+            b0[BlockSizeBytes - 1 - i] = (byte)((ulong)messageLength >> (i * 8));
         }
     }
 
@@ -352,7 +352,7 @@ internal unsafe struct CcmCore
         // Counter (big-endian)
         for (int i = 0; i < L; i++)
         {
-            block[BlockSizeBytes - 1 - i] = (byte)(counter >> (i * 8));
+            block[BlockSizeBytes - 1 - i] = (byte)((ulong)counter >> (i * 8));
         }
     }
 
@@ -468,8 +468,8 @@ internal unsafe struct CcmCore
             throw new ArgumentException($"Nonce must be between {MinNonceSizeBytes} and {MaxNonceSizeBytes} bytes.", nameof(nonce));
 
         int L = 15 - nonce.Length;
-        long maxMessageLength = (1L << (8 * L)) - 1;
-        if (data.Length > maxMessageLength)
+        // A span is shorter than 2^31 bytes, so only a length field under four bytes can be too small.
+        if (L < sizeof(int) && data.Length > (1 << (8 * L)) - 1)
             throw new ArgumentException($"Message too large for nonce length {nonce.Length}.", nameof(data));
 
         if (tag.Length < MinTagSizeBytes || tag.Length > MaxTagSizeBytes)
