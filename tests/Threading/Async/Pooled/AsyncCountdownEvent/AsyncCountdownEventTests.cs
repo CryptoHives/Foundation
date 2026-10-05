@@ -268,8 +268,8 @@ public class AsyncCountdownEventTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await countdown.WaitAsync(cts.Token).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            await countdown.WaitAsync(cts.Token).ConfigureAwait(false)).ConfigureAwait(false);
 
         Assert.That(pool.ActiveCount, Is.Zero);
     }
@@ -287,8 +287,8 @@ public class AsyncCountdownEventTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await waiter.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await waiter.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         Assert.That(pool.ActiveCount, Is.Zero);
@@ -324,8 +324,8 @@ public class AsyncCountdownEventTests
     {
         var countdown = new AsyncCountdownEvent(1);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await countdown.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await countdown.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
     }
@@ -340,12 +340,12 @@ public class AsyncCountdownEventTests
     }
 
     [Test]
-    public void WaitAsyncWithZeroTimeoutThrowsWhenCountIsNonZero()
+    public async Task WaitAsyncWithZeroTimeoutThrowsWhenCountIsNonZero()
     {
         var countdown = new AsyncCountdownEvent(1);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await countdown.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await countdown.WaitAsync(TimeSpan.Zero).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test]

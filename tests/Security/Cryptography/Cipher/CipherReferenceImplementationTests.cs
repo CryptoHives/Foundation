@@ -86,7 +86,8 @@ public class CipherReferenceImplementationTests
         byte[] key = GenerateBytes(impl1.KeySizeBits / 8, seed: 0x01);
         byte[] nonce = GenerateBytes(cipher1.NonceSizeBytes, seed: 0x02);
         byte[] plaintext = GenerateBytes(plaintextSize, seed: 0x03 + plaintextSize);
-        byte[] aad = GenerateBytes(64, seed: 0x04);
+        // Ties the AAD length to the plaintext size so empty, partial-block and multi-block AAD are all covered.
+        byte[] aad = GenerateBytes(plaintextSize % 67, seed: 0x04);
 
         // Encrypt with impl1
         byte[] ciphertext1 = new byte[plaintext.Length];
@@ -100,17 +101,17 @@ public class CipherReferenceImplementationTests
 
         // Compare
         Assert.That(ciphertext1, Is.EqualTo(ciphertext2),
-            $"Ciphertext mismatch at size {plaintextSize}: {impl1.Name} vs {impl2.Name}");
+            $"Ciphertext mismatch at size {plaintextSize} (AAD {aad.Length}): {impl1.Name} vs {impl2.Name}");
         Assert.That(tag1, Is.EqualTo(tag2),
-            $"Tag mismatch at size {plaintextSize}: {impl1.Name} vs {impl2.Name}");
+            $"Tag mismatch at size {plaintextSize} (AAD {aad.Length}): {impl1.Name} vs {impl2.Name}");
 
         // Cross-decrypt
         byte[] decrypted = new byte[plaintext.Length];
         bool result = cipher2.Decrypt(nonce, ciphertext1, tag1, decrypted, aad);
         Assert.That(result, Is.True,
-            $"{impl2.Name} failed to decrypt {impl1.Name} output at size {plaintextSize}");
+            $"{impl2.Name} failed to decrypt {impl1.Name} output at size {plaintextSize} (AAD {aad.Length})");
         Assert.That(decrypted, Is.EqualTo(plaintext),
-            $"Decryption mismatch at size {plaintextSize}: {impl2.Name} decrypting {impl1.Name}");
+            $"Decryption mismatch at size {plaintextSize} (AAD {aad.Length}): {impl2.Name} decrypting {impl1.Name}");
     }
 
     private static void CompareStreamCipherImplementations(
@@ -187,6 +188,7 @@ public class CipherReferenceImplementationTests
     [
         "AES-128-GCM", "AES-192-GCM", "AES-256-GCM",
         "AES-128-CCM", "AES-192-CCM", "AES-256-CCM",
+        "AES-128-GCM-SIV", "AES-256-GCM-SIV",
         "ChaCha20-Poly1305", "XChaCha20-Poly1305",
         "ARIA-128-GCM", "ARIA-192-GCM", "ARIA-256-GCM",
         "ARIA-128-CCM", "ARIA-192-CCM", "ARIA-256-CCM",

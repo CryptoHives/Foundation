@@ -867,7 +867,7 @@ internal struct GcmCore
     /// <param name="y0">High 64 bits of y (modified in place with result).</param>
     /// <param name="y1">Low 64 bits of y (modified in place with result).</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void GfMulShoup(ReadOnlySpan<ulong> table, ref ulong y0, ref ulong y1)
+    internal static void GfMulShoup(ReadOnlySpan<ulong> table, ref ulong y0, ref ulong y1)
     {
         ulong x0 = y0, x1 = y1;
         ulong z0 = 0, z1 = 0;

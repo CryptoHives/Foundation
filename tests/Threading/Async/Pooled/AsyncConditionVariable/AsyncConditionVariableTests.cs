@@ -112,8 +112,11 @@ public class AsyncConditionVariableTests
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
                 await cv.WaitAsync(mutex).ConfigureAwait(false);
-                Assert.That(signaled, Is.True);
-                Assert.That(mutex.IsTaken, Is.True);
+                using (Assert.EnterMultipleScope())
+                {
+                    Assert.That(signaled, Is.True);
+                    Assert.That(mutex.IsTaken, Is.True);
+                }
             }
         });
 
@@ -243,19 +246,22 @@ public class AsyncConditionVariableTests
     public async Task PreCancelledTokenThrowsWithoutReleasingLock()
     {
         using var pool = new TestObjectPool<bool>();
-        var mutex = new AsyncLock();
+        var mutex = new AsyncLock(); 
         var cv = new AsyncConditionVariable(pool: pool);
 
         using (await mutex.LockAsync().ConfigureAwait(false))
         {
             var cancelled = new CancellationToken(canceled: true);
 
-            Assert.ThrowsAsync<OperationCanceledException>(
-                async () => await cv.WaitAsync(mutex, cancelled).ConfigureAwait(false));
+            await Assert.ThrowsAsync<OperationCanceledException>(
+                async () => await cv.WaitAsync(mutex, cancelled).ConfigureAwait(false)).ConfigureAwait(false);
 
-            // Lock must still be held — we never released it
-            Assert.That(mutex.IsTaken, Is.True);
-            Assert.That(cv.WaiterCount, Is.Zero);
+            using (Assert.EnterMultipleScope())
+            {
+                // Lock must still be held — we never released it
+                Assert.That(mutex.IsTaken, Is.True);
+                Assert.That(cv.WaiterCount, Is.Zero);
+            }
         }
 
         Assert.That(pool.ActiveCount, Is.Zero);
@@ -290,9 +296,12 @@ public class AsyncConditionVariableTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter.ConfigureAwait(false));
-        Assert.That(lockHeldAfterCancel, Is.True);
-        Assert.That(pool.ActiveCount, Is.Zero);
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter.ConfigureAwait(false)).ConfigureAwait(false);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(lockHeldAfterCancel, Is.True);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(3000)]
@@ -315,10 +324,13 @@ public class AsyncConditionVariableTests
         Assert.That(cv.WaiterCount, Is.EqualTo(1));
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter.ConfigureAwait(false)).ConfigureAwait(false);
 
-        Assert.That(cv.WaiterCount, Is.Zero);
-        Assert.That(pool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(cv.WaiterCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(3000)]
@@ -403,8 +415,11 @@ public class AsyncConditionVariableTests
 
         await Task.WhenAll(producer, consumer).ConfigureAwait(false);
 
-        Assert.That(consumed, Is.EqualTo(produced));
-        Assert.That(pool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(consumed, Is.EqualTo(produced));
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -445,8 +460,11 @@ public class AsyncConditionVariableTests
         cv.SignalAll();
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        Assert.That(cv.WaiterCount, Is.Zero);
-        Assert.That(pool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(cv.WaiterCount, Is.Zero);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -517,9 +535,12 @@ public class AsyncConditionVariableTests
 
         await Task.WhenAll(consumers).ConfigureAwait(false);
 
-        Assert.That(Volatile.Read(ref consumedCount), Is.EqualTo(totalItems));
-        Assert.That(mutex.IsTaken, Is.False);
-        Assert.That(pool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(Volatile.Read(ref consumedCount), Is.EqualTo(totalItems));
+            Assert.That(mutex.IsTaken, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -608,10 +629,13 @@ public class AsyncConditionVariableTests
             await Task.Delay(100).ConfigureAwait(false);
         }
 
-        Assert.That(await consumer1.ConfigureAwait(false), Is.EqualTo("signaled"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(await consumer1.ConfigureAwait(false), Is.EqualTo("signaled"));
 
-        // Consumer 2 is still waiting for its own signal, and gets it.
-        Assert.That(consumer2.IsCompleted, Is.False);
+            // Consumer 2 is still waiting for its own signal, and gets it.
+            Assert.That(consumer2.IsCompleted, Is.False);
+        }
         cv.Signal();
         await consumer2.ConfigureAwait(false);
 
@@ -623,10 +647,10 @@ public class AsyncConditionVariableTests
     // -------------------------------------------------------------------------
 
     [Test]
-    public void WaitAsyncThrowsForNullLock()
+    public async Task WaitAsyncThrowsForNullLock()
     {
         var cv = new AsyncConditionVariable();
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await cv.WaitAsync(null!).ConfigureAwait(false));
+        await Assert.ThrowsAsync<ArgumentNullException>(async () => await cv.WaitAsync(null!).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test, CancelAfter(3000)]
@@ -635,7 +659,8 @@ public class AsyncConditionVariableTests
         var mutex = new AsyncLock();
         var cv = new AsyncConditionVariable();
 
-        Assert.ThrowsAsync<SynchronizationLockException>(async () => await cv.WaitAsync(mutex).ConfigureAwait(false));
+        await Assert.ThrowsAsync<SynchronizationLockException>(async () =>
+            await cv.WaitAsync(mutex).ConfigureAwait(false)).ConfigureAwait(false);
 
         // The unheld lock is untouched and still usable.
         Assert.That(mutex.IsTaken, Is.False);
@@ -665,7 +690,8 @@ public class AsyncConditionVariableTests
 
         using (await other.LockAsync().ConfigureAwait(false))
         {
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await cv.WaitAsync(other).ConfigureAwait(false));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await cv.WaitAsync(other).ConfigureAwait(false)).ConfigureAwait(false);
             // The rejected wait left the second lock held by this caller.
             Assert.That(other.IsTaken, Is.True);
         }
@@ -679,12 +705,12 @@ public class AsyncConditionVariableTests
     // -------------------------------------------------------------------------
 
     [Test]
-    public void NegativeTimeoutThrows()
+    public async Task NegativeTimeoutThrows()
     {
         var mutex = new AsyncLock();
         var cv = new AsyncConditionVariable();
-        Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            async () => await cv.WaitAsync(mutex, TimeSpan.FromMilliseconds(-2)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            async () => await cv.WaitAsync(mutex, TimeSpan.FromMilliseconds(-2)).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test, CancelAfter(3000)]
@@ -696,8 +722,8 @@ public class AsyncConditionVariableTests
 
         using (await mutex.LockAsync().ConfigureAwait(false))
         {
-            Assert.ThrowsAsync<TimeoutException>(
-                async () => await cv.WaitAsync(mutex, TimeSpan.Zero).ConfigureAwait(false));
+            await Assert.ThrowsAsync<TimeoutException>(
+                async () => await cv.WaitAsync(mutex, TimeSpan.Zero).ConfigureAwait(false)).ConfigureAwait(false);
 
             using (Assert.EnterMultipleScope())
             {
@@ -706,8 +732,11 @@ public class AsyncConditionVariableTests
             }
         }
 
-        Assert.That(mutex.IsTaken, Is.False);
-        Assert.That(pool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.IsTaken, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(10000)]
@@ -770,8 +799,11 @@ public class AsyncConditionVariableTests
 
         // The timer must have been disposed with the waiter; nothing fires afterwards.
         await Task.Delay(100).ConfigureAwait(false);
-        Assert.That(mutex.IsTaken, Is.False);
-        Assert.That(pool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.IsTaken, Is.False);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -782,8 +814,11 @@ public class AsyncConditionVariableTests
     public void TryResetSucceedsWhenIdle()
     {
         var cv = new AsyncConditionVariable(runContinuationAsynchronously: false);
-        Assert.That(cv.TryReset(), Is.True);
-        Assert.That(cv.RunContinuationAsynchronously, Is.True, "a recycled instance starts from the default");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(cv.TryReset(), Is.True);
+            Assert.That(cv.RunContinuationAsynchronously, Is.True, "a recycled instance starts from the default");
+        }
     }
 
     [Test, CancelAfter(3000)]
@@ -807,8 +842,11 @@ public class AsyncConditionVariableTests
         cv.Signal();
         await waiter.ConfigureAwait(false);
 
-        Assert.That(cv.TryReset(), Is.True);
-        Assert.That(pool.ActiveCount, Is.Zero);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(cv.TryReset(), Is.True);
+            Assert.That(pool.ActiveCount, Is.Zero);
+        }
     }
 
     [Test, CancelAfter(3000)]

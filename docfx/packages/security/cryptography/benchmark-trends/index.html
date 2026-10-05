@@ -680,7 +680,7 @@
       WHERE r.platform = ? AND r.framework = ? AND r.category = ? AND r.family = ?
         AND r.method = ? AND r.data_size_label IN (${placeholders})
         ${cutoff ? "AND r.run_date >= ?" : ""}
-      ORDER BY r.variant, r.data_size_label, r.run_date
+      ORDER BY r.variant, r.data_size_bytes, r.run_date
     `);
     stmt.bind([platformSel.value, frameworkSel.value, categorySel.value, familySel.value,
                methodSel.value, ...sizes, ...(cutoff ? [cutoff] : [])]);
@@ -765,6 +765,41 @@
       if (!variantOrder.includes(variant)) variantOrder.push(variant);
     }
     const colorForVariant = colorsForVariants(variantOrder);
+
+    // Several sizes: group the bars by size on the X axis, one dataset per implementation, so
+    // implementations sit side by side at each size and the axis reads small to large.
+    if (currentSizes.length > 1) {
+      const pointAt = new Map();
+      for (const { variant, sizeLabel, points } of seriesByKey.values()) {
+        pointAt.set(`${variant}\u0000${sizeLabel}`, points[0]);
+      }
+      const datasets = variantOrder.map((variant) => ({
+        label: variant,
+        data: currentSizes.map((size) => pointAt.get(`${variant}\u0000${size}`)?.y ?? null),
+        points: currentSizes.map((size) => pointAt.get(`${variant}\u0000${size}`)),
+        backgroundColor: colorForVariant.get(variant),
+        hidden: hiddenVariants.has(variant),
+      }));
+
+      renderChartInstance(
+        datasets,
+        {
+          x: { type: "category", labels: currentSizes, title: { display: true, text: "Data size" } },
+          y: yAxisScale(metric),
+        },
+        (ctx) => pointFooter(ctx.dataset.points[ctx.dataIndex]),
+        "bar"
+      );
+
+      renderColorLegend(variantOrder.map((v) => ({ variant: v, color: colorForVariant.get(v) })));
+      renderDashLegend([]);
+      renderMetricLegend([]);
+
+      const visibleCount = datasets.filter((d) => !d.hidden).length;
+      statusEl.textContent =
+        `${visibleCount} of ${datasets.length} series shown as bars - only one recorded date for this selection`;
+      return;
+    }
 
     const entries = Array.from(seriesByKey.entries()).map(([label, { variant, points }]) => ({
       label, variant, point: points[0],
