@@ -11,6 +11,7 @@ using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BC = Org.BouncyCastle.Crypto;
 using OS = System.Security.Cryptography;
 using IAeadCipher = CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher;
@@ -200,14 +201,15 @@ public class BlockCipherAeadTests
 
     private static IEnumerable<AeadCase> RegistryCases(CipherAlgorithmRegistry.Mode mode)
     {
-        foreach (CipherAlgorithmRegistry.CipherImplementation impl in CipherAlgorithmRegistry.ByMode(mode))
-        {
-            if (impl.SimdSupport is not null &&
-                ReferenceEngines.TryGetValue(impl.AlgorithmFamily.Split('-')[0], out Func<BC.IBlockCipher>? engine))
+        return CipherAlgorithmRegistry.ByMode(mode)
+            .Select(impl => new
             {
-                yield return new AeadCase(impl, engine);
-            }
-        }
+                impl,
+                found = ReferenceEngines.TryGetValue(impl.AlgorithmFamily.Split('-')[0], out Func<BC.IBlockCipher>? engine),
+                engine,
+            })
+            .Where(x => x.impl.SimdSupport is not null && x.found)
+            .Select(x => new AeadCase(x.impl, x.engine!));
     }
 
     public static IEnumerable<AeadCase> AllCases()
