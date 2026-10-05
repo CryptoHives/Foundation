@@ -113,6 +113,7 @@ internal struct GcmCore
     private readonly byte[] _h; // Hash subkey
     private readonly ulong[] _shoupTable; // Precomputed 4-bit Shoup multiplication table
     private readonly int _rounds;
+    private readonly BlockCipher128? _blockCipher;
 #if NET8_0_OR_GREATER
     // selected accelerations by SimdSupport
     private readonly bool _useAesNi;
@@ -136,18 +137,48 @@ internal struct GcmCore
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <param name="key">A read-only span of bytes that contains the encryption key.</param>
     public GcmCore(SimdSupport simdSupport, ReadOnlySpan<byte> key)
+        : this(simdSupport, key, blockCipher: null)
     {
-        // Expand key — single pinned buffer for both managed and AES-NI paths
-        int keyWords = key.Length / 4;
-        int totalWords = 4 * (keyWords + 7);
-        _encRoundKeys = new uint[totalWords];
+    }
 
-        // Compute hash subkey H = AES(K, 0^128)
+    /// <summary>
+    /// Initializes a new instance of the GcmCore class over a non-AES 128-bit block cipher.
+    /// </summary>
+    /// <remarks>
+    /// GHASH still uses the carry-less multiply selected by <paramref name="simdSupport"/>;
+    /// the AES flags are ignored.
+    /// </remarks>
+    /// <param name="simdSupport">The SIMD instruction set to use for GHASH.</param>
+    /// <param name="blockCipher">The keyed block cipher; <see cref="Clear"/> erases it.</param>
+    public GcmCore(SimdSupport simdSupport, BlockCipher128 blockCipher)
+        : this(simdSupport, default, blockCipher ?? throw new ArgumentNullException(nameof(blockCipher)))
+    {
+    }
+
+    private GcmCore(SimdSupport simdSupport, ReadOnlySpan<byte> key, BlockCipher128? blockCipher)
+    {
+        // Compute hash subkey H = E(K, 0^128)
         _h = new byte[BlockSizeBytes];
         Span<byte> zeroBlock = stackalloc byte[BlockSizeBytes];
         zeroBlock.Clear();
 
         simdSupport = simdSupport.WithImplicit() & SimdSupport;
+        if (blockCipher is not null)
+        {
+            _blockCipher = blockCipher;
+            _encRoundKeys = [];
+            // Masking the AES flags keeps the AES branches below, and the fused AES pipeline, unreachable.
+            simdSupport &= ~(SimdSupport.AesNi | SimdSupport.ArmAes);
+            blockCipher.EncryptBlock(zeroBlock, _h);
+        }
+        else
+        {
+            // Expand key — single pinned buffer for both managed and AES-NI paths
+            int keyWords = key.Length / 4;
+            int totalWords = 4 * (keyWords + 7);
+            _encRoundKeys = new uint[totalWords];
+        }
+
 #if NET8_0_OR_GREATER
         if ((simdSupport & SimdSupport.AesNi) != 0)
         {
@@ -163,6 +194,7 @@ internal struct GcmCore
         }
         else
 #endif
+        if (blockCipher is null)
         {
             _rounds = AesCore.ExpandKey(key, _encRoundKeys);
             AesCore.EncryptBlock(zeroBlock, _h, _encRoundKeys, _rounds);
@@ -199,6 +231,7 @@ internal struct GcmCore
     /// </summary>
     public void Clear()
     {
+        _blockCipher?.Clear();
         Array.Clear(_encRoundKeys, 0, _encRoundKeys.Length);
         Array.Clear(_h, 0, _h.Length);
         Array.Clear(_shoupTable, 0, _shoupTable.Length);
@@ -599,6 +632,61 @@ internal struct GcmCore
 #endif
 
     /// <summary>
+    /// Performs GCTR with a non-AES 128-bit block cipher.
+    /// </summary>
+    /// <remarks>
+    /// Kept out of <see cref="GctrDispatch"/> so its stackalloc does not stop the AES dispatch from inlining.
+    /// </remarks>
+    /// <param name="blockCipher">The keyed block cipher.</param>
+    /// <param name="icb">The initial counter block.</param>
+    /// <param name="input">The input data.</param>
+    /// <param name="output">The output buffer.</param>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    public static void GctrBlockCipher(
+        BlockCipher128 blockCipher,
+        ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        if (input.Length == 0)
+        {
+            return;
+        }
+
+        Span<byte> counter = stackalloc byte[BlockSizeBytes];
+        Span<byte> keystream = stackalloc byte[BlockSizeBytes];
+        icb.CopyTo(counter);
+
+        int offset = 0;
+        while (offset < input.Length)
+        {
+            blockCipher.EncryptBlock(counter, keystream);
+
+            int remaining = input.Length - offset;
+
+            if (remaining >= BlockSizeBytes)
+            {
+                ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
+                ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
+                Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(offset, BlockSizeBytes));
+                dst[0] = src[0] ^ ks[0];
+                dst[1] = src[1] ^ ks[1];
+            }
+            else
+            {
+                for (int i = 0; i < remaining; i++)
+                {
+                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
+                }
+            }
+
+            IncrementCounter(counter);
+            offset += BlockSizeBytes;
+        }
+
+        CryptographicOperations.ZeroMemory(keystream);
+    }
+
+    /// <summary>
     /// Computes the initial counter block J0 from nonce.
     /// </summary>
     /// <param name="nonce">The nonce/IV.</param>
@@ -917,6 +1005,12 @@ internal struct GcmCore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void GctrDispatch(ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
+        if (_blockCipher is not null)
+        {
+            GctrBlockCipher(_blockCipher, icb, input, output);
+            return;
+        }
+
 #if NET8_0_OR_GREATER
         if (AesCoreAesNi.IsSupported && _useAesNi)
         {

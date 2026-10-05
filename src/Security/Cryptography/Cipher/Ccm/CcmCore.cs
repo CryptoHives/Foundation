@@ -21,7 +21,7 @@ using System.Runtime.Intrinsics;
 /// <para>
 /// <b>Implementation notes:</b>
 /// <list type="bullet">
-///   <item><description>Defined for 128-bit block ciphers only (AES)</description></item>
+///   <item><description>Defined for 128-bit block ciphers only: AES here, others through <see cref="BlockCipher128"/></description></item>
 ///   <item><description>Authenticate-then-encrypt construction</description></item>
 ///   <item><description>Variable tag length (4-16 bytes, even values)</description></item>
 ///   <item><description>Variable nonce length (7-13 bytes)</description></item>
@@ -62,6 +62,7 @@ internal unsafe struct CcmCore
 
     private fixed uint _roundKeys[MaxRoundKeyWords];
     private readonly int _rounds;
+    private readonly BlockCipher128? _blockCipher;
 #if NET8_0_OR_GREATER
     private readonly bool _useAesNi;
     private readonly bool _useArmAes;
@@ -99,6 +100,15 @@ internal unsafe struct CcmCore
     }
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="CcmCore"/> struct over a non-AES 128-bit block cipher.
+    /// </summary>
+    /// <param name="blockCipher">The keyed block cipher; <see cref="Clear"/> erases it.</param>
+    public CcmCore(BlockCipher128 blockCipher)
+    {
+        _blockCipher = blockCipher ?? throw new ArgumentNullException(nameof(blockCipher));
+    }
+
+    /// <summary>
     /// Gets the SIMD instruction sets supported by AES-CCM on the current platform.
     /// </summary>
     internal static SimdSupport SimdSupport =>
@@ -114,6 +124,7 @@ internal unsafe struct CcmCore
     /// </summary>
     public void Clear()
     {
+        _blockCipher?.Clear();
         fixed (uint* p = _roundKeys)
         {
             new Span<uint>(p, MaxRoundKeyWords).Clear();
@@ -405,11 +416,17 @@ internal unsafe struct CcmCore
     }
 
     /// <summary>
-    /// Dispatches a single AES block encryption to hardware-accelerated or managed implementation.
+    /// Dispatches a single block encryption to the block cipher, or to a hardware-accelerated or managed AES.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void EncryptBlockDispatch(Span<byte> input, Span<byte> output)
     {
+        if (_blockCipher is not null)
+        {
+            EncryptBlockCipher(_blockCipher, input, output);
+            return;
+        }
+
         fixed (uint* p = _roundKeys)
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
@@ -430,6 +447,16 @@ internal unsafe struct CcmCore
 #endif
             AesCore.EncryptBlock(input, output, roundKeys, _rounds);
         }
+    }
+
+    // Kept out of EncryptBlockDispatch: a stackalloc there would stop the AES paths inlining.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void EncryptBlockCipher(BlockCipher128 blockCipher, ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        // The tag path encrypts S_0 in place, which BlockCipher128 does not allow.
+        Span<byte> block = stackalloc byte[BlockSizeBytes];
+        input.CopyTo(block);
+        blockCipher.EncryptBlock(block, output);
     }
 
     private static void ValidateParameters(

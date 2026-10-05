@@ -3,7 +3,6 @@
 
 namespace Cryptography.Tests.Cipher.ChaCha;
 
-using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
@@ -57,7 +56,7 @@ public class ChaCha20Tests
             Assert.Ignore("Not a Managed or Simd implementation.");
         }
 
-        ChaChaCore chaChaCore = new ChaChaCore(_implementation.Source == Source.Managed ? SimdSupport.None : SimdSupport.All);
+        ChaChaCore chaChaCore = new ChaChaCore(_implementation.SimdSupport!.Value);
 
         // Key: 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f
         byte[] key = FromHex("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
@@ -177,7 +176,7 @@ public class ChaCha20Tests
             Assert.Ignore("Not a Managed or Simd implementation.");
         }
 
-        ChaChaCore chaChaCore = new ChaChaCore(_implementation.Source == Source.Managed ? SimdSupport.None : SimdSupport.All);
+        ChaChaCore chaChaCore = new ChaChaCore(_implementation.SimdSupport!.Value);
 
         // Use all-zero key and nonce with counter 0 to test basic functionality
         byte[] key = new byte[32];

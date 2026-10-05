@@ -246,6 +246,46 @@ byte[] sealedData = siv.Encrypt(nonce, plaintext, associatedData);  // ciphertex
 byte[] opened = siv.Decrypt(nonce, sealedData, associatedData);     // throws on a bad tag
 ```
 
+### GCM and CCM over regional block ciphers
+
+```csharp
+public abstract class GcmCipher : IAeadCipher   // AriaGcm, CamelliaGcm, KuznyechikGcm, SeedGcm, Sm4Gcm
+public abstract class CcmCipher : IAeadCipher   // AriaCcm, CamelliaCcm, Sm4Ccm
+```
+
+The GCM (NIST SP 800-38D) and CCM (RFC 3610) modes that AES uses, running over the
+[regional block ciphers](#regional-block-ciphers). Nonce, tag and associated-data rules are the
+same as [AES-GCM](#aes-gcm-galoiscounter-mode) and [AES-CCM](#aes-ccm-counter-with-cbc-mac).
+
+| Class | Key sizes | Standard / protocol use |
+|-------|-----------|-------------------------|
+| `Sm4Gcm`, `Sm4Ccm` | 128 | RFC 8998 (TLS 1.3 `TLS_SM4_GCM_SM3`, `TLS_SM4_CCM_SM3`) |
+| `AriaGcm`, `AriaCcm` | 128/192/256 | RFC 6209 (TLS, GCM) |
+| `CamelliaGcm`, `CamelliaCcm` | 128/192/256 | RFC 6367 (TLS, GCM), RFC 5528 (IPsec, CCM) |
+| `SeedGcm` | 128 | GCM over RFC 4269 SEED |
+| `KuznyechikGcm` | 256 | GCM over GOST R 34.12-2015 |
+
+The key length picks the variant, so `AriaGcm.Create(key)` is ARIA-128-GCM for a 16-byte key and
+ARIA-256-GCM for a 32-byte one; `AlgorithmName` reports which.
+
+**Performance:** GHASH uses PCLMULQDQ or PMULL where available; the block cipher runs its managed
+implementation, so throughput is set by the cipher rather than the mode.
+
+**Usage:**
+```csharp
+using var gcm = Sm4Gcm.Create(key);          // 16 bytes
+byte[] sealedData = gcm.Encrypt(nonce, plaintext, associatedData);   // ciphertext || 16-byte tag
+byte[] opened = gcm.Decrypt(nonce, sealedData, associatedData);      // throws on a bad tag
+
+using var ccm = CamelliaCcm.Create(key);     // 16, 24 or 32 bytes
+byte[] ciphertext = new byte[plaintext.Length];
+byte[] tag = new byte[8];                    // 4-16 bytes, even; the buffer length is the tag length
+ccm.Encrypt(nonce, plaintext, ciphertext, tag, associatedData);
+```
+
+> Kuznyechik's national AEAD mode is MGM (R 1323565.1.026-2019), which is not implemented;
+> `KuznyechikGcm` is for interoperating with systems that run Kuznyechik under GCM.
+
 ---
 
 ## Key Wrap Utilities
