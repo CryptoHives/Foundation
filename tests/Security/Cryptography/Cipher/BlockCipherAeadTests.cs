@@ -13,8 +13,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BC = Org.BouncyCastle.Crypto;
-using OS = System.Security.Cryptography;
 using IAeadCipher = CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// GCM and CCM over the non-AES 128-bit block ciphers: known answers, and the parameter ranges
@@ -186,8 +186,7 @@ public class BlockCipherAeadTests
 
     // BouncyCastle engines for the reference side, keyed by the cipher name that prefixes each
     // registry family; they take nonce and tag lengths the registry's own references do not.
-    private static readonly Dictionary<string, Func<BC.IBlockCipher>> ReferenceEngines = new(StringComparer.Ordinal)
-    {
+    private static readonly Dictionary<string, Func<BC.IBlockCipher>> ReferenceEngines = new(StringComparer.Ordinal) {
         ["ARIA"] = () => new AriaEngine(),
         ["Camellia"] = () => new CamelliaEngine(),
         ["SM4"] = () => new SM4Engine(),
@@ -202,8 +201,7 @@ public class BlockCipherAeadTests
     private static IEnumerable<AeadCase> RegistryCases(CipherAlgorithmRegistry.Mode mode)
     {
         return CipherAlgorithmRegistry.ByMode(mode)
-            .Select(impl => new
-            {
+            .Select(impl => new {
                 impl,
                 found = ReferenceEngines.TryGetValue(impl.AlgorithmFamily.Split('-')[0], out Func<BC.IBlockCipher>? engine),
                 engine,
