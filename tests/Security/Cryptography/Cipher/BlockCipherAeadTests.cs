@@ -1,10 +1,9 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Cipher;
 
 using Cryptography.Tests.Adapter.Cipher;
-using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Engines;
@@ -33,20 +32,17 @@ public class BlockCipherAeadTests
         "EEEEEEEEEEEEEEEEFFFFFFFFFFFFFFFFEEEEEEEEEEEEEEEEAAAAAAAAAAAAAAAA";
 
     [Test]
-    public void Sm4Gcm_Rfc8998_EveryGhashTier()
+    public void Sm4Gcm_Rfc8998_EveryImplementation()
     {
         byte[] expectedCiphertext = FromHex(
             "17F399F08C67D5EE19D0DC9969C4BB7D5FD46FD3756489069157B282BB200735" +
             "D82710CA5C22F0CCFA7CBF93D496AC15A56834CBCF98C397B4024A2691233B8D");
         byte[] expectedTag = FromHex("83DE3541E4C2B58177E065A9BF7B62EC");
 
-        foreach (SimdSupport ghashTier in new[] { SimdSupport.None, SimdSupport.PClMul, SimdSupport.ArmPmull })
+        foreach (CipherAlgorithmRegistry.CipherImplementation impl in CipherAlgorithmRegistry.ByFamily("SM4-GCM"))
         {
-            if (ghashTier != SimdSupport.None && (GcmCipher.SimdSupport & ghashTier) == 0)
-                continue;
-
-            using var gcm = Sm4Gcm.Create(ghashTier, FromHex(Rfc8998Key));
-            AssertKnownAnswer(gcm, expectedCiphertext, expectedTag);
+            using var gcm = (IAeadCipher)impl.Create(FromHex(Rfc8998Key));
+            AssertKnownAnswer(gcm, expectedCiphertext, expectedTag, impl.Name);
         }
     }
 
@@ -147,7 +143,7 @@ public class BlockCipherAeadTests
     {
         using IAeadCipher cipher = aeadCase.Create(new byte[aeadCase.KeySizeBytes]);
 
-        Assert.That(cipher.AlgorithmName, Is.EqualTo(aeadCase.Name));
+        Assert.That(cipher.AlgorithmName, Is.EqualTo(aeadCase.Family));
         Assert.That(cipher.KeySizeBytes, Is.EqualTo(aeadCase.KeySizeBytes));
         Assert.That(cipher.TagSizeBytes, Is.EqualTo(16));
         Assert.That(cipher.NonceSizeBytes, Is.EqualTo(12));
@@ -172,41 +168,46 @@ public class BlockCipherAeadTests
         Assert.Throws<ArgumentException>(() => CamelliaCcm.Create(key));
     }
 
-    public sealed class AeadCase(string name, int keySizeBytes, Func<byte[], IAeadCipher> create, Func<BC.IBlockCipher> engine)
+    public sealed class AeadCase(CipherAlgorithmRegistry.CipherImplementation implementation, Func<BC.IBlockCipher> engine)
     {
-        public string Name { get; } = name;
+        public string Name => implementation.Name;
 
-        public int KeySizeBytes { get; } = keySizeBytes;
+        public string Family => implementation.AlgorithmFamily;
 
-        public Func<byte[], IAeadCipher> Create { get; } = create;
+        public int KeySizeBytes => implementation.KeySizeBits / 8;
+
+        public IAeadCipher Create(byte[] key) => (IAeadCipher)implementation.Create(key);
 
         public Func<BC.IBlockCipher> Engine { get; } = engine;
 
         public override string ToString() => Name;
     }
 
-    public static IEnumerable<AeadCase> GcmCases()
+    // BouncyCastle engines for the reference side, keyed by the cipher name that prefixes each
+    // registry family; they take nonce and tag lengths the registry's own references do not.
+    private static readonly Dictionary<string, Func<BC.IBlockCipher>> ReferenceEngines = new(StringComparer.Ordinal)
     {
-        foreach (int bytes in new[] { 16, 24, 32 })
-        {
-            yield return new AeadCase($"ARIA-{bytes * 8}-GCM", bytes, k => AriaGcm.Create(k), () => new AriaEngine());
-            yield return new AeadCase($"Camellia-{bytes * 8}-GCM", bytes, k => CamelliaGcm.Create(k), () => new CamelliaEngine());
-        }
+        ["ARIA"] = () => new AriaEngine(),
+        ["Camellia"] = () => new CamelliaEngine(),
+        ["SM4"] = () => new SM4Engine(),
+        ["SEED"] = () => new SeedEngine(),
+        ["Kuznyechik"] = () => new OpenGostKuznyechikEngine(),
+    };
 
-        yield return new AeadCase("SM4-GCM", 16, k => Sm4Gcm.Create(k), () => new SM4Engine());
-        yield return new AeadCase("SEED-GCM", 16, k => SeedGcm.Create(k), () => new SeedEngine());
-        yield return new AeadCase("Kuznyechik-GCM", 32, k => KuznyechikGcm.Create(k), () => new OpenGostKuznyechikEngine());
-    }
+    public static IEnumerable<AeadCase> GcmCases() => RegistryCases(CipherAlgorithmRegistry.Mode.GCM);
 
-    public static IEnumerable<AeadCase> CcmCases()
+    public static IEnumerable<AeadCase> CcmCases() => RegistryCases(CipherAlgorithmRegistry.Mode.CCM);
+
+    private static IEnumerable<AeadCase> RegistryCases(CipherAlgorithmRegistry.Mode mode)
     {
-        foreach (int bytes in new[] { 16, 24, 32 })
+        foreach (CipherAlgorithmRegistry.CipherImplementation impl in CipherAlgorithmRegistry.ByMode(mode))
         {
-            yield return new AeadCase($"ARIA-{bytes * 8}-CCM", bytes, k => AriaCcm.Create(k), () => new AriaEngine());
-            yield return new AeadCase($"Camellia-{bytes * 8}-CCM", bytes, k => CamelliaCcm.Create(k), () => new CamelliaEngine());
+            if (impl.SimdSupport is not null &&
+                ReferenceEngines.TryGetValue(impl.AlgorithmFamily.Split('-')[0], out Func<BC.IBlockCipher>? engine))
+            {
+                yield return new AeadCase(impl, engine);
+            }
         }
-
-        yield return new AeadCase("SM4-CCM", 16, k => Sm4Ccm.Create(k), () => new SM4Engine());
     }
 
     public static IEnumerable<AeadCase> AllCases()
@@ -217,7 +218,7 @@ public class BlockCipherAeadTests
             yield return c;
     }
 
-    private static void AssertKnownAnswer(IAeadCipher cipher, byte[] expectedCiphertext, byte[] expectedTag)
+    private static void AssertKnownAnswer(IAeadCipher cipher, byte[] expectedCiphertext, byte[] expectedTag, string name = "")
     {
         byte[] nonce = FromHex(Rfc8998Iv);
         byte[] aad = FromHex(Rfc8998Aad);
@@ -227,8 +228,8 @@ public class BlockCipherAeadTests
         byte[] tag = new byte[16];
         cipher.Encrypt(nonce, plaintext, ciphertext, tag, aad);
 
-        Assert.That(ciphertext, Is.EqualTo(expectedCiphertext), "Ciphertext mismatch");
-        Assert.That(tag, Is.EqualTo(expectedTag), "Tag mismatch");
+        Assert.That(ciphertext, Is.EqualTo(expectedCiphertext), $"{name} ciphertext mismatch");
+        Assert.That(tag, Is.EqualTo(expectedTag), $"{name} tag mismatch");
 
         byte[] decrypted = new byte[plaintext.Length];
         Assert.That(cipher.Decrypt(nonce, expectedCiphertext, expectedTag, decrypted, aad), Is.True);

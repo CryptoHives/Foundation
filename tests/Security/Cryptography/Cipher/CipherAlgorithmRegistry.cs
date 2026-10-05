@@ -177,6 +177,11 @@ public static class CipherAlgorithmRegistry
         public bool ExcludeFromBenchmark { get; }
 
         /// <summary>
+        /// Gets the SIMD tier this implementation runs, or <see langword="null"/> when it is not a CryptoHives implementation.
+        /// </summary>
+        internal CH.SimdSupport? SimdSupport { get; set; }
+
+        /// <summary>
         /// Gets the display name combining family and variant.
         /// </summary>
         public string Name => string.IsNullOrEmpty(Variant)
@@ -247,6 +252,13 @@ public static class CipherAlgorithmRegistry
     public static IEnumerable<CipherImplementation> ByMode(Mode mode) =>
         Supported.Where(impl => impl.CipherMode == mode);
 
+    /// <summary>
+    /// Gets the SIMD tiers, scalar included, of the CryptoHives implementations of a family.
+    /// </summary>
+    /// <param name="familyName">Algorithm family name (case-insensitive).</param>
+    internal static IEnumerable<CH.SimdSupport> SimdTiers(string familyName) =>
+        ByFamily(familyName).Where(impl => impl.SimdSupport is not null).Select(impl => impl.SimdSupport!.Value);
+
     private static List<CipherImplementation> BuildRegistry()
     {
         var implementations = new List<CipherImplementation>();
@@ -296,7 +308,7 @@ public static class CipherAlgorithmRegistry
                 keySizeBits,
                 mode,
                 () => factory(selectedMask),
-                Source.Simd));
+                Source.Simd) { SimdSupport = selectedMask });
         }
 
         implementations.Add(new CipherImplementation(
@@ -305,7 +317,7 @@ public static class CipherAlgorithmRegistry
             keySizeBits,
             mode,
             () => factory(CH.SimdSupport.None),
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
     }
 
     private static void AddSimdAndManagedVariants(
@@ -326,7 +338,7 @@ public static class CipherAlgorithmRegistry
                 keySizeBits,
                 mode,
                 (byte[] key) => factory(key, selectedMask),
-                Source.Simd));
+                Source.Simd) { SimdSupport = selectedMask });
         }
 
         implementations.Add(new CipherImplementation(
@@ -335,7 +347,7 @@ public static class CipherAlgorithmRegistry
             keySizeBits,
             mode,
             (byte[] key) => factory(key, CH.SimdSupport.None),
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
     }
 
     private static void AddAesImplementations(List<CipherImplementation> implementations)
@@ -354,7 +366,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.AesNi });
         }
 
         // AES-128-GCM - PClMul (T-table AES + CLMUL GHASH, serial)
@@ -369,7 +381,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.PClMul });
         }
 
         // AES-128-GCM - AES-NI+PClMul (AES-NI + PCLMULQDQ, stitched)
@@ -381,7 +393,7 @@ public static class CipherAlgorithmRegistry
                 128,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.AesNi | CH.SimdSupport.PClMul });
         }
 
         // AES-128-GCM - AES-NI+PClMulV256 (AES-NI + VPCLMULQDQ, stitched)
@@ -393,7 +405,7 @@ public static class CipherAlgorithmRegistry
                 128,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256 });
         }
 
         // AES-128-GCM - ArmAes (ARM AES + Shoup GHASH, serial)
@@ -408,7 +420,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.ArmAes });
         }
 
         // AES-128-GCM - ArmAes+ArmPmull (ARM AES + PMULL GHASH)
@@ -420,7 +432,7 @@ public static class CipherAlgorithmRegistry
                 128,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.ArmAes | CH.SimdSupport.ArmPmull, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.ArmAes | CH.SimdSupport.ArmPmull });
         }
 
         // AES-128-GCM - Managed (scalar)
@@ -430,7 +442,7 @@ public static class CipherAlgorithmRegistry
             128,
             Mode.GCM,
             (byte[] key) => CH.Cipher.AesGcm128.Create(CH.SimdSupport.None, key),
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // AES-128-GCM - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -457,7 +469,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.AesNi });
         }
 
         // AES-192-GCM - PClMul (T-table AES + CLMUL GHASH, serial)
@@ -472,7 +484,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.PClMul });
         }
 
         // AES-192-GCM - AES-NI+PClMul (AES-NI + PCLMULQDQ, stitched)
@@ -484,7 +496,7 @@ public static class CipherAlgorithmRegistry
                 192,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.AesNi | CH.SimdSupport.PClMul });
         }
 
         // AES-192-GCM - AES-NI+PClMulV256 (AES-NI + VPCLMULQDQ, stitched)
@@ -496,7 +508,7 @@ public static class CipherAlgorithmRegistry
                 192,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256 });
         }
 
         // AES-192-GCM - ArmAes (ARM AES + Shoup GHASH, serial)
@@ -511,7 +523,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.ArmAes });
         }
 
         // AES-192-GCM - ArmAes+ArmPmull (ARM AES + PMULL GHASH)
@@ -523,7 +535,7 @@ public static class CipherAlgorithmRegistry
                 192,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.ArmAes | CH.SimdSupport.ArmPmull, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.ArmAes | CH.SimdSupport.ArmPmull });
         }
 
         // AES-192-GCM - Managed (scalar)
@@ -533,7 +545,7 @@ public static class CipherAlgorithmRegistry
             192,
             Mode.GCM,
             (byte[] key) => CH.Cipher.AesGcm192.Create(CH.SimdSupport.None, key),
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // AES-192-GCM - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -560,7 +572,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.AesNi });
         }
 
         // AES-256-GCM - PClMul (T-table AES + CLMUL GHASH, serial)
@@ -575,7 +587,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.PClMul });
         }
 
         // AES-256-GCM - AES-NI+PClMul (AES-NI + PCLMULQDQ, stitched)
@@ -587,7 +599,7 @@ public static class CipherAlgorithmRegistry
                 256,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.AesNi | CH.SimdSupport.PClMul });
         }
 
         // AES-256-GCM - AES-NI+PClMulV256 (AES-NI + VPCLMULQDQ, stitched)
@@ -599,7 +611,7 @@ public static class CipherAlgorithmRegistry
                 256,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.AesNi | CH.SimdSupport.PClMul | CH.SimdSupport.PClMulV256 });
         }
 
         // AES-256-GCM - ArmAes (ARM AES + Shoup GHASH, serial)
@@ -614,7 +626,7 @@ public static class CipherAlgorithmRegistry
                 Source.Simd,
                 null,
                 excludeFromBenchmark: true
-                ));
+                ) { SimdSupport = CH.SimdSupport.ArmAes });
         }
 
         // AES-256-GCM - ArmAes+ArmPmull (ARM AES + PMULL GHASH)
@@ -626,7 +638,7 @@ public static class CipherAlgorithmRegistry
                 256,
                 Mode.GCM,
                 (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.ArmAes | CH.SimdSupport.ArmPmull, key),
-                Source.Simd));
+                Source.Simd) { SimdSupport = CH.SimdSupport.ArmAes | CH.SimdSupport.ArmPmull });
         }
 
         // AES-256-GCM - Managed (scalar)
@@ -636,7 +648,7 @@ public static class CipherAlgorithmRegistry
             256,
             Mode.GCM,
             (byte[] key) => CH.Cipher.AesGcm256.Create(CH.SimdSupport.None, key),
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // AES-256-GCM - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -859,7 +871,7 @@ public static class CipherAlgorithmRegistry
             128,
             Mode.AsconAead128,
             (byte[] key) => CH.Cipher.AsconAead128.Create(key),
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // Ascon-AEAD128 - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -976,7 +988,7 @@ public static class CipherAlgorithmRegistry
                 aria.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aria;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // ARIA-128-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -999,7 +1011,7 @@ public static class CipherAlgorithmRegistry
                 aria.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aria;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // ARIA-256-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -1022,7 +1034,7 @@ public static class CipherAlgorithmRegistry
                 cam.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return cam;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // Camellia-128-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -1045,7 +1057,7 @@ public static class CipherAlgorithmRegistry
                 cam.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return cam;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // Camellia-192-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -1068,7 +1080,7 @@ public static class CipherAlgorithmRegistry
                 cam.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return cam;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // Camellia-256-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -1091,7 +1103,7 @@ public static class CipherAlgorithmRegistry
                 kal.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return kal;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // Kalyna-128-CBC - BouncyCastle (Dstu7624Engine)
         implementations.Add(new CipherImplementation(
@@ -1114,7 +1126,7 @@ public static class CipherAlgorithmRegistry
                 kal.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return kal;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // Kalyna-256-CBC - BouncyCastle (Dstu7624Engine)
         implementations.Add(new CipherImplementation(
@@ -1137,7 +1149,7 @@ public static class CipherAlgorithmRegistry
                 kal.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return kal;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // Kalyna-512-CBC - BouncyCastle (Dstu7624Engine)
         implementations.Add(new CipherImplementation(
@@ -1161,7 +1173,7 @@ public static class CipherAlgorithmRegistry
                 kuz.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return kuz;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // Kuznyechik-CBC - OpenGost, which names the cipher by the English translation of
         // "Кузнечик". Same package already used for Streebog.
@@ -1189,7 +1201,7 @@ public static class CipherAlgorithmRegistry
                 seed.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return seed;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // SEED-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -1212,7 +1224,7 @@ public static class CipherAlgorithmRegistry
                 aria.Padding = CH.Cipher.PaddingMode.PKCS7;
                 return aria;
             },
-            Source.Managed));
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
         // ARIA-192-CBC - BouncyCastle
         implementations.Add(new CipherImplementation(
@@ -1245,7 +1257,7 @@ public static class CipherAlgorithmRegistry
 
         void AddCcm(string family, int keySizeBits, Func<byte[], object> factory, Func<BC.IBlockCipher> engine)
         {
-            implementations.Add(new CipherImplementation(family, "CryptoHives-Scalar", keySizeBits, Mode.CCM, factory, Source.Managed));
+            implementations.Add(new CipherImplementation(family, "CryptoHives-Scalar", keySizeBits, Mode.CCM, factory, Source.Managed) { SimdSupport = CH.SimdSupport.None });
             implementations.Add(new CipherImplementation(
                 family,
                 "BouncyCastle",
@@ -1287,7 +1299,7 @@ public static class CipherAlgorithmRegistry
                     Mode.GcmSiv,
                     (byte[] key) => factory(key, flag),
                     Source.Simd,
-                    excludeFromBenchmark: flag != CH.SimdSupport.ArmAes));
+                    excludeFromBenchmark: flag != CH.SimdSupport.ArmAes) { SimdSupport = flag });
             }
 
             implementations.Add(new CipherImplementation(
@@ -1296,7 +1308,7 @@ public static class CipherAlgorithmRegistry
                 keySizeBits,
                 Mode.GcmSiv,
                 (byte[] key) => factory(key, CH.SimdSupport.None),
-                Source.Managed));
+                Source.Managed) { SimdSupport = CH.SimdSupport.None });
 
             // AES-NI with PCLMULQDQ POLYVAL, the default on x86.
             if ((sivSimd & (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul)) == (CH.SimdSupport.AesNi | CH.SimdSupport.PClMul))
@@ -1307,7 +1319,7 @@ public static class CipherAlgorithmRegistry
                     keySizeBits,
                     Mode.GcmSiv,
                     (byte[] key) => factory(key, CH.SimdSupport.AesNi | CH.SimdSupport.PClMul),
-                    Source.Simd));
+                    Source.Simd) { SimdSupport = CH.SimdSupport.AesNi | CH.SimdSupport.PClMul });
             }
 
             implementations.Add(new CipherImplementation(
