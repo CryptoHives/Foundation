@@ -4,6 +4,7 @@
 namespace Cryptography.Tests.Cipher;
 
 using Cryptography.Tests.Adapter.Cipher;
+using CryptoHives.Foundation.Security.Cryptography;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;
 using System;
@@ -299,9 +300,9 @@ public static class CipherAlgorithmRegistry
         Func<CH.SimdSupport, object> factory,
         Func<CH.SimdSupport, CH.SimdSupport>? simdMaskSelector = null)
     {
-        foreach (var flag in AlgorithmRegistry.GetSimdVariantFlags(simdSupport))
+        foreach (SimdSupport flag in AlgorithmRegistry.GetSimdVariantFlags(simdSupport))
         {
-            var selectedMask = simdMaskSelector?.Invoke(flag) ?? flag;
+            SimdSupport selectedMask = simdMaskSelector?.Invoke(flag) ?? flag;
             implementations.Add(new CipherImplementation(
                 family,
                 AlgorithmRegistry.GetSimdVariantName(flag),
@@ -329,9 +330,9 @@ public static class CipherAlgorithmRegistry
         Func<byte[], CH.SimdSupport, object> factory,
         Func<CH.SimdSupport, CH.SimdSupport>? simdMaskSelector = null)
     {
-        foreach (var flag in AlgorithmRegistry.GetSimdVariantFlags(simdSupport))
+        foreach (SimdSupport flag in AlgorithmRegistry.GetSimdVariantFlags(simdSupport))
         {
-            var selectedMask = simdMaskSelector?.Invoke(flag) ?? flag;
+            SimdSupport selectedMask = simdMaskSelector?.Invoke(flag) ?? flag;
             implementations.Add(new CipherImplementation(
                 family,
                 AlgorithmRegistry.GetSimdVariantName(flag),
@@ -352,7 +353,7 @@ public static class CipherAlgorithmRegistry
 
     private static void AddAesImplementations(List<CipherImplementation> implementations)
     {
-        var aesSimd = CH.Cipher.AesGcm128.SimdSupport;
+        SimdSupport aesSimd = CH.Cipher.AesGcm128.SimdSupport;
 
         // AES-128-GCM - AES-NI (AES-NI + Shoup GHASH, serial)
         if ((aesSimd & CH.SimdSupport.AesNi) != 0)
@@ -664,7 +665,7 @@ public static class CipherAlgorithmRegistry
             Source.BouncyCastle));
 
 
-        var ccmSimd = CH.Cipher.AesCcm128.SimdSupport;
+        SimdSupport ccmSimd = CH.Cipher.AesCcm128.SimdSupport;
         AddSimdAndManagedVariants(
             implementations,
             "AES-128-CCM",
@@ -731,7 +732,7 @@ public static class CipherAlgorithmRegistry
 
     private static void AddAesCbcImplementations(List<CipherImplementation> implementations)
     {
-        var aesSimd = CH.Cipher.Aes128.SimdSupport;
+        SimdSupport aesSimd = CH.Cipher.Aes128.SimdSupport;
 
         AddSimdAndManagedVariants(
             implementations,
@@ -780,7 +781,7 @@ public static class CipherAlgorithmRegistry
 
     private static void AddChaChaImplementations(List<CipherImplementation> implementations)
     {
-        var chachaSimd = CH.Cipher.ChaCha20.SimdSupport;
+        SimdSupport chachaSimd = CH.Cipher.ChaCha20.SimdSupport;
 
         static CH.SimdSupport SelectChaChaMask(CH.SimdSupport flag)
             => flag == CH.SimdSupport.Avx2 ? CH.SimdSupport.Avx2 | CH.SimdSupport.Ssse3 : flag;
@@ -1240,7 +1241,7 @@ public static class CipherAlgorithmRegistry
     private static void AddRegionalAeadImplementations(List<CipherImplementation> implementations)
     {
         // Only the GHASH multiply has a SIMD tier; the block ciphers run managed.
-        var ghashSimd = CH.Cipher.Sm4Gcm.SimdSupport & (CH.SimdSupport.PClMul | CH.SimdSupport.ArmPmull);
+        SimdSupport ghashSimd = CH.Cipher.Sm4Gcm.SimdSupport & (CH.SimdSupport.PClMul | CH.SimdSupport.ArmPmull);
 
         void AddGcm(string family, int keySizeBits, Func<byte[], CH.SimdSupport, object> factory, Func<BC.IBlockCipher> engine, Source referenceSource, string referenceName, bool benchmarkReference = true)
         {
@@ -1285,12 +1286,12 @@ public static class CipherAlgorithmRegistry
 
     private static void AddAesGcmSivImplementations(List<CipherImplementation> implementations)
     {
-        var sivSimd = CH.Cipher.AesGcmSiv128.SimdSupport;
+        SimdSupport sivSimd = CH.Cipher.AesGcmSiv128.SimdSupport;
 
         void Add(string family, int keySizeBits, Func<byte[], CH.SimdSupport, object> factory)
         {
             // Each flag alone isolates one tier for testing; only ARM AES is also a real deployment.
-            foreach (var flag in AlgorithmRegistry.GetSimdVariantFlags(sivSimd))
+            foreach (SimdSupport flag in AlgorithmRegistry.GetSimdVariantFlags(sivSimd))
             {
                 implementations.Add(new CipherImplementation(
                     family,
