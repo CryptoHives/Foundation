@@ -64,6 +64,7 @@
     <PackageVersion Include="ProtoPromise" Version="3.5.2" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
     <PackageVersion Include="System.Text.Json" Version="10.0.12" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
   </ItemGroup>
   <!--
     Repo-wide build tooling, pulled in via common.props/version.props <- Directory.Build.props. 

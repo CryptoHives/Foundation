@@ -34,13 +34,15 @@ ones; the DCO check accepts that too.
   issue — it makes the review much quicker.
 - **Bring tests along.** The existing tests show the style; for cryptography that means the official
   test vectors from the specification, ideally cross-checked against a reference implementation.
-- **Follow the surrounding code style.** The format check in CI will nudge you if something's off.
+- **Follow the surrounding code style.** The format check in CI will nudge you if something's off. 
+  Try `dotnet format` to fix warnings.
 - **Write a commit message that explains why.** A one-line summary is fine for small changes; for
   bigger ones add a short paragraph on what changed and its impact, and reference the issue (`#123`).
 
 Then push to your fork and open the pull request. CI builds and tests every target framework — if
 something fails and it isn't obvious why, just ask in the PR and we'll help. We may suggest a few
 changes before merging; that's a normal part of the conversation, not a rejection.
+There is also a `scripts/customtest.bat` helper that runs tests against a specified target framework.
 
 ## Using AI tools
 
