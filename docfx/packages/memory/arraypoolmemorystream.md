@@ -2,21 +2,7 @@
 
 A memory-backed stream implementation that rents fixed-size buffers from `ArrayPool<byte>.Shared` and stores data in multiple segments.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`Object` ? `MarshalByRefObject` ? `Stream` ? `MemoryStream` ? **`ArrayPoolMemoryStream`**
-
-## Syntax
-
-```csharp
-public sealed class ArrayPoolMemoryStream : MemoryStream
-```
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.ArrayPoolMemoryStream)
 
 ## Overview
 
@@ -338,7 +324,7 @@ else
 
 ## Thread Safety
 
-⚠️ **Not thread-safe**. External synchronization required for concurrent access.
+**Not thread-safe**. External synchronization required for concurrent access.
 
 ## Disposal
 

@@ -331,7 +331,18 @@ Source files carry the following SPDX header by default:
 // SPDX-License-Identifier: MIT OR Apache-2.0
 ```
 
-A few inherited components — the test-only reference implementations under `tests/Threading/Async/RefImpl/` — keep their original MIT headers for provenance.
+A few inherited components — e.g. the test-only reference implementations under `tests/Threading/Async/RefImpl/` — keep their original MIT headers for provenance.
+
+### 🔀 Choosing a license
+
+If you redistribute a CryptoHives package, include the text of the license you chose. We recommend recording that choice in your third-party notices, for example:
+
+    CryptoHives.Foundation.<PackageName>
+    Copyright (c) 2026 The Keepers of the CryptoHives
+    Dual licensed under MIT OR Apache-2.0; distributed here under the MIT License.
+    https://github.com/CryptoHives/Foundation
+
+Package metadata declares the SPDX expression `MIT OR Apache-2.0`. If your tooling or SBOM needs a single concluded license, record your choice (`MIT` or `Apache-2.0`) there.
 
 ---
 

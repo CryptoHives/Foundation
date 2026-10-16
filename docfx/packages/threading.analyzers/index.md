@@ -38,7 +38,7 @@ Or add to your project file:
 
 ## Quick Reference
 
-### ❌ Anti-Patterns Detected
+### Anti-Patterns Detected
 
 ```csharp
 // CHT001: Multiple await (Error)
@@ -74,7 +74,7 @@ GetValueTask(); // Warning: result not awaited
 private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1); // Info: consider AsyncLock
 ```
 
-### ✅ Correct Patterns
+### Correct Patterns
 
 ```csharp
 // Single await - correct

@@ -246,7 +246,7 @@ public class AsyncConditionVariableTests
     public async Task PreCancelledTokenThrowsWithoutReleasingLock()
     {
         using var pool = new TestObjectPool<bool>();
-        var mutex = new AsyncLock(); 
+        var mutex = new AsyncLock();
         var cv = new AsyncConditionVariable(pool: pool);
 
         using (await mutex.LockAsync().ConfigureAwait(false))

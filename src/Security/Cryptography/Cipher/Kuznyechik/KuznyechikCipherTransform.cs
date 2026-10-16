@@ -8,12 +8,6 @@ using System;
 /// <summary>
 /// Kuznyechik cipher transform for encryption or decryption operations.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This class implements <see cref="BlockCipherTransform"/> for Kuznyechik block cipher operations.
-/// It supports ECB, CBC, and CTR modes via the base class dispatch.
-/// </para>
-/// </remarks>
 internal sealed class KuznyechikCipherTransform : BlockCipherTransform
 {
     private readonly ulong[] _encryptKeys;

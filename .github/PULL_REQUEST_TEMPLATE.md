@@ -1,7 +1,3 @@
-<!--
-  Thanks for contributing to CryptoHives.Foundation!
-  Security fix? Please coordinate privately first — see SECURITY.md.
--->
 
 ## Description
 
@@ -16,21 +12,18 @@ Closes #
 - [ ] 🐛 Bug fix (non-breaking change that fixes an issue)
 - [ ] ✨ New feature / algorithm (non-breaking change that adds functionality)
 - [ ] 💥 Breaking change (fix or feature that changes existing public API or behavior)
-- [ ] 📝 Documentation only
+- [ ] 📝 Documentation
 - [ ] 🏗️ Build / CI / tooling
 - [ ] ♻️ Refactor / performance (no functional change)
 
 ## Affected package(s)
 
-- [ ] CryptoHives.Foundation.Memory
-- [ ] CryptoHives.Foundation.Security.Cryptography
-- [ ] CryptoHives.Foundation.Threading
-- [ ] CryptoHives.Foundation.Threading.Analyzers
-- [ ] Build / CI / NuGet packaging / docs
+- see auto labels
 
 ## Checklist
 
 - [ ] The solution builds clean with `TreatWarningsAsErrors=true`.
+- [ ] `dotnet format "CryptoHives .NET Foundation.sln"` changes are committed.
 - [ ] `dotnet test "CryptoHives .NET Foundation.sln"` passes across the target frameworks.
 - [ ] I added or updated tests covering the change.
 - [ ] Public API changes are documented (XML docs, package `README.md`, and/or docfx).

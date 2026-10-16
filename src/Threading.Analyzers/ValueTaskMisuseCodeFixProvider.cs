@@ -332,7 +332,6 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
             return document;
         }
 
-        // Create await expression
         var awaitExpression = SyntaxFactory.AwaitExpression(getAwaiterAccess.Expression)
             .WithLeadingTrivia(invocation.GetLeadingTrivia())
             .WithTrailingTrivia(invocation.GetTrailingTrivia());
