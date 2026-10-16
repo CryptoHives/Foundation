@@ -18,8 +18,7 @@ using System.Runtime.Intrinsics.Arm;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This class implements <see cref="ICipherTransform"/> for AES block cipher operations.
-/// It supports ECB, CBC, and CTR modes; <see cref="Create"/> routes OFB, CFB and CTS to
+/// Handles ECB, CBC and CTR directly; <see cref="Create"/> routes OFB, CFB and CTS to
 /// <see cref="AesGenericModeTransform"/>.
 /// </para>
 /// <para>
@@ -50,7 +49,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
     /// <summary>
     /// Inline fixed-size buffer for AES round keys, counter and feedback.
-    /// Avoids heap allocation and keeps the cache hits local. Up to 10% perf gain.
+    /// Avoids a heap allocation and keeps this state together in memory, which measurably helps.
     /// </summary>
     private struct AesCipherBuffers
     {

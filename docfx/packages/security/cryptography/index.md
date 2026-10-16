@@ -80,6 +80,14 @@ using CryptoHives.Foundation.Security.Cryptography.Dsa;
 using CryptoHives.Foundation.Security.Cryptography;
 ```
 
+### Random Number Generation
+
+`RandomNumberGenerator` with a span-based `Fill` on every target framework, drawing from the platform generator. See [Random Number Generation](random-numbers.md).
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Rng;
+```
+
 ## Implemented Algorithms
 
 ### Hash Algorithms
@@ -514,6 +522,7 @@ public bool ComputeHashThreadSafe(ReadOnlySpan<byte> data, Span<byte> destinatio
 - [KEM Algorithms Reference](kem-algorithms.md)
 - [Signature Algorithms Reference](signature-algorithms.md)
 - [Erasable Memory](erasable-memory.md)
+- [Random Number Generation](random-numbers.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
 - [Pooled Hash API](pooled-hash-api.md)
 - [Benchmarks](benchmarks.md)

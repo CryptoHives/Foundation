@@ -3,21 +3,7 @@
 A payload and the disposable that ends its life, carried together as a single value — so the pair can
 travel through a pipeline without the consumer knowing what produced it, and without an allocation.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Syntax
-
-```csharp
-public readonly struct SequenceLease<T> : ISequenceOwner<T>, IEquatable<SequenceLease<T>>
-```
-
-## Type Parameters
-
-**`T`** — The element type of the sequence.
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.SequenceLease%601)
 
 ## Why a Struct
 

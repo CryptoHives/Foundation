@@ -641,7 +641,7 @@ internal static class MLKemCore
         rho.CopyTo(seed);
 
         // One XOF for the whole matrix. SampleNtt resets it per entry, so the k² entries cost
-        // one instance instead of k² — measurably ~20% of an operation's allocation.
+        // one instance instead of k², a measurable share of an operation's allocation.
         Shake128 xof = HashAlgorithmPool<Shake128>.Shared.Get();
         try
         {

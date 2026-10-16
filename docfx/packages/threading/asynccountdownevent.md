@@ -238,7 +238,7 @@ The Nito.Async implementation can not be benchmarked due to its internal design 
 
 ## Best Practices
 
-### ✓ DO: Use `WaitAsync(TimeSpan)` to bound fan-in waits
+### Use `WaitAsync(TimeSpan)` to bound fan-in waits
 
 ```csharp
 var countdown = new AsyncCountdownEvent(workers.Length);

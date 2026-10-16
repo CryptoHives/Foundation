@@ -2,17 +2,7 @@
 
 Builds `ObjectPool<T>` instances, including for types this package does not reference.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Pools
-```
-
-## Syntax
-
-```csharp
-public static class PoolFactory
-```
+**Namespace:** `CryptoHives.Foundation.Memory.Pools` · [API reference](xref:CryptoHives.Foundation.Memory.Pools.PoolFactory)
 
 ## Overview
 

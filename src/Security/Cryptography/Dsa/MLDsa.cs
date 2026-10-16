@@ -24,10 +24,7 @@ using OS = System.Security.Cryptography;
 /// private key cannot export a seed. Private key material is zeroed when the instance is disposed.
 /// </para>
 /// <para>
-/// The FIPS 204 pre-hash variants (<c>SignPreHash</c>/<c>VerifyPreHash</c>), external-μ signing
-/// (<c>SignMu</c>/<c>VerifyMu</c>), and the PKCS#8/SPKI/PEM key formats are deliberately not
-/// implemented yet — they are planned as one batch once the post-quantum algorithm set is
-/// complete, so that ML-KEM and ML-DSA gain them together.
+/// External-μ signing (<c>SignMu</c>/<c>VerifyMu</c>) is not implemented.
 /// </para>
 /// <para>
 /// <b>Example usage:</b>

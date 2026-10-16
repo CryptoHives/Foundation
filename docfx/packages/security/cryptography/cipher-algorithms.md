@@ -26,12 +26,14 @@ public sealed class AesGcm256 : AesGcm
 - Key Sizes: 128, 192, or 256 bits
 - Nonce Size: 12 bytes (recommended), variable supported
 - Tag Size: 16 bytes (default), configurable
-- Performance: Very fast with AES-NI + PCLMULQDQ/VPCLMULQDQ hardware support; 8-block stitched pipeline; ~2× faster than OS at small sizes
+- Performance: Very fast with AES-NI + PCLMULQDQ/VPCLMULQDQ hardware support; 8-block stitched pipeline; ahead of the OS implementation at small sizes (see [benchmarks](benchmarks.md))
 
 **Security:**
-- ✅ Widely used in TLS 1.3, IPsec, QUIC
-- ✅ NIST approved (SP 800-38D)
-- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+- Widely used in TLS 1.3, IPsec, QUIC
+- NIST approved (SP 800-38D)
+
+> [!WARNING]
+> Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -68,13 +70,15 @@ public sealed class AesCcm256 : AesCcm
 - Key Sizes: 128, 192, or 256 bits
 - Nonce Size: 7-13 bytes (12 bytes recommended)
 - Tag Size: 4-16 bytes (must be even)
-- Performance: Slower than GCM, 2.8–3× faster with AES-NI, more compact for small messages
+- Performance: Slower than GCM, much faster with AES-NI (see [benchmarks](benchmarks.md)), more compact for small messages
 
 **Security:**
-- ✅ NIST approved (SP 800-38C)
-- ✅ Widely used in IoT, Bluetooth LE, ZigBee, Thread
-- ✅ RFC 3610 compliant
-- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+- NIST approved (SP 800-38C)
+- Widely used in IoT, Bluetooth LE, ZigBee, Thread
+- RFC 3610 compliant
+
+> [!WARNING]
+> Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -112,10 +116,12 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 - Performance: Fast on all platforms; SSSE3/AVX2 accelerated, no AES-NI dependency
 
 **Security:**
-- ✅ IETF standard (RFC 8439)
-- ✅ Used in TLS 1.3, WireGuard, SSH
-- ✅ Software-friendly alternative to AES-GCM
-- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+- IETF standard (RFC 8439)
+- Used in TLS 1.3, WireGuard, SSH
+- Software-friendly alternative to AES-GCM
+
+> [!WARNING]
+> Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -148,10 +154,10 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 - Performance: Same as ChaCha20-Poly1305; SSSE3/AVX2 accelerated
 
 **Security:**
-- ✅ Extended nonce version of ChaCha20-Poly1305
-- ✅ Safer for random nonces (negligible collision probability)
-- ✅ Used in libsodium, age encryption
-- ✅ More forgiving of nonce generation mistakes
+- Extended nonce version of ChaCha20-Poly1305
+- Safer for random nonces (negligible collision probability)
+- Used in libsodium, age encryption
+- More forgiving of nonce generation mistakes
 
 **Usage:**
 ```csharp
@@ -188,10 +194,12 @@ public sealed class AsconAead128 : IAeadCipher
 - Performance: Lightweight permutation-based AEAD, optimized for constrained environments
 
 **Security:**
-- ✅ NIST Lightweight Cryptography standard (SP 800-232)
-- ✅ Winner of NIST LWC competition
-- ✅ No lookup-table S-boxes (timing-attack resilient design)
-- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+- NIST Lightweight Cryptography standard (SP 800-232)
+- Winner of NIST LWC competition
+- No lookup-table S-boxes (timing-attack resilient design)
+
+> [!WARNING]
+> Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -233,11 +241,13 @@ public sealed class AesGcmSiv256 : AesGcmSiv
   AES-NI and ARM AES for the block cipher, PCLMULQDQ for POLYVAL on x86
 
 **Security:**
-- ✅ A repeated nonce reveals only whether the same (associated data, plaintext) pair was
+- A repeated nonce reveals only whether the same (associated data, plaintext) pair was
   sealed twice; it does not leak plaintext or enable forgeries as it does under AES-GCM
-- ✅ Per-message authentication and encryption keys derived from the key and nonce
-- ⚠️ Still use a unique nonce per message: misuse resistance is a safety net, not a licence
-- ⚠️ .NET has no in-box AES-GCM-SIV; this is a managed implementation on every target framework
+- Per-message authentication and encryption keys derived from the key and nonce
+- .NET has no in-box AES-GCM-SIV; this is a managed implementation on every target framework
+
+> [!WARNING]
+> Still use a unique nonce per message: misuse resistance is a safety net, not a licence.
 
 **Usage:**
 ```csharp
@@ -359,10 +369,12 @@ public sealed class Aes256 : SymmetricCipher
 - Performance: Hardware accelerated with AES-NI; vectorized CBC decrypt (4/8-block interleaved)
 
 **Security:**
-- ✅ NIST approved (FIPS 197)
-- ✅ The most widely used symmetric cipher in the world
-- ⚠️ ECB mode is insecure for multi-block data — use CBC or CTR
-- ⚠️ CBC mode requires unpredictable IVs and is vulnerable to padding oracle attacks without authentication
+- NIST approved (FIPS 197)
+- The most widely used symmetric cipher in the world
+
+> [!WARNING]
+> - ECB mode is insecure for multi-block data — use CBC or CTR
+> - CBC mode requires unpredictable IVs and is vulnerable to padding oracle attacks without authentication
 
 **Usage — CTR Mode (Recommended):**
 ```csharp
@@ -439,11 +451,13 @@ public sealed class ChaCha20 : SymmetricCipher
 - Performance: SSSE3/AVX2 hardware accelerated
 
 **Security:**
-- ✅ IETF standard (RFC 8439)
-- ✅ Constant-time — no timing side channels
-- ✅ Fast in software without dedicated hardware (unlike AES without AES-NI)
-- ⚠️ No authentication — use [ChaCha20-Poly1305](#chacha20-poly1305) for authenticated encryption
-- ⚠️ Nonce reuse is catastrophic — never reuse a (key, nonce) pair
+- IETF standard (RFC 8439)
+- Constant-time — no timing side channels
+- Fast in software without dedicated hardware (unlike AES without AES-NI)
+
+> [!WARNING]
+> - No authentication — use [ChaCha20-Poly1305](#chacha20-poly1305) for authenticated encryption
+> - Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -614,9 +628,9 @@ public sealed class Sm4 : BlockCipherTransform
 - Standard: GB/T 32907-2016
 
 **Security:**
-- ✅ Chinese national standard, mandatory for commercial use in China
-- ✅ Used in Chinese TLS implementations and WAPI (WLAN security)
-- ✅ ISO/IEC 18033-3:2010 listed
+- Chinese national standard, mandatory for commercial use in China
+- Used in Chinese TLS implementations and WAPI (WLAN security)
+- ISO/IEC 18033-3:2010 listed
 
 **Usage:**
 ```csharp
@@ -644,9 +658,9 @@ public sealed class Aria256 : BlockCipherTransform
 - Standard: KS X 1213, RFC 5794
 
 **Security:**
-- ✅ Korean national standard
-- ✅ Used in Korean government and financial systems
-- ✅ RFC 5794 specification
+- Korean national standard
+- Used in Korean government and financial systems
+- RFC 5794 specification
 
 **Usage:**
 ```csharp
@@ -673,9 +687,9 @@ public sealed class Camellia256 : BlockCipherTransform
 - Standard: RFC 3713, ISO/IEC 18033-3
 
 **Security:**
-- ✅ Japanese CRYPTREC recommended cipher
-- ✅ NESSIE selected algorithm (EU)
-- ✅ Comparable security level to AES
+- Japanese CRYPTREC recommended cipher
+- NESSIE selected algorithm (EU)
+- Comparable security level to AES
 
 **Usage:**
 ```csharp
@@ -700,9 +714,9 @@ public sealed class Kuznyechik : BlockCipherTransform
 - Standard: GOST R 34.12-2015
 
 **Security:**
-- ✅ Russian national standard (successor to GOST 28147-89)
-- ✅ Used in Russian government and banking systems
-- ✅ Paired with Streebog hash family
+- Russian national standard (successor to GOST 28147-89)
+- Used in Russian government and banking systems
+- Paired with Streebog hash family
 
 **Usage:**
 ```csharp
@@ -733,9 +747,9 @@ public sealed class Kalyna512 : BlockCipherTransform
 - Matches the widest Kalyna configuration in the standard
 
 **Security:**
-- ✅ Ukrainian national standard
-- ✅ Paired with Kupyna hash family
-- ✅ Uses MDS matrix-based diffusion layer
+- Ukrainian national standard
+- Paired with Kupyna hash family
+- Uses MDS matrix-based diffusion layer
 
 **Usage:**
 ```csharp
@@ -760,9 +774,9 @@ public sealed class Seed : BlockCipherTransform
 - Standard: RFC 4269, KISA
 
 **Security:**
-- ✅ Korean national standard (KISA)
-- ✅ Used in Korean financial and government systems
-- ✅ 16-round Feistel structure with S-boxes derived from the golden ratio
+- Korean national standard (KISA)
+- Used in Korean financial and government systems
+- 16-round Feistel structure with S-boxes derived from the golden ratio
 
 **Usage:**
 ```csharp

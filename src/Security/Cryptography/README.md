@@ -28,9 +28,9 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 - **OS-independent** — identical results on Windows, Linux, macOS, and anywhere else .NET runs
 - **Standards-based** — implemented from NIST, RFC, and ISO specifications; validated against official test vectors
 - **Hardware-accelerated** — automatic dispatch across AES-NI/AVX2/AVX-512 and the Arm64 crypto and NEON paths, with a scalar fallback always available
-- **Allocation-free hot paths** — `Span<byte>`-based APIs, friendly to `stackalloc`
+- **Allocation-free hot paths** — `Span<byte>`-based APIs, friendly to `stackalloc` and `ArrayPool`
 - **XOF streaming** — `IExtendableOutput` (`Absorb` / `Squeeze` / `Reset`) on all XOF algorithms
-- **`HashAlgorithm` compatible** — drop-in for anything consuming `System.Security.Cryptography.HashAlgorithm`
+- **`HashAlgorithm` compatible** — drop-in for anything consuming `System.Security.Cryptography.HashAlgorithm` with Polyfill for legacy frameworks
 - **Broad algorithm coverage** — SHA-2/3, Keccak, SHAKE, BLAKE2/3, Ascon, regional ciphers, and more
 
 ---
@@ -228,6 +228,7 @@ cshake.Squeeze(derived);
 | Post-quantum KEM guide (ML-KEM) | [cryptohives.github.io/…/kem-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html) |
 | Post-quantum signatures guide (ML-DSA, SLH-DSA) | [cryptohives.github.io/…/signature-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html) |
 | Erasable memory and secret handling | [cryptohives.github.io/…/erasable-memory](https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html) |
+| Random number generation | [cryptohives.github.io/…/random-numbers](https://cryptohives.github.io/Foundation/packages/security/cryptography/random-numbers.html) |
 | API reference | [cryptohives.github.io/…/api/…Cryptography.Hash](https://cryptohives.github.io/Foundation/api/CryptoHives.Foundation.Security.Cryptography.Hash.html) |
 | Source repository | [github.com/CryptoHives/Foundation](https://github.com/CryptoHives/Foundation) |
 
@@ -244,3 +245,5 @@ If you discover a vulnerability, please don't open a public issue — report it 
 ## ⚖️ License
 
 MIT OR Apache-2.0 — © 2026 The Keepers of the CryptoHives
+
+See [Choosing a license](https://github.com/CryptoHives/Foundation#-choosing-a-license) for how to record which one you use.
