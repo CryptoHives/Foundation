@@ -41,8 +41,8 @@ and ~24 bytes per array on 64-bit runtimes.
 
 Two things are worth knowing before reading the numbers. A block cipher's state lives in the
 transform it creates, not in the `SymmetricAlgorithm` object (which is a ~60 B shell), so the cipher
-table measures the transform. And a few algorithms buffer their whole input rather than absorbing it
-block by block - those are marked *+ input* and are the only ones whose footprint is not constant.
+table measures the transform. Every algorithm absorbs its input block by block, so the figures below are constant in the
+message length; a *+* marks state that also depends on a customization string.
 
 ### Hash Algorithms
 
@@ -64,8 +64,8 @@ block by block - those are marked *+ input* and are the only ones whose footprin
 | cSHAKE256 | 344 B+ | 136 B | 3.6 KB | + encoded function/customization |
 | TurboSHAKE128 | 376 B | 168 B | 3.6 KB | Reduced-round Keccak |
 | TurboSHAKE256 | 344 B | 136 B | 3.6 KB | Reduced-round Keccak |
-| KT128 | 632 B + input | 168 B | 3.6 KB | KangarooTwelve: a TurboSHAKE128 (376 B) plus a pooled buffer holding the whole message |
-| KT256 | 600 B + input | 136 B | 3.6 KB | KangarooTwelve: a TurboSHAKE256 (344 B) plus the same buffer |
+| KT128 | 8.7 KB | 168 B | 3.6 KB | two TurboSHAKE128 (376 B each) + a pooled 8 KB chunk buffer, returned once the message outgrows a single node |
+| KT256 | 8.7 KB | 136 B | 3.6 KB | two TurboSHAKE256 (344 B each) + the same pooled 8 KB chunk buffer |
 | Keccak-256 | 344 B | 136 B | 3.6 KB | Ethereum compatible |
 | Keccak-384 | 312 B | 104 B | 3.6 KB | Ethereum compatible |
 | Keccak-512 | 280 B | 72 B | 3.6 KB | Ethereum compatible |
@@ -84,7 +84,7 @@ block by block - those are marked *+ input* and are the only ones whose footprin
 | LSH-512 | 768 B | 256 B | 2.3 KB | CV + submsg registers + byte[256] buffer; step constants + IVs |
 | SHA-1 | 404 B | 64 B | — | uint[5] state + uint[80] W + byte[64] |
 | MD5 | 80 B | 64 B | 768 B | uint[4] state + byte[64] buffer; K/S/G tables |
-| IncrementalParallelHash | 40 B + input | configurable | 3.6 KB | buffers the message in a `MemoryStream`; the underlying SHAKE is created at finalize |
+| IncrementalParallelHash | 752 B+ | configurable | 3.6 KB | a cSHAKE128 for the final node (376 B+) + a SHAKE128 reset per block (376 B); the message is not retained |
 
 >Every CryptoHives implementation in these charts is single-threaded, and so is almost every
 >library measured beside it. Currently one is not. `Blake3.Managed` splits a one-shot hash into subtrees

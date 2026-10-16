@@ -176,6 +176,117 @@ public class KT128Tests
     }
 
     /// <summary>
+    /// RFC 9861 pattern vectors that reach the tree-hashing path.
+    /// </summary>
+    /// <remarks>
+    /// The single-node test is on |S| = M || C || length_encode(|C|), and length_encode(0) is one
+    /// byte, so with an empty customization an 8192-byte message is already two chunks and 8191 is
+    /// the last single-node size. ptn(17^4) spans eleven chunks.
+    /// </remarks>
+    [TestCase(4913, "CB 55 2E 2E C7 7D 99 10 70 1D 57 8B 45 7D DF 77 2C 12 E3 22 E4 EE 7F E4 17 F9 2C 75 8F 0D 59 D0")]
+    [TestCase(8191, "1B 57 76 36 F7 23 64 3E 99 0C C7 D6 A6 59 83 74 36 FD 6A 10 36 26 60 0E B8 30 1C D1 DB E5 53 D6")]
+    [TestCase(8192, "48 F2 56 F6 77 2F 9E DF B6 A8 B6 61 EC 92 DC 93 B9 5E BD 05 A0 8A 17 B3 9A E3 49 08 70 C9 26 C3")]
+    [TestCase(83521, "87 01 04 5E 22 20 53 45 FF 4D DA 05 55 5C BB 5C 3A F1 A7 71 C2 B8 9B AE F3 7D B4 3D 99 98 B9 FE")]
+    public void PatternAcrossChunkBoundary(int length, string expectedHex)
+    {
+        byte[] expected = TestHelpers.FromHexString(expectedHex);
+        byte[] input = CreatePattern(length);
+
+        using var kt128 = new KT128(32);
+        byte[] hash = kt128.ComputeHash(input);
+
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// A message spanning eleven chunks must hash the same whether it arrives in one call or in
+    /// segments that straddle the chunk boundary.
+    /// </summary>
+    [TestCase(1)]
+    [TestCase(4096)]
+    [TestCase(8191)]
+    [TestCase(8192)]
+    [TestCase(8193)]
+    public void SegmentedAbsorbMatchesOneShotAcrossChunkBoundary(int segmentLength)
+    {
+        byte[] input = CreatePattern(83521);
+
+        using var oneShot = new KT128(32);
+        byte[] expected = oneShot.ComputeHash(input);
+
+        using var streamed = new KT128(32);
+        for (int offset = 0; offset < input.Length; offset += segmentLength)
+        {
+            streamed.Absorb(input.AsSpan(offset, Math.Min(segmentLength, input.Length - offset)));
+        }
+
+        byte[] actual = new byte[32];
+        streamed.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// A customization string is appended to the message before chunking, so it can push a
+    /// message that is itself under the chunk size onto the tree path.
+    /// </summary>
+    [TestCase(8000, 500)]
+    [TestCase(8191, 1)]
+    [TestCase(8192, 1)]
+    public void CustomizationCanCrossTheChunkBoundary(int messageLength, int customizationLength)
+    {
+        byte[] input = CreatePattern(messageLength);
+        byte[] customization = CreatePattern(customizationLength);
+
+        using var oneShot = new KT128(32, customization);
+        byte[] expected = oneShot.ComputeHash(input);
+
+        using var streamed = new KT128(32, customization);
+        streamed.Absorb(input.AsSpan(0, messageLength / 2));
+        streamed.Absorb(input.AsSpan(messageLength / 2));
+
+        byte[] actual = new byte[32];
+        streamed.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+#if !NETFRAMEWORK
+    /// <summary>
+    /// Absorbing must not retain the message. A four-megabyte hash fed in segments allocates
+    /// nothing beyond the fixed state, where accumulating the whole input would allocate
+    /// megabytes.
+    /// </summary>
+    [Test]
+    public void AbsorbDoesNotAllocatePerMessageByte()
+    {
+        const int total = 4 * 1024 * 1024;
+        const int segment = 64 * 1024;
+        byte[] data = CreatePattern(segment);
+
+        using var kt128 = new KT128(32);
+
+        // Warm up over the full path so tiered compilation is settled before measuring.
+        for (int written = 0; written < total; written += segment)
+        {
+            kt128.Absorb(data);
+        }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int written = 0; written < total; written += segment)
+        {
+            kt128.Absorb(data);
+        }
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.That(allocated, Is.LessThan(1024),
+            $"absorbing {total} bytes allocated {allocated} bytes; it must not scale with the message");
+    }
+
+    private const int ChunkSize = 8192;
+#endif
+
+    /// <summary>
     /// Creates the pattern message per RFC 9861: ptn(n) = (0x00, 0x01, ..., 0xFA) repeated.
     /// </summary>
     private static byte[] CreatePattern(int length)

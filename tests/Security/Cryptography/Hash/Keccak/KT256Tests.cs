@@ -117,4 +117,59 @@ public class KT256Tests
         using var kt256 = KT256.Create();
         Assert.That(kt256.BlockSize, Is.EqualTo(136)); // Same rate as TurboSHAKE256
     }
+    /// <summary>
+    /// A message spanning several chunks must hash the same whether it arrives in one call or in
+    /// segments that straddle the chunk boundary.
+    /// </summary>
+    /// <remarks>
+    /// RFC 9861 publishes no KT256 vector above 17 bytes, so the tree path is pinned here against
+    /// KT256's own one-shot rather than against a published digest.
+    /// </remarks>
+    [TestCase(1)]
+    [TestCase(4096)]
+    [TestCase(8191)]
+    [TestCase(8192)]
+    [TestCase(8193)]
+    public void SegmentedAbsorbMatchesOneShotAcrossChunkBoundary(int segmentLength)
+    {
+        byte[] input = CreatePattern(83521);
+
+        using var oneShot = new KT256(64);
+        byte[] expected = oneShot.ComputeHash(input);
+
+        using var streamed = new KT256(64);
+        for (int offset = 0; offset < input.Length; offset += segmentLength)
+        {
+            streamed.Absorb(input.AsSpan(offset, Math.Min(segmentLength, input.Length - offset)));
+        }
+
+        byte[] actual = new byte[64];
+        streamed.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// A customization string is appended to the message before chunking, so it can push a
+    /// message that is itself under the chunk size onto the tree path.
+    /// </summary>
+    [TestCase(8000, 500)]
+    [TestCase(8192, 1)]
+    public void CustomizationCanCrossTheChunkBoundary(int messageLength, int customizationLength)
+    {
+        byte[] input = CreatePattern(messageLength);
+        byte[] customization = CreatePattern(customizationLength);
+
+        using var oneShot = new KT256(64, customization);
+        byte[] expected = oneShot.ComputeHash(input);
+
+        using var streamed = new KT256(64, customization);
+        streamed.Absorb(input.AsSpan(0, messageLength / 2));
+        streamed.Absorb(input.AsSpan(messageLength / 2));
+
+        byte[] actual = new byte[64];
+        streamed.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
 }
