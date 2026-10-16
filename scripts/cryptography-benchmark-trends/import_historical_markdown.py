@@ -60,6 +60,8 @@ EXCLUDE_FILENAMES = {
 CIPHER_PREFIXES = (
     "aes-cbc", "aes-gcm", "aes-ccm", "aes-key-wrap", "chacha20", "xchacha20", "sm4-cbc",
     "aria-cbc", "camellia-cbc", "kuznyechik-cbc", "kalyna-cbc", "seed-cbc",
+    "sm4-gcm", "sm4-ccm", "aria-gcm", "aria-ccm", "camellia-gcm", "camellia-ccm",
+    "seed-gcm", "kuznyechik-gcm",
     # Ascon-AEAD128 is a cipher; the Ascon hash and XOF stems (asconhash/asconxof) are not
     # matched by this prefix and stay under Hash.
     "ascon-aead",

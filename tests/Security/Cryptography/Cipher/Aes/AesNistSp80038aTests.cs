@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
+using System.Linq;
 
 /// <summary>
 /// Tests for AES ECB, CBC and CTR modes using NIST SP 800-38A Appendix F test vectors.
@@ -118,9 +119,8 @@ internal class AesNistSp80038aTests
     // SIMD variant sources
     // ========================================================================
 
-    // Scalar plus each AES tier this machine supports, enumerated as the cipher registry does.
-    private static readonly SimdSupport[] SimdVariants =
-        [SimdSupport.None, .. AlgorithmRegistry.GetSimdVariantFlags(Aes128.SimdSupport)];
+    // The registry gives AES-128-CBC every tier the AES block transform has, scalar included.
+    private static readonly SimdSupport[] SimdVariants = [.. CipherAlgorithmRegistry.SimdTiers("AES-128-CBC")];
 
     // ========================================================================
     // F.1 ECB Mode Tests
@@ -668,7 +668,7 @@ internal class AesNistSp80038aTests
             ? [1, 7, 15, 16, 17, 31, 32, 33, 63, 64, 65, 128, 255, 256, 1024]
             : [16, 32, 48, 64, 128, 256, 1024];
 
-        foreach (SimdSupport tier in AlgorithmRegistry.GetSimdVariantFlags(Aes128.SimdSupport))
+        foreach (SimdSupport tier in SimdVariants.Where(tier => tier != SimdSupport.None))
             foreach (int size in sizes)
             {
                 byte[] pt = new byte[size];

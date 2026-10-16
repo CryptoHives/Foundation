@@ -8,7 +8,6 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Cross-validates all cipher implementations against each other.
@@ -188,8 +187,13 @@ public class CipherReferenceImplementationTests
     [
         "AES-128-GCM", "AES-192-GCM", "AES-256-GCM",
         "AES-128-CCM", "AES-192-CCM", "AES-256-CCM",
+        "AES-128-GCM-SIV", "AES-256-GCM-SIV",
         "ChaCha20-Poly1305", "XChaCha20-Poly1305",
-        "AES-128-GCM-SIV", "AES-256-GCM-SIV"
+        "ARIA-128-GCM", "ARIA-192-GCM", "ARIA-256-GCM",
+        "ARIA-128-CCM", "ARIA-192-CCM", "ARIA-256-CCM",
+        "Camellia-128-GCM", "Camellia-192-GCM", "Camellia-256-GCM",
+        "Camellia-128-CCM", "Camellia-192-CCM", "Camellia-256-CCM",
+        "SM4-GCM", "SM4-CCM", "SEED-GCM", "Kuznyechik-GCM"
     ];
 
     private static readonly string[] StreamFamilies = ["ChaCha20"];
