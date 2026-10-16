@@ -2,21 +2,7 @@
 
 A read-only stream wrapper around `ReadOnlySequence<byte>` for zero-copy stream operations.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`Object` ? `MarshalByRefObject` ? `Stream` ? `MemoryStream` ? **`ReadOnlySequenceMemoryStream`**
-
-## Syntax
-
-```csharp
-public sealed class ReadOnlySequenceMemoryStream : MemoryStream
-```
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.ReadOnlySequenceMemoryStream)
 
 ## Overview
 
@@ -204,7 +190,7 @@ ReadOnlySequence is a struct whose lifetime is determined by the provider of the
 
 ## Best Practices
 
-### DO: Use for Zero-Copy Deserialization
+### Use for zero-copy deserialization
 
 ```csharp
 // Good: Zero-copy deserialization
@@ -212,7 +198,7 @@ using var stream = new ReadOnlySequenceMemoryStream(sequence);
 var obj = Deserialize(stream);
 ```
 
-### DON'T: Use ToArray() Unless Necessary
+### Don't use ToArray() unless necessary
 
 ```csharp
 // Bad: Defeats the zero-copy purpose
@@ -224,7 +210,7 @@ using var stream = new ReadOnlySequenceMemoryStream(sequence);
 ProcessStream(stream);
 ```
 
-### DO: Keep Stream Lifetime Short
+### Keep stream lifetime short
 
 ```csharp
 // Good: Stream disposed quickly
@@ -235,7 +221,7 @@ ReadOnlySequence<byte> Process()
 }
 ```
 
-### DON'T: Hold Stream Reference Beyond Sequence Lifetime
+### Don't hold stream reference beyond sequence lifetime
 
 ```csharp
 // Bad: Sequence may be invalidated

@@ -1,6 +1,6 @@
 # MD5 Test Vectors (RFC 1321)
 
-## ⚠️ Security Warning
+## Security Warning
 
 **MD5 is cryptographically broken and should NOT be used for security purposes.**
 

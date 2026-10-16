@@ -11,10 +11,6 @@ using System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This class extends <see cref="BlockCipherTransform"/> to provide SM4 block cipher
-/// operations. It supports ECB, CBC, and CTR modes with PKCS#7 padding.
-/// </para>
-/// <para>
 /// For decryption, the same round function is used with round keys applied in
 /// reverse order (rk[31] through rk[0]).
 /// </para>
