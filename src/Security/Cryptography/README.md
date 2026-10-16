@@ -228,6 +228,7 @@ cshake.Squeeze(derived);
 | Post-quantum KEM guide (ML-KEM) | [cryptohives.github.io/…/kem-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html) |
 | Post-quantum signatures guide (ML-DSA, SLH-DSA) | [cryptohives.github.io/…/signature-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html) |
 | Erasable memory and secret handling | [cryptohives.github.io/…/erasable-memory](https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html) |
+| Random number generation | [cryptohives.github.io/…/random-numbers](https://cryptohives.github.io/Foundation/packages/security/cryptography/random-numbers.html) |
 | API reference | [cryptohives.github.io/…/api/…Cryptography.Hash](https://cryptohives.github.io/Foundation/api/CryptoHives.Foundation.Security.Cryptography.Hash.html) |
 | Source repository | [github.com/CryptoHives/Foundation](https://github.com/CryptoHives/Foundation) |
 

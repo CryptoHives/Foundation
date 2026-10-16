@@ -22,12 +22,12 @@ Federal Information Processing Standards Publication 202 specifies the SHA-3 fam
 
 | Algorithm | Output Size | Status | Class |
 |-----------|-------------|--------|-------|
-| SHA3-224 | 224 bits | ✅ Implemented | `SHA3_224` |
-| SHA3-256 | 256 bits | ✅ Implemented | `SHA3_256` |
-| SHA3-384 | 384 bits | ✅ Implemented | `SHA3_384` |
-| SHA3-512 | 512 bits | ✅ Implemented | `SHA3_512` |
-| SHAKE128 | Variable | ✅ Implemented | `Shake128` |
-| SHAKE256 | Variable | ✅ Implemented | `Shake256` |
+| SHA3-224 | 224 bits | ✅ | `SHA3_224` |
+| SHA3-256 | 256 bits | ✅ | `SHA3_256` |
+| SHA3-384 | 384 bits | ✅ | `SHA3_384` |
+| SHA3-512 | 512 bits | ✅ | `SHA3_512` |
+| SHAKE128 | Variable | ✅ | `Shake128` |
+| SHAKE256 | Variable | ✅ | `Shake256` |
 
 ---
 

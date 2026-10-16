@@ -4,31 +4,13 @@
 and follows the same idea as `IMemoryOwner<T>`: the interface carries the payload, and
 `IDisposable` carries the lifetime.
 
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.ISequenceOwner%601)
+
 It exists because the sequences returned by `ArrayPoolMemoryStream.GetReadOnlySequence()` and
 `ArrayPoolBufferWriter<T>.GetReadOnlySequence()` are **borrowed** — they stay valid only while their
 producer lives, so the payload dies when the stream or writer is disposed. An `ISequenceOwner<T>`
 *owns* the buffers instead, which lets a payload be produced in one place, handed on, and released
 by whoever finishes with it.
-
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`IDisposable` → **`ISequenceOwner<T>`**
-
-## Syntax
-
-```csharp
-public interface ISequenceOwner<T> : IDisposable
-```
-
-## Type Parameters
-
-**`T`** — The element type of the sequence.
 
 ## Overview
 

@@ -48,7 +48,12 @@ sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable, IResettab
 }
 
 sealed class ArrayPoolMemoryStream : MemoryStream {                // pooled; Dispose returns segments
-    ArrayPoolMemoryStream(bool clearArray = false, …);             // clearArray on every owning ctor
+    ArrayPoolMemoryStream();
+    ArrayPoolMemoryStream(bool clearArray);
+    ArrayPoolMemoryStream(int bufferSize, bool clearArray = false);
+    ArrayPoolMemoryStream(int bufferListSize, int bufferSize, bool clearArray = false);
+    ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count, bool clearArray = false);
+    ArrayPoolMemoryStream(IEnumerable<ArraySegment<byte>> buffers);  // read-only over caller-owned buffers
     ReadOnlySequence<byte> GetReadOnlySequence();                  // borrowed
     SequenceLease<byte>    LeaseSequence();                        // escapes the scope, 0 alloc
     override byte[] ToArray();                                     // copies across segments; works
@@ -109,6 +114,7 @@ readonly struct SequenceLease<T> : ISequenceOwner<T> {
     // Holds no buffers itself - it holds the producer, and disposing it disposes the
     // producer. A struct: using it through ISequenceOwner<T> boxes it (measured 48 bytes),
     // so take it by its own type unless several owner kinds must be treated uniformly.
+    SequenceLease(ReadOnlySequence<T> sequence, IDisposable? owner);   // for your own producers
 }
 
 sealed class SegmentSequence<T> : ISequenceOwner<T> {

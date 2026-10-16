@@ -3,26 +3,7 @@
 An [`ISegmentOwner<T>`](isegmentowner.md) that represents an empty, zero-allocation segment
 backed by `Array.Empty<T>()`. Useful as a null-object sentinel that avoids `null` checks.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`Object` → **`EmptySegment<T>`**
-
-## Implements
-
-- [`ISegmentOwner<T>`](isegmentowner.md)
-- `IDisposable`
-
-## Syntax
-
-```csharp
-public sealed class EmptySegment<T> : ISegmentOwner<T>
-```
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.EmptySegment%601)
 
 ## Overview
 
@@ -110,5 +91,4 @@ Process(EmptySegment<byte>.Instance);
 ---
 
 © 2026 The Keepers of the CryptoHives
-
 

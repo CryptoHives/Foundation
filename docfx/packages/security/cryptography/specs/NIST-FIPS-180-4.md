@@ -23,13 +23,13 @@ Federal Information Processing Standards Publication 180-4 specifies the Secure 
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| SHA-1 | 160 bits | ✅ Implemented (deprecated) | `SHA1Managed` |
-| SHA-224 | 224 bits | ✅ Implemented | `SHA224Managed` |
-| SHA-256 | 256 bits | ✅ Implemented | `SHA256Managed` |
-| SHA-384 | 384 bits | ✅ Implemented | `SHA384Managed` |
-| SHA-512 | 512 bits | ✅ Implemented | `SHA512Managed` |
-| SHA-512/224 | 224 bits | ✅ Implemented | `SHA512_224Managed` |
-| SHA-512/256 | 256 bits | ✅ Implemented | `SHA512_256Managed` |
+| SHA-1 | 160 bits | ✅ (deprecated) | `SHA1` |
+| SHA-224 | 224 bits | ✅ | `SHA224` |
+| SHA-256 | 256 bits | ✅ | `SHA256` |
+| SHA-384 | 384 bits | ✅ | `SHA384` |
+| SHA-512 | 512 bits | ✅ | `SHA512` |
+| SHA-512/224 | 224 bits | ✅ | `SHA512_224` |
+| SHA-512/256 | 256 bits | ✅ | `SHA512_256` |
 
 > **Warning:** SHA-1 is cryptographically weakened and should NOT be used for digital signatures
 > or other security-critical applications. It is provided only for legacy compatibility.

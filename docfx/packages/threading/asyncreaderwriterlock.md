@@ -367,7 +367,7 @@ Measures the performance of acquiring an upgradeable reader lock, holding additi
 
 ## Best Practices
 
-### ✓ DO: Use timeout overloads to bound lock-wait time
+### Use timeout overloads to bound lock-wait time
 
 ```csharp
 try

@@ -3,26 +3,7 @@
 An [`ISegmentOwner<T>`](isegmentowner.md) that rents a buffer from `ArrayPool<T>.Shared`
 and returns it automatically on dispose.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`Object` → **`PooledSegment<T>`**
-
-## Implements
-
-- [`ISegmentOwner<T>`](isegmentowner.md)
-- `IDisposable`
-
-## Syntax
-
-```csharp
-public sealed class PooledSegment<T> : ISegmentOwner<T>
-```
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.PooledSegment%601)
 
 ## Overview
 
@@ -146,5 +127,4 @@ segment[3] = 0x04;
 ---
 
 © 2026 The Keepers of the CryptoHives
-
 

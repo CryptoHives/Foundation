@@ -12,11 +12,8 @@ using System.Threading.Tasks.Sources;
 /// An abstract implementation of <see cref="IValueTaskSource{T}"/>.
 /// </summary>
 /// <remarks>
-/// This class is a sealed implementation of <see cref="IValueTaskSource{T}"/> and provides methods to
-/// manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
-/// and supports querying the status and retrieving the result. In addition, an implementation can set the owner
-/// instance to return the instance to the pool when it is no longer needed.
-/// This class is designed for direct use with <see cref="WaiterQueue{T}"/> to store the derived waiters allocation free.
+/// Derived waiters link directly into <see cref="WaiterQueue{T}"/>, so queuing one allocates nothing.
+/// An implementation may set an owner to return the instance to its pool once it is no longer needed.
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
 /// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
@@ -101,9 +98,6 @@ public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValu
     /// <summary>
     /// Signals the completion of an operation, setting the result to T.
     /// </summary>
-    /// <remarks>
-    /// This method is typically used to indicate that an asynchronous operation has completed successfully.
-    /// </remarks>
     public abstract void SetResult(T result);
 
     /// <summary>

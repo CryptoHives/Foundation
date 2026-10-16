@@ -2,17 +2,7 @@
 
 A pooled async mutual exclusion lock for coordinating access to shared resources.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Threading.Async.Pooled
-```
-
-## Syntax
-
-```csharp
-public sealed class AsyncLock : IResettable
-```
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock)
 
 ## Overview
 
@@ -253,7 +243,7 @@ ProtoPromise is particularly competitive here and can outperform the pooled `Asy
 
 ## Best Practices
 
-### DO: Use the using pattern to ensure lock release and await the result directly
+### Use the using pattern to ensure lock release and await the result directly
 
 ```csharp
 // Good: Minimal time holding lock
@@ -270,7 +260,7 @@ public async Task UpdateAsync(Data newData)
 }
 ```
 
-### DO: Keep critical sections short
+### Keep critical sections short
 
 ```csharp
 // Good: Minimal time holding lock
@@ -280,15 +270,15 @@ using (await _lock.LockAsync())
 }
 ```
 
-### DO: Prefer avoiding CancellationToken for hot-path locks
+### Prefer avoiding CancellationToken for hot-path locks
 
 Cancellation registrations allocate a small control structure. For hot-path code, omit the token when possible, or perform an early `cancellationToken.IsCancellationRequested` check before calling `LockAsync` to avoid allocations from `Task.FromCanceled`.
 
-### DO: Configure a larger pool under high contention
+### Configure a larger pool under high contention
 
 If you expect many concurrent waiters, provide a custom object pool with a larger retention size so allocations are avoided when the pool can satisfy requests.
 
-### DO: Use `LockAsync(TimeSpan)` to bound wait time
+### Use `LockAsync(TimeSpan)` to bound wait time
 
 ```csharp
 try
@@ -304,7 +294,7 @@ catch (TimeoutException)
 }
 ```
 
-### DO: Use `TryLock` when a missed acquisition is acceptable
+### Use `TryLock` when a missed acquisition is acceptable
 
 ```csharp
 // Opportunistic work that can be skipped when the lock is busy
@@ -319,7 +309,7 @@ if (_lock.TryLock(out var releaser))
 
 `TryLock` never waits and never allocates. Prefer it over `LockAsync(TimeSpan.Zero)` whenever the call site does not otherwise need a `ValueTask<Releaser>` — the zero-timeout overload signals a miss by throwing `TimeoutException`, which allocates.
 
-### DON'T: Create new locks repeatedly
+### Don't create new locks repeatedly
 
 ```csharp
 // Bad: Creating new lock each time
@@ -339,7 +329,7 @@ public async Task Work(AsyncLock lock)
 }
 ```
 
-### DON'T: Hold the lock during long-running operations
+### Don't hold the lock during long-running operations
 
 ```csharp
 // Bad: Holding lock during slow operation
@@ -349,7 +339,7 @@ using (await _lock.LockAsync())
 }
 ```
 
-### DON'T: Nest locks (may deadlock)
+### Don't nest locks (may deadlock)
 
 ```csharp
 // Bad: Risk of deadlock

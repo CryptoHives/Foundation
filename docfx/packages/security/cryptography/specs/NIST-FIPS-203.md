@@ -29,9 +29,9 @@ ML-KEM replaces RSA and (EC)DH key establishment in a post-quantum setting and i
 
 | Algorithm | Status | Class |
 |-----------|--------|-------|
-| ML-KEM-512 | ✅ Implemented | `MLKem512`, `MLKem` + `MLKemAlgorithm.MLKem512` |
-| ML-KEM-768 | ✅ Implemented | `MLKem768`, `MLKem` + `MLKemAlgorithm.MLKem768` |
-| ML-KEM-1024 | ✅ Implemented | `MLKem1024`, `MLKem` + `MLKemAlgorithm.MLKem1024` |
+| ML-KEM-512 | ✅ | `MLKem512`, `MLKem` + `MLKemAlgorithm.MLKem512` |
+| ML-KEM-768 | ✅ | `MLKem768`, `MLKem` + `MLKemAlgorithm.MLKem768` |
+| ML-KEM-1024 | ✅ | `MLKem1024`, `MLKem` + `MLKemAlgorithm.MLKem1024` |
 
 ---
 

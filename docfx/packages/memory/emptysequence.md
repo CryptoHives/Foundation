@@ -4,26 +4,7 @@ An [`ISequenceOwner<T>`](isequenceowner.md) representing an empty, zero-allocati
 `ReadOnlySequence<T>.Empty`. Follows the null-object pattern to keep `null` checks out of consumers,
 mirroring [`EmptySegment<T>`](emptysegment.md) on the segment side.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`Object` → **`EmptySequence<T>`**
-
-## Implements
-
-- [`ISequenceOwner<T>`](isequenceowner.md)
-- `IDisposable`
-
-## Syntax
-
-```csharp
-public sealed class EmptySequence<T> : ISequenceOwner<T>
-```
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.EmptySequence%601)
 
 ## Members
 
