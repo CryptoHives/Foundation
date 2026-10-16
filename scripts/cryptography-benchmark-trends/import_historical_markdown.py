@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 """
 One-time backfill: walks git history for every commit that touched the (now-retired)
 per-platform benchmark markdown tables and imports each commit's numbers into the trends
@@ -95,6 +95,9 @@ LEGACY_KMAC_TOKEN_PATTERN = re.compile(r"^Kmac(?:128|256)_\w+$")
 SIZE_MULTIPLIERS = {"B": 1, "KB": 1024, "MB": 1024 * 1024}
 SIZE_PATTERN = re.compile(r"^(?P<value>\d+)(?P<unit>B|KB|MB)$")
 MEASUREMENT_PATTERN = re.compile(r"^([\d,]+\.?\d*)\s*(ns|μs|us|ms)$")
+# BenchmarkDotNet switches the Allocated column to KB/MB for large values, in binary units.
+ALLOCATED_PATTERN = re.compile(r"^(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>B|KB|MB|GB)?$")
+ALLOCATED_UNITS = {"B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3}
 
 # BenchmarkDotNet keeps job characteristics in the preamble only while they are constant across
 # the report; the moment one varies it becomes a table column instead. A single-runtime run says
@@ -138,11 +141,18 @@ def normalize_framework(value):
 # e.g. "SHA-256 (OS)" (raw) vs. "OS Native" (cosmetic), or Blake3's three comparator libraries
 # showing up under either their raw or cosmetic name depending on which commit. Old rows are
 # normalized to today's raw registry names so a family's trend line stays continuous instead
-# of forking across a rename.
+# of forking across a rename. The SIMD tiers follow the .NET intrinsics class names (Avx2,
+# Avx512F, Sse2, Ssse3, Aes, Pclmulqdq) whichever spelling a report used; the Arm crypto
+# extensions get an "Arm" prefix because .NET has an Aes class on both architectures, and Neon
+# and Arm64 keep their familiar names.
 NORMALIZE_VARIANT = {
     "Managed": "CryptoHives-Scalar",
-    "AVX2": "CryptoHives-AVX2",
-    "AVX512F": "CryptoHives-AVX512F",
+    "AVX2": "CryptoHives-Avx2",
+    "AVX512F": "CryptoHives-Avx512F",
+    "CryptoHives-AVX2": "CryptoHives-Avx2",
+    "CryptoHives-AVX512F": "CryptoHives-Avx512F",
+    "CryptoHives-SSE2": "CryptoHives-Sse2",
+    "CryptoHives-SSSE3": "CryptoHives-Ssse3",
     "SSE2": "CryptoHives-Sse2",
     "Sse2": "CryptoHives-Sse2",
     "SSSE3": "CryptoHives-Ssse3",
@@ -153,12 +163,20 @@ NORMALIZE_VARIANT = {
     "Blake3.NET-Native": "Blake3Native",
     "Blake3.NET-Managed": "Blake3Managed",
     "Blake3.Managed": "Blake3Dissimilis",
+    "Blake3.Managed-Serial": "Blake3DissimilisSerial",
     "Hashify .NET": "HashifyNET",
-    "AES-NI": "CryptoHives-AES-NI",
-    "AES-NI+PClMul": "CryptoHives-AES-NI+PClMul",
-    "AES-NI+PClMulV256": "CryptoHives-AES-NI+PClMulV256",
-    "ArmAes": "CryptoHives-ARM-AES",
-    "ArmAes+ArmPmull": "CryptoHives-ARM-AES+PMULL",
+    "AES-NI": "CryptoHives-Aes",
+    "AES-NI+PClMul": "CryptoHives-Aes+Pclmulqdq",
+    "AES-NI+PClMulV256": "CryptoHives-Aes+Pclmulqdq.V256",
+    "CryptoHives-AES-NI": "CryptoHives-Aes",
+    "CryptoHives-AES-NI+PClMul": "CryptoHives-Aes+Pclmulqdq",
+    "CryptoHives-AES-NI+PClMulV256": "CryptoHives-Aes+Pclmulqdq.V256",
+    "ArmAes": "CryptoHives-ArmAes",
+    "ArmAes+ArmPmull": "CryptoHives-ArmAes+Pmull",
+    "CryptoHives-ARM-AES": "CryptoHives-ArmAes",
+    "CryptoHives-ARM-AES+PMULL": "CryptoHives-ArmAes+Pmull",
+    "ArmSha1": "CryptoHives-ArmSha1",
+    "ArmSha256": "CryptoHives-ArmSha256",
 }
 
 
@@ -238,11 +256,10 @@ def parse_allocated_bytes(cell: str) -> int | None:
         return 0
     if cell in ("", "NA"):
         return None
-    cell = cell.rstrip("B").strip()
-    try:
-        return int(round(float(cell)))
-    except ValueError:
+    match = ALLOCATED_PATTERN.match(cell)
+    if not match:
         return None
+    return int(round(float(match.group("value")) * ALLOCATED_UNITS[match.group("unit") or "B"]))
 
 
 def parse_markdown_table(content: str):
@@ -307,12 +324,14 @@ def parse_markdown_table(content: str):
             continue
 
         method = normalize_method(desc_parts[0])
-        # Hash/Cipher embed "Family (Variant)" in the last part (family repeats the middle
-        # "category" part, which is ignored). Mac's last part instead is a bare implementation
-        # name (no parens) with category as the real family — detected by the absence of a
-        # trailing "(...)".
+        # The older Hash/Cipher format embeds "Family (Variant)" in the last part, with the family
+        # repeating the middle "category" part. Today's "Method · Family · Variant" puts the bare
+        # implementation name last, and that name may itself end in parentheses - so the old
+        # format is recognised by the repeated family, not by the parentheses alone.
         last = desc_parts[-1]
-        if len(desc_parts) >= 3 and not FAMILY_VARIANT_PATTERN.match(last):
+        old_format = FAMILY_VARIANT_PATTERN.match(last)
+        if len(desc_parts) >= 3 and not (
+                old_format and old_format.group("family").strip().lower() == desc_parts[1].lower()):
             family, variant = desc_parts[1], last
         else:
             family, variant = parse_family_variant(last)

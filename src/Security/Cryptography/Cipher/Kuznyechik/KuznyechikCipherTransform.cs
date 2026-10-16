@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -8,12 +8,6 @@ using System;
 /// <summary>
 /// Kuznyechik cipher transform for encryption or decryption operations.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This class implements <see cref="BlockCipherTransform"/> for Kuznyechik block cipher operations.
-/// It supports ECB, CBC, and CTR modes via the base class dispatch.
-/// </para>
-/// </remarks>
 internal sealed class KuznyechikCipherTransform : BlockCipherTransform
 {
     private readonly ulong[] _encryptKeys;
@@ -27,13 +21,15 @@ internal sealed class KuznyechikCipherTransform : BlockCipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
+    /// <param name="feedbackSizeBytes">The CFB feedback size in bytes.</param>
     public KuznyechikCipherTransform(
         ReadOnlySpan<byte> key,
         ReadOnlySpan<byte> iv,
         bool encrypting,
         CipherMode mode,
-        PaddingMode padding)
-        : base(iv, encrypting, mode, padding)
+        PaddingMode padding,
+        int feedbackSizeBytes)
+        : base(iv, encrypting, mode, padding, feedbackSizeBytes)
     {
         // Both schedules are derived up front rather than per direction: a transform is created
         // for one direction, but deriving the decryption keys costs nine L^(-1) evaluations once,

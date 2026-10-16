@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -9,10 +9,6 @@ using System;
 /// SEED cipher transform for encryption or decryption operations.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This class extends <see cref="BlockCipherTransform"/> to provide SEED block cipher
-/// operations. It supports ECB, CBC, and CTR modes with PKCS#7 padding.
-/// </para>
 /// <para>
 /// For decryption, the same round function is used with round keys applied in
 /// reverse order.
@@ -30,8 +26,9 @@ internal sealed class SeedCipherTransform : BlockCipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
-    public SeedCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
-        : base(iv, encrypting, mode, padding)
+    /// <param name="feedbackSizeBytes">The CFB feedback size in bytes.</param>
+    public SeedCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding, int feedbackSizeBytes)
+        : base(iv, encrypting, mode, padding, feedbackSizeBytes)
     {
         SeedCore.ExpandKey(key, _roundKeys);
     }

@@ -1,5 +1,5 @@
 ﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # update-benchmark-docs.ps1
 # Records a BenchmarkDotNet run into the archive on the `benchmarks` branch, as
@@ -192,6 +192,10 @@ $packageConfigurations = @{
             # Cipher benchmarks - AES-CCM
             @{ Source = "AesCcm128Benchmark-report.md"; Target = "aes-ccm-128.md" }
             @{ Source = "AesCcm256Benchmark-report.md"; Target = "aes-ccm-256.md" }
+
+            # Cipher benchmarks - AES-GCM-SIV. Filed under Cipher by the importer's "aes-gcm" prefix.
+            @{ Source = "AesGcmSiv128Benchmark-report.md"; Target = "aes-gcm-siv-128.md" }
+            @{ Source = "AesGcmSiv256Benchmark-report.md"; Target = "aes-gcm-siv-256.md" }
 
             # Cipher benchmarks - AES-CBC
             @{ Source = "AesCbc128Benchmark-report.md"; Target = "aes-cbc-128.md" }

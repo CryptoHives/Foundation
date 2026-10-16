@@ -5,8 +5,10 @@ the `CryptoHives.Foundation.*` NuGet packages.
 
 **Goal:** replace BCL async synchronization primitives with the allocation-free CryptoHives
 `ValueTask`-based primitives, replace ad-hoc buffer/stream/pool code with the `Memory`
-ArrayPool-based primitives, and replace hashing with the managed, deterministic
-`Security.Cryptography` hash implementations — **without changing observable behavior**.
+ArrayPool-based primitives, and replace hashing and post-quantum code with the managed,
+deterministic `Security.Cryptography` implementations — **without changing observable behavior**.
+MAC, KDF and cipher ports follow the same rules; their member lists are in the
+[package porting guide](https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/PORTING.md).
 
 Follow these instructions exactly. Do not invent APIs. If a source pattern has no clean
 mapping below, leave it unchanged and record it in the "Unmapped" report at the end.
@@ -40,7 +42,7 @@ Add the packages the port actually uses. Package IDs:
 | Async primitives (`AsyncLock`, `AsyncSemaphore`, …) | `CryptoHives.Foundation.Threading` |
 | Analyzer that enforces correct `ValueTask` usage | `CryptoHives.Foundation.Threading.Analyzers` |
 | Buffers / streams / object pools | `CryptoHives.Foundation.Memory` |
-| Managed hashes / MAC / KDF / KEM | `CryptoHives.Foundation.Security.Cryptography` |
+| Managed hashes, MAC, KDF, ciphers, KEM, signatures | `CryptoHives.Foundation.Security.Cryptography` |
 
 In each consuming `.csproj`:
 
@@ -82,6 +84,10 @@ If the target project uses Central Package Management (`Directory.Packages.props
 | `Dictionary<TKey, SemaphoreSlim>` / a registry of one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other; released keys stay cached, so repeat acquisitions allocate nothing. |
 | `AsyncKeyedLock` (the third-party package), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | Same per-key semantics, without the striping some libraries use. |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify the source did not rely on reentrancy. |
+| `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | DotNext releases with an explicit `Release()`; here the lock is released by disposing the `Releaser`, so wrap the critical section in `using`. |
+| `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern for reader and writer locks; upgradeable readers are a distinct mode here. |
+| `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | The same-named type in this package | DotNext's types are net10.0-only; these run on every target down to net462. |
+| `DotNext.Threading.AsyncExchanger<T>` | `AsyncExchange<T>` | Same two-party rendezvous. |
 
 ### 2.2 `AsyncLock` — exact usage
 
@@ -379,8 +385,8 @@ void Process(ISegmentOwner<byte> owner)
 `using CryptoHives.Foundation.Security.Cryptography.Hash;`
 
 These are fully managed, deterministic, cross-platform implementations that **extend
-`System.Security.Cryptography.HashAlgorithm`**, so they are drop-in wherever a
-`HashAlgorithm` is expected. Use them to replace BouncyCastle digests, third-party hash
+`System.Security.Cryptography.HashAlgorithm`** (all but `ParallelHash` and
+`IncrementalParallelHash`), so they are drop-in wherever a `HashAlgorithm` is expected. Use them to replace BouncyCastle digests, third-party hash
 libs, or `System.Security.Cryptography` types when you want managed determinism across all
 target frameworks (including legacy TFMs where the BCL lacks e.g. SHA-3).
 
@@ -500,7 +506,7 @@ The package exposes its own (`CryptoHives.Foundation.Security.Cryptography`) bec
 does not exist below .NET Standard 2.1 and has no character overload on any .NET version.
 
 Full member lists, the porting table and the reasoning:
-[package porting guide](https://www.nuget.org/packages/CryptoHives.Foundation.Security.Cryptography#readme-body-tab)
+[package porting guide](https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/PORTING.md)
 and
 [Erasable Memory](packages/security/cryptography/erasable-memory.md).
 
@@ -520,7 +526,7 @@ Work phase by phase; build + test after each:
 
 Verification checklist:
 - [ ] Solution builds clean under `TreatWarningsAsErrors=true`.
-- [ ] Zero unresolved `CHT001`–`CHT010` diagnostics.
+- [ ] Zero unresolved `CHT001`–`CHT012` diagnostics.
 - [ ] All existing tests pass. For hashing, add/keep a test asserting the new digest equals
       a known-answer vector or the pre-port output for representative inputs.
 - [ ] No `ValueTask` stored in a field, awaited twice, `.Result`-ed, or `WhenAll`-ed.

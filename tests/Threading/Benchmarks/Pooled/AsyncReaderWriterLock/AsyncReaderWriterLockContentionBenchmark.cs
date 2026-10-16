@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CHT003 // ValueTask stored in field
 #pragma warning disable VSTHRD012 // Provide JoinableTaskFactory where allowed

@@ -34,17 +34,9 @@
 <body>
 <h1>CryptoHives Threading Speed Differences</h1>
 <p>
-  How far apart competing implementations of the same synchronization primitive typically land,
-  for the benchmark run selected below. Every cell's ratio is that variant's mean time divided by
-  the fastest <em>ranked</em> variant's mean time for the same primitive in that run — 1.00 is the
-  winner, 2.00 means twice as slow. A <strong>n/c</strong> cell (see below) is shown for scale but
-  held out of the ratio: it lacks something the others pay for on every call, so comparing times
-  would be apples to beans. Both numbers come from the scenario closest to normal use - one contending
-  party (not zero, and not a bare uncontended call some benchmark classes also record) with a
-  live, uncancelled token where one was measured - rather than an average across every contention
-  level a "Scaling by contention" chart would show: a "Multiple" benchmark's mean time at high
-  contention is the time for many concurrent operations, not a per-operation cost, so blending it
-  in would let whichever variant scales worst under load dominate the ratio.
+  How far apart competing implementations of the same primitive land in the selected run. Each
+  ratio is a variant's mean time over the fastest <em>ranked</em> variant's: 1.00 is the winner,
+  2.00 twice as slow.
 </p>
 
 <div class="controls">
@@ -77,36 +69,31 @@
 <thead><tr id="heatmap-head"></tr></thead><tbody id="heatmap-body"></tbody></table></div>
 
 <p class="hint">
-  Data source: <code>benchmark-history.sqlite</code>, generated at build time from the run
-  archive on the <code>benchmarks</code> branch. Ratios are computed from mean time, averaged per
-  (family, variant) across every method, contention level and cancellation state measured in the
-  selected run — see the <a href="index.html">trends dashboard</a> for per-parameter detail, and
-  the <a href="matrix.html">library matrix</a> for which library supports which primitive. The raw
-  baseline comparison table (Interlocked.*, lock(), SpinLock, SpinOnce) a few benchmark classes
-  measure alongside the real primitives isn't a synchronization primitive itself and is excluded
-  here.
+  Ratios use the scenario closest to normal use: one contending party with a live, uncancelled token where measured. Averaging over every
+  contention level would let whichever variant scales worst dominate; the trends dashboard's
+  "Scaling by contention" view shows that instead.
+  See also the <a href="matrix.html">library matrix</a>. The raw baselines some classes record
+  (Interlocked, <code>lock</code>, SpinLock) are not primitives and are left out.
 </p>
 <p class="hint">
-  <strong>n/c</strong> ("non-competing") marks a cell shown for scale but held out of the ratio -
-  its measured mean is in the tooltip, but it does not get a ratio and does not define the 1.00x
-  baseline: the vendored <code>RefImpl</code> reference implementation (no cancellation, no
-  timeout, no pooling); DotNext's <code>AsyncExclusiveLock</code> and reader-writer lock in the
-  lock rows (no disposable releaser, measured doing less work per operation); and "System" in the
-  AutoResetEvent, ManualResetEvent, Barrier and ReaderWriterLockSlim rows (a blocking wait). Same
-  idea as <em>hors concours</em> / <em>ausser Konkurrenz</em>.
+  <strong>n/c</strong> (non-competing, <em>hors concours</em>) cells are measured and shown for scale
+  but held out of the ratio (the measured mean is in the tooltip), because they skip work the others pay for on every call: the
+  vendored <code>RefImpl</code> (no cancellation, timeout or pooling); DotNext's
+  <code>AsyncExclusiveLock</code> and reader-writer lock (no disposable releaser); and "System" in
+  the AutoResetEvent, ManualResetEvent, Barrier and ReaderWriterLockSlim rows (a blocking wait).
+  Hover a cell for the reason.
 </p>
 <p class="hint">
-  <strong>†</strong> marks a "System" cell whose primitive may have no true async wait API - its
-  benchmark measures a blocking wait rather than an awaited one, so the ratio is a baseline
-  reference rather than a fair race against the async implementations in the other columns. (Where
-  that is definitely the case, the cell is <strong>n/c</strong> instead.)
-  <strong>‡</strong> marks "ProtoPromise" - it builds on its own Promise/Promise&lt;T&gt; type and
-  its own cancellation token rather than <code>System.Threading.Tasks.ValueTask</code> and
-  <code>CancellationToken</code>, so it is not drop-in compatible with code written against the
-  BCL types the other columns share.
+  <strong>†</strong> "System" primitive that may lack a true async wait, so its number is a
+  baseline rather than a fair race. <strong>‡</strong> ProtoPromise, which uses its own
+  <code>Promise</code> and cancellation token types rather than <code>ValueTask</code> and
+  <code>CancellationToken</code>, so it is not drop-in compatible.
+</p>
+<p class="hint">
+  Data: <code>benchmark-history.sqlite</code>, built from the <code>benchmarks</code> branch.
 </p>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="../../../vendor/sql-wasm.js"></script>
 <script>
 (async function () {
   const statusEl = document.getElementById("status");
@@ -514,7 +501,7 @@
 
   try {
     const SQL = await initSqlJs({
-      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`,
+      locateFile: (file) => `../../../vendor/${file}`,
     });
     const response = await fetch("benchmark-history.sqlite");
     if (!response.ok) throw new Error(`fetch failed: ${response.status}`);

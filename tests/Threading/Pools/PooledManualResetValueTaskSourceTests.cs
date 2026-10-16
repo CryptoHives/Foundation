@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Threading.Tests.Pools;
 
@@ -49,9 +49,9 @@ public class PooledManualResetValueTaskSourceTests
 
         // calling with old version throws
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
-        _ = Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
+        await Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask).ConfigureAwait(false);
 
         Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }
@@ -91,9 +91,9 @@ public class PooledManualResetValueTaskSourceTests
 
         // calling with old version throws
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        _ = Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await vt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
-        _ = Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask);
+        await Assert.ThrowsAsync<InvalidOperationException>(vt.AsTask).ConfigureAwait(false);
 
         Assert.That(tpvts.ActiveCount, Is.Zero, "Instance count should be 0 after reuse.");
     }

@@ -1,20 +1,10 @@
 # AsyncAutoResetEvent
 
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncAutoResetEvent)
+
 ## Overview
 
 `AsyncAutoResetEvent` is a pooled async version of `AutoResetEvent` that uses `ValueTask` to minimize memory allocations in high-throughput scenarios. It provides allocation-free async signaling by reusing pooled `IValueTaskSource` instances.
-
-## Namespace
-
-```csharp
-using CryptoHives.Foundation.Threading.Async.Pooled;
-```
-
-## Class Declaration
-
-```csharp
-public sealed class AsyncAutoResetEvent
-```
 
 ## Key Features
 
@@ -240,7 +230,7 @@ finally
 
 ## Thread Safety
 
-✓ **Thread-safe**. All public methods are thread-safe and can be called concurrently.
+**Thread-safe**. All public methods are thread-safe and can be called concurrently.
 
 ## Performance Characteristics
 
@@ -324,7 +314,7 @@ await evt.WaitAsync(); // Blocks until next Set()
 
 ## Best Practices
 
-### ✓ DO: Use for Producer-Consumer
+### Use for producer-consumer
 
 ```csharp
 public class WorkQueue<T>
@@ -347,7 +337,7 @@ public class WorkQueue<T>
 }
 ```
 
-### ✓ DO: Always await `ValueTask` directly when possible
+### Always await `ValueTask` directly when possible
 
 ```csharp
 // Good: Direct await
@@ -357,15 +347,15 @@ await _event.WaitAsync();
 await _event.WaitAsync().AsTask();
 ```
 
-### ✓ DO: Use a custom pool when high contention is expected
+### Use a custom pool when high contention is expected
 
 Provide a larger object pool to avoid temporary allocations when many waiters are queued simultaneously.
 
-### ✗ DON'T: Store `AsTask()` Before Signaling (when `RunContinuationAsynchronously == true`)
+### Don't store `AsTask()` before signaling (when `RunContinuationAsynchronously == true`)
 
 Storing the `Task` result of `AsTask()` before `Set()` forces an asynchronous completion path that can be much slower. Prefer awaiting the `ValueTask` directly.
 
-### ✗ DON'T: Await `ValueTask` Multiple Times
+### Don't await `ValueTask` multiple times
 
 ```csharp
 ValueTask vt = _event.WaitAsync();
@@ -373,7 +363,7 @@ await vt;
 await vt; // throws InvalidOperationException
 ```
 
-### ✓ DO: Use `WaitAsync(TimeSpan)` for timed waits
+### Use `WaitAsync(TimeSpan)` for timed waits
 
 Avoid the `AsTask().WaitAsync(timeout)` pattern — it forces a `Task` allocation and may cause the 10x–100x slowdown described above. Use the direct timeout overload instead:
 

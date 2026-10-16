@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 // The "Blake3" package (fully managed, xoofx/Blake3.NET) and "Blake3.Native"
 // package (Rust FFI) both define Blake3.Hasher, so referencing both at once is

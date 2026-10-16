@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA5401 // AES test vectors use explicit fixed IVs for deterministic verification.
 
@@ -331,7 +331,7 @@ public class AesTests
 
     /// <summary>
     /// PKCS#7 padding must be rejected regardless of which byte in the pad is corrupted,
-    /// covering the constant-time rewrite of <c>IsPkcs7PaddingValid</c> - a naive
+    /// covering the constant-time check in <c>BlockPadding</c> - a naive
     /// early-exit implementation would still throw in every case here, but with a timing
     /// signature that differs by corruption position (the classical padding-oracle side
     /// channel this rewrite closes).

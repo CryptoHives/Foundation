@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Threading.Analyzers;
 
@@ -391,8 +391,7 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                     ISymbol? symbol = _semanticModel.GetDeclaredSymbol(variable, _context.CancellationToken);
                     if (symbol is not null)
                     {
-                        // Check if this variable is initialized with Preserve() call
-                        // If so, it's safe to await multiple times
+                        // A Preserve()d ValueTask may be awaited any number of times.
                         if (IsPreserveCall(variable.Initializer.Value))
                         {
                             _preservedVariables.Add(symbol);
@@ -492,7 +491,6 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
                 case AssignmentExpressionSyntax assignment:
                     AnalyzeExpressionRecursive(assignment.Right, isConsumed: false);
-                    // Check if assigning ValueTask to field
                     if (assignment.Left is MemberAccessExpressionSyntax fieldAccess)
                     {
                         SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(fieldAccess, _context.CancellationToken);
@@ -562,7 +560,6 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
                     getAwaiterCall.Expression is MemberAccessExpressionSyntax getAwaiterAccess &&
                     getAwaiterAccess.Name.Identifier.Text == "GetAwaiter")
                 {
-                    // Check if the base expression is a ValueTask
                     TypeInfo typeInfo = _semanticModel.GetTypeInfo(getAwaiterAccess.Expression, _context.CancellationToken);
                     if (IsValueTaskType(typeInfo.Type))
                     {
@@ -666,11 +663,9 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             // from an outer scope is potentially unsafe because:
             // 1. The closure might be invoked multiple times
             // 2. The ValueTask may have been consumed before the closure executes
-            // Check if this is a captured variable (not declared in the current scope)
+            // Not declared in this scope, so captured from an enclosing one.
             if (_isClosure && !_usages.ContainsKey(symbolInfo.Symbol))
             {
-                // Check if the captured variable was initialized with Preserve() in the outer scope
-                // by examining its declaration
                 if (IsCapturedPreservedVariable(symbolInfo.Symbol))
                 {
                     return;
@@ -701,17 +696,14 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 
         private bool IsCapturedPreservedVariable(ISymbol symbol)
         {
-            // Check if the symbol is a local variable that was initialized with Preserve()
             if (symbol is ILocalSymbol localSymbol)
             {
-                // Get the declaring syntax reference
                 foreach (var syntaxReference in localSymbol.DeclaringSyntaxReferences)
                 {
                     var syntax = syntaxReference.GetSyntax(_context.CancellationToken);
                     if (syntax is VariableDeclaratorSyntax variableDeclarator &&
                         variableDeclarator.Initializer is not null)
                     {
-                        // Check if the initializer is a Preserve() call
                         if (IsPreserveCall(variableDeclarator.Initializer.Value))
                         {
                             return true;

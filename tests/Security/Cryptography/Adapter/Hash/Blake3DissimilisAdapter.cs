@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 // The "Blake3.Managed" package (Dissimilis/Blake3.Managed) is a third, independent
 // BLAKE3 implementation: pure C# with AVX2/SSSE3/NEON kernels and multi-threaded

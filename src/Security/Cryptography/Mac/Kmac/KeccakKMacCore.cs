@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
@@ -204,7 +204,6 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        // Create a padded buffer
         int paddedLength = totalLen + padLen;
         byte[]? pooledBuffer = null;
         Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
@@ -251,7 +250,6 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         int totalLen = leftEncodedBytes + encodedK.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        // Create a padded buffer
         int paddedLength = totalLen + padLen;
         byte[]? pooledBuffer = null;
         Span<byte> paddedBuffer = paddedLength <= _rateBytes ?

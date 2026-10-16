@@ -1,22 +1,12 @@
 # AsyncConditionVariable
 
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncConditionVariable)
+
 ## Overview
 
 `AsyncConditionVariable` is the async equivalent of `Monitor.Wait` / `Monitor.Pulse`. It pairs with an [`AsyncLock`](asynclock.md) and gives a task the ability to wait until a condition protected by that lock becomes true, without blocking a thread.
 
 A wait atomically releases the lock, suspends, and re-acquires the lock before returning — on **every** return path, including cancellation and timeout.
-
-## Namespace
-
-```csharp
-using CryptoHives.Foundation.Threading.Async.Pooled;
-```
-
-## Class Declaration
-
-```csharp
-public sealed class AsyncConditionVariable : IResettable
-```
 
 ## Key Features
 
@@ -206,27 +196,27 @@ public async Task<T> SendAsync<T>(Func<Task<T>> operation, CancellationToken ct)
 
 ## Best Practices
 
-### ✓ DO: Re-check the predicate in a `while` loop
+### Re-check the predicate in a `while` loop
 
 A condition variable signals that something *may* have changed. It does not hand over ownership of the change.
 
-### ✓ DO: Hold the lock when signalling if the predicate is being changed
+### Hold the lock when signalling if the predicate is being changed
 
 Publish the state change and signal inside the same critical section, so a consumer cannot miss it.
 
-### ✓ DO: Use one condition variable per condition
+### Use one condition variable per condition
 
 Two conditions sharing an instance means every signal wakes the wrong waiter half the time. Several instances may share one `AsyncLock`.
 
-### ✗ DON'T: Call `WaitAsync` without holding the lock
+### Don't call `WaitAsync` without holding the lock
 
 It throws `SynchronizationLockException`. Releasing a lock the caller does not own would hand it to an unrelated waiter and the corruption would surface much later.
 
-### ✗ DON'T: Use one instance with two different locks
+### Don't use one instance with two different locks
 
 The second lock is rejected with `InvalidOperationException`. Bind a second condition variable instead.
 
-### ✗ DON'T: Rely on a signal reaching a waiter that has not queued yet
+### Don't rely on a signal reaching a waiter that has not queued yet
 
 Use [`AsyncManualResetEvent`](asyncmanualresetevent.md) when the notification has to persist.
 

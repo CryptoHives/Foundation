@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA1031 // Catch more specific exception — TryCreate intentionally catches all failures
 #pragma warning disable CA1050 // Declare types in namespaces
@@ -178,6 +178,22 @@ public sealed class CipherAlgorithmType : IFormattable
         foreach (var alg in AesCcm128()) yield return alg;
         foreach (var alg in AesCcm192()) yield return alg;
         foreach (var alg in AesCcm256()) yield return alg;
+    }
+
+    /// <summary>
+    /// Returns AES-128-GCM-SIV implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesGcmSiv128()
+    {
+        return FromRegistry("AES-128-GCM-SIV", CipherAlgorithmRegistry.Mode.GcmSiv, 128);
+    }
+
+    /// <summary>
+    /// Returns AES-256-GCM-SIV implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> AesGcmSiv256()
+    {
+        return FromRegistry("AES-256-GCM-SIV", CipherAlgorithmRegistry.Mode.GcmSiv, 256);
     }
 
     /// <summary>
@@ -430,6 +446,7 @@ public sealed class CipherAlgorithmType : IFormattable
                mode == CipherAlgorithmRegistry.Mode.CCM ||
                mode == CipherAlgorithmRegistry.Mode.ChaCha20Poly1305 ||
                mode == CipherAlgorithmRegistry.Mode.XChaCha20Poly1305 ||
-               mode == CipherAlgorithmRegistry.Mode.AsconAead128;
+               mode == CipherAlgorithmRegistry.Mode.AsconAead128 ||
+               mode == CipherAlgorithmRegistry.Mode.GcmSiv;
     }
 }

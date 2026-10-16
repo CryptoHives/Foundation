@@ -45,9 +45,9 @@
   <PropertyGroup>
     <PackageIcon>images/logo.jpg</PackageIcon>
     <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
-    <!-- MIT imposes no obligation worth an install-time prompt; requiring acceptance only adds friction. -->
+    <!-- Neither MIT nor Apache-2.0 imposes an obligation worth an install-time prompt; requiring acceptance only adds friction. -->
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
+    <PackageLicenseExpression>MIT OR Apache-2.0</PackageLicenseExpression>
     <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- Per-package READMEs: each project may override PackageReadmeSourceFile to point to its own README.md -->
@@ -55,13 +55,15 @@
     <PackageTags>CryptoHives</PackageTags>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == 'MIT'">
-    <None Include="$(MSBuildThisFileDirectory)/licenses/CryptoHives MIT license.txt" Pack="true" Visible="false" PackagePath="$(PackageLicenseFile)"/>
-  </ItemGroup>
-  
-  <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == ''">
-    <None Include="$(MSBuildThisFileDirectory)/LICENSE" Pack="true" PackagePath="$(PackageLicenseFile)"/>
-  </ItemGroup>
+  <!-- NuGet only renames a packed file whose source has the target's extension, and LICENSE-MIT /
+       LICENSE-APACHE have none, so the package copies are written under their .txt names first. -->
+  <Target Name="PackCryptoHivesLicenseFiles" BeforeTargets="_GetPackageFiles" Condition="'$(IsPackable)' != 'false'">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)LICENSE-MIT" DestinationFiles="$(IntermediateOutputPath)CryptoHives MIT license.txt" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)LICENSE-APACHE" DestinationFiles="$(IntermediateOutputPath)CryptoHives Apache 2.0 license.txt" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <None Include="$(IntermediateOutputPath)CryptoHives MIT license.txt;$(IntermediateOutputPath)CryptoHives Apache 2.0 license.txt" Pack="true" Visible="false" PackagePath="" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)/nuget/logo.jpg" Pack="true" Visible="false" PackagePath="$(PackageIcon)"/>

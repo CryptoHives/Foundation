@@ -1,22 +1,12 @@
 # AsyncExchange&lt;T&gt;
 
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncExchange%601)
+
 ## Overview
 
 `AsyncExchange<T>` is a two-party rendezvous: two tasks meet at the exchange, each hands over a value, and each receives the other's. It is the async counterpart of Java's `Exchanger<V>`, which the BCL has no equivalent of.
 
 The first caller to arrive occupies the exchange's single slot and suspends. The second caller pairs with it, completing both parties — the arriving one synchronously, without ever suspending.
-
-## Namespace
-
-```csharp
-using CryptoHives.Foundation.Threading.Async.Pooled;
-```
-
-## Class Declaration
-
-```csharp
-public sealed class AsyncExchange<T> : IResettable
-```
 
 ## Key Features
 
@@ -175,9 +165,17 @@ else
 }
 ```
 
+## Benchmark Results
+
+The BCL has no two-party exchanger, so the rendezvous benchmark compares the pooled `AsyncExchange<T>` against a `TaskCompletionSource`-based reference implementation and against `DotNext.Threading.AsyncExchanger<T>` (net10.0 only) — the only third-party library with a genuine equivalent of this primitive.
+
+The pooled implementation is measured three ways: plain, with a cancellation token that never fires, and with a timeout that never elapses, so the cost of a timer per waiting party shows up as its own row.
+
+See [Benchmarks](benchmarks.md) for how the suites run and [Benchmark Trends](benchmark-trends/index.html) for the recorded history.
+
 ## Best Practices
 
-### ✓ DO: Await the returned `ValueTask<T>` exactly once
+### Await the returned `ValueTask<T>` exactly once
 
 Reading `IsCompleted` after the await throws `InvalidOperationException` — the source has already been recycled. Capture it once if the outcome matters:
 
@@ -187,15 +185,15 @@ bool paired = pending.IsCompleted;   // read before awaiting
 T theirs = await pending;
 ```
 
-### ✓ DO: Pass a cancellation token to a party that may be left waiting
+### Pass a cancellation token to a party that may be left waiting
 
 An unpaired party waits forever otherwise, and its pooled waiter is never returned.
 
-### ✓ DO: Use `TryExchange` (or `TimeSpan.Zero`) for an opportunistic exchange
+### Use `TryExchange` (or `TimeSpan.Zero`) for an opportunistic exchange
 
 Neither ever occupies the slot, so a rejected try-exchange leaves nothing behind for a later party to pair with. Prefer `TryExchange` — it answers the same question synchronously and without an exception; reach for `ExchangeAsync(value, TimeSpan.Zero)` only where the call site already needs a `ValueTask<T>` to compose with.
 
-### ✗ DON'T: Mistake it for a bounded(1) channel
+### Don't mistake it for a bounded(1) channel
 
 `AsyncExchange<T>` and a `Channel.CreateBounded<T>(1)` both hold at most one thing "in flight," but the contract is different, not just the capacity:
 

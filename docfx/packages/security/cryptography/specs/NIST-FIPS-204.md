@@ -25,10 +25,10 @@ Deployment targets include code signing, firmware signing, X.509 certificates, a
 
 | Algorithm | Status | Class |
 |-----------|--------|-------|
-| ML-DSA-44 | ✅ Implemented | `MLDsa44`, `MLDsa` + `MLDsaAlgorithm.MLDsa44` |
-| ML-DSA-65 | ✅ Implemented | `MLDsa65`, `MLDsa` + `MLDsaAlgorithm.MLDsa65` |
-| ML-DSA-87 | ✅ Implemented | `MLDsa87`, `MLDsa` + `MLDsaAlgorithm.MLDsa87` |
-| HashML-DSA (pre-hash, §5.4) | ✅ Implemented | `MLDsa.SignPreHash` / `MLDsa.VerifyPreHash` |
+| ML-DSA-44 | ✅ | `MLDsa44`, `MLDsa` + `MLDsaAlgorithm.MLDsa44` |
+| ML-DSA-65 | ✅ | `MLDsa65`, `MLDsa` + `MLDsaAlgorithm.MLDsa65` |
+| ML-DSA-87 | ✅ | `MLDsa87`, `MLDsa` + `MLDsaAlgorithm.MLDsa87` |
+| HashML-DSA (pre-hash, §5.4) | ✅ | `MLDsa.SignPreHash` / `MLDsa.VerifyPreHash` |
 
 ---
 

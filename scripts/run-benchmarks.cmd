@@ -1,6 +1,6 @@
 @echo off
 REM SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-REM SPDX-License-Identifier: MIT
+REM SPDX-License-Identifier: MIT OR Apache-2.0
 
 REM run-benchmarks.cmd - Wrapper for run-benchmarks.ps1
 REM Usage: scripts\run-benchmarks.cmd [options]

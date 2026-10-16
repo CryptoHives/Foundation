@@ -14,7 +14,7 @@ dotnet add package CryptoHives.Foundation.Memory
 
 ### [Threading Package](packages/threading/index.md)
 
-`ValueTask`-based async synchronization primitives with pooled waiter objects: `AsyncLock`, `AsyncKeyedLock<TKey>`, `AsyncAutoResetEvent`, `AsyncManualResetEvent`, `AsyncBarrier`, `AsyncReaderWriterLock`, `AsyncSemaphore`, and `AsyncCountdownEvent`. Every acquisition takes an optional `CancellationToken` and an optional timeout.
+`ValueTask`-based async synchronization primitives with pooled waiter objects: `AsyncLock`, `AsyncKeyedLock<TKey>`, `AsyncAutoResetEvent`, `AsyncManualResetEvent`, `AsyncBarrier`, `AsyncReaderWriterLock`, `AsyncSemaphore`, `AsyncCountdownEvent`, `AsyncConditionVariable`, and `AsyncExchange<T>`. Every acquisition takes an optional `CancellationToken` and an optional timeout.
 
 ```bash
 dotnet add package CryptoHives.Foundation.Threading
@@ -22,7 +22,7 @@ dotnet add package CryptoHives.Foundation.Threading
 
 ### [Security.Cryptography Package](packages/security/cryptography/index.md)
 
-Specification-based hash algorithms, MACs, ciphers, and key derivation functions — SHA-2, SHA-3, SHAKE, cSHAKE, TurboSHAKE, KangarooTwelve, KMAC, BLAKE2, BLAKE3, Ascon, Keccak, SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160, AES-CBC/GCM/CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, regional ciphers (SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED), HKDF/KBKDF/PBKDF2, and legacy MD5/SHA-1.
+Specification-based hash algorithms, MACs, ciphers, key derivation functions, and the NIST post-quantum trio — SHA-2, SHA-3, SHAKE, cSHAKE, TurboSHAKE, KangarooTwelve, KMAC, BLAKE2, BLAKE3, Ascon, Keccak, SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160, AES-CBC/GCM/CCM, ChaCha20, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, regional ciphers (SM4, ARIA, Camellia, Kuznyechik, Kalyna, SEED), HKDF/KBKDF/Concat KDF/PBKDF2, AES Key Wrap, ML-KEM (FIPS 203), ML-DSA (FIPS 204) and SLH-DSA (FIPS 205) with PKCS#8/SPKI/PEM key import and export, and legacy MD5/SHA-1.
 
 ```bash
 dotnet add package CryptoHives.Foundation.Security.Cryptography
@@ -53,7 +53,7 @@ playbook (also usable directly by AI coding agents). Each package additionally s
 ## Support
 
 - [GitHub Issues](https://github.com/CryptoHives/Foundation/issues)
-- [Security Policy](https://github.com/CryptoHives/Foundation/SECURITY.md)
+- [Security Policy](https://github.com/CryptoHives/.github/blob/main/SECURITY.md)
 
 ---
 

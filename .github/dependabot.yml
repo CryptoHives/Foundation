@@ -13,35 +13,6 @@ updates:
     labels: 
       - "nuget"
     groups:
-      crypto-reference:
-        applies-to: version-updates
-        patterns:
-        - "BouncyCastle.Cryptography"
-        - "HashifyNET"
-        - "NaCl.Core"
-        - "Blake3"
-        - "Blake3.Native"
-        - "Blake3.Managed"
-        - "Konscious.Security.Cryptography.Blake2"
-        - "SauceControl.Blake2Fast"
-        - "OpenGost.Security.Cryptography"
-      async-reference:
-        applies-to: version-updates
-        patterns:
-        - "AsyncKeyedLock"
-        - "NeoSmart.AsyncLock"
-        - "Nito.AsyncEx"
-        - "ProtoPromise"
-      test-infra:
-        applies-to: version-updates
-        patterns:
-        - "NUnit"
-        - "NUnit.Analyzers"
-        - "NUnit.Console"
-        - "NUnit3TestAdapter"
-        - "Microsoft.NET.Test.Sdk"
-        - "coverlet.collector"
-        - "SharpFuzz"
       build-tooling:
         applies-to: version-updates
         patterns:
@@ -55,6 +26,19 @@ updates:
         - "Microsoft.*"
         - "System.*"
         - "Nuget.*"
+        exclude-patterns:
+        - "Microsoft.SourceLink.*"
+        - "Microsoft.Sbom.Targets"
+      test-infra:
+        applies-to: version-updates
+        patterns:
+        - "*"
+        exclude-patterns:
+        - "Microsoft.*"
+        - "System.*"
+        - "Nuget.*"
+        - "Nerdbank.GitVersioning"
+        - "DotNetProjectFile.Analyzers"
         
   - package-ecosystem: github-actions
     labels:
