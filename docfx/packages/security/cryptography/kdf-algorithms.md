@@ -430,7 +430,8 @@ using CryptoHives.Foundation.Security.Cryptography.Mac;
 
 // Derive a 32-byte key from a password using HMAC-SHA-256
 byte[] password = Encoding.UTF8.GetBytes("my-password");
-byte[] salt = RandomNumberGenerator.GetBytes(16);
+byte[] salt = new byte[16];
+RandomNumberGenerator.Fill(salt);
 
 byte[] derivedKey = Pbkdf2.DeriveKey(
     key => new HmacSha256(key),

@@ -68,13 +68,13 @@ public sealed class Kalyna512 : SymmetricCipher
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new KalynaCipherTransform(key, iv, encrypting: true, Mode, Padding, BlockSizeBytes);
+        return new KalynaCipherTransform(key, iv, encrypting: true, Mode, Padding, FeedbackSize / 8, BlockSizeBytes);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new KalynaCipherTransform(key, iv, encrypting: false, Mode, Padding, BlockSizeBytes);
+        return new KalynaCipherTransform(key, iv, encrypting: false, Mode, Padding, FeedbackSize / 8, BlockSizeBytes);
     }
 }

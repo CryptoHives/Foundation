@@ -10,12 +10,6 @@ using System.Runtime.CompilerServices;
 /// <summary>
 /// Camellia cipher transform for encryption or decryption operations.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This class extends <see cref="BlockCipherTransform"/> to provide Camellia block
-/// cipher operations. It supports ECB, CBC, and CTR modes with PKCS#7 padding.
-/// </para>
-/// </remarks>
 internal sealed class CamelliaCipherTransform : BlockCipherTransform
 {
     private readonly ulong[] _subkeys;
@@ -29,9 +23,10 @@ internal sealed class CamelliaCipherTransform : BlockCipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
+    /// <param name="feedbackSizeBytes">The CFB feedback size in bytes.</param>
     public CamelliaCipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv,
-        bool encrypting, CipherMode mode, PaddingMode padding)
-        : base(iv, encrypting, mode, padding)
+        bool encrypting, CipherMode mode, PaddingMode padding, int feedbackSizeBytes)
+        : base(iv, encrypting, mode, padding, feedbackSizeBytes)
     {
         _subkeys = new ulong[CamelliaCore.MaxSubkeys];
         _rounds = CamelliaCore.ExpandKey(key, _subkeys);

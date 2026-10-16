@@ -109,7 +109,7 @@ internal interface IIncrementalHash<TR> : IDisposable
     /// <remarks>
     /// This method does not alter the internal state. Call <see cref="Reset"/> afterwards
     /// to prepare the instance for a new computation, or continue appending data.
-    /// </remarks>
+    /// </remarks> 
     bool TryGetCurrentHash(Span<byte> destination, out int bytesWritten);
 
     /// <summary>

@@ -4,35 +4,12 @@ An [`ISequenceOwner<T>`](isequenceowner.md) that adapts a single
 [`ISegmentOwner<T>`](isegmentowner.md) into a one-node `ReadOnlySequence<T>`, taking over its
 lifetime.
 
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.SegmentSequence%601)
+
 This is the composition point between the two ownership abstractions: every segment strategy —
 [`PooledSegment<T>`](pooledsegment.md), [`AllocatedSegment<T>`](allocatedsegment.md),
 [`EmptySegment<T>`](emptysegment.md) — becomes a sequence owner for free, so code written against
 `ISequenceOwner<T>` works with all of them without caring which is underneath.
-
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`Object` → **`SegmentSequence<T>`**
-
-## Implements
-
-- [`ISequenceOwner<T>`](isequenceowner.md)
-- `IDisposable`
-
-## Syntax
-
-```csharp
-public sealed class SegmentSequence<T> : ISequenceOwner<T>
-```
-
-## Type Parameters
-
-**`T`** — The element type of the segment.
 
 ## Methods
 

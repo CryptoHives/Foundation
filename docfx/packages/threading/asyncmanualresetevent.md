@@ -1,20 +1,10 @@
 # AsyncManualResetEvent
 
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent)
+
 ## Overview
 
 `AsyncManualResetEvent` is a pooled async version of `ManualResetEvent` that uses `ValueTask` to minimize memory allocations. It provides async signaling by reusing pooled `IValueTaskSource` instances. Unlike `AsyncAutoResetEvent`, it releases **all** waiting threads when signaled and remains signaled until explicitly reset.
-
-## Namespace
-
-```csharp
-using CryptoHives.Foundation.Threading.Async.Pooled;
-```
-
-## Class Declaration
-
-```csharp
-public sealed class AsyncManualResetEvent : IResettable
-```
 
 ## Key Features
 
@@ -228,7 +218,7 @@ finally
 
 ## Thread Safety
 
-✓ **Thread-safe**. All public methods are thread-safe and can be called concurrently.
+**Thread-safe**. All public methods are thread-safe and can be called concurrently.
 
 ## Performance Characteristics
 
@@ -282,7 +272,7 @@ Nito and Refimpl again show higher allocation counts due to TaskCompletionSource
 
 ## Best Practices
 
-### ✓ DO: Use for Initialization Signals
+### Use for initialization signals
 
 ```csharp
 public class DataService
@@ -303,7 +293,7 @@ public class DataService
 }
 ```
 
-### ✓ DO: Use for Broadcasting
+### Use for broadcasting
 
 ```csharp
 // Good: Release all waiting threads simultaneously
@@ -318,11 +308,11 @@ start.Set();
 await Task.WhenAll(workers);
 ```
 
-### ✓ DO: Use a custom pool when high contention is expected
+### Use a custom pool when high contention is expected
 
 Provide a larger object pool to avoid temporary allocations when many waiters are queued simultaneously.
 
-### ✓ DO: Always await `ValueTask` directly when possible
+### Always await `ValueTask` directly when possible
 
 ```csharp
 // Good: Direct await
@@ -332,7 +322,7 @@ await _event.WaitAsync();
 await _event.WaitAsync().AsTask();
 ```
 
-### ✗ DON'T: Use for One-at-a-Time Signaling
+### Don't use for one-at-a-time signaling
 
 ```csharp
 // Bad: Releases ALL waiters, not just one
@@ -346,11 +336,11 @@ evt.Set(); // Both tasks complete!
 // Better: Use AsyncAutoResetEvent for one-at-a-time
 ```
 
-### ✗ DON'T: Store `AsTask()` Before Signaling (when `RunContinuationAsynchronously == true`)
+### Don't store `AsTask()` before signaling (when `RunContinuationAsynchronously == true`)
 
 Storing the `Task` result of `AsTask()` before `Set()` forces an asynchronous completion path that can be much slower. Prefer awaiting the `ValueTask` directly.
 
-### ✗ DON'T: Await `ValueTask` Multiple Times
+### Don't await `ValueTask` multiple times
 
 ```csharp
 // Bad: Throws InvalidOperationException
@@ -364,7 +354,7 @@ await t;
 await t;  // OK
 ```
 
-### ✓ DO: Use `WaitAsync(TimeSpan)` for timed waits
+### Use `WaitAsync(TimeSpan)` for timed waits
 
 ```csharp
 try

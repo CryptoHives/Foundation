@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA2012 // Use ValueTasks correctly
-#pragma warning disable CS4014 // Because this call is not awaited
 
 namespace Threading.Tests.Async.Pooled.AsyncBarrier;
 
@@ -211,8 +210,8 @@ public class AsyncBarrierTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await barrier.SignalAndWaitAsync(cts.Token).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            await barrier.SignalAndWaitAsync(cts.Token).ConfigureAwait(false)).ConfigureAwait(false);
 
         using (Assert.EnterMultipleScope())
         {
@@ -234,8 +233,8 @@ public class AsyncBarrierTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await waiter.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await waiter.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
@@ -483,24 +482,22 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public Task PostPhaseActionExceptionThrowsBarrierPostPhaseException()
+    public async Task PostPhaseActionExceptionThrowsBarrierPostPhaseException()
     {
         var barrier = new AsyncBarrier(1, b => throw new InvalidOperationException("Post-phase error"));
 
-        BarrierPostPhaseException? ex = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
-            await barrier.SignalAndWaitAsync().ConfigureAwait(false));
+        BarrierPostPhaseException? ex = await Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
+            await barrier.SignalAndWaitAsync().ConfigureAwait(false)).ConfigureAwait(false);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ex!.InnerException, Is.TypeOf<InvalidOperationException>());
             Assert.That(ex.InnerException!.Message, Is.EqualTo("Post-phase error"));
         }
-
-        return Task.CompletedTask;
     }
 
     [Test]
-    public Task PostPhaseActionExceptionPropagatedToAllWaiters()
+    public async Task PostPhaseActionExceptionPropagatedToAllWaiters()
     {
         using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => {
@@ -514,15 +511,15 @@ public class AsyncBarrierTests
         ValueTask waiter2 = barrier.SignalAndWaitAsync();
 
         // Last participant triggers the post-phase action
-        BarrierPostPhaseException? ex3 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
-            await barrier.SignalAndWaitAsync().ConfigureAwait(false));
+        BarrierPostPhaseException? ex3 = await Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
+            await barrier.SignalAndWaitAsync().ConfigureAwait(false)).ConfigureAwait(false);
 
         // Previous waiters should also receive the exception
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        BarrierPostPhaseException? ex1 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
-            await waiter1.ConfigureAwait(false));
-        BarrierPostPhaseException? ex2 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
-            await waiter2.ConfigureAwait(false));
+        BarrierPostPhaseException? ex1 = await Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
+            await waiter1.ConfigureAwait(false)).ConfigureAwait(false);
+        BarrierPostPhaseException? ex2 = await Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
+            await waiter2.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
@@ -537,8 +534,6 @@ public class AsyncBarrierTests
 
             Assert.That(pool.ActiveCount, Is.Zero);
         }
-
-        return Task.CompletedTask;
     }
 
     [Test]
@@ -552,8 +547,8 @@ public class AsyncBarrierTests
         });
 
         // Phase 0 throws
-        Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
-            await barrier.SignalAndWaitAsync().ConfigureAwait(false));
+        await Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
+            await barrier.SignalAndWaitAsync().ConfigureAwait(false)).ConfigureAwait(false);
 
         Assert.That(barrier.CurrentPhase, Is.EqualTo(1));
 
@@ -583,7 +578,7 @@ public class AsyncBarrierTests
     }
 
     [Test]
-    public Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
+    public async Task PostPhaseActionExceptionOnRemoveParticipantsPropagatedToWaiters()
     {
         using var pool = new TestObjectPool<bool>();
         var barrier = new AsyncBarrier(3, b => throw new InvalidOperationException("Remove error"), pool: pool);
@@ -597,10 +592,10 @@ public class AsyncBarrierTests
 
         // Waiters should receive the exception
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        BarrierPostPhaseException? ex1 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
-            await waiter1.ConfigureAwait(false));
-        BarrierPostPhaseException? ex2 = Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
-            await waiter2.ConfigureAwait(false));
+        BarrierPostPhaseException? ex1 = await Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
+            await waiter1.ConfigureAwait(false)).ConfigureAwait(false);
+        BarrierPostPhaseException? ex2 = await Assert.ThrowsAsync<BarrierPostPhaseException>(async () =>
+            await waiter2.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
@@ -609,8 +604,6 @@ public class AsyncBarrierTests
             Assert.That(ex2!.InnerException!.Message, Is.EqualTo("Remove error"));
             Assert.That(pool.ActiveCount, Is.Zero);
         }
-
-        return Task.CompletedTask;
     }
 
     [Test]
@@ -703,13 +696,17 @@ public class AsyncBarrierTests
     [Test, CancelAfter(30_000)]
     public async Task PostPhaseActionCannotSignalTheBarrier()
     {
-        Exception? fromSignal = null;
+        Task? signalFromAction = null;
 
-        var barrier = new AsyncBarrier(1, b => fromSignal = Assert.CatchAsync(async () => await b.SignalAndWaitAsync().ConfigureAwait(false)));
+        var barrier = new AsyncBarrier(1, b => signalFromAction = SignalAsync(b));
 
         await barrier.SignalAndWaitAsync().ConfigureAwait(false);
 
-        Assert.That(fromSignal, Is.TypeOf<InvalidOperationException>());
+        Assert.That(signalFromAction, Is.Not.Null);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => signalFromAction!).ConfigureAwait(false);
+
+        // The post-phase action is synchronous; an async wrapper turns a synchronous throw into a faulted task.
+        static async Task SignalAsync(AsyncBarrier barrier) => await barrier.SignalAndWaitAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -749,9 +746,11 @@ public class AsyncBarrierTests
         }
     }
 
+
     [Test]
     public async Task PostPhaseActionWithMultiplePhases()
     {
+        int[] expected = new[] { 1, 1, 1 };
         int[] phaseCounts = new int[3];
         var barrier = new AsyncBarrier(2, b => {
             if (b.CurrentPhase < 3)
@@ -768,7 +767,7 @@ public class AsyncBarrierTests
             ).ConfigureAwait(false);
         }
 
-        Assert.That(phaseCounts, Is.EqualTo(new[] { 1, 1, 1 }));
+        Assert.That(phaseCounts, Is.EqualTo(expected));
     }
 
     [Test]
@@ -787,20 +786,19 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
     }
 
     [Test]
-    public Task SignalAndWaitAsyncWithZeroTimeoutThrowsWhenParticipantsPending()
+    public async Task SignalAndWaitAsyncWithZeroTimeoutThrowsWhenParticipantsPending()
     {
         var barrier = new AsyncBarrier(2);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false));
-        return Task.CompletedTask;
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await barrier.SignalAndWaitAsync(TimeSpan.Zero).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test]

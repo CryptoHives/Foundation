@@ -34,7 +34,7 @@ public class ComputeHashTests
         bool result = hash.TryComputeHash(TestData, tooSmall, out int bytesWritten);
 
         Assert.That(result, Is.False, $"{factory.Name}: TryComputeHash should return false for undersized destination");
-        Assert.That(bytesWritten, Is.EqualTo(0), $"{factory.Name}: bytesWritten should be 0 for undersized destination");
+        Assert.That(bytesWritten, Is.Zero, $"{factory.Name}: bytesWritten should be 0 for undersized destination");
     }
 
     /// <summary>
@@ -51,7 +51,7 @@ public class ComputeHashTests
         bool result = hash.TryComputeHash(TestData, Span<byte>.Empty, out int bytesWritten);
 
         Assert.That(result, Is.False, $"{factory.Name}: TryComputeHash should return false for empty destination");
-        Assert.That(bytesWritten, Is.EqualTo(0), $"{factory.Name}: bytesWritten should be 0 for empty destination");
+        Assert.That(bytesWritten, Is.Zero, $"{factory.Name}: bytesWritten should be 0 for empty destination");
     }
 
     /// <summary>

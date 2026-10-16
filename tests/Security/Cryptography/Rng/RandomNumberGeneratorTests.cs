@@ -26,6 +26,39 @@ public class RandomNumberGeneratorTests
         Assert.That(buffer.ToArray(), Is.Not.EqualTo(new byte[32]));
     }
 
+    [Test]
+    public void GetBytes_AfterDispose_ThrowsObjectDisposedException()
+    {
+        var rng = RandomNumberGenerator.Create();
+        rng.Dispose();
+        byte[] buffer = new byte[8];
+
+        Assert.That(() => rng.GetBytes(buffer), Throws.TypeOf<ObjectDisposedException>());
+        Assert.That(() => rng.GetBytes(buffer, 0, buffer.Length), Throws.TypeOf<ObjectDisposedException>());
+        Assert.That(() => rng.GetBytes(buffer.AsSpan()), Throws.TypeOf<ObjectDisposedException>());
+    }
+
+    [Test]
+    public void Dispose_Twice_DoesNotThrow()
+    {
+        var rng = RandomNumberGenerator.Create();
+        rng.Dispose();
+
+        Assert.That(rng.Dispose, Throws.Nothing);
+    }
+
+    [Test]
+    public void Fill_IsUnaffectedByDisposingAnInstance()
+    {
+        RandomNumberGenerator.Create().Dispose();
+        byte[] buffer = new byte[32];
+
+        RandomNumberGenerator.Fill(buffer);
+        RandomNumberGenerator.Fill(buffer.AsSpan());
+
+        Assert.That(buffer, Is.Not.EqualTo(new byte[32]));
+    }
+
 #if !NET6_0_OR_GREATER
     /// <summary>
     /// On frameworks without a span-based OS API, <see cref="RandomNumberGenerator.GetBytes(Span{byte})"/>

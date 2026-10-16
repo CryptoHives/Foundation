@@ -5,8 +5,13 @@ namespace Cryptography.Tests.Cipher.Ccm;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Modes;
+using Org.BouncyCastle.Crypto.Parameters;
 using System;
+using System.Linq;
 using CryptographicException = System.Security.Cryptography.CryptographicException;
+using IAeadCipher = CryptoHives.Foundation.Security.Cryptography.Cipher.IAeadCipher;
 
 /// <summary>
 /// Tests for AES-CCM implementation using RFC 3610 test vectors.
@@ -93,6 +98,51 @@ public class AesCcmTests
 
         Assert.That(ciphertext, Is.EqualTo(expectedCiphertext), "Ciphertext mismatch");
         Assert.That(tag, Is.EqualTo(expectedTag), "Tag mismatch");
+    }
+
+    /// <summary>
+    /// Every nonce length CCM allows, on every tier, against BouncyCastle. A nonce shorter than
+    /// 11 bytes leaves a length field wider than 32 bits.
+    /// </summary>
+    [Test]
+    public void AesCcm_EveryNonceLength_MatchesBouncyCastle(
+        [Values("AES-128-CCM", "AES-192-CCM", "AES-256-CCM")] string family,
+        [Values(7, 8, 9, 10, 11, 12, 13)] int nonceLength)
+    {
+        var rng = new Random(nonceLength);
+
+        foreach (CipherAlgorithmRegistry.CipherImplementation impl in CipherAlgorithmRegistry.ByFamily(family).Where(impl => impl.Source is CipherAlgorithmRegistry.Source.Simd or CipherAlgorithmRegistry.Source.Managed))
+        {
+            byte[] key = RandomBytes(rng, impl.KeySizeBits / 8);
+            byte[] nonce = RandomBytes(rng, nonceLength);
+            byte[] aad = RandomBytes(rng, 20);
+            byte[] plaintext = RandomBytes(rng, 45);
+
+            using var ccm = (IAeadCipher)impl.Create(key);
+            byte[] ciphertext = new byte[plaintext.Length];
+            byte[] tag = new byte[16];
+            ccm.Encrypt(nonce, plaintext, ciphertext, tag, aad);
+
+            var reference = new CcmBlockCipher(new AesEngine());
+            reference.Init(true, new AeadParameters(new KeyParameter(key), 128, nonce, aad));
+            byte[] expected = new byte[reference.GetOutputSize(plaintext.Length)];
+            int written = reference.ProcessBytes(plaintext, 0, plaintext.Length, expected, 0);
+            reference.DoFinal(expected, written);
+
+            Assert.That(ciphertext, Is.EqualTo(expected.AsSpan(0, plaintext.Length).ToArray()), $"{impl.Name} ciphertext");
+            Assert.That(tag, Is.EqualTo(expected.AsSpan(plaintext.Length).ToArray()), $"{impl.Name} tag");
+
+            byte[] decrypted = new byte[plaintext.Length];
+            Assert.That(ccm.Decrypt(nonce, ciphertext, tag, decrypted, aad), Is.True, impl.Name);
+            Assert.That(decrypted, Is.EqualTo(plaintext), impl.Name);
+        }
+    }
+
+    private static byte[] RandomBytes(Random rng, int length)
+    {
+        byte[] bytes = new byte[length];
+        rng.NextBytes(bytes);
+        return bytes;
     }
 
     // ========================================================================

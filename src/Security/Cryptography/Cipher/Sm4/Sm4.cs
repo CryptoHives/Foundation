@@ -74,13 +74,13 @@ public sealed class Sm4 : SymmetricCipher
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new Sm4CipherTransform(key, iv, encrypting: true, Mode, Padding);
+        return new Sm4CipherTransform(key, iv, encrypting: true, Mode, Padding, FeedbackSize / 8);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new Sm4CipherTransform(key, iv, encrypting: false, Mode, Padding);
+        return new Sm4CipherTransform(key, iv, encrypting: false, Mode, Padding, FeedbackSize / 8);
     }
 }

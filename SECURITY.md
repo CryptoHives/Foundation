@@ -25,7 +25,7 @@ Please include:
 
 ### No GitHub account?
 
-Send a short note to **[security@cryptohives.org](mailto:security@cryptohives.org)** — **without** any vulnerability details — and we will invite you to a private advisory where they can be shared securely. We do not offer PGP-encrypted email.
+Send a short note to **[security@cryptohives.org](mailto:security@cryptohives.org)** — **without** any vulnerability details — and we will invite you to a private advisory where they can be shared securely.
 
 ---
 

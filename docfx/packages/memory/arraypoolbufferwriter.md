@@ -2,31 +2,7 @@
 
 A high-performance implementation of `IBufferWriter<T>` that uses pooled memory segments from `ArrayPool<T>`.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`Object` → **`ArrayPoolBufferWriter<T>`**
-
-## Implements
-
-- `IBufferWriter<T>`
-- `IDisposable`
-- `IResettable`
-
-## Syntax
-
-```csharp
-public sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable, IResettable
-```
-
-## Type Parameters
-
-**`T`** - The type of elements in the buffer
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.ArrayPoolBufferWriter%601)
 
 ## Overview
 
@@ -251,11 +227,11 @@ using var writer = new ArrayPoolBufferWriter<byte>(
 
 ## Thread Safety
 
-⚠️ **Not thread-safe**. External synchronization required for concurrent access.
+**Not thread-safe**. External synchronization required for concurrent access.
 
 ## Best Practices
 
-### DO: Dispose Properly
+### Dispose properly
 
 ```csharp
 using var writer = new ArrayPoolBufferWriter<byte>();
@@ -263,21 +239,21 @@ using var writer = new ArrayPoolBufferWriter<byte>();
 // Automatically disposed and arrays returned
 ```
 
-### DO: Provide Size Hints
+### Provide size hints
 
 ```csharp
 // If you know the size, provide a hint
 Span<byte> span = writer.GetSpan(sizeHint: 1024);
 ```
 
-### DON'T: Use ReadOnlySequence After More Writes
+### Don't use ReadOnlySequence after more writes
 
 ```csharp
 var sequence1 = writer.GetReadOnlySequence();
 writer.GetSpan(100); // This invalidates sequence1!
 ```
 
-### DO: Get Sequence Once at the End
+### Get sequence once at the end
 
 ```csharp
 // Write all data
@@ -287,7 +263,7 @@ WriteData(writer);
 ReadOnlySequence<byte> finalSequence = writer.GetReadOnlySequence();
 ```
 
-### DO: Lease When the Payload Must Leave the Scope
+### Lease when the payload must leave the scope
 
 ```csharp
 static SequenceLease<byte> BuildPayload()
@@ -298,7 +274,7 @@ static SequenceLease<byte> BuildPayload()
 }
 ```
 
-### Choosing Between the Two
+### Choosing between the two
 
 | API | Cost | The producer | Use when |
 |-----|------|--------------|----------|
@@ -308,7 +284,7 @@ static SequenceLease<byte> BuildPayload()
 Note the writer must **not** be disposed in the scope that leases it — the lease owns it now, and
 disposing it there would release the very buffers the payload is made of.
 
-### DON'T: Touch a Pooled Writer After Disposing It
+### Don't touch a pooled writer after disposing it
 
 ```csharp
 using var writer = ObjectPools.RentBufferWriter<byte>();

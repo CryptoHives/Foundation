@@ -219,7 +219,7 @@ public class AsyncKeyedLockTests
         await taskReady.Task.ConfigureAwait(false);
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await task.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task.ConfigureAwait(false)).ConfigureAwait(false);
         Assert.That(task.IsCanceled, Is.True);
         unlock.Dispose();
 
@@ -238,8 +238,8 @@ public class AsyncKeyedLockTests
 
         AsyncKeyedLock<string>.Releaser outerReleaser = await locks.LockAsync("a").ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            _ = await locks.LockAsync("a", TimeSpan.Zero).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            _ = await locks.LockAsync("a", TimeSpan.Zero).ConfigureAwait(false)).ConfigureAwait(false);
 
         Assert.That(locks.IsInUse("a"), Is.True);
 
@@ -255,8 +255,8 @@ public class AsyncKeyedLockTests
 
         using AsyncKeyedLock<string>.Releaser outerReleaser = await locks.LockAsync("a").ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await locks.LockAsync("a", TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await locks.LockAsync("a", TimeSpan.FromMilliseconds(100)).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
 
@@ -741,7 +741,7 @@ public class AsyncKeyedLockTests
         {
             Assert.That(locks.Count, Is.Zero, "A failed TryLock must release its administrative reference.");
             Assert.That(locks.IsInUse("a"), Is.False);
-            Assert.That(failed, Is.EqualTo(default(AsyncKeyedLock<string>.Releaser)));
+            Assert.That(failed, Is.Default);
         }
     }
 

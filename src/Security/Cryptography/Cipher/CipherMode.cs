@@ -3,7 +3,6 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
-using System;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
@@ -15,7 +14,7 @@ using System.Diagnostics.CodeAnalysis;
 /// and how they relate to each other during encryption/decryption.
 /// </para>
 /// <para>
-/// Values for ECB, CBC, OFB, and CFB match
+/// Values for ECB, CBC, OFB, CFB and CTS match
 /// <see cref="System.Security.Cryptography.CipherMode"/> for compatibility.
 /// Additional modes (CTR, GCM, CCM, Stream) extend beyond the system enum.
 /// </para>
@@ -61,13 +60,10 @@ public enum CipherMode
     /// Value matches <see cref="System.Security.Cryptography.CipherMode.OFB"/>.
     /// </para>
     /// <para>
-    /// <b>Obsolete:</b> OFB is largely superseded by CTR mode, which offers the same
-    /// parallelism and random-access benefits with simpler implementation. Modern protocols
-    /// (TLS 1.3, QUIC, WireGuard, IPsec) exclusively use AEAD modes (GCM, CCM, ChaCha20-Poly1305)
-    /// or CTR. OFB is retained for compatibility but is not implemented in this library.
+    /// Provided for interoperability; prefer CTR or an AEAD mode for new designs. Like CTR it is a
+    /// stream mode: the final partial block is not padded and the padding mode is ignored.
     /// </para>
     /// </remarks>
-    [Obsolete("OFB is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. OFB is superseded by CTR which offers the same parallelism with simpler implementation.")]
     OFB = 3,
 
     /// <summary>
@@ -78,14 +74,11 @@ public enum CipherMode
     /// Value matches <see cref="System.Security.Cryptography.CipherMode.CFB"/>.
     /// </para>
     /// <para>
-    /// <b>Obsolete:</b> CFB was designed for environments requiring self-synchronization
-    /// after bit errors (e.g. noisy serial links), a property irrelevant on modern reliable
-    /// transports. Modern protocols use AEAD modes (GCM, CCM, ChaCha20-Poly1305) which provide
-    /// both confidentiality and integrity. CFB is retained for compatibility but is not
-    /// implemented in this library.
+    /// Provided for interoperability; prefer CTR or an AEAD mode for new designs. The segment size
+    /// is <see cref="System.Security.Cryptography.SymmetricAlgorithm.FeedbackSize"/>, 8 bits by
+    /// default as in-box, and padding is applied to the segment size rather than the block size.
     /// </para>
     /// </remarks>
-    [Obsolete("CFB is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. CFB was designed for self-synchronization on noisy serial links, which is irrelevant on modern reliable transports.")]
     CFB = 4,
 
     /// <summary>
@@ -96,13 +89,11 @@ public enum CipherMode
     /// Value matches <see cref="System.Security.Cryptography.CipherMode.CTS"/>.
     /// </para>
     /// <para>
-    /// <b>Niche:</b> CTS avoids ciphertext expansion by stealing bits from the penultimate block.
-    /// It is used in Kerberos (RFC 3962) and some disk encryption schemes, but is otherwise
-    /// uncommon. Modern AEAD modes and CTR mode handle arbitrary-length data without padding.
-    /// CTS is retained for compatibility but is not implemented in this library.
+    /// Implemented as CBC-CS3, the variant used by Kerberos (RFC 3962): the last two ciphertext
+    /// blocks are always swapped. Input must be at least one block long, the ciphertext is as long
+    /// as the plaintext, and the padding mode is ignored.
     /// </para>
     /// </remarks>
-    [Obsolete("CTS is not implemented. Use CTR or an AEAD mode (GCM, CCM, ChaCha20-Poly1305) instead. CTS is a niche mode used primarily in Kerberos (RFC 3962); modern modes handle arbitrary-length data without padding.")]
     CTS = 5,
 
     /// <summary>

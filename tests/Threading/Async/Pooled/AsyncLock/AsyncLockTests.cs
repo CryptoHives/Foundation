@@ -183,7 +183,7 @@ public class AsyncLockTests
         await taskReady.Task.ConfigureAwait(false);
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await task.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task.ConfigureAwait(false)).ConfigureAwait(false);
         Assert.That(task.IsCanceled, Is.True);
         await unlock.DisposeAsync().ConfigureAwait(false);
 
@@ -322,7 +322,8 @@ public class AsyncLockTests
             // Cancel before queueing
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-            Assert.ThrowsAsync<TaskCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+                await al.LockAsync(cts.Token).ConfigureAwait(false)).ConfigureAwait(false);
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
@@ -345,7 +346,7 @@ public class AsyncLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+            await Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
@@ -404,7 +405,8 @@ public class AsyncLockTests
         using (await vt.ConfigureAwait(false))
         {
             Assert.That(al.IsTaken);
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await al.LockAsync(cts.Token).ConfigureAwait(false));
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+                await al.LockAsync(cts.Token).ConfigureAwait(false)).ConfigureAwait(false);
         }
 
         Assert.That(al.InternalWaiterInUse, Is.False);
@@ -485,8 +487,8 @@ public class AsyncLockTests
 
         using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await mutex.LockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await mutex.LockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
 
@@ -516,8 +518,8 @@ public class AsyncLockTests
 
         using var outerReleaser = await mutex.LockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            _ = await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            _ = await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
 

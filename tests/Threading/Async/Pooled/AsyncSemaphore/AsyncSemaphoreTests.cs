@@ -164,8 +164,8 @@ public class AsyncSemaphoreTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await semaphore.WaitAsync(cts.Token).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            await semaphore.WaitAsync(cts.Token).ConfigureAwait(false)).ConfigureAwait(false);
 
         using (Assert.EnterMultipleScope())
         {
@@ -187,8 +187,8 @@ public class AsyncSemaphoreTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda/closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await waiter.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await waiter.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda/closure
 
         using (Assert.EnterMultipleScope())
@@ -214,7 +214,7 @@ public class AsyncSemaphoreTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda/closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda/closure
 
         semaphore.Release(2);
@@ -264,8 +264,8 @@ public class AsyncSemaphoreTests
     {
         var semaphore = new AsyncSemaphore(0);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await semaphore.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await semaphore.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
 
@@ -283,12 +283,12 @@ public class AsyncSemaphoreTests
     }
 
     [Test]
-    public void WaitAsyncWithZeroTimeoutThrowsWhenNoPermit()
+    public async Task WaitAsyncWithZeroTimeoutThrowsWhenNoPermit()
     {
         var semaphore = new AsyncSemaphore(0);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await semaphore.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await semaphore.WaitAsync(TimeSpan.Zero).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test]

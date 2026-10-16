@@ -45,8 +45,11 @@ public class AsyncManualResetEventTests
 
         // Non-consuming: repeated calls keep returning true.
         Assert.That(mre.TryWait(), Is.True);
-        Assert.That(mre.TryWait(), Is.True);
-        Assert.That(mre.IsSet, Is.True);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mre.TryWait(), Is.True);
+            Assert.That(mre.IsSet, Is.True);
+        }
 
         mre.Reset();
         Assert.That(mre.TryWait(), Is.False);
@@ -287,7 +290,7 @@ public class AsyncManualResetEventTests
         ValueTask vt = ev.WaitAsync(cts.Token);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
@@ -310,7 +313,7 @@ public class AsyncManualResetEventTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await vt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
@@ -361,7 +364,7 @@ public class AsyncManualResetEventTests
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter2.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
@@ -389,7 +392,7 @@ public class AsyncManualResetEventTests
         var ev = new AsyncManualResetEvent(pool: pool);
         using var cts = new CancellationTokenSource();
 
-        var waiter = ev.WaitAsync(cts.Token);
+        ValueTask waiter = ev.WaitAsync(cts.Token);
         ev.Set();
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
@@ -454,8 +457,8 @@ public class AsyncManualResetEventTests
         using var pool = new TestObjectPool<bool>();
         var ev = new AsyncManualResetEvent(pool: pool);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await ev.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await ev.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
 
@@ -463,13 +466,13 @@ public class AsyncManualResetEventTests
     }
 
     [Test]
-    public void WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSet()
+    public async Task WaitAsyncWithZeroTimeoutThrowsImmediatelyWhenNotSet()
     {
         using var pool = new TestObjectPool<bool>();
         var ev = new AsyncManualResetEvent(pool: pool);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await ev.WaitAsync(TimeSpan.Zero).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test]

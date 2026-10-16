@@ -1,8 +1,9 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
+namespace Cryptography.Tests.Kdf;
 
+using CryptoHives.Foundation.Security.Cryptography.Kdf;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using NUnit.Framework;
 using System;
@@ -181,8 +182,11 @@ public sealed class KbkdfTests
             Encoding.UTF8.GetBytes("iv"), TestContext);
 
         Assert.That(enc, Is.Not.EqualTo(auth));
-        Assert.That(enc, Is.Not.EqualTo(iv));
-        Assert.That(auth, Is.Not.EqualTo(iv));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(enc, Is.Not.EqualTo(iv));
+            Assert.That(auth, Is.Not.EqualTo(iv));
+        }
     }
 
     [Test]

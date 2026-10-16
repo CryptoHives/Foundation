@@ -6,8 +6,9 @@ against the shipped source. Do not invent members. Human-oriented docs live in `
 - **Package:** `CryptoHives.Foundation.Security.Cryptography` (0.x — the API is pre-1.0
   and may still change between minor versions)
 - **Root namespace:** `CryptoHives.Foundation.Security.Cryptography` with sub-namespaces
-  `.Hash`, `.Mac`, `.Kdf`, `.Cipher`, `.Kem`, `.Dsa`. The root namespace itself holds
-  `CryptographicOperations` (`ZeroMemory`, `FixedTimeEquals`) and the `PbeOptions` family
+  `.Hash`, `.Mac`, `.Kdf`, `.Cipher`, `.Kem`, `.Dsa`, `.Rng`. The root namespace itself holds
+  `CryptographicOperations` (`ZeroMemory`, `FixedTimeEquals`) and the `PbeOptions` family;
+  `.Rng` holds `RandomNumberGenerator` (see *Random numbers* below)
 - **What it is:** fully managed, deterministic, cross-platform implementations of hashes,
   MACs, KDFs, ciphers, and post-quantum KEMs and signatures. Hash and cipher types **extend the
   `System.Security.Cryptography` base types**, and `.Kem` / `.Dsa` **mirror their names and
@@ -31,8 +32,8 @@ e.g. SHA-3, KMAC, or Ascon).
 
 `using CryptoHives.Foundation.Security.Cryptography.Hash;`
 
-Concrete types extend `System.Security.Cryptography.HashAlgorithm` and add pooled static
-one-shot helpers:
+Concrete types (all but the two ParallelHash types below) extend
+`System.Security.Cryptography.HashAlgorithm` and add pooled static one-shot helpers:
 
 ```csharp
 byte[] digest = SHA256.HashData(data);                          // ReadOnlySpan<byte> or ReadOnlySequence<byte>
@@ -54,7 +55,8 @@ Prefer the static `HashData`/`TryHashData` for one-shot cases (allocation-light,
 - BLAKE: `Blake2b` `Blake2s` `Blake3`
 - Legacy (kept for compat): `SHA1` `MD5` `Ripemd160`
 - Regional/other: `SM3` `Whirlpool` `Kupyna` `Streebog` `Lsh256` `Lsh512` `AsconHash256` `AsconXof128`
-- Parallel: `ParallelHash` `IncrementalParallelHash`
+- Parallel: `ParallelHash` (static one-shot) `IncrementalParallelHash` (`IDisposable`) — the two
+  that do **not** extend `HashAlgorithm`
 
 **XOF (extendable output)** — `Shake*`, `CShake*`, `TurboShake*`, `KT*`, `Blake3`,
 `AsconXof128` implement `IExtendableOutput`:
@@ -135,9 +137,10 @@ interface IAeadCipher : IDisposable {
     byte[] Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextWithTag, ReadOnlySpan<byte> associatedData = default);    // throws on auth failure
 }
 ```
-AEAD types: `AesGcm128/192/256`, `AesCcm128/192/256`, `ChaCha20Poly1305`,
-`XChaCha20Poly1305`, `AsconAead128`. Construct via `Create(ReadOnlySpan<byte> key)`, e.g.
-`using var gcm = AesGcm256.Create(key);`.
+AEAD types: `AesGcm128/192/256`, `AesCcm128/192/256`, `AesGcmSiv128/256` (nonce-misuse
+resistant), `ChaCha20Poly1305`, `XChaCha20Poly1305`, `AsconAead128`. Construct via the static
+`Create(key)`, e.g. `using var gcm = AesGcm256.Create(key);` — the AES types take a
+`ReadOnlySpan<byte>`, the ChaCha and Ascon types a `byte[]`.
 
 **Block ciphers** extend `SymmetricCipher : System.Security.Cryptography.SymmetricAlgorithm`
 (drop-in: set `Key`/`IV`, use `CreateEncryptor()`/`CreateDecryptor()`, or the type's
@@ -186,9 +189,9 @@ byte[] receiverSecret = receiver.Decapsulate(ciphertext);          // == senderS
 Members (the full in-box surface except the key formats listed below):
 
 - `static bool IsSupported` — always `true`.
-- `static MLKem GenerateKey(MLKemAlgorithm)`.
+- `static MLKem GenerateKey(MLKemAlgorithm)`, plus a `(MLKemAlgorithm, bool pairwiseConsistencyTest)` overload.
 - `static MLKem ImportPrivateSeed | ImportDecapsulationKey | ImportEncapsulationKey(MLKemAlgorithm, ReadOnlySpan<byte>)`,
-  each with a `byte[]` overload.
+  each with a `byte[]` overload; `ImportPrivateSeed` also takes `bool pairwiseConsistencyTest`.
 - `void Encapsulate(Span<byte> ciphertext, Span<byte> sharedSecret)` and
   `void Encapsulate(out byte[] ciphertext, out byte[] sharedSecret)`.
 - `void Decapsulate(ReadOnlySpan<byte> ciphertext, Span<byte> sharedSecret)` and
@@ -383,9 +386,10 @@ finally
 `ImportFromPem(someString)` still compiles — the API no longer *forces* a string, it does not
 forbid one.
 
-`string` survives on exactly two members, because their content is public by construction:
+Only two members return a `string`, because what they return is public by construction:
 `ExportSubjectPublicKeyInfoPem()` (a public key) and `ExportEncryptedPkcs8PrivateKeyPem(...)`
-(ciphertext).
+(ciphertext). For the same reason `ImportFromEncryptedPem(string source, byte[] passwordBytes)`
+accepts the encrypted PEM as a `string`; the password is still bytes.
 
 Full reference, including the per-member porting table:
 <https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html>
@@ -426,6 +430,35 @@ shared type name, the same as for `MLKem`/`MLDsa`/`SlhDsa`. Alias one side:
 there is no `ZeroMemory` overload for other element types, and no `HashData`-style helper here.
 Zeroing cannot reach what you do not own: a `string` can never be erased, and a buffer the runtime
 already copied (an encoding step, a grown `List<T>` or `MemoryStream`) leaves the old copy behind.
+
+---
+
+## Random numbers — `…Rng`
+
+`using CryptoHives.Foundation.Security.Cryptography.Rng;`
+
+`RandomNumberGenerator` gives the span-based `Fill` on every target framework, including
+net462/net472/netstandard2.0 where the in-box static is missing. Every byte comes from the
+platform generator; nothing is generated here.
+
+```csharp
+static void Fill(Span<byte> data);   // shared generator, thread-safe — prefer this
+static void Fill(byte[] data);
+static RandomNumberGenerator Create();
+void GetBytes(byte[] data); void GetBytes(byte[] data, int offset, int count); void GetBytes(Span<byte> data);
+```
+
+| Source pattern | Replace with |
+|---|---|
+| `System.Security.Cryptography.RandomNumberGenerator.Fill(span)` on a downlevel target | the same call, this namespace |
+| `RandomNumberGenerator.GetBytes(16)` (.NET 6+) | `var b = new byte[16]; RandomNumberGenerator.Fill(b);` |
+
+**Do not invent these — not implemented:** `GetBytes(int)`, `GetInt32`, `GetNonZeroBytes`,
+`GetItems`, `GetString`, `GetHexString`, `Shuffle`. The type wraps the in-box generator rather than
+deriving from it, so it cannot be passed where a `System.Security.Cryptography.RandomNumberGenerator`
+is expected. Importing both namespaces is `CS0104` — alias one side,
+`using Bcl = System.Security.Cryptography;`. On netstandard2.1 and later the in-box `Fill` draws
+from the same generator, so leave existing calls there alone.
 
 ---
 

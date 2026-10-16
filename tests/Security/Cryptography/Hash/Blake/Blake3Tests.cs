@@ -7,6 +7,7 @@ using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System;
+using System.Linq;
 using System.Text;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 
@@ -951,13 +952,8 @@ public class Blake3Tests
         byte[] expected = scalar.ComputeHash(input);
 
         Span<byte> actual = stackalloc byte[32];
-        foreach (var flag in new[] { CH.SimdSupport.None, CH.SimdSupport.Ssse3, CH.SimdSupport.Avx2, CH.SimdSupport.Avx512F, CH.SimdSupport.Neon })
+        foreach (var flag in AlgorithmRegistry.GetSimdVariantFlags(Blake3.SimdSupport).Prepend(CH.SimdSupport.None))
         {
-            if (flag != CH.SimdSupport.None && (Blake3.SimdSupport & flag) == 0)
-            {
-                continue;
-            }
-
             using var tier = Blake3.Create(flag, 32);
             Assert.That(tier.TryHashOneShot(input, actual, out int bytesWritten), Is.True, $"tier {flag}");
             Assert.That(bytesWritten, Is.EqualTo(32), $"tier {flag}");
@@ -983,13 +979,8 @@ public class Blake3Tests
         Span<byte> actual = stackalloc byte[32];
         int tiersExercised = 0;
 
-        foreach (var flag in new[] { CH.SimdSupport.Ssse3, CH.SimdSupport.Avx2, CH.SimdSupport.Avx512F, CH.SimdSupport.Neon })
+        foreach (var flag in AlgorithmRegistry.GetSimdVariantFlags(Blake3.SimdSupport))
         {
-            if ((Blake3.SimdSupport & flag) == 0)
-            {
-                continue;
-            }
-
             tiersExercised++;
             using var tier = Blake3.Create(flag, 32);
 

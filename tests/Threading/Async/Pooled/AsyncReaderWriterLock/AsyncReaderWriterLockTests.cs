@@ -546,8 +546,8 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-            Assert.ThrowsAsync<OperationCanceledException>(async () =>
-                await readerTask.ConfigureAwait(false));
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+                await readerTask.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
@@ -577,8 +577,8 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-            Assert.ThrowsAsync<OperationCanceledException>(async () =>
-                await readerTask.ConfigureAwait(false));
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+                await readerTask.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
@@ -608,8 +608,8 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-            Assert.ThrowsAsync<OperationCanceledException>(async () =>
-                await writerTask.ConfigureAwait(false));
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+                await writerTask.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
@@ -640,8 +640,8 @@ public class AsyncReaderWriterLockTests
             await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-            Assert.ThrowsAsync<OperationCanceledException>(async () =>
-                await writerTask.ConfigureAwait(false));
+            await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+                await writerTask.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
         }
 
@@ -868,12 +868,14 @@ public class AsyncReaderWriterLockTests
         // Reader releaser should not allow upgrading
         using (var reader = await rwLock.ReaderLockAsync(timeout, ct).ConfigureAwait(false))
         {
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await reader.UpgradeToWriterLockAsync(timeout).ConfigureAwait(false));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await reader.UpgradeToWriterLockAsync(timeout).ConfigureAwait(false)).ConfigureAwait(false);
         }
 
         // Default (uninitialized) releaser should also throw
         var none = default(AsyncReaderWriterLock.Releaser);
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await none.UpgradeToWriterLockAsync(timeout).ConfigureAwait(false));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await none.UpgradeToWriterLockAsync(timeout).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [TestCaseSource(nameof(TimeoutTestArgs)), CancelAfter(CancelAfterMS)]
@@ -894,7 +896,7 @@ public class AsyncReaderWriterLockTests
         // cancel and ensure waiter cleaned up
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiting.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await waiting.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
         Assert.That(rwLock.InternalUpgradeableReaderWaiterInUse, Is.False);
     }
@@ -918,7 +920,7 @@ public class AsyncReaderWriterLockTests
         // cancel the upgrade attempt and ensure it is removed from waiter queue
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         Assert.That(rwLock.InternalUpgradedWriterWaiterInUse, Is.False);
@@ -945,7 +947,8 @@ public class AsyncReaderWriterLockTests
         using (var upgWriter = await upgr.UpgradeToWriterLockAsync(timeout, ct).ConfigureAwait(false))
         {
             // The returned releaser is an UpgradedWriter and must not be allowed to call EnterUpgradedWriterLockAsync()
-            Assert.ThrowsAsync<InvalidOperationException>(async () => await upgWriter.UpgradeToWriterLockAsync().ConfigureAwait(false));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await upgWriter.UpgradeToWriterLockAsync().ConfigureAwait(false)).ConfigureAwait(false);
         }
 
         // clean up
@@ -996,7 +999,7 @@ public class AsyncReaderWriterLockTests
         // cancel the upgrade attempt and ensure it is removed from waiter queue
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await upgradeAttempt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
 
         using (Assert.EnterMultipleScope())
@@ -1103,7 +1106,7 @@ public class AsyncReaderWriterLockTests
         using var upgr1 = await t1.ConfigureAwait(false);
 
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await t2.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
         using (Assert.EnterMultipleScope())
         {
@@ -1257,7 +1260,7 @@ public class AsyncReaderWriterLockTests
         var vt = upgr.UpgradeToWriterLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
     }
 
@@ -1277,7 +1280,7 @@ public class AsyncReaderWriterLockTests
         var vt = rwLock.WriterLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
     }
 
@@ -1297,7 +1300,7 @@ public class AsyncReaderWriterLockTests
         var vt = rwLock.UpgradeableReaderLockAsync(timeout, cts.Token);
         Assert.That(vt.IsCompleted, Is.True);
 #pragma warning disable CHT010 // ValueTask captured in lambda or closure
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false));
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await vt.ConfigureAwait(false)).ConfigureAwait(false);
 #pragma warning restore CHT010 // ValueTask captured in lambda or closure
     }
 
@@ -1646,10 +1649,11 @@ public class AsyncReaderWriterLockTests
 
     [Test]
     [CancelAfter(CancelAfterMS)]
-    public void UpgradeToWriterLockAsync_WithoutTimeout_OnDefaultReleaser_Throws(CancellationToken ct)
+    public async Task UpgradeToWriterLockAsync_WithoutTimeout_OnDefaultReleaser_Throws(CancellationToken ct)
     {
         var none = default(AsyncReaderWriterLock.Releaser);
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await none.UpgradeToWriterLockAsync(ct).ConfigureAwait(false));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await none.UpgradeToWriterLockAsync(ct).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test]
@@ -1748,8 +1752,8 @@ public class AsyncReaderWriterLockTests
 
         using var outerWriter = await rwLock.WriterLockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
 
@@ -1780,8 +1784,8 @@ public class AsyncReaderWriterLockTests
 
         using var outerReader = await rwLock.ReaderLockAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50).ConfigureAwait(false);
     }
@@ -1810,8 +1814,8 @@ public class AsyncReaderWriterLockTests
 
         using var outerUpgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false)).ConfigureAwait(false);
 
         await Task.Delay(50, ct).ConfigureAwait(false);
     }
@@ -1829,8 +1833,8 @@ public class AsyncReaderWriterLockTests
         Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(-2), ct));
         Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(-2), ct));
         using var upgr = await rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false);
-        Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
-            await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(-2), ct).ConfigureAwait(false));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
+            await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(-2), ct).ConfigureAwait(false)).ConfigureAwait(false);
         using var writerlock = await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false);
 #pragma warning restore VSTHRD110
     }
@@ -1845,8 +1849,8 @@ public class AsyncReaderWriterLockTests
 
         using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await rwLock.ReaderLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await rwLock.ReaderLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test, CancelAfter(CancelAfterMS)]
@@ -1859,8 +1863,8 @@ public class AsyncReaderWriterLockTests
 
         using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await rwLock.WriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await rwLock.WriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test, CancelAfter(CancelAfterMS)]
@@ -1873,8 +1877,8 @@ public class AsyncReaderWriterLockTests
 
         using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await rwLock.UpgradeableReaderLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await rwLock.UpgradeableReaderLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test, CancelAfter(CancelAfterMS)]
@@ -1889,8 +1893,8 @@ public class AsyncReaderWriterLockTests
         using var upgr = await rwLock.UpgradeableReaderLockAsync(ct).ConfigureAwait(false);
         using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await upgr.UpgradeToWriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await upgr.UpgradeToWriterLockAsync(TimeSpan.Zero, ct).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     // A caller passing both an already-cancelled token and TimeSpan.Zero gets
@@ -1911,8 +1915,8 @@ public class AsyncReaderWriterLockTests
         var cancelled = new CancellationToken(true);
         // CatchAsync rather than ThrowsAsync: the cancelled task carries a TaskCanceledException,
         // and what the contract promises is an OperationCanceledException naming the token.
-        var ex = Assert.CatchAsync<OperationCanceledException>(async () =>
-            await rwLock.ReaderLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false));
+        var ex = await Assert.CatchAsync<OperationCanceledException>(async () =>
+            await rwLock.ReaderLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false)).ConfigureAwait(false);
         Assert.That(ex!.CancellationToken, Is.EqualTo(cancelled));
     }
 
@@ -1927,8 +1931,8 @@ public class AsyncReaderWriterLockTests
         using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
         var cancelled = new CancellationToken(true);
-        var ex = Assert.CatchAsync<OperationCanceledException>(async () =>
-            await rwLock.WriterLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false));
+        var ex = await Assert.CatchAsync<OperationCanceledException>(async () =>
+            await rwLock.WriterLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false)).ConfigureAwait(false);
         Assert.That(ex!.CancellationToken, Is.EqualTo(cancelled));
     }
 
@@ -1943,8 +1947,8 @@ public class AsyncReaderWriterLockTests
         using var writer = await rwLock.WriterLockAsync(ct).ConfigureAwait(false);
 
         var cancelled = new CancellationToken(true);
-        var ex = Assert.CatchAsync<OperationCanceledException>(async () =>
-            await rwLock.UpgradeableReaderLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false));
+        var ex = await Assert.CatchAsync<OperationCanceledException>(async () =>
+            await rwLock.UpgradeableReaderLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false)).ConfigureAwait(false);
         Assert.That(ex!.CancellationToken, Is.EqualTo(cancelled));
     }
 
@@ -1961,8 +1965,8 @@ public class AsyncReaderWriterLockTests
         using var reader = await rwLock.ReaderLockAsync(ct).ConfigureAwait(false);
 
         var cancelled = new CancellationToken(true);
-        var ex = Assert.CatchAsync<OperationCanceledException>(async () =>
-            await upgr.UpgradeToWriterLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false));
+        var ex = await Assert.CatchAsync<OperationCanceledException>(async () =>
+            await upgr.UpgradeToWriterLockAsync(TimeSpan.Zero, cancelled).ConfigureAwait(false)).ConfigureAwait(false);
         Assert.That(ex!.CancellationToken, Is.EqualTo(cancelled));
     }
 
@@ -2097,25 +2101,25 @@ public class AsyncReaderWriterLockTests
             .CreateLinkedTokenSource(ct);
         innerCts.CancelAfter(TimeSpan.FromMilliseconds(100));
 
-        Assert.ThrowsAsync<OperationCanceledException>(
+        await Assert.ThrowsAsync<OperationCanceledException>(
             async () => await rwLock
                 .WriterLockAsync(innerCts.Token)
-                .ConfigureAwait(false));
+                .ConfigureAwait(false)).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(
+        await Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .WriterLockAsync(TimeSpan.FromMilliseconds(100), ct)
-                .ConfigureAwait(false));
+                .ConfigureAwait(false)).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(
+        await Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .ReaderLockAsync(TimeSpan.FromMilliseconds(100), ct)
-                .ConfigureAwait(false));
+                .ConfigureAwait(false)).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<TimeoutException>(
+        await Assert.ThrowsAsync<TimeoutException>(
             async () => await rwLock
                 .UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(100), ct)
-                .ConfigureAwait(false));
+                .ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     [Test, CancelAfter(CancelAfterMS)]
@@ -2322,9 +2326,12 @@ public class AsyncReaderWriterLockTests
         // Queue a writer behind the reader, then confirm a new try-reader does not jump the queue.
         // Without this, a caller polling TryReaderLock in a loop could starve the writer forever.
         ValueTask<AsyncReaderWriterLock.Releaser> queuedWriter = rwLock.WriterLockAsync();
-        Assert.That(queuedWriter.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(queuedWriter.IsCompleted, Is.False);
 
-        Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+            Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+        }
 
         reader.Dispose();
 
@@ -2344,8 +2351,11 @@ public class AsyncReaderWriterLockTests
         reader.Dispose();
         upgradeable.Dispose();
 
-        Assert.That(rwLock.IsReadLockHeld, Is.False);
-        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsReadLockHeld, Is.False);
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+        }
     }
 
     [Test]
@@ -2370,9 +2380,12 @@ public class AsyncReaderWriterLockTests
         Assert.That(rwLock.TryReaderLock(out AsyncReaderWriterLock.Releaser reader), Is.True);
 
         ValueTask<AsyncReaderWriterLock.Releaser> queuedWriter = rwLock.WriterLockAsync();
-        Assert.That(queuedWriter.IsCompleted, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(queuedWriter.IsCompleted, Is.False);
 
-        Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+            Assert.That(rwLock.TryUpgradeableReaderLock(out AsyncReaderWriterLock.Releaser _), Is.False);
+        }
 
         reader.Dispose();
 
@@ -2392,8 +2405,11 @@ public class AsyncReaderWriterLockTests
         upgraded.Dispose();
         upgradeable.Dispose();
 
-        Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
-        Assert.That(rwLock.IsWriteLockHeld, Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(rwLock.IsUpgradeableReadLockHeld, Is.False);
+            Assert.That(rwLock.IsWriteLockHeld, Is.False);
+        }
     }
 
     [Test]
