@@ -23,8 +23,8 @@ Being *stateless*, it avoids the dangerous key-state management of LMS/XMSS (SP 
 
 | Variant | Status | Class |
 |---------|--------|-------|
-| SLH-DSA (pure), all 12 parameter sets | ✅ Implemented | `SlhDsa` + `SlhDsaAlgorithm` |
-| HashSLH-DSA (pre-hash, §10.2) | ✅ Implemented | `SlhDsa.SignPreHash` / `SlhDsa.VerifyPreHash` |
+| SLH-DSA (pure), all 12 parameter sets | ✅ | `SlhDsa` + `SlhDsaAlgorithm` |
+| HashSLH-DSA (pre-hash, §10.2) | ✅ | `SlhDsa.SignPreHash` / `SlhDsa.VerifyPreHash` |
 
 ---
 

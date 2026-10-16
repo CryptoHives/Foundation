@@ -285,7 +285,7 @@ When a waiting participant is cancelled:
 
 ## Best Practices
 
-### ✓ DO: Use `SignalAndWaitAsync(TimeSpan)` to guard against slow participants
+### Use `SignalAndWaitAsync(TimeSpan)` to guard against slow participants
 
 ```csharp
 try

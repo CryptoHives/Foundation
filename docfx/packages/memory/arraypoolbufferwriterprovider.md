@@ -3,25 +3,7 @@
 An immutable set of [`ArrayPoolBufferWriter<T>`](arraypoolbufferwriter.md) settings that hands out
 writers already configured with them.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Pools
-```
-
-## Inheritance
-
-`Object` → **`ArrayPoolBufferWriterProvider<T>`**
-
-## Syntax
-
-```csharp
-public sealed class ArrayPoolBufferWriterProvider<T>
-```
-
-## Type Parameters
-
-**`T`** — The element type the writers accept.
+**Namespace:** `CryptoHives.Foundation.Memory.Pools` · [API reference](xref:CryptoHives.Foundation.Memory.Pools.ArrayPoolBufferWriterProvider%601)
 
 ## Why It Exists
 
@@ -131,7 +113,7 @@ A provider is **immutable and thread-safe**; share one freely, typically as a `s
 
 The writers it hands out are **not** thread-safe and belong to one caller until disposed.
 
-⚠️ **Do not use a writer after disposing it.** A returned instance does not throw
+**Do not use a writer after disposing it.** A returned instance does not throw
 `ObjectDisposedException` — it silently becomes whatever the next renter is doing. This is the same
 contract as `ArrayPool<T>` itself.
 

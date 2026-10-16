@@ -4,26 +4,7 @@ An [`ISegmentOwner<T>`](isegmentowner.md) that wraps a GC-managed `T[]` in an
 `ArraySegment<T>`. The underlying array is collected by the garbage collector;
 `Dispose` only clears the segment wrapper.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`Object` → **`AllocatedSegment<T>`**
-
-## Implements
-
-- [`ISegmentOwner<T>`](isegmentowner.md)
-- `IDisposable`
-
-## Syntax
-
-```csharp
-public sealed class AllocatedSegment<T> : ISegmentOwner<T>
-```
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.AllocatedSegment%601)
 
 ## Overview
 
@@ -118,5 +99,4 @@ segment[3] = 0xEF;
 ---
 
 © 2026 The Keepers of the CryptoHives
-
 

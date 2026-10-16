@@ -40,7 +40,8 @@ using System.Buffers.Binary;
 /// <code>
 /// // Derive a 32-byte key from a password using HMAC-SHA-256 with 600,000 iterations
 /// byte[] password = Encoding.UTF8.GetBytes("my-password");
-/// byte[] salt = RandomNumberGenerator.GetBytes(16);
+/// byte[] salt = new byte[16];
+/// RandomNumberGenerator.Fill(salt);
 ///
 /// byte[] derivedKey = Pbkdf2.DeriveKey(
 ///     key =&gt; new HmacSha256(key),

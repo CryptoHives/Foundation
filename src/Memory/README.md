@@ -169,3 +169,4 @@ If you discover a vulnerability, please don't open a public issue — report it 
 
 MIT OR Apache-2.0 — © 2026 The Keepers of the CryptoHives
 
+See [Choosing a license](https://github.com/CryptoHives/Foundation#-choosing-a-license) for how to record which one you use.

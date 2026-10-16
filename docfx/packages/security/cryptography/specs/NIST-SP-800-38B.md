@@ -22,9 +22,9 @@ NIST Special Publication 800-38B specifies the CMAC (Cipher-based Message Authen
 
 | Algorithm | Key Size | MAC Size | Status | Class |
 |-----------|----------|----------|--------|-------|
-| AES-128-CMAC | 128 bits | 128 bits | ✅ Implemented | `AesCmac` |
-| AES-192-CMAC | 192 bits | 128 bits | ✅ Implemented | `AesCmac` |
-| AES-256-CMAC | 256 bits | 128 bits | ✅ Implemented | `AesCmac` |
+| AES-128-CMAC | 128 bits | 128 bits | ✅ | `AesCmac` |
+| AES-192-CMAC | 192 bits | 128 bits | ✅ | `AesCmac` |
+| AES-256-CMAC | 256 bits | 128 bits | ✅ | `AesCmac` |
 
 ## Algorithm
 

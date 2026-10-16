@@ -234,7 +234,7 @@ Measures the performance of acquiring and releasing a single permit. In the curr
 
 ## Best Practices
 
-### ✓ DO: Use `WaitAsync(TimeSpan)` for timed acquisitions
+### Use `WaitAsync(TimeSpan)` for timed acquisitions
 
 ```csharp
 try
@@ -250,7 +250,7 @@ catch (TimeoutException)
 }
 ```
 
-### ✓ DO: Use `TryWait()` for opportunistic, load-shedding paths
+### Use `TryWait()` for opportunistic, load-shedding paths
 
 ```csharp
 if (_semaphore.TryWait())

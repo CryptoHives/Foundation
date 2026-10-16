@@ -4,7 +4,7 @@
 
 **The Keepers of the CryptoHives** is a collective authorship label representing the contributors to the **CryptoHives Open Source Initiative** and its projects.
 
-The **CryptoHives Open Source Initiative** is not a registered legal entity. It is run by its founder as a natural person (Freiberufler), named in the [Impressum](https://cryptohives.github.io/Foundation/impressum.html), who holds the rights in the Initiative's code, documentation, names and accounts on its behalf. If the Initiative is incorporated or joins a foundation, these rights and the contributor licenses will be transferred to that entity.
+The **CryptoHives Open Source Initiative** is not a registered legal entity. It is run by its founder as a natural person, named in the [Impressum](https://cryptohives.github.io/Foundation/impressum.html), who holds the rights in the Initiative's code, documentation, names and accounts on its behalf. If the Initiative is incorporated or joins a foundation, these rights and the contributor licenses will be transferred to that entity.
 
 ---
 
