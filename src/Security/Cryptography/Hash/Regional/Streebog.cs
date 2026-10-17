@@ -635,7 +635,16 @@ public sealed class Streebog : HashAlgorithm
         ref ulong t6 = ref MemoryMarshalEx.GetArrayDataReference(T6);
         ref ulong t7 = ref MemoryMarshalEx.GetArrayDataReference(T7);
 
-        // Convert ulong span to byte span for table lookups
+        // The lookups index the state's little-endian bytes. Every word is overwritten below,
+        // so a big-endian host can swap in place.
+        if (!BitConverter.IsLittleEndian)
+        {
+            for (int i = 0; i < BlockSizeWords; i++)
+            {
+                data[i] = BinaryPrimitives.ReverseEndianness(data[i]);
+            }
+        }
+
         Span<byte> d = MemoryMarshal.AsBytes(data);
 
         // Compute all 8 rows using lookup tables with hardcoded Tau indices

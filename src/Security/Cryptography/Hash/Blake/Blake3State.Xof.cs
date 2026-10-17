@@ -185,10 +185,10 @@ internal unsafe partial struct Blake3State
             CompressBlock(core->_cv, block, (uint)lastBlockLen, _chunkCounter, finalFlags);
         }
 
-        Unsafe.CopyBlockUnaligned(
-            ref MemoryMarshal.GetReference(destination),
-            ref *(byte*)core->_cv,
-            (uint)_outputBytes);
+        fixed (byte* dst = destination)
+        {
+            WriteCvLittleEndian(core->_cv, dst, _outputBytes);
+        }
     }
 
     /// <summary>
