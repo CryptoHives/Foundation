@@ -811,23 +811,25 @@ public class Blake3Tests
         foreach (int inputLength in new[] { 0, 5, 1024, 1025, 4096 })
         {
             byte[] input = GenerateTestInput(inputLength);
-            AssertTruncated(Blake3.Create(outputBytes), Blake3.Create(64), input, outputBytes);
-            AssertTruncated(Blake3.CreateKeyed(key, outputBytes), Blake3.CreateKeyed(key, 64), input, outputBytes);
+
+            using var shortHash = Blake3.Create(outputBytes);
+            using var longHash = Blake3.Create(64);
+            AssertTruncated(shortHash, longHash, input, outputBytes);
+
+            using var shortKeyed = Blake3.CreateKeyed(key, outputBytes);
+            using var longKeyed = Blake3.CreateKeyed(key, 64);
+            AssertTruncated(shortKeyed, longKeyed, input, outputBytes);
         }
 
         static void AssertTruncated(Blake3 shortHash, Blake3 longHash, byte[] input, int outputBytes)
         {
-            using (shortHash)
-            using (longHash)
-            {
-                byte[] expected = longHash.ComputeHash(input).AsSpan(0, outputBytes).ToArray();
-                Assert.That(shortHash.ComputeHash(input), Is.EqualTo(expected), $"{input.Length} bytes in");
+            byte[] expected = longHash.ComputeHash(input).AsSpan(0, outputBytes).ToArray();
+            Assert.That(shortHash.ComputeHash(input), Is.EqualTo(expected), $"{input.Length} bytes in");
 
-                shortHash.Initialize();
-                byte[] oneShot = new byte[outputBytes];
-                Assert.That(shortHash.TryHashOneShot(input, oneShot, out _), Is.True);
-                Assert.That(oneShot, Is.EqualTo(expected), $"one-shot, {input.Length} bytes in");
-            }
+            shortHash.Initialize();
+            byte[] oneShot = new byte[outputBytes];
+            Assert.That(shortHash.TryHashOneShot(input, oneShot, out _), Is.True);
+            Assert.That(oneShot, Is.EqualTo(expected), $"one-shot, {input.Length} bytes in");
         }
     }
 
