@@ -413,9 +413,9 @@ public sealed class AsconAead128 : IAeadCipher
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void EncryptPartialWord(ref ulong s, ReadOnlySpan<byte> input, Span<byte> output)
     {
-        ulong pt = ReadPartialLE(input);
+        ulong pt = BinaryLoad.ReadUInt64LittleEndianPadded(input);
         s ^= pt;
-        WritePartialLE(s, output);
+        BinaryStore.WriteUInt64LittleEndianTruncated(s, output);
     }
 
     /// <summary>
@@ -425,36 +425,10 @@ public sealed class AsconAead128 : IAeadCipher
     private static void DecryptPartialWord(ref ulong s, ReadOnlySpan<byte> input, Span<byte> output)
     {
         int len = input.Length;
-        ulong ct = ReadPartialLE(input);
-        WritePartialLE(s ^ ct, output);
+        ulong ct = BinaryLoad.ReadUInt64LittleEndianPadded(input);
+        BinaryStore.WriteUInt64LittleEndianTruncated(s ^ ct, output);
         ulong mask = ulong.MaxValue << (len << 3);
         s = (s & mask) ^ ct;
-    }
-
-    /// <summary>
-    /// Reads 1–7 bytes as a little-endian partial ulong.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong ReadPartialLE(ReadOnlySpan<byte> data)
-    {
-        ulong result = 0;
-        for (int i = 0; i < data.Length; i++)
-        {
-            result |= (ulong)data[i] << (i << 3);
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// Writes 1–7 bytes from a little-endian ulong.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void WritePartialLE(ulong value, Span<byte> data)
-    {
-        for (int i = 0; i < data.Length; i++)
-        {
-            data[i] = (byte)(value >> (i << 3));
-        }
     }
 
     /// <summary>
@@ -463,7 +437,7 @@ public sealed class AsconAead128 : IAeadCipher
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong PadPartialWord(ReadOnlySpan<byte> data, int len)
     {
-        ulong result = ReadPartialLE(data);
+        ulong result = BinaryLoad.ReadUInt64LittleEndianPadded(data);
         result |= 0x01UL << (len << 3);
         return result;
     }
