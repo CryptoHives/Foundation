@@ -6,6 +6,7 @@ namespace Cryptography.Tests.Hash.Keccak;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Digests;
+using System;
 using System.Text;
 
 /// <summary>
@@ -239,6 +240,47 @@ public class CShakeTests
         byte[] hash2 = cshake2.Hash!;
 
         Assert.That(hash2, Is.EqualTo(hash1));
+    }
+
+    /// <summary>
+    /// left_encode and right_encode (SP 800-185 §2.3.1) write the value's significant bytes,
+    /// big-endian, behind or ahead of their count, at every width from one to eight bytes.
+    /// </summary>
+    /// <param name="x">The value to encode.</param>
+    [TestCase(0L)]
+    [TestCase(1L)]
+    [TestCase(0xFFL)]
+    [TestCase(0x100L)]
+    [TestCase(0x1234_56L)]
+    [TestCase(0x1234_5678L)]
+    [TestCase(0x12_3456_789AL)]
+    [TestCase(0x1234_5678_9ABCL)]
+    [TestCase(0x12_3456_789A_BCDEL)]
+    [TestCase(0x0123_4567_89AB_CDEFL)]
+    [TestCase(long.MaxValue)]
+    public void LeftAndRightEncodeMatchTheDefinition(long x)
+    {
+        var significant = new System.Collections.Generic.List<byte>();
+        for (long t = x; t > 0; t >>= 8)
+        {
+            significant.Insert(0, (byte)(t & 0xFF));
+        }
+
+        if (significant.Count == 0)
+        {
+            significant.Add(0);
+        }
+
+        byte n = (byte)significant.Count;
+        byte[] left = [n, .. significant];
+        byte[] right = [.. significant, n];
+
+        byte[] buffer = new byte[9];
+        Assert.That(CShake128.TryLeftEncode(buffer, x, out int leftWritten), Is.True);
+        Assert.That(buffer.AsSpan(0, leftWritten).ToArray(), Is.EqualTo(left));
+
+        Assert.That(CShake128.TryRightEncode(buffer, x, out int rightWritten), Is.True);
+        Assert.That(buffer.AsSpan(0, rightWritten).ToArray(), Is.EqualTo(right));
     }
 }
 

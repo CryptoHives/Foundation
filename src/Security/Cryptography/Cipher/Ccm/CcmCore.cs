@@ -316,11 +316,8 @@ internal unsafe struct CcmCore
         // Nonce
         nonce.CopyTo(b0.Slice(1, nonce.Length));
 
-        // Message length (big-endian)
-        for (int i = 0; i < L; i++)
-        {
-            b0[BlockSizeBytes - 1 - i] = (byte)((ulong)messageLength >> (i * 8));
-        }
+        // Message length in the last L bytes, big-endian; the shift makes those bytes lead.
+        BinaryStore.WriteUInt64BigEndianTruncated((ulong)messageLength << ((sizeof(ulong) - L) * 8), b0.Slice(BlockSizeBytes - L, L));
     }
 
     private static void FormatCounterBlock(
@@ -338,11 +335,8 @@ internal unsafe struct CcmCore
         // Nonce
         nonce.CopyTo(block.Slice(1, nonce.Length));
 
-        // Counter (big-endian)
-        for (int i = 0; i < L; i++)
-        {
-            block[BlockSizeBytes - 1 - i] = (byte)((ulong)counter >> (i * 8));
-        }
+        // Counter in the last L bytes, big-endian; the shift makes those bytes lead.
+        BinaryStore.WriteUInt64BigEndianTruncated((ulong)counter << ((sizeof(ulong) - L) * 8), block.Slice(BlockSizeBytes - L, L));
     }
 
     private void ProcessAad(
