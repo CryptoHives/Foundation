@@ -392,9 +392,7 @@ public sealed class Lsh512 : HashAlgorithm
             int extraBytes = _hashSizeBytes - outOff;
             if (extraBytes > 0)
             {
-                Span<byte> temp = stackalloc byte[sizeof(UInt64)];
-                BinaryPrimitives.WriteUInt64LittleEndian(temp, _cvL[fullWords] ^ _cvR[fullWords]);
-                temp.Slice(0, extraBytes).CopyTo(destination.Slice(outOff));
+                BinaryStore.WriteUInt64LittleEndianTruncated(_cvL[fullWords] ^ _cvR[fullWords], destination.Slice(outOff, extraBytes));
             }
 
             bytesWritten = _hashSizeBytes;

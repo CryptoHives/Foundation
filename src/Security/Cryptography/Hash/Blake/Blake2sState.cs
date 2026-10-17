@@ -8,7 +8,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
-using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -345,13 +344,10 @@ internal unsafe partial struct Blake2sState : IIncrementalHash<byte[]>
         {
             BinarySpans.WriteUInt32LittleEndian(state, dst, fullWords);
 
-            // Handle partial final word
             int remainingBytes = _outputBytes % sizeof(uint);
             if (remainingBytes > 0)
             {
-                Span<byte> temp = stackalloc byte[sizeof(uint)];
-                BinaryPrimitives.WriteUInt32LittleEndian(temp, _state[fullWords]);
-                temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(uint)));
+                BinaryStore.WriteUInt32LittleEndianTruncated(state[fullWords], dst + (fullWords * sizeof(uint)), remainingBytes);
             }
         }
     }

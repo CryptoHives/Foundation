@@ -59,15 +59,26 @@
     <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
-  <!-- Blake3 NuGet packages that only support .NET 8+ and which are not strong name signed. -->
-  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
+  <!--
+    Blake3 NuGet packages that only support .NET 8+ and which are not strong name signed.
+    "Blake3" and "Blake3.Native" wrap a native library with no binary for some platforms, such as
+    linux-s390x; /p:NativeTestDependencies=false leaves those two out.
+  -->
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true' AND '$(NativeTestDependencies)' != 'false'">
     <PackageReference Include="Blake3" Aliases="Blake3Managed" />
     <PackageReference Include="Blake3.Native" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true' AND '$(NativeTestDependencies)' != 'false'">
+    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <PackageReference Include="Blake3.Managed" />
   </ItemGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
-    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED;BLAKE3_DISSIMILIS</DefineConstants>
+    <DefineConstants>$(DefineConstants);BLAKE3_DISSIMILIS</DefineConstants>
   </PropertyGroup>
 
   <!--
