@@ -196,6 +196,12 @@ public static class HashAlgorithmRegistry
             h.AlgorithmFamily.Equals(family, StringComparison.OrdinalIgnoreCase) &&
             h.Variant.Equals(variant, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    /// Support check for reference libraries that produce wrong digests on a big-endian host,
+    /// as the s390x run shows; there they are dropped rather than reported as our failures.
+    /// </summary>
+    private static bool LittleEndianOnly() => BitConverter.IsLittleEndian;
+
     private static List<HashImplementation> BuildRegistry()
     {
         var list = new List<HashImplementation>();
@@ -477,7 +483,7 @@ public static class HashAlgorithmRegistry
             () => new KonsciousBlake2Adapter(512), Source.Konscious));
 #endif
         list.Add(new("BLAKE2b-512", "Blake2Fast", 512,
-            () => Blake2FastAdapter.CreateBlake2b(512), Source.Blake2Fast));
+            () => Blake2FastAdapter.CreateBlake2b(512), Source.Blake2Fast, LittleEndianOnly));
 
         // BLAKE2b-256
         AlgorithmRegistry.AddHashSimdVariants(list, "BLAKE2b-256", 256, blake2bSimd,
@@ -492,7 +498,7 @@ public static class HashAlgorithmRegistry
             () => new KonsciousBlake2Adapter(256), Source.Konscious));
 #endif
         list.Add(new("BLAKE2b-256", "Blake2Fast", 256,
-            () => Blake2FastAdapter.CreateBlake2b(256), Source.Blake2Fast));
+            () => Blake2FastAdapter.CreateBlake2b(256), Source.Blake2Fast, LittleEndianOnly));
 
         // BLAKE2s-256
         var blake2sSimd = CH.Blake2s.SimdSupport;
@@ -501,7 +507,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2s-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(256)), Source.BouncyCastle));
         list.Add(new("BLAKE2s-256", "Blake2Fast", 256,
-            () => Blake2FastAdapter.CreateBlake2s(256), Source.Blake2Fast));
+            () => Blake2FastAdapter.CreateBlake2s(256), Source.Blake2Fast, LittleEndianOnly));
 
         // BLAKE2s-128
         AlgorithmRegistry.AddHashSimdVariants(list, "BLAKE2s-128", 128, blake2sSimd,
@@ -509,7 +515,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2s-128", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(128)), Source.BouncyCastle));
         list.Add(new("BLAKE2s-128", "Blake2Fast", 128,
-            () => Blake2FastAdapter.CreateBlake2s(128), Source.Blake2Fast));
+            () => Blake2FastAdapter.CreateBlake2s(128), Source.Blake2Fast, LittleEndianOnly));
     }
 
     #endregion
@@ -534,9 +540,9 @@ public static class HashAlgorithmRegistry
 #endif
 #if BLAKE3_DISSIMILIS
         list.Add(new("BLAKE3", "Blake3Dissimilis", 256,
-            () => new Blake3DissimilisAdapter(32), Source.Blake3Dissimilis));
+            () => new Blake3DissimilisAdapter(32), Source.Blake3Dissimilis, LittleEndianOnly));
         list.Add(new("BLAKE3", "Blake3DissimilisSerial", 256,
-            () => new Blake3DissimilisSerialAdapter(32), Source.Blake3DissimilisSerial));
+            () => new Blake3DissimilisSerialAdapter(32), Source.Blake3DissimilisSerial, LittleEndianOnly));
 #endif
     }
 
@@ -617,7 +623,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("Streebog-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_256Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-256", "OpenGost", 256,
-            OpenGost.Security.Cryptography.Streebog256.Create, Source.OpenGost));
+            OpenGost.Security.Cryptography.Streebog256.Create, Source.OpenGost, LittleEndianOnly));
 
         // Streebog-512
         list.Add(new("Streebog-512", "CryptoHives-Scalar", 512,
@@ -625,7 +631,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("Streebog-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_512Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-512", "OpenGost", 512,
-            OpenGost.Security.Cryptography.Streebog512.Create, Source.OpenGost));
+            OpenGost.Security.Cryptography.Streebog512.Create, Source.OpenGost, LittleEndianOnly));
     }
 
     #endregion
