@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
@@ -345,7 +346,7 @@ internal unsafe struct CcmCore
         Span<byte> b)
     {
         b.Clear();
-        int pos = 0;
+        int pos;
 
         // Encode AAD length
         // aad.Length is int, so maximum value is int.MaxValue (~2GB)
@@ -353,18 +354,15 @@ internal unsafe struct CcmCore
         if (aad.Length < 0xFF00)
         {
             // Short form: 2 bytes
-            b[pos++] = (byte)(aad.Length >> 8);
-            b[pos++] = (byte)aad.Length;
+            BinaryPrimitives.WriteUInt16BigEndian(b, (ushort)aad.Length);
+            pos = sizeof(ushort);
         }
         else
         {
             // Medium form: 6 bytes (0xFFFE + 4 bytes)
-            b[pos++] = 0xFF;
-            b[pos++] = 0xFE;
-            b[pos++] = (byte)(aad.Length >> 24);
-            b[pos++] = (byte)(aad.Length >> 16);
-            b[pos++] = (byte)(aad.Length >> 8);
-            b[pos++] = (byte)aad.Length;
+            BinaryPrimitives.WriteUInt16BigEndian(b, 0xFFFE);
+            BinaryPrimitives.WriteUInt32BigEndian(b.Slice(sizeof(ushort)), (uint)aad.Length);
+            pos = sizeof(ushort) + sizeof(uint);
         }
 
         // Copy AAD
