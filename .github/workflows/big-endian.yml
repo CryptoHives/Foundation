@@ -1,0 +1,92 @@
+name: Big-Endian Tests (s390x)
+
+# Runs the Cryptography suite on a big-endian host: an s390x .NET 10 container emulated by QEMU on
+# the x64 runner. No x86 or ARM target .NET supports is big-endian, so every scalar path guarded by
+# BitConverter.IsLittleEndian is otherwise never executed.
+#
+# The test assembly is built natively on the runner and only the test run is emulated. The build
+# passes /p:NativeTestDependencies=false, which drops the two BLAKE3 reference packages that wrap a
+# native library with no s390x binary. Benchmark fixtures are filtered out: they compare against
+# third-party libraries and would dominate an emulated run without exercising anything new.
+
+on:
+  schedule:
+    # Monthly, on the 1st at 02:00 UTC.
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to test. Empty = the default branch.'
+        type: string
+        default: ''
+      filter:
+        description: 'Extra test filter, ANDed with the benchmark exclusion (e.g. FullyQualifiedName~Blake3).'
+        type: string
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  s390x:
+    name: Cryptography tests, linux-s390x (big-endian)
+    runs-on: ubuntu-latest
+    # Emulated s390x is far slower than native; this is the hosted-runner maximum.
+    timeout-minutes: 360
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.ref }}
+
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Build the test assembly
+      run: >
+        dotnet build tests/Security/Cryptography/Cryptography.Tests.csproj
+        -c Release -f net10.0
+        -p:NativeTestDependencies=false
+        -o artifacts/be-tests
+
+    - name: Register the s390x emulator
+      run: docker run --privileged --rm tonistiigi/binfmt --install s390x
+
+    - name: Run the tests on s390x
+      env:
+        EXTRA_FILTER: ${{ inputs.filter }}
+      run: |
+        filter='FullyQualifiedName!~Cryptography.Tests.Benchmarks'
+        if [ -n "$EXTRA_FILTER" ]; then filter="$filter&$EXTRA_FILTER"; fi
+
+        docker run --rm --platform linux/s390x --user 0 \
+          -e DOTNET_CLI_TELEMETRY_OPTOUT=1 -e DOTNET_NOLOGO=1 -e FILTER="$filter" \
+          -v "$PWD/artifacts:/artifacts" -w /artifacts \
+          registry.access.redhat.com/ubi9/dotnet-100 \
+          bash -euc '
+            # A run that silently fell back to a little-endian host would prove nothing.
+            uname -m
+            order=$(printf "\001\000" | od -An -tx2 | tr -d " ")
+            echo "16-bit read of bytes 01 00: $order"
+            [ "$order" = "0100" ] || { echo "Host is not big-endian."; exit 1; }
+
+            dotnet --info | head -20
+            dotnet test /artifacts/be-tests/Cryptography.Tests.dll \
+              --filter "$FILTER" \
+              --results-directory /artifacts/results \
+              --logger "trx;LogFileName=s390x.trx" \
+              --logger "console;verbosity=minimal"
+          '
+
+    - name: Upload the test results
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: s390x-test-results
+        path: artifacts/results
+        if-no-files-found: ignore
