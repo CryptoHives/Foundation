@@ -62,7 +62,8 @@ jobs:
 
     - name: Run the tests on s390x
       env:
-        EXTRA_FILTER: ${{ inputs.filter }}
+        # TEMPORARY: push runs narrow to Poly1305 while it is being diagnosed. Remove with the push trigger.
+        EXTRA_FILTER: ${{ github.event_name == 'push' && 'FullyQualifiedName~Poly1305' || inputs.filter }}
       run: |
         filter='FullyQualifiedName!~Cryptography.Tests.Benchmarks'
         if [ -n "$EXTRA_FILTER" ]; then filter="$filter&$EXTRA_FILTER"; fi
