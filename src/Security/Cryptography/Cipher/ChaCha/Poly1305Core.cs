@@ -505,30 +505,30 @@ internal ref struct Poly1305Core
         // d0 = h0·r0 + h1·(20·r2) + h2·(20·r1)
         ulong d0hi = Math.BigMul(h0, r0, out ulong d0lo);
         ulong hi = Math.BigMul(h1, s2, out ulong lo);
-        d0lo += lo; d0hi += hi + (d0lo < lo ? 1UL : 0UL);
+        Add128(ref d0lo, ref d0hi, lo, hi);
         hi = Math.BigMul(h2, s1, out lo);
-        d0lo += lo; d0hi += hi + (d0lo < lo ? 1UL : 0UL);
+        Add128(ref d0lo, ref d0hi, lo, hi);
 
         // d1 = h0·r1 + h1·r0 + h2·(20·r2)
         ulong d1hi = Math.BigMul(h0, r1, out ulong d1lo);
         hi = Math.BigMul(h1, r0, out lo);
-        d1lo += lo; d1hi += hi + (d1lo < lo ? 1UL : 0UL);
+        Add128(ref d1lo, ref d1hi, lo, hi);
         hi = Math.BigMul(h2, s2, out lo);
-        d1lo += lo; d1hi += hi + (d1lo < lo ? 1UL : 0UL);
+        Add128(ref d1lo, ref d1hi, lo, hi);
 
         // d2 = h0·r2 + h1·r1 + h2·r0
         ulong d2hi = Math.BigMul(h0, r2, out ulong d2lo);
         hi = Math.BigMul(h1, r1, out lo);
-        d2lo += lo; d2hi += hi + (d2lo < lo ? 1UL : 0UL);
+        Add128(ref d2lo, ref d2hi, lo, hi);
         hi = Math.BigMul(h2, r0, out lo);
-        d2lo += lo; d2hi += hi + (d2lo < lo ? 1UL : 0UL);
+        Add128(ref d2lo, ref d2hi, lo, hi);
 
         // Carry propagation: extract 44+44+42 bit limbs
         ulong c;
         c = (d0lo >> 44) | (d0hi << 20); h0 = d0lo & Mask44;
-        d1lo += c; d1hi += (d1lo < c ? 1UL : 0UL);
+        Add128(ref d1lo, ref d1hi, c, 0);
         c = (d1lo >> 44) | (d1hi << 20); h1 = d1lo & Mask44;
-        d2lo += c; d2hi += (d2lo < c ? 1UL : 0UL);
+        Add128(ref d2lo, ref d2hi, c, 0);
         c = (d2lo >> 42) | (d2hi << 22); h2 = d2lo & Mask42;
         h0 += c * 5;
         c = h0 >> 44; h0 &= Mask44; h1 += c;
@@ -563,11 +563,26 @@ internal ref struct Poly1305Core
         ulong f0 = h0 | (h1 << 44);
         ulong f1 = (h1 >> 20) | (h2 << 24);
 
-        f0 += padLo;
-        f1 += padHi + (f0 < padLo ? 1UL : 0UL);
+        Add128(ref f0, ref f1, padLo, padHi);
 
         BinaryPrimitives.WriteUInt64LittleEndian(tag, f0);
         BinaryPrimitives.WriteUInt64LittleEndian(tag.Slice(sizeof(ulong)), f1);
+    }
+
+    /// <summary>
+    /// Adds a 128-bit value to a 128-bit accumulator held as two 64-bit halves.
+    /// </summary>
+    /// <remarks>
+    /// The carry out of the low half is derived arithmetically rather than by comparing the sum
+    /// with an addend, which keeps the add branch-free. The comparison form produced wrong carries
+    /// under the s390x Mono JIT.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void Add128(ref ulong lo, ref ulong hi, ulong addLo, ulong addHi)
+    {
+        ulong sum = lo + addLo;
+        hi += addHi + (((lo & addLo) | ((lo | addLo) & ~sum)) >> 63);
+        lo = sum;
     }
 #endif
 }
