@@ -92,31 +92,42 @@ internal ref struct Poly1305Core
     {
         int offset = 0;
 
+#if NET8_0_OR_GREATER
+        // The accumulator stays in locals across the loop: field-held, it takes a store and a
+        // reload on the critical path of every block.
+        ulong h0 = _h0, h1 = _h1, h2 = _h2;
         while (offset + BlockSize <= data.Length)
         {
-#if NET8_0_OR_GREATER
-            AddFullBlock64(data.Slice(offset), ref _h0, ref _h1, ref _h2);
-            MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
-#else
-            ProcessFullBlock32(data.Slice(offset, BlockSize),
-                ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
-                _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
-#endif
+            AddFullBlock64(data.Slice(offset), ref h0, ref h1, ref h2);
+            MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
             offset += BlockSize;
         }
 
         int remaining = data.Length - offset;
         if (remaining > 0)
         {
-#if NET8_0_OR_GREATER
-            AddPartialBlock64(data.Slice(offset), ref _h0, ref _h1, ref _h2);
-            MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
+            AddPartialBlock64(data.Slice(offset), ref h0, ref h1, ref h2);
+            MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
+        }
+
+        _h0 = h0; _h1 = h1; _h2 = h2;
 #else
+        while (offset + BlockSize <= data.Length)
+        {
+            ProcessFullBlock32(data.Slice(offset, BlockSize),
+                ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
+                _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
+            offset += BlockSize;
+        }
+
+        int remaining = data.Length - offset;
+        if (remaining > 0)
+        {
             ProcessPartialBlock32(data.Slice(offset, remaining),
                 ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
                 _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
-#endif
         }
+#endif
     }
 
     /// <summary>
@@ -133,16 +144,12 @@ internal ref struct Poly1305Core
     {
         int offset = 0;
 
+#if NET8_0_OR_GREATER
+        ulong h0 = _h0, h1 = _h1, h2 = _h2;
         while (offset + BlockSize <= data.Length)
         {
-#if NET8_0_OR_GREATER
-            AddFullBlock64(data.Slice(offset), ref _h0, ref _h1, ref _h2);
-            MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
-#else
-            ProcessFullBlock32(data.Slice(offset, BlockSize),
-                ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
-                _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
-#endif
+            AddFullBlock64(data.Slice(offset), ref h0, ref h1, ref h2);
+            MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
             offset += BlockSize;
         }
 
@@ -150,15 +157,29 @@ internal ref struct Poly1305Core
         if (remaining > 0)
         {
             BinaryLoad.ReadUInt64PairLittleEndianPadded(data.Slice(offset, remaining), out ulong m0, out ulong m1);
-#if NET8_0_OR_GREATER
-            AddFullBlock64(m0, m1, ref _h0, ref _h1, ref _h2);
-            MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
+            AddFullBlock64(m0, m1, ref h0, ref h1, ref h2);
+            MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
+        }
+
+        _h0 = h0; _h1 = h1; _h2 = h2;
 #else
+        while (offset + BlockSize <= data.Length)
+        {
+            ProcessFullBlock32(data.Slice(offset, BlockSize),
+                ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
+                _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
+            offset += BlockSize;
+        }
+
+        int remaining = data.Length - offset;
+        if (remaining > 0)
+        {
+            BinaryLoad.ReadUInt64PairLittleEndianPadded(data.Slice(offset, remaining), out ulong m0, out ulong m1);
             ProcessFullBlock32((uint)m0, (uint)(m0 >> 32), (uint)m1, (uint)(m1 >> 32),
                 ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
                 _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
-#endif
         }
+#endif
     }
 
     /// <summary>
