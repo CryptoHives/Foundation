@@ -10,9 +10,6 @@ name: Big-Endian Tests (s390x)
 # third-party libraries and would dominate an emulated run without exercising anything new.
 
 on:
-  # TEMPORARY: lets the run start from the work branch before this file is on main. Remove before merging.
-  push:
-    branches: [binary-store]
   schedule:
     # Monthly, on the 1st at 02:00 UTC.
     - cron: '0 2 1 * *'
