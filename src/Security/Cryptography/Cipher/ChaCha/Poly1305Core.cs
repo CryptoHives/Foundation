@@ -573,15 +573,23 @@ internal ref struct Poly1305Core
     /// Adds a 128-bit value to a 128-bit accumulator held as two 64-bit halves.
     /// </summary>
     /// <remarks>
-    /// The carry out of the low half is derived arithmetically rather than by comparing the sum
-    /// with an addend, which keeps the add branch-free. The comparison form produced wrong carries
-    /// under the s390x Mono JIT.
+    /// The s390x Mono JIT miscompiles the comparison carry when the accumulator lives in object
+    /// fields, so there the carry is derived arithmetically instead. s390x is the only big-endian
+    /// .NET target; the comparison form measured faster everywhere else.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Add128(ref ulong lo, ref ulong hi, ulong addLo, ulong addHi)
     {
         ulong sum = lo + addLo;
-        hi += addHi + (((lo & addLo) | ((lo | addLo) & ~sum)) >> 63);
+        if (BitConverter.IsLittleEndian)
+        {
+            hi += addHi + (sum < addLo ? 1UL : 0UL);
+        }
+        else
+        {
+            hi += addHi + (((lo & addLo) | ((lo | addLo) & ~sum)) >> 63);
+        }
+
         lo = sum;
     }
 #endif
