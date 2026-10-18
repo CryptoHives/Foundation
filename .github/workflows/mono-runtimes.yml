@@ -72,7 +72,12 @@ jobs:
         -o artifacts/tests
 
     - name: Register the ${{ matrix.arch }} emulator
-      run: docker run --privileged --rm tonistiigi/binfmt --install ${{ matrix.arch }}
+      # Under QEMU the emulated host reserves a large address space, and the kernel's default
+      # overcommit heuristic then refuses the fork that starts the VSTest test host (ENOMEM on
+      # ppc64le). The container shares the runner's kernel, so the setting is made here.
+      run: |
+        sudo sysctl -w vm.overcommit_memory=1
+        docker run --privileged --rm tonistiigi/binfmt --install ${{ matrix.arch }}
 
     - name: Run the tests on ${{ matrix.arch }}
       env:
@@ -144,6 +149,7 @@ jobs:
         nunit=$(grep -oP '<PackageVersion Include="NUnit" Version="\K[^"]+' Directory.Packages.props)
         host="$RUNNER_TEMP/wasm-host"
 
+        dotnet workload install wasm-tools
         dotnet new install Microsoft.NET.Runtime.WebAssembly.Templates.net10
         dotnet new wasmconsole -o "$host" -n WasmTestHost
         dotnet add "$host" package NUnitLite --version "$nunit"
