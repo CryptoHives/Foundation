@@ -14,6 +14,9 @@ name: Mono Runtime Tests
 # new. The x86 and ARM SIMD tiers are gated on their instruction sets and never run here.
 
 on:
+  # TEMPORARY: lets the run start from the work branch before this file is on main. Remove before merging.
+  push:
+    branches: [binary-store]
   schedule:
     # Monthly, on the 1st at 02:00 UTC.
     - cron: '0 2 1 * *'
