@@ -64,8 +64,7 @@ internal unsafe struct CcmCore
     private fixed uint _roundKeys[MaxRoundKeyWords];
     private readonly int _rounds;
 #if NET8_0_OR_GREATER
-    private readonly bool _useAesNi;
-    private readonly bool _useArmAes;
+    private readonly bool _useAes;
 #endif
 
     /// <summary>
@@ -81,14 +80,14 @@ internal unsafe struct CcmCore
         {
             var roundKeys = new Span<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
+            if (AesCoreAesNi.IsSupported && (simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
             {
-                _useAesNi = true;
+                _useAes = true;
                 _rounds = AesCoreAesNi.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
             }
-            else if ((simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
+            else if (AesCoreArm.IsSupported && (simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
             {
-                _useArmAes = true;
+                _useAes = true;
                 _rounds = AesCoreArm.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
             }
             else
@@ -406,14 +405,14 @@ internal unsafe struct CcmCore
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if (AesCoreAesNi.IsSupported && _useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAes)
             {
                 AesCoreAesNi.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
 
-            if (AesCoreArm.IsSupported && _useArmAes)
+            if (AesCoreArm.IsSupported && _useAes)
             {
                 AesCoreArm.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);

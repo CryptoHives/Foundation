@@ -44,8 +44,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     private readonly bool _encrypting;
     private bool _disposed;
 #if NET8_0_OR_GREATER
-    private readonly bool _useAesNi;
-    private readonly bool _useArmAes;
+    private readonly bool _useAes;
 #endif
 
     /// <summary>
@@ -94,7 +93,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 #if NET8_0_OR_GREATER
             if (AesCoreAesNi.IsSupported && (simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
             {
-                _useAesNi = true;
+                _useAes = true;
                 var aesNiView = MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys);
                 _rounds = AesCoreAesNi.ExpandKey(key, aesNiView);
 
@@ -110,7 +109,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
             }
             else if (AesCoreArm.IsSupported && (simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
             {
-                _useArmAes = true;
+                _useAes = true;
                 var armView = MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys);
                 _rounds = AesCoreArm.ExpandKey(key, armView);
 
@@ -214,8 +213,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 #if NET8_0_OR_GREATER
         if (_mode == CipherMode.CBC)
         {
-            if ((AesCoreAesNi.IsSupported && _useAesNi) ||
-                (AesCoreArm.IsSupported && _useArmAes))
+            if ((AesCoreAesNi.IsSupported || AesCoreArm.IsSupported) && _useAes)
             {
                 if (!_encrypting)
                 {
@@ -421,7 +419,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private int TransformCbcDecryptVectorized(ReadOnlySpan<byte> input, Span<byte> output, int blocks)
     {
-        Debug.Assert((AesCoreAesNi.IsSupported && _useAesNi) || (AesCoreArm.IsSupported && _useArmAes),
+        Debug.Assert((AesCoreAesNi.IsSupported || AesCoreArm.IsSupported) && _useAes,
             "Vectorized CBC decrypt can only be called when hardware AES is supported.");
 
         int offset = 0;
@@ -552,7 +550,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private int TransformCbcEncryptVectorized(ReadOnlySpan<byte> input, Span<byte> output, int blocks)
     {
-        Debug.Assert((AesCoreAesNi.IsSupported && _useAesNi) || (AesCoreArm.IsSupported && _useArmAes),
+        Debug.Assert((AesCoreAesNi.IsSupported || AesCoreArm.IsSupported) && _useAes,
             "Vectorized CBC encrypt can only be called when hardware AES is supported.");
 
         int offset = 0;
@@ -705,14 +703,14 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if (AesCoreAesNi.IsSupported && _useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAes)
             {
                 AesCoreAesNi.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
 
-            if (AesCoreArm.IsSupported && _useArmAes)
+            if (AesCoreArm.IsSupported && _useAes)
             {
                 AesCoreArm.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
@@ -730,14 +728,14 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if (AesCoreAesNi.IsSupported && _useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAes)
             {
                 AesCoreAesNi.DecryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
 
-            if (AesCoreArm.IsSupported && _useArmAes)
+            if (AesCoreArm.IsSupported && _useAes)
             {
                 AesCoreArm.DecryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
