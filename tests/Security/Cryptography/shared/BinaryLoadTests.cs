@@ -399,17 +399,9 @@ public unsafe class BinaryLoadTests
     }
 
 #if NET8_0_OR_GREATER && !LIB_NETSTANDARD
-    /// <summary>
-    /// The vector loaders compose native-endian lanes and serve only the little-endian SIMD
-    /// tiers, so a big-endian host has nothing for them to agree with.
-    /// </summary>
-    private static void AssumeLittleEndianVectorLayout() =>
-        Assume.That(BitConverter.IsLittleEndian, "The 128-bit loaders serve only the little-endian SIMD tiers.");
-
     [Test]
     public void LoadPadded128_MatchesAZeroPaddedBlock()
     {
-        AssumeLittleEndianVectorLayout();
         AssertSweep(Vector128<byte>.Count, static (backing, offset, length) =>
         {
             var block = new byte[Vector128<byte>.Count];
@@ -421,7 +413,6 @@ public unsafe class BinaryLoadTests
     [Test]
     public void LoadPadded128_PointerOverloadAgrees()
     {
-        AssumeLittleEndianVectorLayout();
         AssertSweep(Vector128<byte>.Count, static (backing, offset, length) =>
         {
             var block = new byte[Vector128<byte>.Count];
@@ -437,7 +428,6 @@ public unsafe class BinaryLoadTests
     [Test]
     public void LoadPaddedBlock128x4_MatchesAZeroPaddedBlock()
     {
-        AssumeLittleEndianVectorLayout();
         AssertSweep(4 * Vector128<byte>.Count, static (backing, offset, length) =>
         {
             CH.BinaryLoad.LoadPaddedBlock128x4(
@@ -450,7 +440,6 @@ public unsafe class BinaryLoadTests
     [Test]
     public void LoadPaddedBlock128x4_PointerOverloadAgrees()
     {
-        AssumeLittleEndianVectorLayout();
         AssertSweep(4 * Vector128<byte>.Count, static (backing, offset, length) =>
         {
             Vector128<uint> m0, m1, m2, m3;
@@ -471,7 +460,6 @@ public unsafe class BinaryLoadTests
     [Test]
     public void LoadTailPadded128_MatchesAZeroPaddedBlockForEverySplit()
     {
-        AssumeLittleEndianVectorLayout();
         int width = Vector128<byte>.Count;
         var rng = new Random(Seed(width));
 
@@ -513,7 +501,6 @@ public unsafe class BinaryLoadTests
     [Test]
     public void LoadPaddedTailBlock128x4_MatchesAZeroPaddedBlockForEverySplit()
     {
-        AssumeLittleEndianVectorLayout();
         int width = 4 * Vector128<byte>.Count;
         var rng = new Random(Seed(width) ^ 1);
 

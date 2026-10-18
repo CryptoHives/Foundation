@@ -26,8 +26,8 @@ using System.Buffers;
 /// </para>
 /// <para>
 /// All input-accepting overloads accept any unmanaged value type. The bytes are mixed in
-/// memory-layout order, in host byte order, including any padding. Only <see cref="byte"/> is
-/// guaranteed to produce identical results across all platforms and runtimes.
+/// memory-layout order, including any padding. Only <see cref="byte"/> is guaranteed to
+/// produce identical results across all platforms and runtimes.
 /// </para>
 /// <para>
 /// Higher-level consumers such as <see cref="HashAlgorithm"/> wrap implementations of this
