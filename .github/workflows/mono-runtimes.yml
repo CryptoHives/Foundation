@@ -159,17 +159,24 @@ jobs:
         sed -i 's#</Project>#  <PropertyGroup>\n    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>\n    <InvariantGlobalization>true</InvariantGlobalization>\n  </PropertyGroup>\n  <ItemGroup>\n    <ProjectReference Include="'"$GITHUB_WORKSPACE"'/tests/Security/Cryptography/Cryptography.Tests.csproj" SetTargetFramework="TargetFramework=net10.0" AdditionalProperties="NativeTestDependencies=false" />\n  </ItemGroup>\n</Project>#' "$host/WasmTestHost.csproj"
 
         # Single-threaded runtime: no parallel workers. Arguments are compiled in rather than
-        # passed through the JavaScript host.
+        # passed through the JavaScript host, and the reader is explicit because browser-wasm
+        # has no Console.In.
         cat > "$host/Program.cs" <<'EOF'
+        using System;
+        using System.IO;
         using System.Reflection;
+        using NUnit.Common;
+        using NUnitLite;
 
-        return new NUnitLite.AutoRun(Assembly.Load("Cryptography.Tests")).Execute(
-        [
-            "--workers=0",
-            "--noresult",
-            "--labels=Before",
-            "--where", "test !~ Cryptography.Tests.Benchmarks",
-        ]);
+        return new AutoRun(Assembly.Load("Cryptography.Tests")).Execute(
+            [
+                "--workers=0",
+                "--noresult",
+                "--labels=Before",
+                "--where", "test !~ Cryptography.Tests.Benchmarks",
+            ],
+            new ExtendedTextWrapper(Console.Out),
+            TextReader.Null);
         EOF
 
         # The template's main.mjs calls an export of the template's Program.cs; just run Main.
