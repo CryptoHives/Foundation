@@ -808,10 +808,8 @@ public class Blake3Tests
     public void ShortDigestIsTheLongDigestTruncated([Range(1, 32)] int outputBytes)
     {
         byte[] key = GenerateTestInput(Blake3.KeySizeBytes);
-        foreach (int inputLength in new[] { 0, 5, 1024, 1025, 4096 })
+        foreach (byte[] input in new[] { 0, 5, 1024, 1025, 4096 }.Select(GenerateTestInput))
         {
-            byte[] input = GenerateTestInput(inputLength);
-
             using var shortHash = Blake3.Create(outputBytes);
             using var longHash = Blake3.Create(64);
             AssertTruncated(shortHash, longHash, input, outputBytes);
