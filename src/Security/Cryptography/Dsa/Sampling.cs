@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -173,13 +174,9 @@ internal static class Sampling
         using var xof = Shake256.Create(136);
         xof.Absorb(cTilde.Slice(0, p.CTildeBytes));
 
-        Span<byte> signs = stackalloc byte[8];
+        Span<byte> signs = stackalloc byte[sizeof(ulong)];
         xof.Squeeze(signs);
-        ulong signBits = 0;
-        for (int i = 0; i < 8; i++)
-        {
-            signBits |= (ulong)signs[i] << (8 * i);
-        }
+        ulong signBits = BinaryPrimitives.ReadUInt64LittleEndian(signs);
 
         Span<byte> one = stackalloc byte[1];
         for (int i = MLDsaParams.N - p.Tau; i < MLDsaParams.N; i++)

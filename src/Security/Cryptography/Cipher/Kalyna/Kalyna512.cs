@@ -36,8 +36,8 @@ public sealed class Kalyna512 : SymmetricCipher
     {
         BlockSizeValue = BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0), new OS.KeySizes(512, 512, 0)];
-        LegalBlockSizesValue = [new OS.KeySizes(BlockSizeBits, BlockSizeBits, 0)];
+        LegalKeySizesValue = LegalSizes.Bits256Or512;
+        LegalBlockSizesValue = LegalSizes.Bits256;
     }
 
     /// <inheritdoc/>

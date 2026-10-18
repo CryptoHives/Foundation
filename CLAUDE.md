@@ -67,6 +67,7 @@ Use `CustomTestTarget` MSBuild property to test a single legacy or preview TFM (
 - Argument checks are one-line `if (x is null) throw new ArgumentNullException(nameof(x));` — a deliberate exception to the brace rule in `.editorconfig`
 - Public types and members get XML docs (`<summary>`, `<param>`, `<returns>`, `<exception>`); overrides and interface implementations get `<inheritdoc/>` only
 - Byte and bit work goes through `BinaryPrimitives`/`BitOperations`; keep it endian-neutral, with a fast path for the common endianness where it pays
+- Partial words in Cryptography go through `BinaryLoad` (read 0..n bytes, zero-padded) and `BinaryStore` (write the leading 0..n bytes) in `src/Security/Cryptography/shared/` — `UInt32`, `UInt64` and 16-byte pair shapes, both byte orders, span/`ref byte`/pointer forms. Never stage a word through a `stackalloc` buffer and copy part of it out, or loop over bytes with shifts. To write a value's low `n` bytes big-endian, shift it left by `(8 - n) * 8` and write it truncated
 - Framework-specific APIs sit behind `#if NET8_0_OR_GREATER`-style guards rather than in separate files
 - Do not edit `NuGet.Config` unless asked
 

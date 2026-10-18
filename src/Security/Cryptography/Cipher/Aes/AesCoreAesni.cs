@@ -89,7 +89,8 @@ internal static class AesCoreAesNi
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void EncryptBlock(
         ReadOnlySpan<byte> input, Span<byte> output,
-        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+        ReadOnlySpan<Vector128<byte>> roundKeys,
+        int nr)
     {
         EncryptBlock(Vector128.Create(input), roundKeys, nr).CopyTo(output);
     }
@@ -108,7 +109,8 @@ internal static class AesCoreAesNi
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static Vector128<byte> EncryptBlock(
         Vector128<byte> state,
-        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+        ReadOnlySpan<Vector128<byte>> roundKeys,
+        int nr)
     {
         state = Sse2.Xor(state, roundKeys[0]);
 
@@ -149,7 +151,8 @@ internal static class AesCoreAesNi
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void DecryptBlock(
         ReadOnlySpan<byte> input, Span<byte> output,
-        ReadOnlySpan<Vector128<byte>> roundKeys, int nr)
+        ReadOnlySpan<Vector128<byte>> roundKeys,
+        int nr)
     {
         var state = Vector128.Create(input);
 

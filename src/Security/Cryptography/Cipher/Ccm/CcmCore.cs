@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
@@ -63,8 +64,7 @@ internal unsafe struct CcmCore
     private fixed uint _roundKeys[MaxRoundKeyWords];
     private readonly int _rounds;
 #if NET8_0_OR_GREATER
-    private readonly bool _useAesNi;
-    private readonly bool _useArmAes;
+    private readonly bool _useAes;
 #endif
 
     /// <summary>
@@ -80,14 +80,14 @@ internal unsafe struct CcmCore
         {
             var roundKeys = new Span<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
+            if (AesCoreAesNi.IsSupported && (simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
             {
-                _useAesNi = true;
+                _useAes = true;
                 _rounds = AesCoreAesNi.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
             }
-            else if ((simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
+            else if (AesCoreArm.IsSupported && (simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
             {
-                _useArmAes = true;
+                _useAes = true;
                 _rounds = AesCoreArm.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
             }
             else
@@ -316,11 +316,8 @@ internal unsafe struct CcmCore
         // Nonce
         nonce.CopyTo(b0.Slice(1, nonce.Length));
 
-        // Message length (big-endian)
-        for (int i = 0; i < L; i++)
-        {
-            b0[BlockSizeBytes - 1 - i] = (byte)((ulong)messageLength >> (i * 8));
-        }
+        // Message length in the last L bytes, big-endian; the shift makes those bytes lead.
+        BinaryStore.WriteUInt64BigEndianTruncated((ulong)messageLength << ((sizeof(ulong) - L) * 8), b0.Slice(BlockSizeBytes - L, L));
     }
 
     private static void FormatCounterBlock(
@@ -338,11 +335,8 @@ internal unsafe struct CcmCore
         // Nonce
         nonce.CopyTo(block.Slice(1, nonce.Length));
 
-        // Counter (big-endian)
-        for (int i = 0; i < L; i++)
-        {
-            block[BlockSizeBytes - 1 - i] = (byte)((ulong)counter >> (i * 8));
-        }
+        // Counter in the last L bytes, big-endian; the shift makes those bytes lead.
+        BinaryStore.WriteUInt64BigEndianTruncated((ulong)counter << ((sizeof(ulong) - L) * 8), block.Slice(BlockSizeBytes - L, L));
     }
 
     private void ProcessAad(
@@ -351,7 +345,7 @@ internal unsafe struct CcmCore
         Span<byte> b)
     {
         b.Clear();
-        int pos = 0;
+        int pos;
 
         // Encode AAD length
         // aad.Length is int, so maximum value is int.MaxValue (~2GB)
@@ -359,18 +353,15 @@ internal unsafe struct CcmCore
         if (aad.Length < 0xFF00)
         {
             // Short form: 2 bytes
-            b[pos++] = (byte)(aad.Length >> 8);
-            b[pos++] = (byte)aad.Length;
+            BinaryPrimitives.WriteUInt16BigEndian(b, (ushort)aad.Length);
+            pos = sizeof(ushort);
         }
         else
         {
             // Medium form: 6 bytes (0xFFFE + 4 bytes)
-            b[pos++] = 0xFF;
-            b[pos++] = 0xFE;
-            b[pos++] = (byte)(aad.Length >> 24);
-            b[pos++] = (byte)(aad.Length >> 16);
-            b[pos++] = (byte)(aad.Length >> 8);
-            b[pos++] = (byte)aad.Length;
+            BinaryPrimitives.WriteUInt16BigEndian(b, 0xFFFE);
+            BinaryPrimitives.WriteUInt32BigEndian(b.Slice(sizeof(ushort)), (uint)aad.Length);
+            pos = sizeof(ushort) + sizeof(uint);
         }
 
         // Copy AAD
@@ -414,14 +405,14 @@ internal unsafe struct CcmCore
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if (AesCoreAesNi.IsSupported && _useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAes)
             {
                 AesCoreAesNi.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
 
-            if (AesCoreArm.IsSupported && _useArmAes)
+            if (AesCoreArm.IsSupported && _useAes)
             {
                 AesCoreArm.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);

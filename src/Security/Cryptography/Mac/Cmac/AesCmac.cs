@@ -54,8 +54,7 @@ public sealed class AesCmac : IMac
     private bool _finalized;
     private bool _disposed;
 #if NET8_0_OR_GREATER
-    private readonly bool _useAesNi;
-    private readonly bool _useArmAes;
+    private readonly bool _useAes;
     private readonly Vector128<byte>[]? _niRoundKeys;
 #endif
 
@@ -85,16 +84,16 @@ public sealed class AesCmac : IMac
             throw new ArgumentException("Key must be 16, 24, or 32 bytes for AES-128, AES-192, or AES-256.", nameof(key));
 
 #if NET8_0_OR_GREATER
-        if (Aes.IsSupported)
+        if (AesCoreAesNi.IsSupported)
         {
-            _useAesNi = true;
+            _useAes = true;
             _niRoundKeys = new Vector128<byte>[15];
             _rounds = AesCoreAesNi.ExpandKey(key, _niRoundKeys);
             _roundKeys = [];
         }
         else if (AesCoreArm.IsSupported)
         {
-            _useArmAes = true;
+            _useAes = true;
             _niRoundKeys = new Vector128<byte>[15];
             _rounds = AesCoreArm.ExpandKey(key, _niRoundKeys);
             _roundKeys = [];
@@ -277,13 +276,13 @@ public sealed class AesCmac : IMac
     private void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
-        if (AesCoreAesNi.IsSupported && _useAesNi)
+        if (AesCoreAesNi.IsSupported && _useAes)
         {
             AesCoreAesNi.EncryptBlock(input, output, _niRoundKeys, _rounds);
             return;
         }
 
-        if (AesCoreArm.IsSupported && _useArmAes)
+        if (AesCoreArm.IsSupported && _useAes)
         {
             AesCoreArm.EncryptBlock(input, output, _niRoundKeys, _rounds);
             return;

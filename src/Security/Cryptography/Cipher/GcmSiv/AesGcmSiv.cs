@@ -42,8 +42,7 @@ public abstract class AesGcmSiv : IAeadCipher
     private readonly uint[] _kgkRoundKeys = new uint[MaxRoundKeyWords];
     private readonly int _kgkRounds;
     private readonly int _keySizeBytes;
-    private readonly bool _useAesNi;
-    private readonly bool _useArmAes;
+    private readonly bool _useAes;
     private readonly bool _usePclmul;
     private bool _disposed;
 
@@ -58,8 +57,7 @@ public abstract class AesGcmSiv : IAeadCipher
             throw new ArgumentException("Key must be 16 or 32 bytes.", nameof(key));
 
         simdSupport = simdSupport.WithImplicit() & SimdSupport;
-        _useAesNi = (simdSupport & SimdSupport.AesNi) != 0;
-        _useArmAes = !_useAesNi && (simdSupport & SimdSupport.ArmAes) != 0;
+        _useAes = (simdSupport & (SimdSupport.AesNi | SimdSupport.ArmAes)) != 0;
         _usePclmul = (simdSupport & SimdSupport.PClMul) != 0;
         _keySizeBytes = key.Length;
         _kgkRounds = ExpandKey(key, _kgkRoundKeys);
@@ -291,7 +289,7 @@ public abstract class AesGcmSiv : IAeadCipher
 
         int offset = 0;
 #if NET8_0_OR_GREATER
-        if ((AesCoreAesNi.IsSupported && _useAesNi) || (AesCoreArm.IsSupported && _useArmAes))
+        if ((AesCoreAesNi.IsSupported || AesCoreArm.IsSupported) && _useAes)
         {
             offset = CtrBlocks4(counter, input, output, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), rounds);
         }
@@ -340,11 +338,11 @@ public abstract class AesGcmSiv : IAeadCipher
             Vector128<byte> b3 = baseCounter.WithElement(0, unchecked(ctr + 3)).AsByte();
             ctr = unchecked(ctr + 4);
 
-            if (_useAesNi)
+            if (AesCoreAesNi.IsSupported)
             {
                 AesCoreAesNi.EncryptBlocks4(ref b0, ref b1, ref b2, ref b3, roundKeys, rounds);
             }
-            else
+            else if (AesCoreArm.IsSupported)
             {
                 AesCoreArm.EncryptBlocks4(ref b0, ref b1, ref b2, ref b3, roundKeys, rounds);
             }
@@ -369,9 +367,9 @@ public abstract class AesGcmSiv : IAeadCipher
     private int ExpandKey(ReadOnlySpan<byte> key, Span<uint> roundKeys)
     {
 #if NET8_0_OR_GREATER
-        if (AesCoreAesNi.IsSupported && _useAesNi)
+        if (AesCoreAesNi.IsSupported && _useAes)
             return AesCoreAesNi.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
-        if (AesCoreArm.IsSupported && _useArmAes)
+        if (AesCoreArm.IsSupported && _useAes)
             return AesCoreArm.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
 #endif
         return AesCore.ExpandKey(key, roundKeys);
@@ -381,12 +379,12 @@ public abstract class AesGcmSiv : IAeadCipher
     private void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<uint> roundKeys, int rounds)
     {
 #if NET8_0_OR_GREATER
-        if (AesCoreAesNi.IsSupported && _useAesNi)
+        if (AesCoreAesNi.IsSupported && _useAes)
         {
             AesCoreAesNi.EncryptBlock(input, output, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), rounds);
             return;
         }
-        if (AesCoreArm.IsSupported && _useArmAes)
+        if (AesCoreArm.IsSupported && _useAes)
         {
             AesCoreArm.EncryptBlock(input, output, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), rounds);
             return;
