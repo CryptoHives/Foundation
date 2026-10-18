@@ -523,12 +523,6 @@ internal ref struct Poly1305Core
         ulong r0, ulong r1, ulong r2,
         ulong s1, ulong s2)
     {
-        if (!BitConverter.IsLittleEndian)
-        {
-            MulReduce64BigEndian(ref h0, ref h1, ref h2, r0, r1, r2, s1, s2);
-            return;
-        }
-
         // d0 = h0·r0 + h1·(20·r2) + h2·(20·r1)
         ulong d0hi = Math.BigMul(h0, r0, out ulong d0lo);
         ulong hi = Math.BigMul(h1, s2, out ulong lo);
@@ -556,46 +550,6 @@ internal ref struct Poly1305Core
         d1lo += c; d1hi += (d1lo < c ? 1UL : 0UL);
         c = (d1lo >> 44) | (d1hi << 20); h1 = d1lo & Mask44;
         d2lo += c; d2hi += (d2lo < c ? 1UL : 0UL);
-        c = (d2lo >> 42) | (d2hi << 22); h2 = d2lo & Mask42;
-        h0 += c * 5;
-        c = h0 >> 44; h0 &= Mask44; h1 += c;
-    }
-
-    /// <summary>
-    /// <see cref="MulReduce64"/> with every carry taken through <see cref="Add128"/>.
-    /// </summary>
-    private static void MulReduce64BigEndian(
-        ref ulong h0, ref ulong h1, ref ulong h2,
-        ulong r0, ulong r1, ulong r2,
-        ulong s1, ulong s2)
-    {
-        // d0 = h0·r0 + h1·(20·r2) + h2·(20·r1)
-        ulong d0hi = Math.BigMul(h0, r0, out ulong d0lo);
-        ulong hi = Math.BigMul(h1, s2, out ulong lo);
-        Add128(ref d0lo, ref d0hi, lo, hi);
-        hi = Math.BigMul(h2, s1, out lo);
-        Add128(ref d0lo, ref d0hi, lo, hi);
-
-        // d1 = h0·r1 + h1·r0 + h2·(20·r2)
-        ulong d1hi = Math.BigMul(h0, r1, out ulong d1lo);
-        hi = Math.BigMul(h1, r0, out lo);
-        Add128(ref d1lo, ref d1hi, lo, hi);
-        hi = Math.BigMul(h2, s2, out lo);
-        Add128(ref d1lo, ref d1hi, lo, hi);
-
-        // d2 = h0·r2 + h1·r1 + h2·r0
-        ulong d2hi = Math.BigMul(h0, r2, out ulong d2lo);
-        hi = Math.BigMul(h1, r1, out lo);
-        Add128(ref d2lo, ref d2hi, lo, hi);
-        hi = Math.BigMul(h2, r0, out lo);
-        Add128(ref d2lo, ref d2hi, lo, hi);
-
-        // Carry propagation: extract 44+44+42 bit limbs
-        ulong c;
-        c = (d0lo >> 44) | (d0hi << 20); h0 = d0lo & Mask44;
-        Add128(ref d1lo, ref d1hi, c, 0);
-        c = (d1lo >> 44) | (d1hi << 20); h1 = d1lo & Mask44;
-        Add128(ref d2lo, ref d2hi, c, 0);
         c = (d2lo >> 42) | (d2hi << 22); h2 = d2lo & Mask42;
         h0 += c * 5;
         c = h0 >> 44; h0 &= Mask44; h1 += c;
@@ -630,34 +584,11 @@ internal ref struct Poly1305Core
         ulong f0 = h0 | (h1 << 44);
         ulong f1 = (h1 >> 20) | (h2 << 24);
 
-        if (BitConverter.IsLittleEndian)
-        {
-            f0 += padLo;
-            f1 += padHi + (f0 < padLo ? 1UL : 0UL);
-        }
-        else
-        {
-            Add128(ref f0, ref f1, padLo, padHi);
-        }
+        f0 += padLo;
+        f1 += padHi + (f0 < padLo ? 1UL : 0UL);
 
         BinaryPrimitives.WriteUInt64LittleEndian(tag, f0);
         BinaryPrimitives.WriteUInt64LittleEndian(tag.Slice(sizeof(ulong)), f1);
-    }
-
-    /// <summary>
-    /// Adds a 128-bit value to a 128-bit accumulator held as two 64-bit halves.
-    /// </summary>
-    /// <remarks>
-    /// Big-endian hosts only. The s390x Mono JIT miscompiles the inline comparison carry when the
-    /// accumulator lives in object fields, so this derives it arithmetically. s390x is the only
-    /// big-endian .NET target; the inline form measured faster everywhere else.
-    /// </remarks>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void Add128(ref ulong lo, ref ulong hi, ulong addLo, ulong addHi)
-    {
-        ulong sum = lo + addLo;
-        hi += addHi + (((lo & addLo) | ((lo | addLo) & ~sum)) >> 63);
-        lo = sum;
     }
 #endif
 }
