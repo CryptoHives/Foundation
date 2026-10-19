@@ -5,9 +5,9 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using CryptoHives.Foundation.Security.Cryptography;
 using System;
-using System.Runtime.CompilerServices;
 using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>

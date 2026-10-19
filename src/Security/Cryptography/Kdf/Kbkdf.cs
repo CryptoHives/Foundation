@@ -5,8 +5,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
-using System.Runtime.CompilerServices;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Implements the Key-Based Key Derivation Function (KBKDF) in Counter Mode as defined

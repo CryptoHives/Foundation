@@ -5,8 +5,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
-using System.Runtime.CompilerServices;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Implements PBKDF2 (Password-Based Key Derivation Function 2) as defined in

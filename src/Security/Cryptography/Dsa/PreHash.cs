@@ -4,9 +4,9 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
-using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Pre-hash support shared by HashML-DSA (FIPS 204 §5.4) and HashSLH-DSA (FIPS 205 §10.2).

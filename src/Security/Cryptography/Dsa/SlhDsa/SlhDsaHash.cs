@@ -6,8 +6,8 @@ namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
-using System.Runtime.CompilerServices;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// The SLH-DSA hash function family H_msg / PRF / PRF_msg / F / H / T_ℓ (FIPS 205 §11).
