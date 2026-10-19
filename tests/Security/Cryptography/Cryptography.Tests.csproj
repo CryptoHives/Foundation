@@ -31,11 +31,23 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="BouncyCastle.Cryptography" />
-    <PackageReference Include="HashifyNET" />
     <PackageReference Include="NaCl.Core" />
     <PackageReference Include="OpenGost.Security.Cryptography" />
     <PackageReference Include="SauceControl.Blake2Fast" />
   </ItemGroup>
+
+  <!--
+    /p:MonoRuntimeTests=true (the Mono runtime workflow) leaves out reference libraries that do not run
+    on Mono: HashifyNET fails in its own initialization on ppc64le, and "Blake3"/"Blake3.Native" wrap
+    a native library with no binary for linux-s390x, linux-ppc64le or browser-wasm.
+  -->
+  <ItemGroup Condition="'$(MonoRuntimeTests)' != 'true'">
+    <PackageReference Include="HashifyNET" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(MonoRuntimeTests)' != 'true'">
+    <DefineConstants>$(DefineConstants);HASHIFYNET</DefineConstants>
+  </PropertyGroup>
 
   <!-- Konscious.Security.Cryptography.Blake2 is not strong name signed -->
   <ItemGroup Condition="'$(SignAssembly)' != 'true'">
@@ -60,14 +72,21 @@
   </ItemGroup>
 
   <!-- Blake3 NuGet packages that only support .NET 8+ and which are not strong name signed. -->
-  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true' AND '$(MonoRuntimeTests)' != 'true'">
     <PackageReference Include="Blake3" Aliases="Blake3Managed" />
     <PackageReference Include="Blake3.Native" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true' AND '$(MonoRuntimeTests)' != 'true'">
+    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <PackageReference Include="Blake3.Managed" />
   </ItemGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
-    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED;BLAKE3_DISSIMILIS</DefineConstants>
+    <DefineConstants>$(DefineConstants);BLAKE3_DISSIMILIS</DefineConstants>
   </PropertyGroup>
 
   <!--

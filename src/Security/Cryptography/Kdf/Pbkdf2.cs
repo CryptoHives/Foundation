@@ -116,7 +116,9 @@ public static class Pbkdf2
 
                     // T_i ^= U_j
                     for (int k = 0; k < hLen; k++)
+                    {
                         t[k] ^= u[k];
+                    }
                 }
 
                 // Copy T_i to output (possibly truncated for last block)

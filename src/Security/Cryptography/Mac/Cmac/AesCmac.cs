@@ -263,7 +263,9 @@ public sealed class AesCmac : IMac
             Array.Clear(_roundKeys, 0, _roundKeys.Length);
 #if NET8_0_OR_GREATER
             if (_niRoundKeys is not null)
+            {
                 Array.Clear(_niRoundKeys, 0, _niRoundKeys.Length);
+            }
 #endif
             Array.Clear(_k1, 0, _k1.Length);
             Array.Clear(_k2, 0, _k2.Length);

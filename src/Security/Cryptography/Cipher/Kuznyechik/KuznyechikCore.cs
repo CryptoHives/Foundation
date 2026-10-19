@@ -180,11 +180,15 @@ internal static class KuznyechikCore
         while (multiplier != 0)
         {
             if ((multiplier & 1) != 0)
+            {
                 result ^= temp;
+            }
 
             temp <<= 1;
             if ((temp & 0x100) != 0)
+            {
                 temp ^= 0x1C3;
+            }
 
             multiplier >>= 1;
         }
@@ -215,7 +219,10 @@ internal static class KuznyechikCore
     {
         byte val = LinearFeedback(block);
         for (int i = BlockSizeBytes - 1; i > 0; i--)
+        {
             block[i] = block[i - 1];
+        }
+
         block[0] = val;
     }
 
@@ -226,7 +233,10 @@ internal static class KuznyechikCore
     {
         byte saved = block[0];
         for (int i = 0; i < BlockSizeBytes - 1; i++)
+        {
             block[i] = block[i + 1];
+        }
+
         block[BlockSizeBytes - 1] = saved;
         block[BlockSizeBytes - 1] = LinearFeedback(block);
     }
@@ -238,7 +248,9 @@ internal static class KuznyechikCore
     private static void L(Span<byte> block)
     {
         for (int i = 0; i < BlockSizeBytes; i++)
+        {
             R(block);
+        }
     }
 
     /// <summary>
@@ -247,7 +259,9 @@ internal static class KuznyechikCore
     private static void LInverse(Span<byte> block)
     {
         for (int i = 0; i < BlockSizeBytes; i++)
+        {
             RInverse(block);
+        }
     }
 
     /// <summary>
@@ -256,7 +270,9 @@ internal static class KuznyechikCore
     private static void S(Span<byte> block)
     {
         for (int i = 0; i < BlockSizeBytes; i++)
+        {
             block[i] = Pi[block[i]];
+        }
     }
 
     /// <summary>
@@ -265,7 +281,9 @@ internal static class KuznyechikCore
     private static void SInverse(Span<byte> block)
     {
         for (int i = 0; i < BlockSizeBytes; i++)
+        {
             block[i] = PiInverse[block[i]];
+        }
     }
 
     /// <summary>
@@ -294,13 +312,17 @@ internal static class KuznyechikCore
 
                 // F[c](k1, k2) = (L(S(k1 ⊕ c)) ⊕ k2, k1)
                 for (int b = 0; b < BlockSizeBytes; b++)
+                {
                     temp[b] = (byte)(k1[b] ^ c[b]);
+                }
 
                 S(temp);
                 L(temp);
 
                 for (int b = 0; b < BlockSizeBytes; b++)
+                {
                     temp[b] ^= k2[b];
+                }
 
                 k1.CopyTo(k2);
                 temp.CopyTo(k1);
