@@ -139,6 +139,7 @@ internal unsafe struct CcmCore
     /// <param name="associatedData">Additional authenticated data.</param>
     /// <param name="ciphertext">Output buffer for ciphertext.</param>
     /// <param name="tag">Output buffer for authentication tag.</param>
+    [SkipLocalsInit]
     public void Encrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> plaintext,
@@ -179,6 +180,7 @@ internal unsafe struct CcmCore
     /// <param name="associatedData">Additional authenticated data.</param>
     /// <param name="plaintext">Output buffer for plaintext.</param>
     /// <returns>True if authentication succeeded; otherwise false.</returns>
+    [SkipLocalsInit]
     public bool Decrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,
@@ -214,6 +216,7 @@ internal unsafe struct CcmCore
         return CryptographicOperations.FixedTimeEquals(tag, expectedTag);
     }
 
+    [SkipLocalsInit]
     private void ComputeCbcMac(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> message,
@@ -236,23 +239,7 @@ internal unsafe struct CcmCore
             ProcessAad(associatedData, x, b);
         }
 
-        // Process message
-        int offset = 0;
-        while (offset < message.Length)
-        {
-            int blockLen = Math.Min(BlockSizeBytes, message.Length - offset);
-            b.Clear();
-            message.Slice(offset, blockLen).CopyTo(b);
-
-            // XOR with previous X and encrypt
-            for (int i = 0; i < BlockSizeBytes; i++)
-            {
-                b[i] ^= x[i];
-            }
-            EncryptBlockDispatch(b, x);
-
-            offset += BlockSizeBytes;
-        }
+        CbcMacBlocks(message, x, b);
 
         // Copy MAC result
         x.Slice(0, M).CopyTo(mac);
@@ -271,25 +258,26 @@ internal unsafe struct CcmCore
         int offset = 0;
         uint counter = 1; // Start from 1 (0 is used for MAC)
 
-        while (offset < plaintext.Length)
+        int fullBlockLength = plaintext.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
-            // Format counter block
             FormatCounterBlock(nonce, counter, counterBlock, L);
-
-            // Generate keystream
             EncryptBlockDispatch(counterBlock, keystream);
-
-            // XOR plaintext with keystream
-            int remaining = plaintext.Length - offset;
-            int bytesToProcess = Math.Min(remaining, BlockSizeBytes);
-
-            for (int i = 0; i < bytesToProcess; i++)
-            {
-                ciphertext[offset + i] = (byte)(plaintext[offset + i] ^ keystream[i]);
-            }
-
+            XorBlock(plaintext.Slice(offset), keystream, ciphertext.Slice(offset));
             offset += BlockSizeBytes;
             counter++;
+        }
+
+        if (offset < plaintext.Length)
+        {
+            FormatCounterBlock(nonce, counter, counterBlock, L);
+            EncryptBlockDispatch(counterBlock, keystream);
+
+            ReadOnlySpan<byte> tail = plaintext.Slice(offset);
+            for (int i = 0; i < tail.Length; i++)
+            {
+                ciphertext[offset + i] = (byte)(tail[i] ^ keystream[i]);
+            }
         }
     }
 
@@ -389,21 +377,40 @@ internal unsafe struct CcmCore
         }
         EncryptBlockDispatch(b, x);
 
-        // Process remaining AAD blocks
-        while (aadOffset < aad.Length)
+        CbcMacBlocks(aad.Slice(aadOffset), x, b);
+    }
+
+    /// <summary>
+    /// Chains <paramref name="data"/> through the CBC-MAC state <paramref name="x"/>, zero-padding the last block.
+    /// </summary>
+    private void CbcMacBlocks(ReadOnlySpan<byte> data, Span<byte> x, Span<byte> b)
+    {
+        int offset = 0;
+        int fullBlockLength = data.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
-            int blockLen = Math.Min(BlockSizeBytes, aad.Length - aadOffset);
-            b.Clear();
-            aad.Slice(aadOffset, blockLen).CopyTo(b);
-
-            for (int i = 0; i < BlockSizeBytes; i++)
-            {
-                b[i] ^= x[i];
-            }
+            XorBlock(data.Slice(offset), x, b);
             EncryptBlockDispatch(b, x);
-
-            aadOffset += BlockSizeBytes;
+            offset += BlockSizeBytes;
         }
+
+        if (offset < data.Length)
+        {
+            b.Clear();
+            data.Slice(offset).CopyTo(b);
+            XorBlock(b, x, b);
+            EncryptBlockDispatch(b, x);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void XorBlock(ReadOnlySpan<byte> input, ReadOnlySpan<byte> keystream, Span<byte> output)
+    {
+        ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(0, BlockSizeBytes));
+        ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream.Slice(0, BlockSizeBytes));
+        Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(0, BlockSizeBytes));
+        dst[0] = src[0] ^ ks[0];
+        dst[1] = src[1] ^ ks[1];
     }
 
     /// <summary>
@@ -441,6 +448,7 @@ internal unsafe struct CcmCore
     }
 
     // Kept out of EncryptBlockDispatch: a stackalloc there would stop the AES paths inlining.
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void EncryptBlockCipher(BlockCipher128 blockCipher, ReadOnlySpan<byte> input, Span<byte> output)
     {
