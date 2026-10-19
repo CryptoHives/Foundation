@@ -70,6 +70,8 @@ public static class CipherAlgorithmRegistry
         AsconAead128,
         /// <summary>AES-GCM-SIV, RFC 8452 (AEAD).</summary>
         GcmSiv,
+        /// <summary>Multilinear Galois Mode, RFC 9058 (AEAD).</summary>
+        MGM,
         /// <summary>Stream cipher.</summary>
         Stream
     }
@@ -1284,6 +1286,10 @@ public static class CipherAlgorithmRegistry
         // A correctness reference only: every block goes through an ICryptoTransform adapter, so
         // its timing would measure the adapter rather than OpenGost.
         AddGcm("Kuznyechik-GCM", 256, (key, s) => CH.Cipher.KuznyechikGcm.Create(s, key), () => new OpenGostKuznyechikEngine(), Source.Regional, "OpenGost", benchmarkReference: false);
+
+        // No other .NET library implements MGM: the tiers cross-check each other, and KuznyechikMgmTests
+        // holds the RFC 9058 and generated vectors.
+        AddSimdAndManagedVariants(implementations, "Kuznyechik-MGM", 256, Mode.MGM, CH.Cipher.KuznyechikMgm.SimdSupport, (key, s) => CH.Cipher.KuznyechikMgm.Create(s, key));
     }
 
     private static void AddAesGcmSivImplementations(List<CipherImplementation> implementations)

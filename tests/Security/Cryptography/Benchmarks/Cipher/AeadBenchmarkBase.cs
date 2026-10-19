@@ -122,6 +122,7 @@ public abstract class AeadBenchmarkBase
         // Generate deterministic nonce
         _nonce = new byte[AeadCipher.NonceSizeBytes];
         random.NextBytes(_nonce);
+        _nonce[0] &= 0x7F; // MGM takes a 127-bit nonce; no other AEAD minds a clear top bit
 
         // Generate deterministic AAD (16 bytes - typical for TLS/IPsec headers)
         _aad = new byte[16];

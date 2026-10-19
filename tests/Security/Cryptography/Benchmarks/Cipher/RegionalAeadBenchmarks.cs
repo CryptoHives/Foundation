@@ -1004,3 +1004,87 @@ public class KuznyechikGcmBenchmark : AeadBenchmarkBase
         AeadCipher!.Decrypt(DecryptNonce, EncryptedData, Tag, OutputData, Aad);
     }
 }
+
+
+/// <summary>
+/// Benchmarks for Kuznyechik-MGM (RFC 9058) authenticated encryption.
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(CipherAlgorithmTypeArgs))]
+[Config(typeof(CipherConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Cipher", "AEAD", "Regional", "Kuznyechik-MGM")]
+[NonParallelizable]
+public class KuznyechikMgmBenchmark : AeadBenchmarkBase
+{
+    /// <inheritdoc cref="AeadBenchmarkBase"/>
+    public KuznyechikMgmBenchmark() => TestDataSize = DataSize.K8;
+
+    /// <inheritdoc cref="AeadBenchmarkBase"/>
+    public KuznyechikMgmBenchmark(CipherAlgorithmType algorithm)
+    {
+        TestCipherAlgorithm = algorithm;
+    }
+
+    [ParamsSource(nameof(Sizes))]
+    public DataSize TestDataSize { get; set; } = DataSize.K8;
+
+    [ParamsSource(nameof(Algorithms))]
+    public CipherAlgorithmType TestCipherAlgorithm { get; set; } = null!;
+
+    /// <inheritdoc cref="AeadBenchmarkBase"/>
+    public static IEnumerable<DataSize> Sizes() => DataSize.Standard;
+
+    /// <inheritdoc cref="AeadBenchmarkBase"/>
+    public static IEnumerable<CipherAlgorithmType> Algorithms() => CipherAlgorithmType.KuznyechikMgm();
+
+    /// <inheritdoc cref="AeadBenchmarkBase"/>
+    public static IEnumerable<object[]> CipherAlgorithmTypeArgs()
+    {
+        foreach (var alg in Algorithms())
+            yield return new object[] { alg };
+    }
+
+    /// <inheritdoc/>
+    [OneTimeSetUp]
+    [GlobalSetup]
+    public override void GlobalSetup()
+    {
+        Bytes = TestDataSize.Bytes;
+        AeadCipher = (IAeadCipher)TestCipherAlgorithm.Create();
+        base.GlobalSetup();
+    }
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void EncryptTest()
+    {
+        Encrypt();
+        Assert.That(OutputData.AsSpan().Slice(0, InputData.Length).SequenceEqual(
+            EncryptedData.AsSpan()), Is.False, "Encrypt should produce different output than cached ciphertext (nonce incremented)");
+    }
+
+    /// <inheritdoc cref="AeadBenchmarkBase"/>
+    [Benchmark(Description = "Encrypt")]
+    public void Encrypt()
+    {
+        IncrementNonce();
+        AeadCipher!.Encrypt(Nonce, InputData, OutputData, Tag, Aad);
+    }
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void DecryptTest()
+    {
+        Decrypt();
+        Assert.That(OutputData.AsSpan().Slice(0, InputData.Length).SequenceEqual(InputData), Is.True);
+    }
+
+    /// <inheritdoc cref="AeadBenchmarkBase"/>
+    [Benchmark(Description = "Decrypt")]
+    public void Decrypt()
+    {
+        AeadCipher!.Decrypt(DecryptNonce, EncryptedData, Tag, OutputData, Aad);
+    }
+}
