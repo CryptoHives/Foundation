@@ -1209,9 +1209,7 @@ internal unsafe partial struct KeccakCoreState
 
                 if (bytesToCopy > 0)
                 {
-                    Span<byte> temp = stackalloc byte[uInt64Size];
-                    BinaryPrimitives.WriteUInt64LittleEndian(temp, statePtr[stateIndex]);
-                    temp.Slice(0, bytesToCopy).CopyTo(output.Slice(offset));
+                    BinaryStore.WriteUInt64LittleEndianTruncated(statePtr[stateIndex], output.Slice(offset, bytesToCopy));
                 }
             }
         }
@@ -1254,23 +1252,17 @@ internal unsafe partial struct KeccakCoreState
                 }
                 else
                 {
-                    // Big-endian: convert each byte individually.
-                    int stateIndex = squeezeOffset / 8;
-                    int byteIndex = squeezeOffset % 8;
-
-                    unchecked
+                    // Big-endian: one truncated write per lane.
+                    int written = 0;
+                    while (written < toCopy)
                     {
-                        for (int i = 0; i < toCopy; i++)
-                        {
-                            output[outputOffset + i] = (byte)(statePtr[stateIndex] >> (byteIndex * 8));
-                            byteIndex++;
-
-                            if (byteIndex >= 8)
-                            {
-                                byteIndex = 0;
-                                stateIndex++;
-                            }
-                        }
+                        int position = squeezeOffset + written;
+                        int byteIndex = position % sizeof(ulong);
+                        int take = Math.Min(sizeof(ulong) - byteIndex, toCopy - written);
+                        BinaryStore.WriteUInt64LittleEndianTruncated(
+                            statePtr[position / sizeof(ulong)] >> (byteIndex * 8),
+                            output.Slice(outputOffset + written, take));
+                        written += take;
                     }
                 }
 

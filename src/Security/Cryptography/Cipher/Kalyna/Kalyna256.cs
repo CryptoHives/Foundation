@@ -30,8 +30,8 @@ public sealed class Kalyna256 : SymmetricCipher
     {
         BlockSizeValue = 128;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0)];
-        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
+        LegalKeySizesValue = LegalSizes.Bits256;
+        LegalBlockSizesValue = LegalSizes.Bits128;
     }
 
     /// <inheritdoc/>

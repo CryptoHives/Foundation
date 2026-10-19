@@ -116,11 +116,10 @@ internal struct GcmCore
     private readonly BlockCipher128? _blockCipher;
 #if NET8_0_OR_GREATER
     // selected accelerations by SimdSupport
-    private readonly bool _useAesNi;
+    private readonly bool _useAes;
     private readonly bool _usePclmul;
     private readonly bool _usePipeline;
     private readonly bool _usePclmulV256;
-    private readonly bool _useArmAes;
     private readonly bool _useArmPmull;
     private Vector128<byte> _hClmul;
     private readonly Vector128<byte>[] _hPowers;
@@ -180,15 +179,15 @@ internal struct GcmCore
         }
 
 #if NET8_0_OR_GREATER
-        if ((simdSupport & SimdSupport.AesNi) != 0)
+        if (AesCoreAesNi.IsSupported && (simdSupport & SimdSupport.AesNi) != 0)
         {
-            _useAesNi = true;
+            _useAes = true;
             _rounds = AesCoreAesNi.ExpandKey(key, AesNiRoundKeys);
             AesCoreAesNi.EncryptBlock(zeroBlock, _h, AesNiRoundKeys, _rounds);
         }
-        else if ((simdSupport & SimdSupport.ArmAes) != 0)
+        else if (AesCoreArm.IsSupported && (simdSupport & SimdSupport.ArmAes) != 0)
         {
-            _useArmAes = true;
+            _useAes = true;
             _rounds = AesCoreArm.ExpandKey(key, AesNiRoundKeys);
             AesCoreArm.EncryptBlock(zeroBlock, _h, AesNiRoundKeys, _rounds);
         }
@@ -217,7 +216,7 @@ internal struct GcmCore
         {
             _hClmul = PrepareH(_h);
             _hPowers = _useArmPmull ? PrepareHPowersPmull(_hClmul) : PrepareHPowers(_hClmul);
-            if (AesCoreAesNi.IsSupported && _useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAes)
             {
                 _usePipeline = _usePclmul || _usePclmulV256;
             }
@@ -1012,13 +1011,13 @@ internal struct GcmCore
         }
 
 #if NET8_0_OR_GREATER
-        if (AesCoreAesNi.IsSupported && _useAesNi)
+        if (AesCoreAesNi.IsSupported && _useAes)
         {
             GctrAesNi(AesNiRoundKeys, _rounds, icb, input, output);
             return;
         }
 
-        if (AesCoreArm.IsSupported && _useArmAes)
+        if (AesCoreArm.IsSupported && _useAes)
         {
             GctrArmAes(AesNiRoundKeys, _rounds, icb, input, output);
             return;

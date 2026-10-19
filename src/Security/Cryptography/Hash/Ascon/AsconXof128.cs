@@ -170,7 +170,6 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
             _squeezeOffset = 0;
         }
 
-        Span<byte> block = stackalloc byte[RateBytes];
         int remaining = output.Length;
         int destOffset = 0;
 
@@ -179,8 +178,7 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
         {
             int available = RateBytes - _squeezeOffset;
             int toCopy = Math.Min(remaining, available);
-            BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
-            block.Slice(_squeezeOffset, toCopy).CopyTo(output.Slice(destOffset));
+            BinaryStore.WriteUInt64LittleEndianTruncated(_x0 >> (_squeezeOffset * 8), output.Slice(destOffset, toCopy));
             destOffset += toCopy;
             remaining -= toCopy;
             _squeezeOffset += toCopy;
@@ -204,8 +202,7 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
         // Handle trailing partial block
         if (remaining > 0)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
-            block.Slice(0, remaining).CopyTo(output.Slice(destOffset));
+            BinaryStore.WriteUInt64LittleEndianTruncated(_x0, output.Slice(destOffset, remaining));
             _squeezeOffset = remaining;
         }
     }
@@ -213,23 +210,13 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
     /// <inheritdoc/>
     protected override void SqueezeOutput(Span<byte> destination)
     {
-        // Squeeze output
-        Span<byte> block = stackalloc byte[RateBytes];
         int remaining = _outputSizeBytes;
         int destOffset = 0;
 
         while (remaining > 0)
         {
             int toCopy = Math.Min(remaining, RateBytes);
-            if (toCopy == RateBytes)
-            {
-                BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(destOffset), _x0);
-            }
-            else
-            {
-                BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
-                block.Slice(0, toCopy).CopyTo(destination.Slice(destOffset));
-            }
+            BinaryStore.WriteUInt64LittleEndianTruncated(_x0, destination.Slice(destOffset, toCopy));
 
             remaining -= toCopy;
             destOffset += toCopy;

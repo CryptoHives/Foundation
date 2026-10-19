@@ -57,8 +57,8 @@ public sealed class Camellia256 : SymmetricCipher
     {
         BlockSizeValue = CamelliaCore.BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0)];
-        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
+        LegalKeySizesValue = LegalSizes.Bits256;
+        LegalBlockSizesValue = LegalSizes.Bits128;
     }
 
     /// <inheritdoc/>
