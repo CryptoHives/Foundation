@@ -402,11 +402,8 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
             temp >>= 8;
         }
 
-        // Write value bytes in big-endian order
-        for (int i = 0; i < n; i++)
-        {
-            output[i] = (byte)(value >> ((n - 1 - i) * 8));
-        }
+        // Shifted so the n significant bytes lead the big-endian encoding.
+        BinaryStore.WriteUInt64BigEndianTruncated(value << ((sizeof(ulong) - n) * 8), output.Slice(0, n));
 
         // Append byte count
         output[n] = (byte)n;

@@ -355,7 +355,8 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
     /// <exception cref="OS.CryptographicException">The key size is invalid.</exception>
     protected void ValidateKeySize(int bitLength)
     {
-        foreach (var sizes in LegalKeySizes)
+        // The field rather than LegalKeySizes, whose getter allocates a clone on every call.
+        foreach (var sizes in LegalKeySizesValue!)
         {
             if (bitLength >= sizes.MinSize && bitLength <= sizes.MaxSize)
             {

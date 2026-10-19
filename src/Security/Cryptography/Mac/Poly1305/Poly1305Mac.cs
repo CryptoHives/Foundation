@@ -148,11 +148,25 @@ public sealed class Poly1305Mac : IMac
         }
 
         // Process full blocks directly from input
+#if NET8_0_OR_GREATER
+        // The accumulator stays in locals across the loop: field-held, it takes a store and a
+        // reload on the critical path of every block.
+        ulong h0 = _h0, h1 = _h1, h2 = _h2;
+        while (offset + BlockSize <= input.Length)
+        {
+            Poly1305Core.AddFullBlock64(input.Slice(offset, BlockSize), ref h0, ref h1, ref h2);
+            Poly1305Core.MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
+            offset += BlockSize;
+        }
+
+        _h0 = h0; _h1 = h1; _h2 = h2;
+#else
         while (offset + BlockSize <= input.Length)
         {
             ProcessFullBlock(input.Slice(offset, BlockSize));
             offset += BlockSize;
         }
+#endif
 
         // Buffer remaining data
         int remaining = input.Length - offset;

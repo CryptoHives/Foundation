@@ -443,6 +443,28 @@ public class AesTests
         });
     }
 
+    /// <summary>
+    /// Every cipher instance shares one legal-size table, so the arrays handed out must be
+    /// copies: overwriting one cannot change what another instance accepts.
+    /// </summary>
+    [Test]
+    public void Aes128_LegalSizesAreCopies()
+    {
+        using var first = Aes128.Create();
+        first.LegalKeySizes[0] = new OS.KeySizes(8, 8, 0);
+        first.LegalBlockSizes[0] = new OS.KeySizes(8, 8, 0);
+
+        using var second = Aes128.Create();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(second.LegalKeySizes[0].MinSize, Is.EqualTo(128));
+            Assert.That(second.LegalBlockSizes[0].MinSize, Is.EqualTo(128));
+            Assert.That(second.ValidKeySize(128), Is.True);
+        }
+
+        second.Key = new byte[16];
+    }
+
     // ========================================================================
     // Dispose Tests
     // ========================================================================
