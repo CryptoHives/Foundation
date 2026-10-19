@@ -59,8 +59,8 @@ public sealed class Aes128 : SymmetricCipher
         _simdSupport = simdSupport.WithImplicit() & SimdSupport;
         BlockSizeValue = AesCore.BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new OS.KeySizes(128, 128, 0)];
-        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
+        LegalKeySizesValue = LegalSizes.Bits128;
+        LegalBlockSizesValue = LegalSizes.Bits128;
     }
 
     /// <inheritdoc/>

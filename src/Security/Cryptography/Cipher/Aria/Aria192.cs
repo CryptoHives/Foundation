@@ -30,8 +30,8 @@ public sealed class Aria192 : SymmetricCipher
     {
         BlockSizeValue = 128;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new OS.KeySizes(192, 192, 0)];
-        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
+        LegalKeySizesValue = LegalSizes.Bits192;
+        LegalBlockSizesValue = LegalSizes.Bits128;
     }
 
     /// <inheritdoc/>

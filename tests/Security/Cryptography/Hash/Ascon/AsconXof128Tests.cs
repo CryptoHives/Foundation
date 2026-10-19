@@ -110,6 +110,43 @@ public class AsconXof128Tests
     }
 
     /// <summary>
+    /// Squeezing in uneven pieces resumes partway through a rate word and must produce the
+    /// same stream as one call.
+    /// </summary>
+    /// <param name="chunks">The sequence of squeeze lengths to request.</param>
+    [TestCase(new[] { 1, 7, 1 })]
+    [TestCase(new[] { 3, 3, 3, 3, 3, 3, 3 })]
+    [TestCase(new[] { 5, 8, 2, 17 })]
+    [TestCase(new[] { 7, 9, 8, 1, 6 })]
+    [TestCase(new[] { 8, 8, 1, 7 })]
+    public void SqueezeInIrregularChunksMatchesSingleCall(int[] chunks)
+    {
+        byte[] input = Encoding.UTF8.GetBytes("test");
+        int total = 0;
+        foreach (int c in chunks)
+        {
+            total += c;
+        }
+
+        using var single = CH.AsconXof128.Create();
+        single.Absorb(input);
+        byte[] expected = new byte[total];
+        single.Squeeze(expected);
+
+        using var pieces = CH.AsconXof128.Create();
+        pieces.Absorb(input);
+        byte[] actual = new byte[total];
+        int offset = 0;
+        foreach (int c in chunks)
+        {
+            pieces.Squeeze(actual.AsSpan(offset, c));
+            offset += c;
+        }
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
     /// Test that different output sizes produce prefix-compatible outputs.
     /// </summary>
     [Test]

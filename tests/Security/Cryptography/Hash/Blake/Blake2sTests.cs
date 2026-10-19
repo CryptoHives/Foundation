@@ -122,6 +122,25 @@ public class Blake2sTests
     }
 
     /// <summary>
+    /// Every output size agrees with BouncyCastle, including those that end partway through a
+    /// state word.
+    /// </summary>
+    /// <param name="outputBytes">The digest size in bytes.</param>
+    [Test]
+    public void EveryOutputSizeMatchesBouncyCastle([Range(1, 32)] int outputBytes)
+    {
+        byte[] input = SequentialBytes(200);
+
+        var bc = new Org.BouncyCastle.Crypto.Digests.Blake2sDigest(outputBytes * 8);
+        bc.BlockUpdate(input, 0, input.Length);
+        byte[] expected = new byte[outputBytes];
+        bc.DoFinal(expected, 0);
+
+        using var blake2s = Blake2s.Create(outputBytes);
+        Assert.That(blake2s.ComputeHash(input), Is.EqualTo(expected));
+    }
+
+    /// <summary>
     /// Test that invalid output size throws for our managed implementation.
     /// </summary>
     [Test]
