@@ -49,6 +49,9 @@ internal ref struct Poly1305Core
     private ulong _h0, _h1, _h2;
     private readonly ulong _r0, _r1, _r2, _s1, _s2;
     private readonly ulong _padLo, _padHi;
+
+    // The Mono JIT miscompiles the inline comparison carries; see Add128.
+    private static readonly bool IsMono = Type.GetType("Mono.RuntimeStructs") is not null;
 #else
     // ---- Donna-32: 5 × 26-bit limbs ----
     private uint _h0, _h1, _h2, _h3, _h4;
@@ -523,9 +526,9 @@ internal ref struct Poly1305Core
         ulong r0, ulong r1, ulong r2,
         ulong s1, ulong s2)
     {
-        if (!BitConverter.IsLittleEndian)
+        if (IsMono)
         {
-            MulReduce64BigEndian(ref h0, ref h1, ref h2, r0, r1, r2, s1, s2);
+            MulReduce64Mono(ref h0, ref h1, ref h2, r0, r1, r2, s1, s2);
             return;
         }
 
@@ -564,7 +567,7 @@ internal ref struct Poly1305Core
     /// <summary>
     /// <see cref="MulReduce64"/> with every carry taken through <see cref="Add128"/>.
     /// </summary>
-    private static void MulReduce64BigEndian(
+    private static void MulReduce64Mono(
         ref ulong h0, ref ulong h1, ref ulong h2,
         ulong r0, ulong r1, ulong r2,
         ulong s1, ulong s2)
@@ -630,14 +633,14 @@ internal ref struct Poly1305Core
         ulong f0 = h0 | (h1 << 44);
         ulong f1 = (h1 >> 20) | (h2 << 24);
 
-        if (BitConverter.IsLittleEndian)
+        if (IsMono)
         {
-            f0 += padLo;
-            f1 += padHi + (f0 < padLo ? 1UL : 0UL);
+            Add128(ref f0, ref f1, padLo, padHi);
         }
         else
         {
-            Add128(ref f0, ref f1, padLo, padHi);
+            f0 += padLo;
+            f1 += padHi + (f0 < padLo ? 1UL : 0UL);
         }
 
         BinaryPrimitives.WriteUInt64LittleEndian(tag, f0);
@@ -648,9 +651,9 @@ internal ref struct Poly1305Core
     /// Adds a 128-bit value to a 128-bit accumulator held as two 64-bit halves.
     /// </summary>
     /// <remarks>
-    /// Big-endian hosts only. The s390x Mono JIT miscompiles the inline comparison carry when the
-    /// accumulator lives in object fields, so this derives it arithmetically. s390x is the only
-    /// big-endian .NET target; the inline form measured faster everywhere else.
+    /// Mono only. Its JIT miscompiles the inline comparison carry when the accumulator lives in
+    /// object fields (seen on s390x and ppc64le), so this derives it arithmetically. The inline
+    /// form measured faster on CoreCLR.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Add128(ref ulong lo, ref ulong hi, ulong addLo, ulong addHi)
