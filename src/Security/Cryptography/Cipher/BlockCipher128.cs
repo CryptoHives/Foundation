@@ -40,7 +40,7 @@ internal abstract class BlockCipher128
 
         public AriaBlockCipher(ReadOnlySpan<byte> key)
         {
-            RequireKeySize(key, 16, 24, 32);
+            if (key.Length is not (16 or 24 or 32)) throw new ArgumentException("Key must be 16, 24 or 32 bytes.", nameof(key));
             _rounds = AriaCore.ExpandKey(key, _roundKeys);
         }
 
@@ -59,7 +59,7 @@ internal abstract class BlockCipher128
 
         public CamelliaBlockCipher(ReadOnlySpan<byte> key)
         {
-            RequireKeySize(key, 16, 24, 32);
+            if (key.Length is not (16 or 24 or 32)) throw new ArgumentException("Key must be 16, 24 or 32 bytes.", nameof(key));
             _rounds = CamelliaCore.ExpandKey(key, _subkeys);
         }
 
@@ -77,7 +77,7 @@ internal abstract class BlockCipher128
 
         public KuznyechikBlockCipher(ReadOnlySpan<byte> key)
         {
-            RequireKeySize(key, KuznyechikCore.KeySizeBytes);
+            if (key.Length != KuznyechikCore.KeySizeBytes) throw new ArgumentException($"Key must be {KuznyechikCore.KeySizeBytes} bytes.", nameof(key));
             Span<ulong> decryptKeys = stackalloc ulong[KuznyechikCore.RoundKeyWordCount];
             KuznyechikCore.ExpandKeySchedules(key, _encryptKeys, decryptKeys);
             CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(decryptKeys));
@@ -97,7 +97,7 @@ internal abstract class BlockCipher128
 
         public SeedBlockCipher(ReadOnlySpan<byte> key)
         {
-            RequireKeySize(key, 16);
+            if (key.Length != 16) throw new ArgumentException("Key must be 16 bytes.", nameof(key));
             SeedCore.ExpandKey(key, _roundKeys);
         }
 
@@ -116,7 +116,7 @@ internal abstract class BlockCipher128
 
         public Sm4BlockCipher(ReadOnlySpan<byte> key)
         {
-            RequireKeySize(key, 16);
+            if (key.Length != 16) throw new ArgumentException("Key must be 16 bytes.", nameof(key));
             _core = new Sm4Core(key);
         }
 
@@ -126,15 +126,6 @@ internal abstract class BlockCipher128
             => _core.EncryptBlock(input, output);
 
         public override void Clear() => _core.Clear();
-    }
-
-    private static void RequireKeySize(ReadOnlySpan<byte> key, params int[] validSizes)
-    {
-        if (Array.IndexOf(validSizes, key.Length) < 0)
-        {
-            throw new ArgumentException(
-                $"Key must be {string.Join(", ", validSizes)} bytes.", nameof(key));
-        }
     }
 }
 

@@ -1,7 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT OR Apache2.0
-
-#pragma warning disable IDE0130 // Namespace does not match folder structure
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 

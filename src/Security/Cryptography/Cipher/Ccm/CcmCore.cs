@@ -448,6 +448,7 @@ internal unsafe struct CcmCore
         Span<byte> block = stackalloc byte[BlockSizeBytes];
         input.CopyTo(block);
         blockCipher.EncryptBlock(block, output);
+        CryptographicOperations.ZeroMemory(block);
     }
 
     private static void ValidateParameters(

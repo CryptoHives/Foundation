@@ -992,15 +992,10 @@ internal struct GcmCore
     /// Increments the counter block (last 32 bits, big-endian).
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void IncrementCounter(Span<byte> counter)
+    internal static void IncrementCounter(Span<byte> counter)
     {
-        for (int i = 15; i >= 12; i--)
-        {
-            if (++counter[i] != 0)
-            {
-                break;
-            }
-        }
+        Span<byte> word = counter.Slice(12, 4);
+        BinaryPrimitives.WriteUInt32BigEndian(word, BinaryPrimitives.ReadUInt32BigEndian(word) + 1);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
