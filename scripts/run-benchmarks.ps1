@@ -57,9 +57,9 @@ param(
         "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256",
         "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512",
         "SeedCbc",
-        # GCM and CCM over the regional ciphers (individual)
+        # GCM, CCM and MGM over the regional ciphers (individual)
         "Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256",
-        "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm",
+        "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm", "KuznyechikMgm",
         # AEAD and key wrapping (individual)
         "AsconAead128", "AesKeyWrap",
         # MAC algorithms (individual)
@@ -292,7 +292,7 @@ $AlgorithmBenchmarkMap = @{
     "KalynaCbc256"      = "KalynaCbc256"
     "KalynaCbc512"      = "KalynaCbc512"
     "SeedCbc"           = "SeedCbc"
-    # Ciphers - GCM and CCM over the regional ciphers
+    # Ciphers - GCM, CCM and MGM over the regional ciphers
     "Sm4Gcm"            = "Sm4Gcm"
     "Sm4Ccm"            = "Sm4Ccm"
     "AriaGcm128"        = "AriaGcm128"
@@ -305,6 +305,7 @@ $AlgorithmBenchmarkMap = @{
     "CamelliaCcm256"    = "CamelliaCcm256"
     "SeedGcm"           = "SeedGcm"
     "KuznyechikGcm"     = "KuznyechikGcm"
+    "KuznyechikMgm"     = "KuznyechikMgm"
     # Ciphers - AEAD and key wrapping
     "AsconAead128"      = "AsconAead128"
     "AesKeyWrap"        = "AesKeyWrap"
@@ -371,9 +372,9 @@ $GroupAliases = @{
     "AES-CBC"        = @("AesCbc128", "AesCbc256")
     "ChaCha"         = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
-    "RegionalAEAD"   = @("Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm")
-    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm")
-    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "AesCbc128", "AesCbc256", "AesKeyWrap", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc", "Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm")
+    "RegionalAEAD"   = @("Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm", "KuznyechikMgm")
+    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm", "KuznyechikMgm")
+    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "AesCbc128", "AesCbc256", "AesKeyWrap", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc", "Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm", "KuznyechikMgm")
     "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
     "MLKem"          = @("MLKemKeyGen", "MLKemOps")
@@ -505,7 +506,7 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc192, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
     Write-Host "                          KuznyechikCbc, KalynaCbc128, KalynaCbc256, KalynaCbc512, SeedCbc"
     Write-Host "  Regional AEAD: -Family Sm4Gcm, Sm4Ccm, AriaGcm128, AriaGcm256, AriaCcm128, AriaCcm256"
-    Write-Host "                          CamelliaGcm128, CamelliaGcm256, CamelliaCcm128, CamelliaCcm256, SeedGcm, KuznyechikGcm"
+    Write-Host "                          CamelliaGcm128, CamelliaGcm256, CamelliaCcm128, CamelliaCcm256, SeedGcm, KuznyechikGcm, KuznyechikMgm"
     Write-Host ""
     Write-Host "Available MAC algorithm families:" -ForegroundColor Yellow
     Write-Host ""
@@ -562,8 +563,8 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family AES-GCM-SIV runs: AesGcmSiv128, AesGcmSiv256"
     Write-Host "  -Family AES-CBC    runs: AesCbc128, AesCbc256"
     Write-Host "  -Family ChaCha     runs: ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
-    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, AES-GCM-SIV, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, regional GCM/CCM)"
-    Write-Host "  -Family RegionalAEAD : GCM/CCM over SM4, ARIA, Camellia, SEED, Kuznyechik"
+    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, AES-GCM-SIV, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, regional GCM/CCM/MGM)"
+    Write-Host "  -Family RegionalAEAD : GCM/CCM over SM4, ARIA, Camellia, SEED, Kuznyechik; MGM over Kuznyechik"
     Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA-128/192/256, Camellia-128/192/256, Kuznyechik, Kalyna-128/256/512, SEED)"
     Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
     Write-Host "  -Family HMAC       runs: HmacMd5, HmacSha1, HmacSha256, HmacSha384, HmacSha512, HmacSha3_256, HmacSha3_384, HmacSha3_512"

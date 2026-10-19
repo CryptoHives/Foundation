@@ -293,8 +293,36 @@ byte[] tag = new byte[8];                    // 4-16 bytes, even; the buffer len
 ccm.Encrypt(nonce, plaintext, ciphertext, tag, associatedData);
 ```
 
-> Kuznyechik's national AEAD mode is MGM (R 1323565.1.026-2019), which is not implemented;
-> `KuznyechikGcm` is for interoperating with systems that run Kuznyechik under GCM.
+> Kuznyechik's national AEAD mode is MGM, below; `KuznyechikGcm` is for interoperating with
+> systems that run Kuznyechik under GCM.
+
+### Kuznyechik-MGM (Multilinear Galois Mode)
+
+```csharp
+public sealed class KuznyechikMgm : IAeadCipher
+```
+
+MGM (RFC 9058, R 1323565.1.026-2019) over Kuznyechik: the AEAD of GOST TLS 1.3 (RFC 9367) and
+GOST CMS. It differs from GCM in ways that matter to a caller:
+
+- **Nonce:** 16 bytes, with the most significant bit clear (a 127-bit value). A nonce with the top
+  bit set throws `ArgumentException`.
+- **Tag:** 4 to 16 bytes, chosen by the length of the tag buffer; the `byte[]` overloads use 16.
+- **Input:** at least one of plaintext and associated data must be non-empty, as RFC 9058 requires.
+- **Decryption** checks the tag before decrypting, so a forgery never yields plaintext; the
+  plaintext buffer is zeroed instead.
+
+**Performance:** every block costs two Kuznyechik encryptions, one for the keystream and one for
+a fresh multiplier, so MGM runs at about half the speed of Kuznyechik in CTR mode. The field
+multiply uses PCLMULQDQ or PMULL where available.
+
+**Usage:**
+```csharp
+using var mgm = KuznyechikMgm.Create(key);   // 32 bytes
+nonce[0] &= 0x7F;                              // 16 bytes, top bit clear
+byte[] sealedData = mgm.Encrypt(nonce, plaintext, associatedData);   // ciphertext || 16-byte tag
+byte[] opened = mgm.Decrypt(nonce, sealedData, associatedData);      // throws on a bad tag
+```
 
 ---
 

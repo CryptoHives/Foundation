@@ -239,6 +239,7 @@ $packageConfigurations = @{
             @{ Source = "CamelliaCcm256Benchmark-report.md"; Target = "camellia-ccm-256.md" }
             @{ Source = "SeedGcmBenchmark-report.md"; Target = "seed-gcm.md" }
             @{ Source = "KuznyechikGcmBenchmark-report.md"; Target = "kuznyechik-gcm.md" }
+            @{ Source = "KuznyechikMgmBenchmark-report.md"; Target = "kuznyechik-mgm.md" }
 
             # MAC benchmarks - HMAC
             @{ Source = "HmacMd5Benchmark-report.md"; Target = "hmac-md5.md" }
