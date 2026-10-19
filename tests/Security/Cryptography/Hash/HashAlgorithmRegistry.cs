@@ -475,9 +475,11 @@ public static class HashAlgorithmRegistry
             s => CH.Blake2b.Create(s, 64));
         list.Add(new("BLAKE2b-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(512)), Source.BouncyCastle));
+#if HASHIFYNET
         list.Add(new("BLAKE2b-512", "HashifyNET", 512,
             () => new HashifyNetBlake2bAdapter(512), Source.HashifyNet,
             excludeFromBenchmark: true));
+#endif
 #if KONSCIOUS_BLAKE2
         list.Add(new("BLAKE2b-512", "Konscious", 512,
             () => new KonsciousBlake2Adapter(512), Source.Konscious));
@@ -490,9 +492,11 @@ public static class HashAlgorithmRegistry
             s => CH.Blake2b.Create(s, 32));
         list.Add(new("BLAKE2b-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(256)), Source.BouncyCastle));
+#if HASHIFYNET
         list.Add(new("BLAKE2b-256", "HashifyNET", 256,
             () => new HashifyNetBlake2bAdapter(256), Source.HashifyNet,
             excludeFromBenchmark: true));
+#endif
 #if KONSCIOUS_BLAKE2
         list.Add(new("BLAKE2b-256", "Konscious", 256,
             () => new KonsciousBlake2Adapter(256), Source.Konscious));
@@ -607,8 +611,10 @@ public static class HashAlgorithmRegistry
         list.Add(new HashImplementation("Whirlpool", "CryptoHives-Scalar", 512, CH.Whirlpool.Create, Source.Managed));
         list.Add(new("Whirlpool", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.WhirlpoolDigest()), Source.BouncyCastle));
+#if HASHIFYNET
         list.Add(new("Whirlpool", "HashifyNET", 512,
             () => new HashifyNetWhirlpoolAdapter(), Source.HashifyNet));
+#endif
     }
 
     #endregion

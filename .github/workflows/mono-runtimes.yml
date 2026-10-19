@@ -7,9 +7,9 @@ name: Mono Runtime Tests
 #   wasm     browser-wasm on Node.js: the Mono interpreter, single-threaded.
 #
 # s390x and ppc64le run the Red Hat UBI .NET 10 SDK image under QEMU on the x64 runner. Their test
-# assembly is built natively and only the test run is emulated. The build passes
-# /p:NativeTestDependencies=false, which drops the two BLAKE3 reference packages that wrap a native
-# library with no binary for these platforms. Benchmark fixtures are filtered out everywhere: they
+# assembly is built natively and only the test run is emulated. Every build passes
+# /p:MonoRuntimeTests=true, which drops the reference libraries that do not run on Mono (HashifyNET
+# and the two native BLAKE3 packages). Benchmark fixtures are filtered out everywhere: they
 # compare against third-party libraries and would dominate a slow run without exercising anything
 # new. The x86 and ARM SIMD tiers are gated on their instruction sets and never run here.
 
@@ -68,7 +68,7 @@ jobs:
       run: >
         dotnet build tests/Security/Cryptography/Cryptography.Tests.csproj
         -c Release -f net10.0
-        -p:NativeTestDependencies=false
+        -p:MonoRuntimeTests=true
         -o artifacts/tests
 
     - name: Register the ${{ matrix.arch }} emulator
@@ -104,8 +104,11 @@ jobs:
             [ "$order" = "$EXPECTED_ORDER" ] || { echo "Unexpected byte order."; exit 1; }
 
             dotnet --info | head -20
+            # A test still running after 30 minutes is a hang: the blame collector names it in
+            # Sequence_*.xml under the results and stops the run.
             dotnet test /artifacts/tests/Cryptography.Tests.dll \
               --filter "$FILTER" \
+              --blame-hang --blame-hang-timeout 30m --blame-hang-dump-type none \
               --results-directory /artifacts/results \
               --logger "trx;LogFileName=results.trx" \
               --logger "console;verbosity=minimal"
@@ -144,7 +147,7 @@ jobs:
     - name: Create the WebAssembly test host
       # The host lives outside the repository so the repository's central package management and
       # warnings-as-errors settings do not apply to the generated template. It runs the tests
-      # in-process with NUnitLite, since VSTest cannot host a browser-wasm process.
+      # in-process on the NUnit framework runner, since VSTest cannot host a browser-wasm process.
       run: |
         nunit=$(grep -oP '<PackageVersion Include="NUnit" Version="\K[^"]+' Directory.Packages.props)
         host="$RUNNER_TEMP/wasm-host"
@@ -152,31 +155,65 @@ jobs:
         dotnet workload install wasm-tools
         dotnet new install Microsoft.NET.Runtime.WebAssembly.Templates.net10
         dotnet new wasmconsole -o "$host" -n WasmTestHost
-        dotnet add "$host" package NUnitLite --version "$nunit"
+        dotnet add "$host" package NUnit --version "$nunit"
 
         # Reference the test project as a library: an executable referencing another executable
         # is otherwise rejected, and the tests are only needed as an assembly.
-        sed -i 's#</Project>#  <PropertyGroup>\n    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>\n    <InvariantGlobalization>true</InvariantGlobalization>\n  </PropertyGroup>\n  <ItemGroup>\n    <ProjectReference Include="'"$GITHUB_WORKSPACE"'/tests/Security/Cryptography/Cryptography.Tests.csproj" SetTargetFramework="TargetFramework=net10.0" AdditionalProperties="NativeTestDependencies=false" />\n  </ItemGroup>\n</Project>#' "$host/WasmTestHost.csproj"
+        sed -i 's#</Project>#  <PropertyGroup>\n    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>\n    <InvariantGlobalization>true</InvariantGlobalization>\n  </PropertyGroup>\n  <ItemGroup>\n    <ProjectReference Include="'"$GITHUB_WORKSPACE"'/tests/Security/Cryptography/Cryptography.Tests.csproj" SetTargetFramework="TargetFramework=net10.0" AdditionalProperties="MonoRuntimeTests=true" />\n  </ItemGroup>\n</Project>#' "$host/WasmTestHost.csproj"
 
-        # Single-threaded runtime: no parallel workers. Arguments are compiled in rather than
-        # passed through the JavaScript host, and the reader is explicit because browser-wasm
-        # has no Console.In.
+        # The runtime is single-threaded, and NUnitLite always starts an event-pump thread. This
+        # drives the framework runner directly with synchronous events, on the main thread, and
+        # prints each test as it starts so a hang names its test.
         cat > "$host/Program.cs" <<'EOF'
         using System;
+        using System.Collections.Generic;
         using System.IO;
         using System.Reflection;
-        using NUnit.Common;
-        using NUnitLite;
+        using NUnit;
+        using NUnit.Framework.Api;
+        using NUnit.Framework.Interfaces;
+        using NUnit.Framework.Internal;
 
-        return new AutoRun(Assembly.Load("Cryptography.Tests")).Execute(
-            [
-                "--workers=0",
-                "--noresult",
-                "--labels=Before",
-                "--where", "test !~ Cryptography.Tests.Benchmarks",
-            ],
-            new ExtendedTextWrapper(Console.Out),
-            TextReader.Null);
+        var runner = new NUnitTestAssemblyRunner(new DefaultTestAssemblyBuilder());
+        runner.Load(Assembly.Load("Cryptography.Tests"), new Dictionary<string, object>
+        {
+            [FrameworkPackageSettings.NumberOfTestWorkers] = 0,
+            [FrameworkPackageSettings.RunOnMainThread] = true,
+            [FrameworkPackageSettings.SynchronousEvents] = true,
+        });
+
+        TestFilter filter = TestFilter.FromXml(
+            "<filter><not><test re=\"1\">^Cryptography\\.Tests\\.Benchmarks\\.</test></not></filter>");
+        ITestResult result = runner.Run(new ConsoleListener(), filter);
+
+        Console.WriteLine(
+            $"{result.ResultState.Status}: {result.FailCount} failed, {result.PassCount} passed, " +
+            $"{result.SkipCount + result.InconclusiveCount} skipped");
+        return result.ResultState.Status == TestStatus.Failed ? 1 : 0;
+
+        // NUnit redirects Console.Out while the run is in progress; keep the real one.
+        sealed class ConsoleListener : ITestListener
+        {
+            private readonly TextWriter _out = Console.Out;
+
+            public void TestStarted(ITest test)
+            {
+                if (!test.IsSuite) _out.WriteLine($"=> {test.FullName}");
+            }
+
+            public void TestFinished(ITestResult result)
+            {
+                if (result.ResultState.Status != TestStatus.Failed) return;
+                if (result.Test.IsSuite && result.ResultState.Site == FailureSite.Child) return;
+
+                _out.WriteLine($"FAILED {result.FullName}: {result.Message}");
+                if (!string.IsNullOrEmpty(result.StackTrace)) _out.WriteLine(result.StackTrace);
+            }
+
+            public void TestOutput(TestOutput output) { }
+
+            public void SendMessage(TestMessage message) { }
+        }
         EOF
 
         # The template's main.mjs calls an export of the template's Program.cs; just run Main.
