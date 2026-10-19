@@ -137,7 +137,9 @@ public sealed class AesGmac : IDisposable
         Span<byte> computedTag = stackalloc byte[TagSizeBytes];
         ComputeTag(nonce, associatedData, computedTag);
 
-        return CryptographicEquals(computedTag, expectedTag);
+        bool authentic = CryptographicEquals(computedTag, expectedTag);
+        CryptographicOperations.ZeroMemory(computedTag);
+        return authentic;
     }
 
     /// <inheritdoc/>

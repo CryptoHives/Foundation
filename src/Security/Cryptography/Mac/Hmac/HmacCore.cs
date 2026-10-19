@@ -96,6 +96,7 @@ public class HmacCore : IMac
         // Complete outer hash: H((K' ⊕ opad) ‖ innerResult)
         // The opad key block was already fed in InitializeInner()
         _outerHash.AppendData(innerResult);
+        CryptographicOperations.ZeroMemory(innerResult);
         Span<byte> outerResult = stackalloc byte[_macSize];
         _outerHash.TryGetHashAndReset(outerResult, out _);
 
@@ -167,12 +168,12 @@ public class HmacCore : IMac
 
         if (key.Length > blockSize)
         {
-            // Key longer than block size: hash it first. Zero-allocation and self-clearing
-            // since hashedKey is stack-allocated rather than a heap array left uncleared.
+            // Key longer than block size: hash it first.
             _innerHash.AppendData(key);
             Span<byte> hashedKey = stackalloc byte[_macSize];
             _innerHash.TryGetHashAndReset(hashedKey, out _);
             hashedKey.CopyTo(keyBlock);
+            CryptographicOperations.ZeroMemory(hashedKey);
         }
         else
         {

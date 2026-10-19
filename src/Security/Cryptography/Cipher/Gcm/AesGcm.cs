@@ -126,6 +126,9 @@ public abstract class AesGcm : IAeadCipher
         // Write the fixed-size tag; larger caller-supplied buffers are left
         // untouched beyond TagSizeBytes (tag.Length >= TagSizeBytes is guaranteed above).
         fullTag.CopyTo(tag);
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
     }
 
     /// <inheritdoc/>
@@ -159,7 +162,12 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
-        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length));
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;

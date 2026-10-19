@@ -242,6 +242,8 @@ internal abstract class BlockCipherTransform : ICipherTransform
                 TransformBlock(padded, output.Slice(written));
                 written += unit;
             }
+
+            CryptographicOperations.ZeroMemory(padded);
         }
         else
         {
@@ -480,6 +482,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
             }
 
             written += bs + lastLength;
+            CryptographicOperations.ZeroMemory(last);
         }
 
         held.Clear();
@@ -513,6 +516,8 @@ internal abstract class BlockCipherTransform : ICipherTransform
         EncryptBlock(temp, output.Slice(0, bs));
 
         penultimate.Slice(0, lastLength).CopyTo(output.Slice(bs));
+        CryptographicOperations.ZeroMemory(temp);
+        CryptographicOperations.ZeroMemory(penultimate);
     }
 
     /// <summary>
@@ -541,6 +546,8 @@ internal abstract class BlockCipherTransform : ICipherTransform
         {
             output[i] ^= _feedback[i];
         }
+
+        CryptographicOperations.ZeroMemory(decrypted);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

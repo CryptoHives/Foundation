@@ -79,6 +79,9 @@ public abstract class GcmCipher : IAeadCipher
 
         // T = GCTR(J0, GHASH(H, A, C))
         _gcmCore.GctrDispatch(j0, ghash, tag.Slice(0, TagSizeBytes));
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
     }
 
     /// <inheritdoc/>
@@ -111,7 +114,12 @@ public abstract class GcmCipher : IAeadCipher
         Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
-        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        if (!authentic)
         {
             CryptographicOperations.ZeroMemory(plaintext.Slice(0, ciphertext.Length));
             return false;

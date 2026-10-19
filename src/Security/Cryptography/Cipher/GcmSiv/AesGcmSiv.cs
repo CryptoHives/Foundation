@@ -175,6 +175,7 @@ public abstract class AesGcmSiv : IAeadCipher
             CryptographicOperations.ZeroMemory(authKey);
             CryptographicOperations.ZeroMemory(encKey);
             CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(roundKeys));
+            CryptographicOperations.ZeroMemory(expectedTag);
         }
     }
 

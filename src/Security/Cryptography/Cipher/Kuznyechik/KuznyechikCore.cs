@@ -332,6 +332,10 @@ internal static class KuznyechikCore
             k1.CopyTo(roundKeys.Slice((2 * i + 2) * BlockSizeBytes, BlockSizeBytes));
             k2.CopyTo(roundKeys.Slice((2 * i + 3) * BlockSizeBytes, BlockSizeBytes));
         }
+
+        CryptographicOperations.ZeroMemory(k1);
+        CryptographicOperations.ZeroMemory(k2);
+        CryptographicOperations.ZeroMemory(temp);
     }
 
     /// <summary>
@@ -377,8 +381,8 @@ internal static class KuznyechikCore
         }
         finally
         {
-            roundKeys.Clear();
-            inverted.Clear();
+            CryptographicOperations.ZeroMemory(roundKeys);
+            CryptographicOperations.ZeroMemory(inverted);
         }
     }
 

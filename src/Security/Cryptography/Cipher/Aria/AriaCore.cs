@@ -165,6 +165,13 @@ internal static class AriaCore
         // ek2  = W1 ^ (W2 >>> 19)  ... etc
         GenerateRoundKeys(w0, w1, w2, w3, encRoundKeys, nr);
 
+        CryptographicOperations.ZeroMemory(kl);
+        CryptographicOperations.ZeroMemory(kr);
+        CryptographicOperations.ZeroMemory(w0);
+        CryptographicOperations.ZeroMemory(w1);
+        CryptographicOperations.ZeroMemory(w2);
+        CryptographicOperations.ZeroMemory(w3);
+        CryptographicOperations.ZeroMemory(temp);
         return nr;
     }
 
@@ -371,6 +378,7 @@ internal static class AriaCore
 
         SubstLayerOdd(temp);
         DiffuseA(temp, output);
+        CryptographicOperations.ZeroMemory(temp);
     }
 
     // FE: Even round function (substitution layer 2 + diffusion)
@@ -385,6 +393,7 @@ internal static class AriaCore
 
         SubstLayerEven(temp);
         DiffuseA(temp, output);
+        CryptographicOperations.ZeroMemory(temp);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -444,5 +453,8 @@ internal static class AriaCore
 
             Xor128(wBuf.Slice(wBase, 16), rot, ek.Slice(i * 16, 16));
         }
+
+        CryptographicOperations.ZeroMemory(rot);
+        CryptographicOperations.ZeroMemory(wBuf);
     }
 }

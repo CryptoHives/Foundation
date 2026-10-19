@@ -228,6 +228,7 @@ internal unsafe struct KalynaCore
                 rk128[i * 2 + 1] = BinaryPrimitives.ReadUInt64LittleEndian(rkBytes.Slice(i * 16 + 8));
             }
 
+            CryptographicOperations.ZeroMemory(rkBytes);
             return core;
         }
 
@@ -243,6 +244,7 @@ internal unsafe struct KalynaCore
             rkGeneric[i] = roundKeyWords[i];
         }
 
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(roundKeyWords));
         return core;
     }
 
@@ -561,6 +563,7 @@ internal unsafe struct KalynaCore
             KeyExpandEvenOdd256(key, kt, roundKeys, nr);
         }
 
+        CryptographicOperations.ZeroMemory(kt);
         return nr;
     }
 
@@ -591,6 +594,8 @@ internal unsafe struct KalynaCore
         WorkingKeyExpandEven(workingKey, blockWords, keyWords, tempKeys, roundKeys, nr);
         WorkingKeyExpandOdd(roundKeys, blockWords, nr);
 
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(workingKey));
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(tempKeys));
         return nr;
     }
 
@@ -644,6 +649,9 @@ internal unsafe struct KalynaCore
         MixColumns(blockState);
 
         blockState.CopyTo(tempKeys);
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(state));
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(k0));
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(k1));
     }
 
     [SkipLocalsInit]
@@ -739,6 +747,10 @@ internal unsafe struct KalynaCore
             tmv <<= 1;
             RotateLeftWords(initialData.Slice(0, keyWords));
         }
+
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(state));
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(tmpRoundKey));
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(initialData));
     }
 
     private static void WorkingKeyExpandOdd(Span<ulong> roundKeys, int blockWords, int nr)
@@ -1260,6 +1272,7 @@ internal unsafe struct KalynaCore
         MixColumns(state);
 
         state.CopyTo(kt);
+        CryptographicOperations.ZeroMemory(state);
     }
 
     // Key expansion for 128-bit key
@@ -1319,6 +1332,10 @@ internal unsafe struct KalynaCore
             BinaryPrimitives.WriteUInt64LittleEndian(initialData, w1);
             BinaryPrimitives.WriteUInt64LittleEndian(initialData.Slice(8), w0);
         }
+
+        CryptographicOperations.ZeroMemory(state);
+        CryptographicOperations.ZeroMemory(tmpRK);
+        CryptographicOperations.ZeroMemory(initialData);
 
         // Odd round keys via rotation of even keys
         for (int i = 1; i < nr; i += 2)
@@ -1420,6 +1437,10 @@ internal unsafe struct KalynaCore
             BinaryPrimitives.WriteUInt64LittleEndian(initialData.Slice(16), d3);
             BinaryPrimitives.WriteUInt64LittleEndian(initialData.Slice(24), d0);
         }
+
+        CryptographicOperations.ZeroMemory(state);
+        CryptographicOperations.ZeroMemory(tmpRK);
+        CryptographicOperations.ZeroMemory(initialData);
 
         // Odd round keys via rotation of even keys
         for (int i = 1; i < nr; i += 2)

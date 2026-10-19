@@ -321,6 +321,7 @@ public sealed class AesCmac : IMac
 
         // K2 = K1 << 1 in GF(2^128)
         DoubleBlock(_k1, _k2);
+        CryptographicOperations.ZeroMemory(l);
     }
 
     /// <summary>

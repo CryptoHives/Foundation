@@ -8,6 +8,7 @@ using System.Runtime.Intrinsics;
 #endif
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -63,6 +64,11 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// Alternative Initial Value prefix for RFC 5649 AES Key Wrap with Padding.
     /// </summary>
     private const uint AIVPrefix = 0xA65959A6U;
+
+    /// <summary>
+    /// Largest wrapped key unwrapped in a stack buffer; longer ones use a pooled array.
+    /// </summary>
+    private const int MaxStackUnwrapBytes = 512;
 
     /// <summary>
     /// AES block size in bytes.
@@ -189,6 +195,7 @@ public unsafe class AesKeyWrapPad : IDisposable
             keyToWrap.CopyTo(block.Slice(SemiblockSize));
 
             EncryptBlockDispatch(block, result);
+            CryptographicOperations.ZeroMemory(block);
             return result;
         }
 
@@ -226,25 +233,47 @@ public unsafe class AesKeyWrapPad : IDisposable
         {
             // Special case: single semiblock — use single AES ECB decrypt
             Span<byte> block = stackalloc byte[BlockSize];
-            DecryptBlockDispatch(wrappedKey, block);
-            block.Slice(0, SemiblockSize).CopyTo(a);
-            Span<byte> plaintext = block.Slice(SemiblockSize);
+            try
+            {
+                DecryptBlockDispatch(wrappedKey, block);
+                block.Slice(0, SemiblockSize).CopyTo(a);
+                Span<byte> plaintext = block.Slice(SemiblockSize);
 
-            VerifyAiv(a, plaintext, n);
-            int mli = (int)BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
-            return plaintext.Slice(0, mli).ToArray();
+                VerifyAiv(a, plaintext, n);
+                int mli = (int)BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
+                return plaintext.Slice(0, mli).ToArray();
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(block);
+            }
         }
 
         // General case: RFC 3394 unwrap
-        byte[] buffer = new byte[wrappedKey.Length];
-        wrappedKey.CopyTo(buffer);
+        byte[]? rented = null;
+        Span<byte> buffer = wrappedKey.Length <= MaxStackUnwrapBytes
+            ? stackalloc byte[MaxStackUnwrapBytes]
+            : (rented = ArrayPool<byte>.Shared.Rent(wrappedKey.Length));
+        buffer = buffer.Slice(0, wrappedKey.Length);
+        try
+        {
+            wrappedKey.CopyTo(buffer);
 
-        UnwrapCore(a, buffer.AsSpan(), n);
+            UnwrapCore(a, buffer, n);
 
-        Span<byte> data = buffer.AsSpan(SemiblockSize);
-        VerifyAiv(a, data, n);
-        int msgLen = (int)BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
-        return data.Slice(0, msgLen).ToArray();
+            Span<byte> data = buffer.Slice(SemiblockSize);
+            VerifyAiv(a, data, n);
+            int msgLen = (int)BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
+            return data.Slice(0, msgLen).ToArray();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+            if (rented is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rented);
+            }
+        }
     }
 
     /// <summary>
@@ -299,18 +328,33 @@ public unsafe class AesKeyWrapPad : IDisposable
             throw new ArgumentException("Wrapped key must be at least 24 bytes and a multiple of 8.", nameof(wrappedKey));
 
         int n = (wrappedKey.Length / SemiblockSize) - 1;
-        byte[] buffer = new byte[wrappedKey.Length];
-        wrappedKey.CopyTo(buffer);
-
         Span<byte> a = stackalloc byte[SemiblockSize];
-        UnwrapCore(a, buffer.AsSpan(), n);
+        byte[]? rented = null;
+        Span<byte> buffer = wrappedKey.Length <= MaxStackUnwrapBytes
+            ? stackalloc byte[MaxStackUnwrapBytes]
+            : (rented = ArrayPool<byte>.Shared.Rent(wrappedKey.Length));
+        buffer = buffer.Slice(0, wrappedKey.Length);
+        try
+        {
+            wrappedKey.CopyTo(buffer);
 
-        // Verify default IV
-        ulong recovered = BinaryPrimitives.ReadUInt64BigEndian(a);
-        if (recovered != DefaultIV)
-            throw new OS.CryptographicException("AES Key Wrap integrity check failed.");
+            UnwrapCore(a, buffer, n);
 
-        return buffer.AsSpan(SemiblockSize, n * SemiblockSize).ToArray();
+            // Verify default IV
+            ulong recovered = BinaryPrimitives.ReadUInt64BigEndian(a);
+            if (recovered != DefaultIV)
+                throw new OS.CryptographicException("AES Key Wrap integrity check failed.");
+
+            return buffer.Slice(SemiblockSize, n * SemiblockSize).ToArray();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+            if (rented is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rented);
+            }
+        }
     }
 
     /// <summary>
@@ -351,6 +395,8 @@ public unsafe class AesKeyWrapPad : IDisposable
 
         // Write final A to output[0..8)
         a.CopyTo(output);
+        CryptographicOperations.ZeroMemory(block);
+        CryptographicOperations.ZeroMemory(b);
     }
 
     /// <summary>
@@ -389,6 +435,9 @@ public unsafe class AesKeyWrapPad : IDisposable
                 b.Slice(SemiblockSize).CopyTo(buffer.Slice(i * SemiblockSize));
             }
         }
+
+        CryptographicOperations.ZeroMemory(block);
+        CryptographicOperations.ZeroMemory(b);
     }
 
     /// <summary>

@@ -169,6 +169,9 @@ internal unsafe struct CcmCore
         {
             tag[i] = (byte)(macTag[i] ^ s0[i]);
         }
+
+        CryptographicOperations.ZeroMemory(macTag);
+        CryptographicOperations.ZeroMemory(s0);
     }
 
     /// <summary>
@@ -213,7 +216,11 @@ internal unsafe struct CcmCore
         }
 
         // Constant-time comparison
-        return CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        CryptographicOperations.ZeroMemory(macTag);
+        CryptographicOperations.ZeroMemory(s0);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        return authentic;
     }
 
     [SkipLocalsInit]
@@ -243,6 +250,8 @@ internal unsafe struct CcmCore
 
         // Copy MAC result
         x.Slice(0, M).CopyTo(mac);
+        CryptographicOperations.ZeroMemory(x);
+        CryptographicOperations.ZeroMemory(b);
     }
 
     [SkipLocalsInit]
@@ -279,6 +288,8 @@ internal unsafe struct CcmCore
                 ciphertext[offset + i] = (byte)(tail[i] ^ keystream[i]);
             }
         }
+
+        CryptographicOperations.ZeroMemory(keystream);
     }
 
     [SkipLocalsInit]

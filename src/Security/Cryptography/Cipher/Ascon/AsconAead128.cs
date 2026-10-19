@@ -196,7 +196,9 @@ public sealed class AsconAead128 : IAeadCipher
         Span<byte> computedTag = stackalloc byte[TagSizeBytesConst];
         Finalize(ref s0, ref s1, ref s2, ref s3, ref s4, computedTag);
 
-        if (!CryptographicOperations.FixedTimeEquals(tag, computedTag))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, computedTag);
+        CryptographicOperations.ZeroMemory(computedTag);
+        if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;

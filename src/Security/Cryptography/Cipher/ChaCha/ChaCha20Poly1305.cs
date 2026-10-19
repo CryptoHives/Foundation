@@ -150,6 +150,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         // Compute Poly1305 tag over (AAD || pad || ciphertext || pad || lengths)
         Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData,
                                      ciphertext.Slice(0, plaintext.Length), tag);
+        CryptographicOperations.ZeroMemory(polyKey);
     }
 
     /// <inheritdoc/>
@@ -175,9 +176,12 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         // Compute expected tag
         Span<byte> expectedTag = stackalloc byte[TagSizeBytesConst];
         Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData, ciphertext, expectedTag);
+        CryptographicOperations.ZeroMemory(polyKey);
 
         // Verify tag in constant time
-        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;

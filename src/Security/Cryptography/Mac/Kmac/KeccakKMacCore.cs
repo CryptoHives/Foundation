@@ -282,6 +282,10 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
                 // Cleared on return: this buffer held encode_string(K), the raw MAC key.
                 ArrayPool<byte>.Shared.Return(pooledBuffer, clearArray: true);
             }
+            else
+            {
+                CryptographicOperations.ZeroMemory(paddedBuffer);
+            }
         }
     }
 }

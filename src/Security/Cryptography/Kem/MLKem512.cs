@@ -127,6 +127,7 @@ public sealed class MLKem512 : IKem
         Span<byte> seed = stackalloc byte[MLKemParams.KeyGenSeedBytes];
         MLKemCore.GenerateRandomSeed(seed);
         MLKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey, pairwiseConsistencyTest);
+        CryptographicOperations.ZeroMemory(seed);
     }
 
     /// <inheritdoc/>
@@ -163,6 +164,7 @@ public sealed class MLKem512 : IKem
         Span<byte> m = stackalloc byte[MLKemParams.EncapsSeedBytes];
         MLKemCore.GenerateRandomSeed(m);
         MLKemCore.Encaps(Params, encapsulationKey, m, ciphertext, sharedSecret);
+        CryptographicOperations.ZeroMemory(m);
     }
 
     /// <inheritdoc/>

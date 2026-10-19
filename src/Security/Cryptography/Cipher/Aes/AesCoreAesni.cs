@@ -257,6 +257,8 @@ internal static class AesCoreAesNi
         {
             roundKeys[i] = Vector128.Create(expanded.Slice(i * 16, 16));
         }
+
+        CryptographicOperations.ZeroMemory(expanded);
     }
 
     [SkipLocalsInit]
@@ -273,6 +275,8 @@ internal static class AesCoreAesNi
             // AesCore stores keys in big-endian uint32; AES-NI expects native (little-endian) byte order
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(expanded.Slice(i * 4), w[i]);
         }
+
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(w));
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]

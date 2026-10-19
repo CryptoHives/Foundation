@@ -75,6 +75,8 @@ internal static class AesCoreArm
             roundKeys[i] = Vector128.Create(temp);
         }
 
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(scalarKeys));
+        CryptographicOperations.ZeroMemory(temp);
         return nr;
     }
 
