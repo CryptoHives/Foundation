@@ -104,7 +104,7 @@ public sealed class AsconAead128 : IAeadCipher
             throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes.", nameof(key));
 
         _k0 = BinaryPrimitives.ReadUInt64LittleEndian(key.AsSpan(0));
-        _k1 = BinaryPrimitives.ReadUInt64LittleEndian(key.AsSpan(8));
+        _k1 = BinaryPrimitives.ReadUInt64LittleEndian(key.AsSpan(sizeof(ulong)));
     }
 
     /// <inheritdoc/>
@@ -127,9 +127,10 @@ public sealed class AsconAead128 : IAeadCipher
     public static AsconAead128 Create(byte[] key) => new(key);
 
     /// <inheritdoc/>
-    public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                        Span<byte> ciphertext, Span<byte> tag,
-                        ReadOnlySpan<byte> associatedData = default)
+    public void Encrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
+        Span<byte> ciphertext, Span<byte> tag,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (_disposed)
             throw new ObjectDisposedException(GetType().Name);
@@ -179,7 +180,7 @@ public sealed class AsconAead128 : IAeadCipher
         ulong s1 = _k0;
         ulong s2 = _k1;
         ulong s3 = BinaryPrimitives.ReadUInt64LittleEndian(nonce);
-        ulong s4 = BinaryPrimitives.ReadUInt64LittleEndian(nonce.Slice(8));
+        ulong s4 = BinaryPrimitives.ReadUInt64LittleEndian(nonce.Slice(sizeof(ulong)));
         Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
         s3 ^= _k0;
         s4 ^= _k1;
@@ -204,8 +205,9 @@ public sealed class AsconAead128 : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Encrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (_disposed)
             throw new ObjectDisposedException(GetType().Name);
@@ -219,8 +221,9 @@ public sealed class AsconAead128 : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextWithTag,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Decrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextWithTag,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (_disposed)
             throw new ObjectDisposedException(GetType().Name);
@@ -254,8 +257,9 @@ public sealed class AsconAead128 : IAeadCipher
     /// Processes associated data through the sponge.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void ProcessAad(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
-                                   ReadOnlySpan<byte> associatedData)
+    private static void ProcessAad(
+        ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
+        ReadOnlySpan<byte> associatedData)
     {
         if (!associatedData.IsEmpty)
         {
@@ -294,8 +298,9 @@ public sealed class AsconAead128 : IAeadCipher
     /// Encrypts plaintext data through the sponge.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void EncryptData(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
-                                    ReadOnlySpan<byte> plaintext, Span<byte> ciphertext)
+    private static void EncryptData(
+        ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
+        ReadOnlySpan<byte> plaintext, Span<byte> ciphertext)
     {
         int offset = 0;
 

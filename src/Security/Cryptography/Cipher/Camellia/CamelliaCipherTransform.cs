@@ -40,7 +40,10 @@ internal sealed class CamelliaCipherTransform : BlockCipherTransform
         // per-block stackalloc, and byte-by-byte XOR by operating directly on ulong pairs.
         int blocks = input.Length / 16;
         if (CurrentMode != CipherMode.CBC || input.Length < 16 || output.Length < blocks * 16)
+        {
             return base.TransformBlock(input, output);
+        }
+
         ReadOnlySpan<ulong> sk = _subkeys;
         int rds = _rounds;
         Span<byte> fb = FeedbackSpan;

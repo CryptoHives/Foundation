@@ -1000,7 +1000,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         int lastBlockLen = _chunkBufferLength - lastBlockOffset;
 
         uint flags = _baseFlags;
-        if (_blocksCompressed == 0) flags |= FlagChunkStart;
+        if (_blocksCompressed == 0)
+        {
+            flags |= FlagChunkStart;
+        }
 
         // All blocks except the last: batched into a single CompressBlock call
         // (same chunk counter for every block — only the flags differ across

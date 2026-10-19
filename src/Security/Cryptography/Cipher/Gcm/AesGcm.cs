@@ -229,7 +229,9 @@ public abstract class AesGcm : IAeadCipher
         for (int i = 15; i >= 12; i--)
         {
             if (++counter[i] != 0)
+            {
                 break;
+            }
         }
     }
 

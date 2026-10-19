@@ -74,7 +74,10 @@ internal unsafe partial struct Blake2sState
         var row2 = IVLow;
         var counterVec = Vector128.Create((uint)bytesCompressed, (uint)(bytesCompressed >> 32), 0U, 0U);
         var row3 = Sse2.Xor(IVHigh, counterVec);
-        if (isFinal) row3 = Sse2.Xor(row3, FinalMask);
+        if (isFinal)
+        {
+            row3 = Sse2.Xor(row3, FinalMask);
+        }
 
         var orig0 = row0;
         var orig1 = row1;
@@ -126,7 +129,10 @@ internal unsafe partial struct Blake2sState
         var row2 = IVLow;
         var counterVec = Vector128.Create((uint)bytesCompressed, (uint)(bytesCompressed >> 32), 0U, 0U);
         var row3 = Sse2.Xor(IVHigh, counterVec);
-        if (isFinal) row3 = Sse2.Xor(row3, FinalMask);
+        if (isFinal)
+        {
+            row3 = Sse2.Xor(row3, FinalMask);
+        }
 
         var orig0 = row0;
         var orig1 = row1;

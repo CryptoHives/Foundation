@@ -151,7 +151,9 @@ internal abstract class BlockCipherTransform : ICipherTransform
             throw new ArgumentException("Input must be at least one block.", nameof(input));
 
         if (_mode == CipherMode.CTS)
+        {
             return TransformBlockCts(input, output);
+        }
 
         if (output.Length < _unitSize)
             throw new ArgumentException("Output buffer too small.", nameof(output));
@@ -199,7 +201,9 @@ internal abstract class BlockCipherTransform : ICipherTransform
             throw new ObjectDisposedException(GetType().Name);
 
         if (_mode == CipherMode.CTS)
+        {
             return TransformFinalBlockCts(input, output);
+        }
 
         int unit = _unitSize;
         int fullUnits = input.Length / unit;
@@ -218,9 +222,14 @@ internal abstract class BlockCipherTransform : ICipherTransform
             if (remainder > 0)
             {
                 if (_mode == CipherMode.CTR)
+                {
                     TransformBlockCtr(tail, output.Slice(written, remainder));
+                }
                 else
+                {
                     TransformBlockOfb(tail, output.Slice(written, remainder));
+                }
+
                 written += remainder;
             }
         }
@@ -298,9 +307,13 @@ internal abstract class BlockCipherTransform : ICipherTransform
     private void TransformBlockEcb(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (_encrypting)
+        {
             EncryptBlock(input, output);
+        }
         else
+        {
             DecryptBlock(input, output);
+        }
     }
 
     private void TransformBlockCbc(ReadOnlySpan<byte> input, Span<byte> output)
@@ -309,7 +322,9 @@ internal abstract class BlockCipherTransform : ICipherTransform
         {
             Span<byte> xored = stackalloc byte[_blockSize];
             for (int i = 0; i < _blockSize; i++)
+            {
                 xored[i] = (byte)(input[i] ^ _feedback[i]);
+            }
 
             EncryptBlock(xored, output);
 
@@ -323,7 +338,9 @@ internal abstract class BlockCipherTransform : ICipherTransform
             DecryptBlock(input, output);
 
             for (int i = 0; i < _blockSize; i++)
+            {
                 output[i] ^= _feedback[i];
+            }
 
             savedInput.CopyTo(_feedback);
         }
@@ -335,7 +352,9 @@ internal abstract class BlockCipherTransform : ICipherTransform
         EncryptBlock(_counter, keystream);
 
         for (int i = 0; i < input.Length; i++)
+        {
             output[i] = (byte)(input[i] ^ keystream[i]);
+        }
 
         IncrementCounter(_counter);
     }
@@ -347,7 +366,9 @@ internal abstract class BlockCipherTransform : ICipherTransform
         keystream.CopyTo(_feedback);
 
         for (int i = 0; i < input.Length; i++)
+        {
             output[i] = (byte)(input[i] ^ keystream[i]);
+        }
     }
 
     private void TransformUnitCfb(ReadOnlySpan<byte> input, Span<byte> output)
@@ -434,15 +455,23 @@ internal abstract class BlockCipherTransform : ICipherTransform
             Span<byte> last = stackalloc byte[bs];
             int lastLength = tailLength > 0 ? tailLength : bs;
             if (tailLength > 0)
+            {
                 input.Slice(input.Length - tailLength).CopyTo(last);
+            }
             else
+            {
                 held.Slice(bs, bs).CopyTo(last);
+            }
 
             Span<byte> destination = output.Slice(written, bs + lastLength);
             if (_encrypting)
+            {
                 EncryptStolenBlocks(held.Slice(0, bs), last, lastLength, destination);
+            }
             else
+            {
                 DecryptStolenBlocks(held.Slice(0, bs), last, lastLength, destination);
+            }
 
             written += bs + lastLength;
         }
@@ -463,11 +492,17 @@ internal abstract class BlockCipherTransform : ICipherTransform
         Span<byte> penultimate = stackalloc byte[bs];
 
         for (int i = 0; i < bs; i++)
+        {
             temp[i] = (byte)(first[i] ^ _feedback[i]);
+        }
+
         EncryptBlock(temp, penultimate);
 
         for (int i = 0; i < bs; i++)
+        {
             temp[i] = (byte)((i < lastLength ? last[i] : 0) ^ penultimate[i]);
+        }
+
         EncryptBlock(temp, output.Slice(0, bs));
 
         penultimate.Slice(0, lastLength).CopyTo(output.Slice(bs));
@@ -489,11 +524,15 @@ internal abstract class BlockCipherTransform : ICipherTransform
         decrypted.Slice(lastLength).CopyTo(penultimate.Slice(lastLength));
 
         for (int i = 0; i < lastLength; i++)
+        {
             output[bs + i] = (byte)(decrypted[i] ^ last[i]);
+        }
 
         DecryptBlock(penultimate, output.Slice(0, bs));
         for (int i = 0; i < bs; i++)
+        {
             output[i] ^= _feedback[i];
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -502,7 +541,9 @@ internal abstract class BlockCipherTransform : ICipherTransform
         for (int i = counter.Length - 1; i >= 0; i--)
         {
             if (++counter[i] != 0)
+            {
                 break;
+            }
         }
     }
 }
