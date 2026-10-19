@@ -140,7 +140,7 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Hashes a message of at most one chunk straight into <paramref name="destination"/>,
+    /// Hashes a message of at most one chunk straight into <paramref name="dstPtr"/>,
     /// for the one-shot case that wants at most <see cref="DefaultHashSizeBytes"/> bytes
     /// and will never squeeze again.
     /// </summary>
@@ -154,7 +154,7 @@ internal unsafe partial struct Blake3State
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private void HashChunkRoot32(Blake3State* core, byte* srcPtr, int length, Span<byte> destination)
+    private void HashChunkRoot32(Blake3State* core, byte* srcPtr, int length, byte* dstPtr)
     {
         int lastBlockOffset = (length <= BlockSizeBytes) ? 0
             : (length - 1) / BlockSizeBytes * BlockSizeBytes;
@@ -180,15 +180,12 @@ internal unsafe partial struct Blake3State
             // zero padded by erasing the whole block avoids a JIT call to memset
             byte* block = stackalloc byte[BlockSizeBytes];
             Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
-            Unsafe.CopyBlockUnaligned(ref *block, ref *pEnd, (uint)lastBlockLen);
+            Unsafe.CopyBlockUnaligned(block, pEnd, (uint)lastBlockLen);
 
             CompressBlock(core->_cv, block, (uint)lastBlockLen, _chunkCounter, finalFlags);
         }
 
-        fixed (byte* dst = destination)
-        {
-            WriteCvLittleEndian(core->_cv, dst, _outputBytes);
-        }
+        WriteCvLittleEndian(core->_cv, dstPtr, _outputBytes);
     }
 
     /// <summary>
