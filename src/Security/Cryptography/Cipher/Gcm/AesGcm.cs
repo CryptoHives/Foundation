@@ -112,7 +112,7 @@ public abstract class AesGcm : IAeadCipher
         // Compute initial counter for encryption (J0 + 1)
         Span<byte> icb = stackalloc byte[GcmCore.BlockSizeBytes];
         j0.CopyTo(icb);
-        IncrementCounter(icb);
+        GcmCore.IncrementCounter(icb);
 
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GEncryptDispatch(icb, associatedData, plaintext, ciphertext, ghash);
@@ -149,7 +149,7 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
         Span<byte> icb = stackalloc byte[GcmCore.BlockSizeBytes];
         j0.CopyTo(icb);
-        IncrementCounter(icb);
+        GcmCore.IncrementCounter(icb);
 
         _gcmCore.GDecryptDispatch(icb, associatedData, ciphertext, plaintext, ghash);
 
@@ -223,16 +223,4 @@ public abstract class AesGcm : IAeadCipher
             _disposed = true;
         }
     }
-
-    private static void IncrementCounter(Span<byte> counter)
-    {
-        for (int i = 15; i >= 12; i--)
-        {
-            if (++counter[i] != 0)
-            {
-                break;
-            }
-        }
-    }
-
 }
