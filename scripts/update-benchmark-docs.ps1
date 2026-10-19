@@ -221,6 +221,7 @@ $packageConfigurations = @{
             @{ Source = "CamelliaCbc192Benchmark-report.md"; Target = "camellia-cbc-192.md" }
             @{ Source = "CamelliaCbc256Benchmark-report.md"; Target = "camellia-cbc-256.md" }
             @{ Source = "KuznyechikCbcBenchmark-report.md"; Target = "kuznyechik-cbc.md" }
+            @{ Source = "MagmaCbcBenchmark-report.md"; Target = "magma-cbc.md" }
             @{ Source = "KalynaCbc128Benchmark-report.md"; Target = "kalyna-cbc-128.md" }
             @{ Source = "KalynaCbc256Benchmark-report.md"; Target = "kalyna-cbc-256.md" }
             @{ Source = "KalynaCbc512Benchmark-report.md"; Target = "kalyna-cbc-512.md" }
@@ -240,6 +241,7 @@ $packageConfigurations = @{
             @{ Source = "SeedGcmBenchmark-report.md"; Target = "seed-gcm.md" }
             @{ Source = "KuznyechikGcmBenchmark-report.md"; Target = "kuznyechik-gcm.md" }
             @{ Source = "KuznyechikMgmBenchmark-report.md"; Target = "kuznyechik-mgm.md" }
+            @{ Source = "MagmaMgmBenchmark-report.md"; Target = "magma-mgm.md" }
 
             # MAC benchmarks - HMAC
             @{ Source = "HmacMd5Benchmark-report.md"; Target = "hmac-md5.md" }

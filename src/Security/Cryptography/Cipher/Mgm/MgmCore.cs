@@ -7,11 +7,6 @@ using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-#if NET8_0_OR_GREATER
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
-using ArmAes = System.Runtime.Intrinsics.Arm.Aes;
-#endif
 
 /// <summary>
 /// MGM, the Multilinear Galois Mode of RFC 9058 (R 1323565.1.026-2019), over a 128-bit block cipher.
@@ -35,10 +30,7 @@ internal struct MgmCore
     public const int MaxTagSizeBytes = BlockSizeBytes;
 
     private readonly BlockCipher128 _blockCipher;
-#if NET8_0_OR_GREATER
-    private readonly bool _usePclmul;
-    private readonly bool _usePmull;
-#endif
+    private readonly CarrylessMultiplier _multiplier;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MgmCore"/> struct.
@@ -48,23 +40,13 @@ internal struct MgmCore
     public MgmCore(SimdSupport simdSupport, BlockCipher128 blockCipher)
     {
         _blockCipher = blockCipher ?? throw new ArgumentNullException(nameof(blockCipher));
-#if NET8_0_OR_GREATER
-        simdSupport &= SimdSupport;
-        _usePclmul = (simdSupport & SimdSupport.PClMul) != 0;
-        _usePmull = (simdSupport & SimdSupport.ArmPmull) != 0;
-#endif
+        _multiplier = new CarrylessMultiplier(simdSupport);
     }
 
     /// <summary>
     /// Gets the carry-less multiply instructions MGM can use on the current platform.
     /// </summary>
-    internal static SimdSupport SimdSupport =>
-#if NET8_0_OR_GREATER
-        (Pclmulqdq.IsSupported ? SimdSupport.PClMul : SimdSupport.None) |
-        (ArmAes.IsSupported ? SimdSupport.ArmPmull : SimdSupport.None);
-#else
-        SimdSupport.None;
-#endif
+    internal static SimdSupport SimdSupport => CarrylessMultiplier.SimdSupport;
 
     /// <summary>
     /// Erases the block cipher's key schedule.
@@ -227,9 +209,9 @@ internal struct MgmCore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private readonly void MultiplyAccumulate(ulong xHi, ulong xLo, ulong yHi, ulong yLo, ref TagState state)
     {
-        CarrylessMultiply(xLo, yLo, out ulong lo1, out ulong lo0);
-        CarrylessMultiply(xHi, yHi, out ulong hi1, out ulong hi0);
-        CarrylessMultiply(xHi ^ xLo, yHi ^ yLo, out ulong mid1, out ulong mid0);
+        _multiplier.Multiply(xLo, yLo, out ulong lo1, out ulong lo0);
+        _multiplier.Multiply(xHi, yHi, out ulong hi1, out ulong hi0);
+        _multiplier.Multiply(xHi ^ xLo, yHi ^ yLo, out ulong mid1, out ulong mid0);
         mid1 ^= lo1 ^ hi1;
         mid0 ^= lo0 ^ hi0;
 
@@ -237,62 +219,6 @@ internal struct MgmCore
         state.A1 ^= lo1 ^ mid0;
         state.A2 ^= hi0 ^ mid1;
         state.A3 ^= hi1;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private readonly void CarrylessMultiply(ulong a, ulong b, out ulong hi, out ulong lo)
-    {
-#if NET8_0_OR_GREATER
-        if (_usePclmul && Pclmulqdq.IsSupported)
-        {
-            Vector128<ulong> product = Pclmulqdq.CarrylessMultiply(Vector128.CreateScalar(a), Vector128.CreateScalar(b), 0x00);
-            lo = product.GetElement(0);
-            hi = product.GetElement(1);
-            return;
-        }
-
-        if (_usePmull && ArmAes.IsSupported)
-        {
-            Vector128<ulong> product = ArmAes.PolynomialMultiplyWideningLower(Vector64.Create(a), Vector64.Create(b));
-            lo = product.GetElement(0);
-            hi = product.GetElement(1);
-            return;
-        }
-#endif
-        lo = CarrylessMultiplyLow(a, b);
-        hi = ReverseBits(CarrylessMultiplyLow(ReverseBits(a), ReverseBits(b))) >> 1;
-    }
-
-    /// <summary>
-    /// The low 64 bits of a carry-less product, built from integer multiplies with 3-bit holes
-    /// between the data bits so that the carries never reach a bit that is kept.
-    /// </summary>
-    /// <remarks>
-    /// Constant time wherever integer multiplication is, as on every 64-bit CPU .NET supports.
-    /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong CarrylessMultiplyLow(ulong x, ulong y)
-    {
-        const ulong M0 = 0x1111111111111111, M1 = M0 << 1, M2 = M0 << 2, M3 = M0 << 3;
-
-        ulong x0 = x & M0, x1 = x & M1, x2 = x & M2, x3 = x & M3;
-        ulong y0 = y & M0, y1 = y & M1, y2 = y & M2, y3 = y & M3;
-
-        ulong z0 = (x0 * y0) ^ (x1 * y3) ^ (x2 * y2) ^ (x3 * y1);
-        ulong z1 = (x0 * y1) ^ (x1 * y0) ^ (x2 * y3) ^ (x3 * y2);
-        ulong z2 = (x0 * y2) ^ (x1 * y1) ^ (x2 * y0) ^ (x3 * y3);
-        ulong z3 = (x0 * y3) ^ (x1 * y2) ^ (x2 * y1) ^ (x3 * y0);
-
-        return (z0 & M0) | (z1 & M1) | (z2 & M2) | (z3 & M3);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong ReverseBits(ulong x)
-    {
-        x = ((x >> 1) & 0x5555555555555555) | ((x & 0x5555555555555555) << 1);
-        x = ((x >> 2) & 0x3333333333333333) | ((x & 0x3333333333333333) << 2);
-        x = ((x >> 4) & 0x0F0F0F0F0F0F0F0F) | ((x & 0x0F0F0F0F0F0F0F0F) << 4);
-        return BinaryPrimitives.ReverseEndianness(x);
     }
 
     /// <summary>

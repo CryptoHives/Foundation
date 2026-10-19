@@ -50,9 +50,9 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Regional hash | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5, HMAC-SHA-1, HMAC-MD5 (backward compatibility only) |
 | MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256/384/512, AES-CMAC, AES-GMAC, Poly1305, KMAC128/256, BLAKE2/3 keyed |
-| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), AES-GCM-SIV (128/256, RFC 8452), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128; GCM over SM4, ARIA, Camellia, SEED and Kuznyechik; CCM over SM4, ARIA and Camellia; Kuznyechik-MGM (RFC 9058) |
+| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), AES-GCM-SIV (128/256, RFC 8452), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128; GCM over SM4, ARIA, Camellia, SEED and Kuznyechik; CCM over SM4, ARIA and Camellia; Kuznyechik-MGM and Magma-MGM (RFC 9058) |
 | Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR), ChaCha20 |
-| Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna (128/256/512), SEED |
+| Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Magma, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
 | Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
 | Post-quantum signatures | ML-DSA-44/65/87 (FIPS 204); SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f} (FIPS 205) |

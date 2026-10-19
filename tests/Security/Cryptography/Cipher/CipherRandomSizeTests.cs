@@ -264,7 +264,7 @@ public class CipherRandomSizeTests
         "ARIA-128-CCM", "ARIA-192-CCM", "ARIA-256-CCM",
         "Camellia-128-GCM", "Camellia-192-GCM", "Camellia-256-GCM",
         "Camellia-128-CCM", "Camellia-192-CCM", "Camellia-256-CCM",
-        "SM4-GCM", "SM4-CCM", "SEED-GCM", "Kuznyechik-GCM", "Kuznyechik-MGM"
+        "SM4-GCM", "SM4-CCM", "SEED-GCM", "Kuznyechik-GCM", "Kuznyechik-MGM", "Magma-MGM"
     ];
 
     private static readonly string[] StreamFamilies = ["ChaCha20"];

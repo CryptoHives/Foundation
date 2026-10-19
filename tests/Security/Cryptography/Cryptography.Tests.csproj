@@ -175,13 +175,15 @@
   </ItemGroup>
 
   <!--
-    Kuznyechik-MGM (RFC 9058) vectors. No .NET library implements MGM, so these come from an
-    independent Python MGM that must reproduce the RFC 9058 examples first.
+    Kuznyechik-MGM and Magma-MGM (RFC 9058) vectors. No .NET library implements MGM, so these
+    come from an independent Python MGM that must reproduce the RFC 9058 examples first.
     Regenerate with scripts/generate-mgm-vectors.py.
   -->
   <ItemGroup>
     <EmbeddedResource Include="TestData/mgm-kuznyechik.json.gz"
                       LogicalName="Cryptography.Tests.TestData.mgm-kuznyechik.json.gz" />
+    <EmbeddedResource Include="TestData/mgm-magma.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mgm-magma.json.gz" />
   </ItemGroup>
 
   <ItemGroup>
