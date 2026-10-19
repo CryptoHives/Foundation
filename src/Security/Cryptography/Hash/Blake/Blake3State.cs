@@ -343,18 +343,18 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         bytesWritten = _outputBytes;
 
         // The first 32 output bytes are v[i] ^ v[i+8] of root block 0 - the same fold a
-        // chaining value gets - so the root compresses straight into a CV-sized buffer. The
-        // buffer's words are copied out as bytes, which is only the output on little-endian.
-        if (!_squeezed && _outputBytes <= DefaultHashSizeBytes && BitConverter.IsLittleEndian)
+        // chaining value gets - so the root compresses straight into a CV-sized buffer.
+        if (!_squeezed && _outputBytes <= DefaultHashSizeBytes)
         {
             fixed (Blake3State* core = &this)
+            fixed (byte* dst = destination)
             {
                 FinalizeRoot(core);
                 _squeezed = true;
                 uint* cv = stackalloc uint[KeySizeWords];
                 Unsafe.CopyBlock(cv, core->_rootCv, KeySizeBytes);
-                CompressBlock(cv, (byte*)core->_rootBlock, _rootBlockLen, 0, _rootFlags);
-                Unsafe.CopyBlockUnaligned(ref destination[0], ref *(byte*)cv, (uint)_outputBytes);
+                CompressWordBlock(cv, core->_rootBlock, _rootBlockLen, 0, _rootFlags);
+                WriteCvLittleEndian(cv, dst, _outputBytes);
                 return true;
             }
         }
@@ -459,21 +459,20 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     {
         fixed (Blake3State* core = &this)
         {
-            // The overwhelmingly common shape: a plain digest of at most 32 bytes, which
-            // needs neither the counter-mode staging nor the second half of an output
-            // block. See HashChunkRoot32.
-            if (_outputBytes <= DefaultHashSizeBytes)
-            {
-                fixed (byte* srcPtr = source)
-                {
-                    HashChunkRoot32(core, srcPtr, source.Length, destination);
-                }
-
-                return;
-            }
-
             fixed (byte* srcPtr = source)
             {
+                // The overwhelmingly common shape: a plain digest of at most 32 bytes, which
+                // needs neither the counter-mode staging nor the second half of an output
+                // block. See HashChunkRoot32.
+                if (_outputBytes <= DefaultHashSizeBytes)
+                {
+                    fixed (byte* dstPtr = destination)
+                    {
+                        HashChunkRoot32(core, srcPtr, source.Length, dstPtr);
+                        return;
+                    }
+                }
+
                 SaveChunkAsRoot(core, srcPtr, source.Length);
             }
 
@@ -1001,7 +1000,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         int lastBlockLen = _chunkBufferLength - lastBlockOffset;
 
         uint flags = _baseFlags;
-        if (_blocksCompressed == 0) flags |= FlagChunkStart;
+        if (_blocksCompressed == 0)
+        {
+            flags |= FlagChunkStart;
+        }
 
         // All blocks except the last: batched into a single CompressBlock call
         // (same chunk counter for every block — only the flags differ across
@@ -1086,8 +1088,47 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         uint flags = _baseFlags | FlagParent;
         uint* cv = stackalloc uint[KeySizeWords];
         Unsafe.CopyBlock(cv, key, KeySizeBytes);
-        CompressBlock(cv, (byte*)children, BlockSizeBytes, 0, flags);
+        CompressWordBlock(cv, children, BlockSizeBytes, 0, flags);
         Unsafe.CopyBlock(destination, cv, KeySizeBytes);
+    }
+
+    /// <summary>
+    /// Compresses a message block held as 16 host-order words rather than as bytes.
+    /// </summary>
+    /// <remarks>
+    /// The compressors read their block as little-endian bytes, which a word block already is
+    /// on little-endian hosts; elsewhere it is staged through its little-endian encoding.
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void CompressWordBlock(uint* cv, uint* words, uint blockLen, ulong counter, uint flags)
+    {
+        byte* block = (byte*)words;
+        if (!BitConverter.IsLittleEndian)
+        {
+            byte* staged = stackalloc byte[BlockSizeBytes];
+            BinarySpans.WriteUInt32LittleEndian(words, staged, BlockSizeWords);
+            block = staged;
+        }
+
+        CompressBlock(cv, block, blockLen, counter, flags);
+    }
+
+    /// <summary>
+    /// Writes the first <paramref name="length"/> bytes, at most 32, of a chaining value's
+    /// little-endian encoding.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void WriteCvLittleEndian(uint* cv, byte* destination, int length)
+    {
+        int fullWords = length / sizeof(uint);
+        BinarySpans.WriteUInt32LittleEndian(cv, destination, fullWords);
+
+        int tail = length % sizeof(uint);
+        if (tail > 0)
+        {
+            BinaryStore.WriteUInt32LittleEndianTruncated(cv[fullWords], destination + (fullWords * sizeof(uint)), tail);
+        }
     }
 
     // Single-block work has no independent work to spread across NEON's lanes, and

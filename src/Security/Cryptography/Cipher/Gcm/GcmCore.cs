@@ -997,7 +997,9 @@ internal struct GcmCore
         for (int i = 15; i >= 12; i--)
         {
             if (++counter[i] != 0)
+            {
                 break;
+            }
         }
     }
 
@@ -2099,7 +2101,9 @@ internal struct GcmCore
             AesCoreAesNi.EncryptBlock(ctrBuf, ksBuf, roundKeys, rounds);
 
             for (int i = 0; i < remaining; i++)
+            {
                 ciphertext[offset + i] = (byte)(plaintext[offset + i] ^ ksBuf[i]);
+            }
 
             Vector128<byte> block = Ssse3.Shuffle(
                 BinaryLoad.LoadTailPadded128(ciphertext.Slice(0, len), offset), ByteSwapMask);

@@ -6,7 +6,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 /// <summary>
 /// Core ARIA block cipher operations as specified in KS X 1213 / RFC 5794.
@@ -360,12 +359,12 @@ internal static class AriaCore
     // FO: Odd round function (substitution layer 1 + diffusion)
     private static void FO(ReadOnlySpan<byte> d, ulong ckHi, ulong ckLo, Span<byte> output)
     {
-        Span<byte> temp = stackalloc byte[16];
+        Span<byte> temp = stackalloc byte[2 * sizeof(ulong)];
         // XOR with round constant
         ulong hi = BinaryPrimitives.ReadUInt64BigEndian(d) ^ ckHi;
         ulong lo = BinaryPrimitives.ReadUInt64BigEndian(d.Slice(8)) ^ ckLo;
         BinaryPrimitives.WriteUInt64BigEndian(temp, hi);
-        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(8), lo);
+        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(sizeof(ulong)), lo);
 
         SubstLayerOdd(temp);
         DiffuseA(temp, output);
@@ -374,11 +373,11 @@ internal static class AriaCore
     // FE: Even round function (substitution layer 2 + diffusion)
     private static void FE(ReadOnlySpan<byte> d, ulong ckHi, ulong ckLo, Span<byte> output)
     {
-        Span<byte> temp = stackalloc byte[16];
+        Span<byte> temp = stackalloc byte[2 * sizeof(ulong)];
         ulong hi = BinaryPrimitives.ReadUInt64BigEndian(d) ^ ckHi;
         ulong lo = BinaryPrimitives.ReadUInt64BigEndian(d.Slice(8)) ^ ckLo;
         BinaryPrimitives.WriteUInt64BigEndian(temp, hi);
-        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(8), lo);
+        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(sizeof(ulong)), lo);
 
         SubstLayerEven(temp);
         DiffuseA(temp, output);
@@ -388,7 +387,9 @@ internal static class AriaCore
     private static void Xor128(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, Span<byte> result)
     {
         for (int i = 0; i < 16; i++)
+        {
             result[i] = (byte)(a[i] ^ b[i]);
+        }
     }
 
     // Rotate 128-bit value right by n bits
@@ -406,12 +407,6 @@ internal static class AriaCore
                 ? input[srcIdx]
                 : (byte)((input[srcIdx] >> bitShift) | (input[prevIdx] << (8 - bitShift)));
         }
-    }
-
-    // Rotate 128-bit value left by n bits
-    private static void RotateLeft128(ReadOnlySpan<byte> input, int n, Span<byte> output)
-    {
-        RotateRight128(input, 128 - n, output);
     }
 
     private static void GenerateRoundKeys(ReadOnlySpan<byte> w0, ReadOnlySpan<byte> w1,
@@ -432,17 +427,15 @@ internal static class AriaCore
             int wRot = ((i % 4 + 1) % 4) * 16;
 
             int rotAmount;
-            bool isLeft;
-            if (i < 4) { rotAmount = 19; isLeft = false; }
-            else if (i < 8) { rotAmount = 31; isLeft = false; }
-            else if (i < 12) { rotAmount = 61; isLeft = true; }
-            else if (i < 16) { rotAmount = 31; isLeft = true; }
-            else { rotAmount = 19; isLeft = true; }
+            // right rotations
+            if (i < 4) { rotAmount = 19; }
+            else if (i < 8) { rotAmount = 31; }
+            // Convert left rotation to equivalent right rotation
+            else if (i < 12) { rotAmount = 128 - 61; }
+            else if (i < 16) { rotAmount = 128 - 31; }
+            else { rotAmount = 128 - 19; }
 
-            if (isLeft)
-                RotateLeft128(wBuf.Slice(wRot, 16), rotAmount, rot);
-            else
-                RotateRight128(wBuf.Slice(wRot, 16), rotAmount, rot);
+            RotateRight128(wBuf.Slice(wRot, 16), rotAmount, rot);
 
             Xor128(wBuf.Slice(wBase, 16), rot, ek.Slice(i * 16, 16));
         }

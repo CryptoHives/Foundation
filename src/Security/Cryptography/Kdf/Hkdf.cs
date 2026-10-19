@@ -178,7 +178,10 @@ public static class Hkdf
         {
             hmac.Reset();
             if (previousT.Length > 0)
+            {
                 hmac.Update(previousT);
+            }
+
             hmac.Update(info);
             hmac.Update([(byte)i]);
 

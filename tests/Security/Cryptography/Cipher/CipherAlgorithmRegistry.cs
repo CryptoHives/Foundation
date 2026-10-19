@@ -928,7 +928,8 @@ public static class CipherAlgorithmRegistry
             128,
             Mode.CBC,
             () => new OSAesCbcAdapter(16),
-            Source.OS));
+            Source.OS,
+            supportCheck: static () => !TestHelpers.IsBrowser));
 
         // AES-256-CBC - OS (.NET 8.0+)
         implementations.Add(new CipherImplementation(
@@ -937,7 +938,8 @@ public static class CipherAlgorithmRegistry
             256,
             Mode.CBC,
             () => new OSAesCbcAdapter(32),
-            Source.OS));
+            Source.OS,
+            supportCheck: static () => !TestHelpers.IsBrowser));
 #endif
 
 #if NET9_0_OR_GREATER

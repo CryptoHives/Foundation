@@ -36,7 +36,10 @@ internal static class BlockPadding
 
             case PaddingMode.Zeros:
                 if (tail.IsEmpty)
+                {
                     return 0;
+                }
+
                 unit.Slice(tail.Length).Clear();
                 return unitSize;
 
