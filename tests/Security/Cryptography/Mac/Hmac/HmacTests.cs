@@ -446,6 +446,7 @@ public class HmacTests
     [TestCase("The quick brown fox jumps over the lazy dog")]
     public void HmacMd5MatchesDotNet(string message)
     {
+        TestHelpers.AssumeNotBrowser("in-box MD5");
         byte[] key = TestHelpers.FromHexString("000102030405060708090a0b0c0d0e0f");
         byte[] input = Encoding.UTF8.GetBytes(message);
 
@@ -612,6 +613,7 @@ public class HmacTests
     [NonParallelizable]
     public void UpdateDoesNotAllocate()
     {
+        TestHelpers.AssumeNotBrowser("compiled code; the browser-wasm interpreter allocates on its own");
         byte[] key = new byte[32];
         byte[] block = new byte[32];
         using var hmac = HmacSha256.Create(key);

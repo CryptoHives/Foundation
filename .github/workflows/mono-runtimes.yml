@@ -110,9 +110,6 @@ jobs:
     if: ${{ !inputs.platforms || inputs.platforms == 'all' || inputs.platforms == 'wasm' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
-    # Experimental until its first green run: a failure here is reported but does not fail the
-    # workflow, so it cannot mask the s390x and ppc64le results.
-    continue-on-error: true
 
     steps:
     - uses: actions/checkout@v7

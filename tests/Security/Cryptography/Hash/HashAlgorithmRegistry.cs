@@ -574,7 +574,8 @@ public static class HashAlgorithmRegistry
 
     private static void AddMd5(List<HashImplementation> list)
     {
-        list.Add(new HashImplementation("MD5", "OS", 128, OS.MD5.Create, Source.OS));
+        list.Add(new HashImplementation("MD5", "OS", 128, OS.MD5.Create, Source.OS,
+            static () => !TestHelpers.IsBrowser));
         list.Add(new HashImplementation("MD5", "CryptoHives-Scalar", 128, CH.MD5.Create, Source.Managed));
         list.Add(new("MD5", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.MD5Digest()), Source.BouncyCastle));
