@@ -6,12 +6,13 @@ name: Mono Runtime Tests
 #   ppc64le  Little-endian, on a different Mono JIT backend.
 #   wasm     browser-wasm on Node.js: the Mono interpreter, single-threaded.
 #
-# s390x and ppc64le run the Red Hat UBI .NET 10 SDK image under QEMU on the x64 runner. Their test
-# assembly is built natively and only the test run is emulated. Every build passes
-# /p:MonoRuntimeTests=true, which drops the reference libraries that do not run on Mono (HashifyNET
-# and the two native BLAKE3 packages). Benchmark fixtures are filtered out everywhere: they
-# compare against third-party libraries and would dominate a slow run without exercising anything
-# new. The x86 and ARM SIMD tiers are gated on their instruction sets and never run here.
+# Every runtime runs the tests in-process through .github/mono-test-host (the NUnit framework runner,
+# no VSTest), built with /p:MonoRuntimeTests=true, which drops the reference libraries that do not
+# run on Mono (HashifyNET and the two native BLAKE3 packages). s390x and ppc64le run the Red Hat UBI
+# .NET 10 SDK image under QEMU on the x64 runner; the host is built natively and only the run is
+# emulated. Benchmark fixtures are filtered out everywhere: they compare against third-party
+# libraries and would dominate a slow run without exercising anything new. The x86 and ARM SIMD
+# tiers are gated on their instruction sets and never run here.
 
 on:
   # TEMPORARY: lets the run start from the work branch before this file is on main. Remove before merging.
@@ -32,7 +33,7 @@ on:
         options: [all, s390x, ppc64le, wasm]
         default: all
       filter:
-        description: 'Extra test filter for s390x/ppc64le, ANDed with the benchmark exclusion (e.g. FullyQualifiedName~Blake3).'
+        description: 'Regular expression on the full test name for s390x/ppc64le (e.g. Blake3). Empty = every test.'
         type: string
         default: ''
 
@@ -64,17 +65,15 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - name: Build the test assembly
-      run: >
-        dotnet build tests/Security/Cryptography/Cryptography.Tests.csproj
-        -c Release -f net10.0
-        -p:MonoRuntimeTests=true
-        -o artifacts/tests
+    - name: Build the test host
+      run: |
+        bash .github/mono-test-host/create-host.sh console "$RUNNER_TEMP/test-host"
+        dotnet build "$RUNNER_TEMP/test-host" -c Release -o artifacts/host
 
     - name: Register the ${{ matrix.arch }} emulator
-      # Under QEMU the emulated host reserves a large address space, and the kernel's default
-      # overcommit heuristic then refuses the fork that starts the VSTest test host (ENOMEM on
-      # ppc64le). The container shares the runner's kernel, so the setting is made here.
+      # Under QEMU the emulated runtime reserves a large address space, which the kernel's default
+      # overcommit heuristic can refuse. The container shares the runner's kernel, so the setting
+      # is made here.
       run: |
         sudo sysctl -w vm.overcommit_memory=1
         docker run --privileged --rm tonistiigi/binfmt --install ${{ matrix.arch }}
@@ -82,18 +81,15 @@ jobs:
     - name: Run the tests on ${{ matrix.arch }}
       env:
         ARCH: ${{ matrix.arch }}
-        EXTRA_FILTER: ${{ inputs.filter }}
+        TEST_FILTER: ${{ inputs.filter }}
       run: |
-        filter='FullyQualifiedName!~Cryptography.Tests.Benchmarks'
-        if [ -n "$EXTRA_FILTER" ]; then filter="$filter&$EXTRA_FILTER"; fi
-
         # The bytes 01 00 read as one 16-bit word: 0100 on a big-endian host, 0001 otherwise.
         expected=0001
         if [ "$ARCH" = s390x ]; then expected=0100; fi
 
         docker run --rm --platform "linux/$ARCH" --user 0 \
           -e DOTNET_CLI_TELEMETRY_OPTOUT=1 -e DOTNET_NOLOGO=1 \
-          -e FILTER="$filter" -e EXPECTED_ORDER="$expected" \
+          -e TEST_FILTER -e TEST_WORKERS="$(nproc)" -e EXPECTED_ORDER="$expected" \
           -v "$PWD/artifacts:/artifacts" -w /artifacts \
           registry.access.redhat.com/ubi9/dotnet-100 \
           bash -euc '
@@ -104,23 +100,10 @@ jobs:
             [ "$order" = "$EXPECTED_ORDER" ] || { echo "Unexpected byte order."; exit 1; }
 
             dotnet --info | head -20
-            # A test still running after 30 minutes is a hang: the blame collector names it in
-            # Sequence_*.xml under the results and stops the run.
-            dotnet test /artifacts/tests/Cryptography.Tests.dll \
-              --filter "$FILTER" \
-              --blame-hang --blame-hang-timeout 30m --blame-hang-dump-type none \
-              --results-directory /artifacts/results \
-              --logger "trx;LogFileName=results.trx" \
-              --logger "console;verbosity=minimal"
+            # The host names any test running longer than 10 minutes; the timeout ends a hang
+            # long before the job limit.
+            timeout 150m dotnet /artifacts/host/TestHost.dll
           '
-
-    - name: Upload the test results
-      if: always()
-      uses: actions/upload-artifact@v7
-      with:
-        name: ${{ matrix.arch }}-test-results
-        path: artifacts/results
-        if-no-files-found: ignore
 
   wasm:
     name: Cryptography tests, browser-wasm (Node.js)
@@ -145,76 +128,11 @@ jobs:
         node-version: 'lts/*'
 
     - name: Create the WebAssembly test host
-      # The host lives outside the repository so the repository's central package management and
-      # warnings-as-errors settings do not apply to the generated template. It runs the tests
-      # in-process on the NUnit framework runner, since VSTest cannot host a browser-wasm process.
       run: |
-        nunit=$(grep -oP '<PackageVersion Include="NUnit" Version="\K[^"]+' Directory.Packages.props)
-        host="$RUNNER_TEMP/wasm-host"
-
         dotnet workload install wasm-tools
         dotnet new install Microsoft.NET.Runtime.WebAssembly.Templates.net10
-        dotnet new wasmconsole -o "$host" -n WasmTestHost
-        dotnet add "$host" package NUnit --version "$nunit"
-
-        # Reference the test project as a library: an executable referencing another executable
-        # is otherwise rejected, and the tests are only needed as an assembly.
-        sed -i 's#</Project>#  <PropertyGroup>\n    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>\n    <InvariantGlobalization>true</InvariantGlobalization>\n  </PropertyGroup>\n  <ItemGroup>\n    <ProjectReference Include="'"$GITHUB_WORKSPACE"'/tests/Security/Cryptography/Cryptography.Tests.csproj" SetTargetFramework="TargetFramework=net10.0" AdditionalProperties="MonoRuntimeTests=true" />\n  </ItemGroup>\n</Project>#' "$host/WasmTestHost.csproj"
-
-        # The runtime is single-threaded, and NUnitLite always starts an event-pump thread. This
-        # drives the framework runner directly with synchronous events, on the main thread, and
-        # prints each test as it starts so a hang names its test.
-        cat > "$host/Program.cs" <<'EOF'
-        using System;
-        using System.Collections.Generic;
-        using System.IO;
-        using System.Reflection;
-        using NUnit;
-        using NUnit.Framework.Api;
-        using NUnit.Framework.Interfaces;
-        using NUnit.Framework.Internal;
-
-        var runner = new NUnitTestAssemblyRunner(new DefaultTestAssemblyBuilder());
-        runner.Load(Assembly.Load("Cryptography.Tests"), new Dictionary<string, object>
-        {
-            [FrameworkPackageSettings.NumberOfTestWorkers] = 0,
-            [FrameworkPackageSettings.RunOnMainThread] = true,
-            [FrameworkPackageSettings.SynchronousEvents] = true,
-        });
-
-        TestFilter filter = TestFilter.FromXml(
-            "<filter><not><test re=\"1\">^Cryptography\\.Tests\\.Benchmarks\\.</test></not></filter>");
-        ITestResult result = runner.Run(new ConsoleListener(), filter);
-
-        Console.WriteLine(
-            $"{result.ResultState.Status}: {result.FailCount} failed, {result.PassCount} passed, " +
-            $"{result.SkipCount + result.InconclusiveCount} skipped");
-        return result.ResultState.Status == TestStatus.Failed ? 1 : 0;
-
-        // NUnit redirects Console.Out while the run is in progress; keep the real one.
-        sealed class ConsoleListener : ITestListener
-        {
-            private readonly TextWriter _out = Console.Out;
-
-            public void TestStarted(ITest test)
-            {
-                if (!test.IsSuite) _out.WriteLine($"=> {test.FullName}");
-            }
-
-            public void TestFinished(ITestResult result)
-            {
-                if (result.ResultState.Status != TestStatus.Failed) return;
-                if (result.Test.IsSuite && result.ResultState.Site == FailureSite.Child) return;
-
-                _out.WriteLine($"FAILED {result.FullName}: {result.Message}");
-                if (!string.IsNullOrEmpty(result.StackTrace)) _out.WriteLine(result.StackTrace);
-            }
-
-            public void TestOutput(TestOutput output) { }
-
-            public void SendMessage(TestMessage message) { }
-        }
-        EOF
+        host="$RUNNER_TEMP/test-host"
+        bash .github/mono-test-host/create-host.sh wasmconsole "$host"
 
         # The template's main.mjs calls an export of the template's Program.cs; just run Main.
         cat > "$host/main.mjs" <<'EOF'
@@ -224,7 +142,6 @@ jobs:
         process.exit(exitCode);
         EOF
 
-        cat "$host/WasmTestHost.csproj"
         echo "host=$host" >> "$GITHUB_ENV"
 
     - name: Run the tests on browser-wasm
