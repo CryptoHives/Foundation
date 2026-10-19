@@ -460,7 +460,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         fixed (Blake3State* core = &this)
         {
             fixed (byte* srcPtr = source)
-            { 
+            {
                 // The overwhelmingly common shape: a plain digest of at most 32 bytes, which
                 // needs neither the counter-mode staging nor the second half of an output
                 // block. See HashChunkRoot32.

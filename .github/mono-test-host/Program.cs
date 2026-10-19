@@ -46,8 +46,8 @@ using Timer? watchdog = workers > 0
 ITestResult result = runner.Run(listener, filter);
 
 Console.WriteLine(
-    $"{result.ResultState.Status}: {result.FailCount} failed, {result.PassCount} passed, " +
-    $"{result.SkipCount + result.InconclusiveCount} skipped");
+    $"{result.ResultState.Status}: {result.FailCount} failed, {result.WarningCount} warned, " +
+    $"{result.PassCount} passed, {result.SkipCount + result.InconclusiveCount} skipped");
 return result.ResultState.Status == TestStatus.Failed ? 1 : 0;
 
 // NUnit redirects Console.Out while the run is in progress; keep the real one.
@@ -67,9 +67,15 @@ sealed class ConsoleListener : ITestListener
     public void TestFinished(ITestResult result)
     {
         _running.TryRemove(result.FullName, out _);
-        if (result.ResultState.Status != TestStatus.Failed) return;
         if (result.Test.IsSuite && result.ResultState.Site == FailureSite.Child) return;
 
+        if (result.ResultState.Status == TestStatus.Warning)
+        {
+            _out.WriteLine($"WARNING {result.FullName}: {result.Message}");
+            return;
+        }
+
+        if (result.ResultState.Status != TestStatus.Failed) return;
         _out.WriteLine($"FAILED {result.FullName}: {result.Message}");
         if (!string.IsNullOrEmpty(result.StackTrace)) _out.WriteLine(result.StackTrace);
     }
