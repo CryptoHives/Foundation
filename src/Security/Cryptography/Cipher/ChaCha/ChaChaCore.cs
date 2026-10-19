@@ -310,6 +310,7 @@ internal readonly partial struct ChaChaCore
     /// <summary>
     /// XORs a full 64-byte block using ulong-sized operations for throughput.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void XorBlock(ref byte input, ReadOnlySpan<byte> keystream, ref byte output)
     {

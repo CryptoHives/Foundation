@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.KeyFormats;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// The PKCS#12 v1 key derivation function (RFC 7292 Appendix B.2).
@@ -40,6 +41,7 @@ internal static class Pkcs12Kdf
     /// <param name="iterations">The iteration count.</param>
     /// <param name="id">One of <see cref="KeyMaterialId"/>, <see cref="IvMaterialId"/>, <see cref="MacMaterialId"/>.</param>
     /// <param name="output">Receives the derived material.</param>
+    [SkipLocalsInit]
     public static void DeriveKey(
         ReadOnlySpan<byte> password,
         ReadOnlySpan<byte> salt,

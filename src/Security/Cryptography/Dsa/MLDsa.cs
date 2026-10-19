@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -410,6 +411,7 @@ public sealed partial class MLDsa : IDisposable
     /// <exception cref="ArgumentException">A parameter has an invalid size, or the OID is not an approved pre-hash function.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    [SkipLocalsInit]
     public void SignPreHash(ReadOnlySpan<byte> hash, Span<byte> destination, string hashAlgorithmOid,
                             ReadOnlySpan<byte> context = default)
     {
@@ -465,6 +467,7 @@ public sealed partial class MLDsa : IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="hashAlgorithmOid"/> is null.</exception>
     /// <exception cref="ArgumentException">The OID is not approved, the digest length does not match it, or <paramref name="context"/> is longer than 255 bytes.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool VerifyPreHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature, string hashAlgorithmOid,
                               ReadOnlySpan<byte> context = default)
     {
@@ -601,6 +604,7 @@ public sealed partial class MLDsa : IDisposable
         return new MLDsa(algorithm, seed, secretKey, publicKey);
     }
 
+    [SkipLocalsInit]
     private static byte[] ReconstructPublicKey(MLDsaParams p, ReadOnlySpan<byte> sk)
     {
         Span<byte> rho = stackalloc byte[32];

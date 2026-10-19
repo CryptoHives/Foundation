@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
+using System.Runtime.CompilerServices;
 using System.Buffers.Binary;
 
 /// <summary>
@@ -130,6 +131,7 @@ public static class Kbkdf
     /// The complete fixed input data appended after the counter in each PRF invocation.
     /// Typically composed as <c>Label ‖ 0x00 ‖ Context ‖ [L]₄</c>.
     /// </param>
+    [SkipLocalsInit]
     internal static void CounterMode(
         HmacFactory macFactory,
         ReadOnlySpan<byte> key,

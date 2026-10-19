@@ -162,6 +162,7 @@ public sealed class AsconAead128 : IAeadCipher
     }
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     public bool Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
                         ReadOnlySpan<byte> tag, Span<byte> plaintext,
                         ReadOnlySpan<byte> associatedData = default)

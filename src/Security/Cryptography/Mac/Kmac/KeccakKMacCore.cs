@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
+using System.Runtime.CompilerServices;
 using System.Buffers;
 using System.Text;
 
@@ -135,6 +136,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Squeeze(Span<byte> output)
     {
         if (_disposed) throw new ObjectDisposedException(GetType().Name);
@@ -190,6 +192,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         base.Dispose(disposing);
     }
 
+    [SkipLocalsInit]
     private void AbsorbCShakePreamble()
     {
         // bytepad(encode_string(N) || encode_string(S), rate) where N = "KMAC"
@@ -220,6 +223,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
             offset += encodedN.Length;
 
             encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             for (int i = 0; i < paddedLength; i += _rateBytes)
             {
@@ -237,6 +241,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         }
     }
 
+    [SkipLocalsInit]
     private void AbsorbKeyPad()
     {
         // bytepad(encode_string(K), rate)
@@ -263,6 +268,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
             offset += leftEncodedBytes;
 
             encodedK.AsSpan(0, encodedK.Length).CopyTo(paddedBuffer.Slice(offset));
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             for (int i = 0; i < paddedLength; i += _rateBytes)
             {

@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Implements HMAC (Hash-based Message Authentication Code) as defined in RFC 2104.
@@ -81,6 +82,7 @@ public class HmacCore : IMac
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Finalize(Span<byte> destination)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(HmacCore));
@@ -157,9 +159,11 @@ public class HmacCore : IMac
         }
     }
 
+    [SkipLocalsInit]
     private void DeriveKeys(ReadOnlySpan<byte> key, int blockSize)
     {
         Span<byte> keyBlock = stackalloc byte[blockSize];
+        keyBlock.Clear();
 
         if (key.Length > blockSize)
         {
@@ -181,7 +185,7 @@ public class HmacCore : IMac
             _opadKey[i] = (byte)(keyBlock[i] ^ Opad);
         }
 
-        keyBlock.Clear();
+        CryptographicOperations.ZeroMemory(keyBlock);
     }
 
     private void InitializeInner()

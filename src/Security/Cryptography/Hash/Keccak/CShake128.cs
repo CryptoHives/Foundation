@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Buffers;
 using System.Text;
 
@@ -212,6 +213,7 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
         Initialize();
     }
 
+    [SkipLocalsInit]
     private void AbsorbBytePad()
     {
         // bytepad(encode_string(N) || encode_string(S), rate)
@@ -244,6 +246,7 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
             offset += encodedN.Length;
 
             encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             // Absorb the bytepad data
             for (int i = 0; i < paddedLength; i += RateBytes)
@@ -274,6 +277,7 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
     /// </summary>
     /// <param name="s">The byte string to encode.</param>
     /// <returns>The encoded byte string.</returns>
+    [SkipLocalsInit]
     internal static byte[] EncodeString(byte[] s)
     {
         // Length in bits - use long to avoid overflow

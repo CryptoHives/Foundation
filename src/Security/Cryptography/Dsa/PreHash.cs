@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -83,6 +84,7 @@ internal static class PreHash
     /// <param name="oid">The dotted-decimal OID.</param>
     /// <param name="destination">The output buffer.</param>
     /// <returns>The number of bytes written.</returns>
+    [SkipLocalsInit]
     internal static int EncodeOid(string oid, Span<byte> destination)
     {
         string[] parts = oid.Split('.');
@@ -103,6 +105,7 @@ internal static class PreHash
         return 2 + bodyLength;
     }
 
+    [SkipLocalsInit]
     private static int EncodeArc(long value, Span<byte> destination)
     {
         // Base-128, most significant group first, high bit set on all but the last byte.

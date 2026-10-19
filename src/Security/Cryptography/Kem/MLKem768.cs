@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// ML-KEM-768 Key Encapsulation Mechanism (NIST security category 3).
@@ -115,6 +116,7 @@ public sealed class MLKem768 : IKem
         => GenerateKeyPair(encapsulationKey, decapsulationKey, pairwiseConsistencyTest: true);
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     public void GenerateKeyPair(Span<byte> encapsulationKey, Span<byte> decapsulationKey, bool pairwiseConsistencyTest)
     {
         if (encapsulationKey.Length < EncapsulationKeySizeBytesConst)
@@ -145,6 +147,7 @@ public sealed class MLKem768 : IKem
     }
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     public void Encapsulate(ReadOnlySpan<byte> encapsulationKey, Span<byte> ciphertext, Span<byte> sharedSecret)
     {
         if (encapsulationKey.Length != EncapsulationKeySizeBytesConst)

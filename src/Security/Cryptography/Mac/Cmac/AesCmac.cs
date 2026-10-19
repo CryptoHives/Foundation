@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
+using System.Runtime.CompilerServices;
 using System.Buffers.Binary;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
@@ -293,6 +294,7 @@ public sealed class AesCmac : IMac
         AesCore.EncryptBlock(input, output, _roundKeys, _rounds);
     }
 
+    [SkipLocalsInit]
     private void XorAndEncrypt(Span<byte> mac, ReadOnlySpan<byte> block)
     {
         for (int i = 0; i < BlockSize; i++)
@@ -305,10 +307,12 @@ public sealed class AesCmac : IMac
         temp.CopyTo(mac);
     }
 
+    [SkipLocalsInit]
     private void DeriveSubkeys()
     {
         // L = AES-K(0^128)
         Span<byte> zero = stackalloc byte[BlockSize];
+        zero.Clear();
         Span<byte> l = stackalloc byte[BlockSize];
         EncryptBlock(zero, l);
 

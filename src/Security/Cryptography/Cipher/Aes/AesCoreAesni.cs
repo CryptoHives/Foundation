@@ -232,6 +232,7 @@ internal static class AesCoreAesNi
     // AES-192 Key Expansion (12 rounds, 13 round keys)
     // ========================================================================
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ExpandKey192(ReadOnlySpan<byte> key, Span<Vector128<byte>> roundKeys)
     {
@@ -258,6 +259,7 @@ internal static class AesCoreAesNi
         }
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ExpandKey192Flat(ReadOnlySpan<byte> key, Span<byte> expanded)
     {

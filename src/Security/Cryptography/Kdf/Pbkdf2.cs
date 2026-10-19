@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
+using System.Runtime.CompilerServices;
 using System.Buffers.Binary;
 
 /// <summary>
@@ -69,6 +70,7 @@ public static class Pbkdf2
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="iterations"/> is less than 1.
     /// </exception>
+    [SkipLocalsInit]
     public static void DeriveKey(
         HmacFactory hmacFactory,
         ReadOnlySpan<byte> password,

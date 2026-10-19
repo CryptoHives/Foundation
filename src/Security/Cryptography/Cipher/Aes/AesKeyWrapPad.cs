@@ -163,6 +163,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// <returns>The wrapped key. Length is input length rounded up to 8-byte boundary + 8 bytes.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="keyToWrap"/> is empty.</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public byte[] WrapKey(ReadOnlySpan<byte> keyToWrap)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
@@ -183,9 +184,9 @@ public unsafe class AesKeyWrapPad : IDisposable
             // Special case: single semiblock — use single AES ECB encrypt
             byte[] result = new byte[BlockSize];
             Span<byte> block = stackalloc byte[BlockSize];
+            block.Clear();
             aiv.CopyTo(block);
             keyToWrap.CopyTo(block.Slice(SemiblockSize));
-            // Zero-pad remaining bytes (already zeroed by stackalloc)
 
             EncryptBlockDispatch(block, result);
             return result;
@@ -211,6 +212,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// <exception cref="ArgumentException">Thrown when <paramref name="wrappedKey"/> has invalid length.</exception>
     /// <exception cref="OS.CryptographicException">Thrown when integrity check fails.</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public byte[] UnwrapKey(ReadOnlySpan<byte> wrappedKey)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
@@ -256,6 +258,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// Thrown when <paramref name="keyToWrap"/> is less than 16 bytes or not a multiple of 8.
     /// </exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public byte[] WrapKeyNoPad(ReadOnlySpan<byte> keyToWrap)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
@@ -288,6 +291,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// </exception>
     /// <exception cref="OS.CryptographicException">Thrown when integrity check fails.</exception>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public byte[] UnwrapKeyNoPad(ReadOnlySpan<byte> wrappedKey)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
@@ -317,6 +321,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// <param name="iv">The 8-byte initial value (A₀).</param>
     /// <param name="output">The output buffer: [A || R1 || R2 || ... || Rn].</param>
     /// <param name="n">Number of 64-bit semiblocks of plaintext.</param>
+    [SkipLocalsInit]
     private void WrapCore(ReadOnlySpan<byte> iv, Span<byte> output, int n)
     {
         Span<byte> block = stackalloc byte[BlockSize];
@@ -356,6 +361,7 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// <param name="a">Output buffer for the recovered 8-byte integrity value.</param>
     /// <param name="buffer">The ciphertext buffer: [C0 || C1 || ... || Cn].</param>
     /// <param name="n">Number of 64-bit ciphertext semiblocks (excluding A).</param>
+    [SkipLocalsInit]
     private void UnwrapCore(Span<byte> a, Span<byte> buffer, int n)
     {
         Span<byte> block = stackalloc byte[BlockSize];

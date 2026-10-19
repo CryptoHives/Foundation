@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes AES-GMAC (Galois Message Authentication Code) as defined in
@@ -130,6 +131,7 @@ public sealed class AesGmac : IDisposable
     /// <param name="associatedData">The data to verify.</param>
     /// <param name="expectedTag">The expected authentication tag.</param>
     /// <returns>True if the tag is valid; otherwise false.</returns>
+    [SkipLocalsInit]
     public bool VerifyTag(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> expectedTag)
     {
         Span<byte> computedTag = stackalloc byte[TagSizeBytes];

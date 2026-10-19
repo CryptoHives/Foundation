@@ -80,6 +80,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
+    [SkipLocalsInit]
     internal AesCipherTransform(SimdSupport simdSupport, ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
     {
         _encrypting = encrypting;
@@ -266,6 +267,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public int TransformFinalBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (_disposed)
@@ -609,6 +611,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     // CBC Mode
     // ========================================================================
 
+    [SkipLocalsInit]
     private void TransformBlockCbc(ReadOnlySpan<byte> input, Span<byte> output)
     {
         fixed (byte* feedbackPtr = _buffers.Feedback)
@@ -655,6 +658,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     // CTR Mode
     // ========================================================================
 
+    [SkipLocalsInit]
     private void TransformBlockCtr(ReadOnlySpan<byte> input, Span<byte> output)
     {
         fixed (byte* counterPtr = _buffers.Counter)

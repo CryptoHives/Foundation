@@ -418,6 +418,7 @@ internal static class MLKemCore
     /// <param name="p">The ML-KEM parameter set.</param>
     /// <param name="dk">The decapsulation key (must already be length-checked).</param>
     /// <returns>True if the key passes the hash check.</returns>
+    [SkipLocalsInit]
     public static bool IsValidDecapsulationKey(MLKemParams p, ReadOnlySpan<byte> dk)
     {
         ReadOnlySpan<byte> ekPke = dk.Slice(p.PolyVecEncodedBytes, p.EncapsulationKeyBytes);
@@ -590,6 +591,7 @@ internal static class MLKemCore
     /// <summary>
     /// PRF(seed, nonce) = SHAKE256(seed ‖ nonce, len) for CBD sampling.
     /// </summary>
+    [SkipLocalsInit]
     private static void Prf(Shake256 shake, ReadOnlySpan<byte> seed, byte nonce, Span<byte> output)
     {
         shake.Reset();

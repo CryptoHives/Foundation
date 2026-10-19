@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
+using System.Runtime.CompilerServices;
 using System.Buffers.Binary;
 using OS = System.Security.Cryptography;
 
@@ -154,6 +155,7 @@ public static class ConcatKdf
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="hmacFactory"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="output"/> is empty.</exception>
+    [SkipLocalsInit]
     public static void DeriveKey(
         HmacFactory hmacFactory,
         ReadOnlySpan<byte> sharedSecret,

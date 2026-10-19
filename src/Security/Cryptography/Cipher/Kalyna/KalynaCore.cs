@@ -202,6 +202,7 @@ internal unsafe struct KalynaCore
     /// <param name="blockSizeBytes">The block size in bytes.</param>
     /// <returns>An initialized <see cref="KalynaCore"/> ready for use.</returns>
     /// <exception cref="ArgumentException">Thrown when the key length is invalid.</exception>
+    [SkipLocalsInit]
     internal static KalynaCore Create(ReadOnlySpan<byte> key, int blockSizeBytes)
     {
         int blockWords = blockSizeBytes / 8;
@@ -458,6 +459,7 @@ internal unsafe struct KalynaCore
         }
     }
 
+    [SkipLocalsInit]
     private void EncryptBlockGeneric(ReadOnlySpan<byte> input, Span<byte> output)
     {
         Span<ulong> state = stackalloc ulong[MaxRoundKeyWords / 19];
@@ -497,6 +499,7 @@ internal unsafe struct KalynaCore
         }
     }
 
+    [SkipLocalsInit]
     private void DecryptBlockGeneric(ReadOnlySpan<byte> input, Span<byte> output)
     {
         Span<ulong> state = stackalloc ulong[MaxRoundKeyWords / 19];
@@ -535,6 +538,7 @@ internal unsafe struct KalynaCore
         }
     }
 
+    [SkipLocalsInit]
     private static int ExpandKey(ReadOnlySpan<byte> key, Span<byte> roundKeys)
     {
         int nr = key.Length switch {
@@ -560,6 +564,7 @@ internal unsafe struct KalynaCore
         return nr;
     }
 
+    [SkipLocalsInit]
     private static int ExpandKeyGeneric(ReadOnlySpan<byte> key, int blockWords, Span<ulong> roundKeys)
     {
         int keyWords = key.Length / 8;
@@ -589,6 +594,7 @@ internal unsafe struct KalynaCore
         return nr;
     }
 
+    [SkipLocalsInit]
     private static void WorkingKeyExpandKt(ReadOnlySpan<ulong> workingKey, int blockWords, int keyWords, Span<ulong> tempKeys)
     {
         Span<ulong> state = stackalloc ulong[8];
@@ -640,6 +646,7 @@ internal unsafe struct KalynaCore
         blockState.CopyTo(tempKeys);
     }
 
+    [SkipLocalsInit]
     private static void WorkingKeyExpandEven(ReadOnlySpan<ulong> workingKey, int blockWords, int keyWords, ReadOnlySpan<ulong> tempKey, Span<ulong> roundKeys, int nr)
     {
         Span<ulong> state = stackalloc ulong[8];
