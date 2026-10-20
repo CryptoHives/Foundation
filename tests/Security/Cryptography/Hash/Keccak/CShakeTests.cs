@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using Org.BouncyCastle.Crypto.Digests;
 using System;
+using System.Buffers;
 using System.Text;
 
 /// <summary>
@@ -282,6 +283,40 @@ public class CShakeTests
         Assert.That(CShake128.TryRightEncode(buffer, x, out int rightWritten), Is.True);
         Assert.That(buffer.AsSpan(0, rightWritten).ToArray(), Is.EqualTo(right));
     }
+
+    /// <summary>
+    /// A customization longer than the rate puts <c>bytepad</c> in a rented buffer, whose padding must not
+    /// come from whatever the pool handed back.
+    /// </summary>
+    [TestCase(128)]
+    [TestCase(256)]
+    [NonParallelizable]
+    public void CShakeMatchesBouncyCastleWhenThePoolHandsBackDirtyBuffers(int bits)
+    {
+        string customization = new('c', 300);
+        byte[] input = Encoding.UTF8.GetBytes("test message");
+
+        var reference = new CShakeDigest(bits, null, Encoding.UTF8.GetBytes(customization));
+        reference.BlockUpdate(input, 0, input.Length);
+        byte[] expected = new byte[32];
+        reference.OutputFinal(expected, 0, expected.Length);
+
+        var rented = new byte[8][];
+        for (int i = 0; i < rented.Length; i++)
+        {
+            rented[i] = ArrayPool<byte>.Shared.Rent(512);
+            rented[i].AsSpan().Fill(0xFF);
+        }
+
+        foreach (byte[] array in rented)
+        {
+            ArrayPool<byte>.Shared.Return(array);
+        }
+
+        using System.Security.Cryptography.HashAlgorithm cshake = bits == 128
+            ? CShake128.Create(32, "", customization)
+            : CShake256.Create(32, "", customization);
+
+        Assert.That(cshake.ComputeHash(input), Is.EqualTo(expected));
+    }
 }
-
-

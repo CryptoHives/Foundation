@@ -234,6 +234,7 @@ internal ref struct Poly1305Core
     /// All padding zeros align each section to a 16-byte boundary, so every block
     /// is processed as a full block (with hibit set).
     /// </remarks>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ComputeAeadTag(
         ReadOnlySpan<byte> key,

@@ -4,12 +4,14 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Shared argument validation and dispatch for the per-parameter-set ML-DSA classes.
 /// </summary>
 internal static class MLDsaEngine
 {
+    [SkipLocalsInit]
     public static void GenerateKeyPair(MLDsaParams p, Span<byte> publicKey, Span<byte> secretKey,
                                        bool pairwiseConsistencyTest)
     {
@@ -37,6 +39,7 @@ internal static class MLDsaEngine
         MLDsaCore.KeyGen(p, seed, publicKey, secretKey, pairwiseConsistencyTest);
     }
 
+    [SkipLocalsInit]
     public static void Sign(MLDsaParams p, ReadOnlySpan<byte> secretKey, ReadOnlySpan<byte> message,
                             ReadOnlySpan<byte> context, bool deterministic, Span<byte> signature)
     {
@@ -51,7 +54,11 @@ internal static class MLDsaEngine
         int prefixLength = MLDsaCore.BuildExternalPrefix(context, prefix);
 
         Span<byte> rnd = stackalloc byte[MLDsaParams.SignSeedBytes];
-        if (!deterministic)
+        if (deterministic)
+        {
+            rnd.Clear();
+        }
+        else
         {
             MLDsaCore.GenerateRandomSeed(rnd);
         }
@@ -60,6 +67,7 @@ internal static class MLDsaEngine
         CryptographicOperations.ZeroMemory(rnd);
     }
 
+    [SkipLocalsInit]
     public static bool Verify(MLDsaParams p, ReadOnlySpan<byte> publicKey, ReadOnlySpan<byte> message,
                               ReadOnlySpan<byte> context, ReadOnlySpan<byte> signature)
     {

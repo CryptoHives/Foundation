@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// WOTS+ one-time signatures for SLH-DSA (FIPS 205 §5, Algorithms 5–8) with lg_w = 4.
@@ -32,6 +33,7 @@ internal static class Wots
     /// <param name="skSeed">The secret seed SK.seed.</param>
     /// <param name="adrs">A WOTS_HASH address with layer, tree, and key pair set.</param>
     /// <param name="pk">Output: the n-byte compressed public key.</param>
+    [SkipLocalsInit]
     public static void PkGen(SlhDsaHash hash, SlhDsaParams p, ReadOnlySpan<byte> skSeed, Adrs adrs, Span<byte> pk)
     {
         Adrs skAdrs = adrs.Clone();
@@ -68,6 +70,7 @@ internal static class Wots
     /// <param name="skSeed">The secret seed SK.seed.</param>
     /// <param name="adrs">A WOTS_HASH address with layer, tree, and key pair set.</param>
     /// <param name="signature">Output: the len·n-byte WOTS+ signature.</param>
+    [SkipLocalsInit]
     public static void Sign(SlhDsaHash hash, SlhDsaParams p, ReadOnlySpan<byte> message,
                             ReadOnlySpan<byte> skSeed, Adrs adrs, Span<byte> signature)
     {
@@ -100,6 +103,7 @@ internal static class Wots
     /// <param name="message">The n-byte signed message.</param>
     /// <param name="adrs">A WOTS_HASH address with layer, tree, and key pair set.</param>
     /// <param name="pk">Output: the n-byte candidate public key.</param>
+    [SkipLocalsInit]
     public static void PkFromSig(SlhDsaHash hash, SlhDsaParams p, ReadOnlySpan<byte> signature,
                                  ReadOnlySpan<byte> message, Adrs adrs, Span<byte> pk)
     {

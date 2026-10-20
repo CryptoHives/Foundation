@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 /// <summary>
@@ -75,6 +76,7 @@ internal abstract class BlockCipher128
     {
         private readonly ulong[] _encryptKeys = new ulong[KuznyechikCore.RoundKeyWordCount];
 
+        [SkipLocalsInit]
         public KuznyechikBlockCipher(ReadOnlySpan<byte> key)
         {
             if (key.Length != KuznyechikCore.KeySizeBytes) throw new ArgumentException($"Key must be {KuznyechikCore.KeySizeBytes} bytes.", nameof(key));

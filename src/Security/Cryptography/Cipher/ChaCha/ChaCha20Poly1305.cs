@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -125,6 +126,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
                         Span<byte> ciphertext, Span<byte> tag,
                         ReadOnlySpan<byte> associatedData = default)
@@ -148,10 +150,12 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         // Compute Poly1305 tag over (AAD || pad || ciphertext || pad || lengths)
         Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData,
                                      ciphertext.Slice(0, plaintext.Length), tag);
+        CryptographicOperations.ZeroMemory(polyKey);
     }
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
                         ReadOnlySpan<byte> tag, Span<byte> plaintext,
                         ReadOnlySpan<byte> associatedData = default)
@@ -172,9 +176,12 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         // Compute expected tag
         Span<byte> expectedTag = stackalloc byte[TagSizeBytesConst];
         Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData, ciphertext, expectedTag);
+        CryptographicOperations.ZeroMemory(polyKey);
 
         // Verify tag in constant time
-        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;

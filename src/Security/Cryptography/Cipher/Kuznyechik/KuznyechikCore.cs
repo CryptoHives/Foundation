@@ -291,6 +291,7 @@ internal static class KuznyechikCore
     /// </summary>
     /// <param name="key">The 32-byte cipher key.</param>
     /// <param name="roundKeys">Output buffer for 160 bytes of round keys.</param>
+    [SkipLocalsInit]
     public static void ExpandKey(ReadOnlySpan<byte> key, Span<byte> roundKeys)
     {
         key.Slice(0, BlockSizeBytes).CopyTo(roundKeys);
@@ -331,6 +332,10 @@ internal static class KuznyechikCore
             k1.CopyTo(roundKeys.Slice((2 * i + 2) * BlockSizeBytes, BlockSizeBytes));
             k2.CopyTo(roundKeys.Slice((2 * i + 3) * BlockSizeBytes, BlockSizeBytes));
         }
+
+        CryptographicOperations.ZeroMemory(k1);
+        CryptographicOperations.ZeroMemory(k2);
+        CryptographicOperations.ZeroMemory(temp);
     }
 
     /// <summary>
@@ -344,6 +349,7 @@ internal static class KuznyechikCore
     /// <param name="key">The 32-byte cipher key.</param>
     /// <param name="encryptKeys">Receives <see cref="RoundKeyWordCount"/> words.</param>
     /// <param name="decryptKeys">Receives <see cref="RoundKeyWordCount"/> words.</param>
+    [SkipLocalsInit]
     public static void ExpandKeySchedules(ReadOnlySpan<byte> key, Span<ulong> encryptKeys, Span<ulong> decryptKeys)
     {
         Span<byte> roundKeys = stackalloc byte[RoundKeysTotalBytes];
@@ -375,8 +381,8 @@ internal static class KuznyechikCore
         }
         finally
         {
-            roundKeys.Clear();
-            inverted.Clear();
+            CryptographicOperations.ZeroMemory(roundKeys);
+            CryptographicOperations.ZeroMemory(inverted);
         }
     }
 
@@ -546,6 +552,7 @@ internal static class KuznyechikCore
     /// <param name="inverse">
     /// <see langword="true"/> to tabulate L^(-1)∘S^(-1); otherwise L∘S.
     /// </param>
+    [SkipLocalsInit]
     private static ulong[] BuildLsTable(bool inverse)
     {
         ulong[] table = new ulong[BlockSizeBytes * 256 * 2];

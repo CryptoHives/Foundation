@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
@@ -209,6 +210,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
         Initialize();
     }
 
+    [SkipLocalsInit]
     private void AbsorbBytePad()
     {
         byte[] encodedN = _encodedFunctionName;
@@ -240,6 +242,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
 
             encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
             offset += encodedS.Length;
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             // Absorb the bytepad data
             for (int i = 0; i < paddedLength; i += RateBytes)

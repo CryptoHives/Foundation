@@ -5,9 +5,9 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using OS = System.Security.Cryptography;
 #if NET8_0_OR_GREATER
-using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics.Arm;
@@ -80,6 +80,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     /// <param name="encrypting">True for encryption, false for decryption.</param>
     /// <param name="mode">The cipher mode.</param>
     /// <param name="padding">The padding mode.</param>
+    [SkipLocalsInit]
     internal AesCipherTransform(SimdSupport simdSupport, ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting, CipherMode mode, PaddingMode padding)
     {
         _encrypting = encrypting;
@@ -104,7 +105,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     roundKeys.CopyTo(tempEnc);
                     var encView = MemoryMarshal.Cast<uint, Vector128<byte>>(tempEnc);
                     AesCoreAesNi.CreateDecryptionKeys(encView, aesNiView, _rounds);
-                    tempEnc.Clear();
+                    CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(tempEnc));
                 }
             }
             else if (AesCoreArm.IsSupported && (simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
@@ -119,7 +120,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     roundKeys.CopyTo(tempEnc);
                     var encView = MemoryMarshal.Cast<uint, Vector128<byte>>(tempEnc);
                     AesCoreArm.CreateDecryptionKeys(encView, armView, _rounds);
-                    tempEnc.Clear();
+                    CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(tempEnc));
                 }
             }
             else
@@ -136,7 +137,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     Span<uint> tempEnc = stackalloc uint[MaxRoundKeyWords];
                     _rounds = AesCore.ExpandKey(key, tempEnc);
                     AesCore.CreateDecryptionKeys(tempEnc, roundKeys, _rounds);
-                    tempEnc.Clear();
+                    CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(tempEnc));
                 }
             }
         }
@@ -266,6 +267,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public int TransformFinalBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (_disposed)
@@ -301,6 +303,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     {
                         output[written + i] = (byte)(input[fullBlocks * BlockSize + i] ^ counterOut[i]);
                     }
+                    CryptographicOperations.ZeroMemory(counterOut);
                     written += remainder;
                 }
             }
@@ -312,6 +315,8 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     TransformBlock(paddedBlock, output.Slice(written));
                     written += BlockSize;
                 }
+
+                CryptographicOperations.ZeroMemory(paddedBlock);
             }
         }
         else
@@ -334,6 +339,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     {
                         output[written + i] = (byte)(input[fullBlocks * BlockSize + i] ^ counterOut[i]);
                     }
+                    CryptographicOperations.ZeroMemory(counterOut);
                     written += remainder;
                 }
             }
@@ -609,6 +615,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     // CBC Mode
     // ========================================================================
 
+    [SkipLocalsInit]
     private void TransformBlockCbc(ReadOnlySpan<byte> input, Span<byte> output)
     {
         fixed (byte* feedbackPtr = _buffers.Feedback)
@@ -655,6 +662,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     // CTR Mode
     // ========================================================================
 
+    [SkipLocalsInit]
     private void TransformBlockCtr(ReadOnlySpan<byte> input, Span<byte> output)
     {
         fixed (byte* counterPtr = _buffers.Counter)

@@ -56,6 +56,7 @@ internal struct MgmCore
     /// <summary>
     /// Encrypts <paramref name="plaintext"/> and computes a tag the length of <paramref name="tag"/>.
     /// </summary>
+    [SkipLocalsInit]
     public readonly void Encrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext, ReadOnlySpan<byte> associatedData,
         Span<byte> ciphertext, Span<byte> tag)
@@ -72,6 +73,7 @@ internal struct MgmCore
     /// Verifies <paramref name="tag"/> over the ciphertext and, only if it matches, decrypts it.
     /// </summary>
     /// <returns><see langword="true"/> if the tag matched; otherwise <paramref name="plaintext"/> is left untouched.</returns>
+    [SkipLocalsInit]
     public readonly bool Decrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext, ReadOnlySpan<byte> tag,
         ReadOnlySpan<byte> associatedData, Span<byte> plaintext)
@@ -109,33 +111,36 @@ internal struct MgmCore
         ulong left = BinaryPrimitives.ReadUInt64BigEndian(counter);
         ulong right = BinaryPrimitives.ReadUInt64BigEndian(counter.Slice(sizeof(ulong)));
 
+        ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
         int offset = 0;
-        while (offset < input.Length)
+        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
             BinaryPrimitives.WriteUInt64BigEndian(counter, left);
             BinaryPrimitives.WriteUInt64BigEndian(counter.Slice(sizeof(ulong)), right++);
             _blockCipher.EncryptBlock(counter, keystream);
 
-            int remaining = input.Length - offset;
-            if (remaining >= BlockSizeBytes)
-            {
-                ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
-                ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
-                Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(offset, BlockSizeBytes));
-                dst[0] = src[0] ^ ks[0];
-                dst[1] = src[1] ^ ks[1];
-            }
-            else
-            {
-                for (int i = 0; i < remaining; i++)
-                {
-                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
-                }
-            }
-
+            ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
+            Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(offset, BlockSizeBytes));
+            dst[0] = src[0] ^ ks[0];
+            dst[1] = src[1] ^ ks[1];
             offset += BlockSizeBytes;
         }
 
+        if (offset < input.Length)
+        {
+            BinaryPrimitives.WriteUInt64BigEndian(counter, left);
+            BinaryPrimitives.WriteUInt64BigEndian(counter.Slice(sizeof(ulong)), right);
+            _blockCipher.EncryptBlock(counter, keystream);
+
+            ReadOnlySpan<byte> tail = input.Slice(offset);
+            for (int i = 0; i < tail.Length; i++)
+            {
+                output[offset + i] = (byte)(tail[i] ^ keystream[i]);
+            }
+        }
+
+        CryptographicOperations.ZeroMemory(counter);
         CryptographicOperations.ZeroMemory(keystream);
     }
 

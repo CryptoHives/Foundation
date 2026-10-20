@@ -115,6 +115,7 @@ internal static class AriaCore
     /// <param name="key">The cipher key (16, 24, or 32 bytes).</param>
     /// <param name="encRoundKeys">Output buffer for encryption round keys (at least (nr+1)*16 bytes).</param>
     /// <returns>The number of rounds (12, 14, or 16).</returns>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<byte> encRoundKeys)
     {
@@ -134,6 +135,7 @@ internal static class AriaCore
         // KL = leftmost 128 bits of key, KR = rightmost bits (zero-padded)
         Span<byte> kl = stackalloc byte[16];
         Span<byte> kr = stackalloc byte[16];
+        kr.Clear();
         key.Slice(0, 16).CopyTo(kl);
         if (key.Length > 16)
             key.Slice(16, Math.Min(key.Length - 16, 16)).CopyTo(kr);
@@ -163,6 +165,13 @@ internal static class AriaCore
         // ek2  = W1 ^ (W2 >>> 19)  ... etc
         GenerateRoundKeys(w0, w1, w2, w3, encRoundKeys, nr);
 
+        CryptographicOperations.ZeroMemory(kl);
+        CryptographicOperations.ZeroMemory(kr);
+        CryptographicOperations.ZeroMemory(w0);
+        CryptographicOperations.ZeroMemory(w1);
+        CryptographicOperations.ZeroMemory(w2);
+        CryptographicOperations.ZeroMemory(w3);
+        CryptographicOperations.ZeroMemory(temp);
         return nr;
     }
 
@@ -357,6 +366,7 @@ internal static class AriaCore
     }
 
     // FO: Odd round function (substitution layer 1 + diffusion)
+    [SkipLocalsInit]
     private static void FO(ReadOnlySpan<byte> d, ulong ckHi, ulong ckLo, Span<byte> output)
     {
         Span<byte> temp = stackalloc byte[2 * sizeof(ulong)];
@@ -368,9 +378,11 @@ internal static class AriaCore
 
         SubstLayerOdd(temp);
         DiffuseA(temp, output);
+        CryptographicOperations.ZeroMemory(temp);
     }
 
     // FE: Even round function (substitution layer 2 + diffusion)
+    [SkipLocalsInit]
     private static void FE(ReadOnlySpan<byte> d, ulong ckHi, ulong ckLo, Span<byte> output)
     {
         Span<byte> temp = stackalloc byte[2 * sizeof(ulong)];
@@ -381,6 +393,7 @@ internal static class AriaCore
 
         SubstLayerEven(temp);
         DiffuseA(temp, output);
+        CryptographicOperations.ZeroMemory(temp);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -409,6 +422,7 @@ internal static class AriaCore
         }
     }
 
+    [SkipLocalsInit]
     private static void GenerateRoundKeys(ReadOnlySpan<byte> w0, ReadOnlySpan<byte> w1,
         ReadOnlySpan<byte> w2, ReadOnlySpan<byte> w3, Span<byte> ek, int nr)
     {
@@ -439,5 +453,8 @@ internal static class AriaCore
 
             Xor128(wBuf.Slice(wBase, 16), rot, ek.Slice(i * 16, 16));
         }
+
+        CryptographicOperations.ZeroMemory(rot);
+        CryptographicOperations.ZeroMemory(wBuf);
     }
 }

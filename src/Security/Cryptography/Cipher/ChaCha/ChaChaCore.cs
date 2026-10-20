@@ -189,6 +189,8 @@ internal readonly partial struct ChaChaCore
         }
 
         BinarySpans.WriteUInt32LittleEndian(wState.Slice(0, StateWords), output);
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(state));
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(wState));
     }
 
     /// <summary>
@@ -241,6 +243,7 @@ internal readonly partial struct ChaChaCore
         // Return first and last rows (words 0-3 and 12-15)
         BinarySpans.WriteUInt32LittleEndian(state.Slice(0, 4), subkey);
         BinarySpans.WriteUInt32LittleEndian(state.Slice(12, 4), subkey.Slice(4 * sizeof(UInt32)));
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(state));
     }
 
     [SkipLocalsInit]
@@ -305,11 +308,16 @@ internal readonly partial struct ChaChaCore
             // Increment counter in the base state
             state[12]++;
         }
+
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(state));
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(wState));
+        CryptographicOperations.ZeroMemory(ks);
     }
 
     /// <summary>
     /// XORs a full 64-byte block using ulong-sized operations for throughput.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void XorBlock(ref byte input, ReadOnlySpan<byte> keystream, ref byte output)
     {

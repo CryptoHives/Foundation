@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 #if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
@@ -91,6 +92,7 @@ public abstract class AesGcm : IAeadCipher
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Encrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
         Span<byte> ciphertext, Span<byte> tag,
@@ -124,10 +126,14 @@ public abstract class AesGcm : IAeadCipher
         // Write the fixed-size tag; larger caller-supplied buffers are left
         // untouched beyond TagSizeBytes (tag.Length >= TagSizeBytes is guaranteed above).
         fullTag.CopyTo(tag);
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
     }
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool Decrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
         ReadOnlySpan<byte> tag, Span<byte> plaintext,
@@ -156,7 +162,12 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
-        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length));
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;

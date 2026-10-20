@@ -64,6 +64,7 @@ internal static class Polyval
     /// <param name="blocks">The input; its length must be a multiple of 16.</param>
     /// <param name="output">The 16-byte result.</param>
     /// <param name="usePclmul">Whether to use PCLMULQDQ; ignored where it is unsupported.</param>
+    [SkipLocalsInit]
     internal static void Compute(ReadOnlySpan<byte> h, ReadOnlySpan<byte> blocks, Span<byte> output, bool usePclmul)
     {
         if (blocks.Length % BlockSizeBytes != 0)
