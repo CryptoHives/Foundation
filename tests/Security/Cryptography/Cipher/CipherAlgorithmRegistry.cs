@@ -70,6 +70,8 @@ public static class CipherAlgorithmRegistry
         AsconAead128,
         /// <summary>AES-GCM-SIV, RFC 8452 (AEAD).</summary>
         GcmSiv,
+        /// <summary>Multilinear Galois Mode, RFC 9058 (AEAD).</summary>
+        MGM,
         /// <summary>Stream cipher.</summary>
         Stream
     }
@@ -1192,6 +1194,34 @@ public static class CipherAlgorithmRegistry
                 blockSizeBytes: 16),
             Source.Regional));
 
+        // Magma-CBC - Managed. BouncyCastle's Gost28147Engine runs the 1989 byte order, so OpenGost
+        // below is the reference, as for Kuznyechik.
+        implementations.Add(new CipherImplementation(
+            "Magma-CBC",
+            "CryptoHives-Scalar",
+            256,
+            Mode.CBC,
+            () => {
+                var magma = CH.Cipher.Magma.Create();
+                magma.Mode = CH.Cipher.CipherMode.CBC;
+                magma.Padding = CH.Cipher.PaddingMode.PKCS7;
+                return magma;
+            },
+            Source.Managed) { SimdSupport = CH.SimdSupport.None });
+
+        // Magma-CBC - OpenGost
+        implementations.Add(new CipherImplementation(
+            "Magma-CBC",
+            "OpenGost",
+            256,
+            Mode.CBC,
+            () => new OpenGostCbcAdapter(
+                OpenGost.Security.Cryptography.Magma.Create,
+                "Magma-CBC",
+                keySizeBytes: 32,
+                blockSizeBytes: 8),
+            Source.Regional));
+
         // SEED-CBC - Managed
         implementations.Add(new CipherImplementation(
             "SEED-CBC",
@@ -1284,6 +1314,11 @@ public static class CipherAlgorithmRegistry
         // A correctness reference only: every block goes through an ICryptoTransform adapter, so
         // its timing would measure the adapter rather than OpenGost.
         AddGcm("Kuznyechik-GCM", 256, (key, s) => CH.Cipher.KuznyechikGcm.Create(s, key), () => new OpenGostKuznyechikEngine(), Source.Regional, "OpenGost", benchmarkReference: false);
+
+        // No other .NET library implements MGM: the tiers cross-check each other, and MgmTests
+        // holds the RFC 9058 and generated vectors.
+        AddSimdAndManagedVariants(implementations, "Kuznyechik-MGM", 256, Mode.MGM, CH.Cipher.KuznyechikMgm.SimdSupport, (key, s) => CH.Cipher.KuznyechikMgm.Create(s, key));
+        AddSimdAndManagedVariants(implementations, "Magma-MGM", 256, Mode.MGM, CH.Cipher.MagmaMgm.SimdSupport, (key, s) => CH.Cipher.MagmaMgm.Create(s, key));
     }
 
     private static void AddAesGcmSivImplementations(List<CipherImplementation> implementations)

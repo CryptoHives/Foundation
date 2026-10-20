@@ -14,6 +14,9 @@ using OS = System.Security.Cryptography;
 /// </remarks>
 internal static class LegalSizes
 {
+    /// <summary>Exactly 64 bits.</summary>
+    public static readonly OS.KeySizes[] Bits64 = [new OS.KeySizes(64, 64, 0)];
+
     /// <summary>Exactly 128 bits.</summary>
     public static readonly OS.KeySizes[] Bits128 = [new OS.KeySizes(128, 128, 0)];
 
