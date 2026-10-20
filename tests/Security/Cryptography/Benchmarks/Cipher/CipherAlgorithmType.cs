@@ -334,6 +334,14 @@ public sealed class CipherAlgorithmType : IFormattable
     }
 
     /// <summary>
+    /// Returns Magma-CBC implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> MagmaCbc()
+    {
+        return FromRegistry("Magma-CBC", CipherAlgorithmRegistry.Mode.CBC, 256);
+    }
+
+    /// <summary>
     /// Returns Kalyna-128-CBC implementations for benchmarking.
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> KalynaCbc128()
@@ -378,6 +386,7 @@ public sealed class CipherAlgorithmType : IFormattable
         foreach (var alg in CamelliaCbc192()) yield return alg;
         foreach (var alg in CamelliaCbc256()) yield return alg;
         foreach (var alg in KuznyechikCbc()) yield return alg;
+        foreach (var alg in MagmaCbc()) yield return alg;
         foreach (var alg in KalynaCbc128()) yield return alg;
         foreach (var alg in KalynaCbc256()) yield return alg;
         foreach (var alg in KalynaCbc512()) yield return alg;
@@ -481,7 +490,23 @@ public sealed class CipherAlgorithmType : IFormattable
     }
 
     /// <summary>
-    /// Returns all GCM and CCM implementations over the regional block ciphers for benchmarking.
+    /// Returns Kuznyechik-MGM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> KuznyechikMgm()
+    {
+        return FromRegistry("Kuznyechik-MGM", CipherAlgorithmRegistry.Mode.MGM, 256);
+    }
+
+    /// <summary>
+    /// Returns Magma-MGM implementations for benchmarking.
+    /// </summary>
+    public static IEnumerable<CipherAlgorithmType> MagmaMgm()
+    {
+        return FromRegistry("Magma-MGM", CipherAlgorithmRegistry.Mode.MGM, 256);
+    }
+
+    /// <summary>
+    /// Returns all GCM, CCM and MGM implementations over the regional block ciphers for benchmarking.
     /// </summary>
     public static IEnumerable<CipherAlgorithmType> RegionalAead()
     {
@@ -497,6 +522,8 @@ public sealed class CipherAlgorithmType : IFormattable
         foreach (var alg in CamelliaCcm256()) yield return alg;
         foreach (var alg in SeedGcm()) yield return alg;
         foreach (var alg in KuznyechikGcm()) yield return alg;
+        foreach (var alg in KuznyechikMgm()) yield return alg;
+        foreach (var alg in MagmaMgm()) yield return alg;
     }
 
     // ========================================================================
