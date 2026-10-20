@@ -282,8 +282,6 @@ public class KT128Tests
         Assert.That(allocated, Is.LessThan(1024),
             $"absorbing {total} bytes allocated {allocated} bytes; it must not scale with the message");
     }
-
-    private const int ChunkSize = 8192;
 #endif
 
     /// <summary>
