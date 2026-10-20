@@ -10,6 +10,8 @@ A pooled async mutual exclusion lock for coordinating access to shared resources
 
 It guards one resource. When the thing being guarded is one of many — a row, an account, a tenant, a cache entry — use [`AsyncKeyedLock<TKey>`](asynckeyedlock.md) instead of a lock per key or a dictionary of locks: it serializes callers per key while letting unrelated keys run fully in parallel.
 
+`AsyncLock` is not reentrant. When a nested call on the same flow has to re-acquire the lock, and the locked region cannot be narrowed, see [`AsyncReentrantLock`](asyncreentrantlock.md).
+
 ## Benefits
 
 - **Zero-allocation fast path**: When the lock is uncontended the operation completes synchronously without heap allocations.
@@ -356,6 +358,7 @@ using (await _lock1.LockAsync())
 
 - [Threading Package Overview](index.md)
 - [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion; distinct keys never block each other
+- [AsyncReentrantLock](asyncreentrantlock.md) - Async lock a nested call on the same flow can re-acquire (prototype)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock

@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA1849 // Call async methods when in an async method
 
@@ -18,20 +18,16 @@ public class AsyncReentrantLockTests
     [Test, CancelAfter(5000)]
     public async Task DepthBumpIsVisibleToCallerAfterUncontendedAcquisition()
     {
-        // Pins down the exact behavior LockAsync's non-async fast path depends on: an AsyncLocal
-        // mutation made inside an `async` method is NOT visible to that method's own caller once it
-        // returns, even on a fully synchronous completion - see the type-level remarks on AsyncReentrantLock.
-        // If this regresses (e.g. LockAsync's fast path is refactored back into an async method),
-        // every nested/reentrant acquisition silently breaks, so this is worth its own direct test.
+        // Fails if LockAsync becomes an async method: its slot write would no longer reach the caller.
         var mutex = new AsyncReentrantLock();
 
         Assert.That(mutex.CurrentDepth, Is.Zero);
 
         AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
-        Assert.That(mutex.CurrentDepth, Is.EqualTo(1), "depth should be 1 right after the outer acquisition, before any nested call");
+        Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
 
         outer.Dispose();
-        Assert.That(mutex.CurrentDepth, Is.Zero, "depth should be restored once the outer acquisition is disposed");
+        Assert.That(mutex.CurrentDepth, Is.Zero);
     }
 
     [Test]
@@ -47,8 +43,6 @@ public class AsyncReentrantLockTests
     [Test, CancelAfter(5000)]
     public async Task NestedReentrantAcquisitionSucceedsWithoutDeadlock()
     {
-        // The whole point of this type: re-entering the same lock from a call nested inside an
-        // already-held acquisition must not deadlock, unlike AsyncLock.
         var mutex = new AsyncReentrantLock();
 
         using (await mutex.LockAsync().ConfigureAwait(false))
@@ -57,11 +51,11 @@ public class AsyncReentrantLockTests
             {
                 using (await mutex.LockAsync().ConfigureAwait(false))
                 {
+                    Assert.That(mutex.CurrentDepth, Is.EqualTo(3));
                 }
             }
         }
 
-        // Three nested acquisitions on one flow means depths 0, 1, and 2 were each touched once.
         Assert.That(mutex.DepthsCreated, Is.EqualTo(3));
     }
 
@@ -75,18 +69,46 @@ public class AsyncReentrantLockTests
             using (await mutex.LockAsync().ConfigureAwait(false)) { }
         }
 
-        // A later, unrelated top-level acquisition on the same (now fully unwound) flow must start
-        // fresh at depth 0 again, reusing the existing depth-0 lock rather than creating a new one.
         using (await mutex.LockAsync().ConfigureAwait(false)) { }
 
         Assert.That(mutex.DepthsCreated, Is.EqualTo(2));
     }
 
     [Test, CancelAfter(5000)]
+    public async Task NestingBeyondInitialCapacityGrowsDepthTable()
+    {
+        const int Depth = 10;
+        var mutex = new AsyncReentrantLock();
+        int deepest = 0;
+
+        async Task RecurseAsync(int remaining)
+        {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                if (remaining > 1)
+                {
+                    await RecurseAsync(remaining - 1).ConfigureAwait(false);
+                }
+                else
+                {
+                    deepest = mutex.CurrentDepth;
+                }
+            }
+        }
+
+        await RecurseAsync(Depth).ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(deepest, Is.EqualTo(Depth));
+            Assert.That(mutex.DepthsCreated, Is.EqualTo(Depth));
+            Assert.That(mutex.CurrentDepth, Is.Zero);
+        }
+    }
+
+    [Test, CancelAfter(5000)]
     public async Task UnrelatedConcurrentTopLevelCallersSerialize()
     {
-        // Two completely unrelated logical flows both acquiring at depth 0 must genuinely serialize -
-        // this is ordinary mutual exclusion and must hold regardless of the reentrancy machinery.
         var mutex = new AsyncReentrantLock();
         int insideCount = 0;
         int violations = 0;
@@ -107,17 +129,12 @@ public class AsyncReentrantLockTests
 
         await Task.WhenAll(WorkAsync(), WorkAsync(), WorkAsync(), WorkAsync()).ConfigureAwait(false);
 
-        Assert.That(violations, Is.Zero, "Unrelated top-level callers ran inside the lock concurrently.");
+        Assert.That(violations, Is.Zero);
     }
 
     [Test, CancelAfter(5000)]
     public async Task ConcurrentSiblingsSpawnedUnderAHeldLockSerializeAgainstEachOther()
     {
-        // The key correctness property motivating the per-depth lock array instead of a naive
-        // "skip if already held" flag: two children spawned via Task.WhenAll from inside an already-held
-        // acquisition both inherit the same ambient depth, so a flag-based design would let both believe
-        // they're safely reentrant and race inside the region. Here they must instead genuinely
-        // contend for the same depth-1 lock and never run concurrently.
         var mutex = new AsyncReentrantLock();
         int insideDepth1 = 0;
         int violations = 0;
@@ -143,9 +160,73 @@ public class AsyncReentrantLockTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(violations, Is.Zero, "Sibling tasks spawned under a held lock ran concurrently instead of serializing.");
-            // Depth 0 (the outer hold) plus depth 1 (shared by all three siblings) - not one lock per sibling.
+            Assert.That(violations, Is.Zero);
             Assert.That(mutex.DepthsCreated, Is.EqualTo(2));
+        }
+    }
+
+    [Test, CancelAfter(10000)]
+    public async Task ConcurrentTreesOfSiblingsSerializeAtEveryDepth()
+    {
+        var mutex = new AsyncReentrantLock();
+        var inside = new int[3];
+        int violations = 0;
+
+        async Task EnterAsync(int depth, int fanOut)
+        {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                if (mutex.CurrentDepth != depth + 1 || Interlocked.Increment(ref inside[depth]) > 1)
+                {
+                    Interlocked.Increment(ref violations);
+                }
+
+                await Task.Yield();
+                Interlocked.Decrement(ref inside[depth]);
+
+                if (depth + 1 < inside.Length)
+                {
+                    var children = new Task[fanOut];
+                    for (int i = 0; i < fanOut; i++)
+                    {
+                        children[i] = Task.Run(() => EnterAsync(depth + 1, fanOut));
+                    }
+
+                    await Task.WhenAll(children).ConfigureAwait(false);
+                }
+            }
+        }
+
+        var trees = new Task[4];
+        for (int i = 0; i < trees.Length; i++)
+        {
+            trees[i] = Task.Run(() => EnterAsync(0, 3));
+        }
+
+        await Task.WhenAll(trees).ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(violations, Is.Zero);
+            Assert.That(mutex.DepthsCreated, Is.EqualTo(inside.Length));
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task TwoInstancesTrackDepthIndependently()
+    {
+        var first = new AsyncReentrantLock();
+        var second = new AsyncReentrantLock();
+
+        using (await first.LockAsync().ConfigureAwait(false))
+        using (await second.LockAsync().ConfigureAwait(false))
+        using (await first.LockAsync().ConfigureAwait(false))
+        {
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(first.CurrentDepth, Is.EqualTo(2));
+                Assert.That(second.CurrentDepth, Is.EqualTo(1));
+            }
         }
     }
 
@@ -154,10 +235,134 @@ public class AsyncReentrantLockTests
     {
         var mutex = new AsyncReentrantLock();
 
-        using (await mutex.LockAsync(System.TimeSpan.FromSeconds(5)).ConfigureAwait(false))
+        using (await mutex.LockAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false))
         {
-            using (await mutex.LockAsync(System.TimeSpan.FromSeconds(5)).ConfigureAwait(false))
+            using (await mutex.LockAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false))
             {
+                Assert.That(mutex.CurrentDepth, Is.EqualTo(2));
+            }
+        }
+    }
+
+    [Test]
+    public void LockAsyncRejectsNegativeTimeout()
+    {
+        var mutex = new AsyncReentrantLock();
+
+#pragma warning disable VSTHRD110, CA2012 // the call throws before returning a ValueTask
+        Assert.Throws<ArgumentOutOfRangeException>(() => mutex.LockAsync(TimeSpan.FromMilliseconds(-2)));
+#pragma warning restore VSTHRD110, CA2012
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task AwaitUsingReleasesAndRestoresDepth()
+    {
+        var mutex = new AsyncReentrantLock();
+
+        await using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+        }
+
+        Assert.That(mutex.CurrentDepth, Is.Zero);
+        using (await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false)) { }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task TimeoutThrowsAndLeavesDepthUnchanged()
+    {
+        var mutex = new AsyncReentrantLock();
+        var holderReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var holderRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task holder = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                holderReady.SetResult(true);
+                await holderRelease.Task.ConfigureAwait(false);
+            }
+        });
+
+        await holderReady.Task.ConfigureAwait(false);
+
+        await Assert.ThrowsAsync<TimeoutException>(async () => await mutex.LockAsync(TimeSpan.FromMilliseconds(50)).ConfigureAwait(false)).ConfigureAwait(false);
+        Assert.That(mutex.CurrentDepth, Is.Zero);
+
+        holderRelease.SetResult(true);
+        await holder.ConfigureAwait(false);
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task CancelledTopLevelAcquisitionLeavesDepthUnchanged()
+    {
+        var mutex = new AsyncReentrantLock();
+        var holderReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var holderRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task holder = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                holderReady.SetResult(true);
+                await holderRelease.Task.ConfigureAwait(false);
+            }
+        });
+
+        await holderReady.Task.ConfigureAwait(false);
+
+        using (var cts = new CancellationTokenSource())
+        {
+            Task<AsyncReentrantLock.Releaser> pending = mutex.LockAsync(cts.Token).AsTask();
+            cts.Cancel();
+            await Assert.CatchAsync<OperationCanceledException>(async () => await pending.ConfigureAwait(false)).ConfigureAwait(false);
+        }
+
+        Assert.That(mutex.CurrentDepth, Is.Zero);
+
+        holderRelease.SetResult(true);
+        await holder.ConfigureAwait(false);
+
+        using (await mutex.LockAsync().ConfigureAwait(false)) { }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task CancelledNestedAcquisitionLeavesDepthUnchanged()
+    {
+        var mutex = new AsyncReentrantLock();
+        var siblingReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var siblingRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Task sibling = Task.Run(async () => {
+                using (await mutex.LockAsync().ConfigureAwait(false))
+                {
+                    siblingReady.SetResult(true);
+                    await siblingRelease.Task.ConfigureAwait(false);
+                }
+            });
+
+            await siblingReady.Task.ConfigureAwait(false);
+
+            using (var cts = new CancellationTokenSource())
+            {
+                Task<AsyncReentrantLock.Releaser> pending = mutex.LockAsync(cts.Token).AsTask();
+                cts.Cancel();
+                await Assert.CatchAsync<OperationCanceledException>(async () => await pending.ConfigureAwait(false)).ConfigureAwait(false);
+            }
+
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+
+            siblingRelease.SetResult(true);
+            await sibling.ConfigureAwait(false);
+
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                Assert.That(mutex.CurrentDepth, Is.EqualTo(2));
             }
         }
     }
@@ -165,22 +370,6 @@ public class AsyncReentrantLockTests
     [Test, CancelAfter(10000)]
     public async Task NestingAfterAContendedAcquisitionSucceeds()
     {
-        // REGRESSION TEST for a self-deadlock this type used to have. It was previously a
-        // characterization test asserting the broken behavior on purpose; it now asserts the fix.
-        //
-        // The original chain of causation:
-        //  1. An AsyncLocal SLOT write inside an `async` method never propagates back to that method's
-        //     caller (the limitation that forced LockAsync's fast path to be non-async).
-        //  2. The contended path has to go through `async AwaitAndBumpDepth`, so a caller that had to
-        //     genuinely wait for its depth-level lock resumed with its ambient state UNCHANGED - it
-        //     believed it was still at its pre-call depth, even though it now held one level deeper.
-        //  3. When that caller nested again, ResolveTargetDepth computed the target from that stale
-        //     state and handed back the depth the caller ALREADY HELD - so it waited on itself.
-        //
-        // The fix breaks step (2): LockAsync installs a mutable AmbientState object into the slot from
-        // the caller's own frame, before the acquisition can suspend, and the contended path MUTATES
-        // that object rather than writing the slot. Object mutation is not a slot write, so it is not
-        // discarded at the async boundary and the caller sees it through its own reference.
         var mutex = new AsyncReentrantLock();
         var winnerHasDepth1 = new TaskCompletionSource<bool>();
         var loserIsWaiting = new TaskCompletionSource<bool>();
@@ -190,7 +379,6 @@ public class AsyncReentrantLockTests
 
         using (await mutex.LockAsync().ConfigureAwait(false))
         {
-            // Winner: takes depth 1 uncontended, holds it until the loser is definitely queued behind it.
             async Task WinnerAsync()
             {
                 using (await mutex.LockAsync().ConfigureAwait(false))
@@ -200,8 +388,7 @@ public class AsyncReentrantLockTests
                 }
             }
 
-            // Loser: must genuinely WAIT for depth 1, so it resumes via the async AwaitAndBumpDepth
-            // path - the exact path that used to lose its ambient depth bump - and then nests again.
+            // Has to wait for depth 1, so it resumes through the contended path before nesting again.
             async Task LoserAsync()
             {
                 await winnerHasDepth1.Task.ConfigureAwait(false);
@@ -211,11 +398,8 @@ public class AsyncReentrantLockTests
 
                 using (await contended.ConfigureAwait(false))
                 {
-                    // Resumed from a real suspension: the depth bump must still be visible right here.
                     loserDepthWhileHolding = mutex.CurrentDepth;
 
-                    // Nest once more, with a finite timeout so a regression surfaces as a
-                    // TimeoutException instead of hanging the whole test run.
                     try
                     {
                         using (await mutex.LockAsync(TimeSpan.FromMilliseconds(500)).ConfigureAwait(false))
@@ -233,33 +417,33 @@ public class AsyncReentrantLockTests
             await Task.WhenAll(WinnerAsync(), LoserAsync()).ConfigureAwait(false);
         }
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
-            Assert.That(
-                loserNestedResult,
-                Is.Null,
-                "nesting after a contended acquisition must not self-deadlock");
-            Assert.That(
-                loserDepthWhileHolding,
-                Is.EqualTo(2),
-                "the contended acquisition's depth bump must be visible to the caller once it resumes");
-            Assert.That(
-                loserDepthWhileNested,
-                Is.EqualTo(3),
-                "the nested acquisition must target the next depth down, not the one already held");
-        });
+            Assert.That(loserNestedResult, Is.Null, "nesting after a contended acquisition must not self-deadlock");
+            Assert.That(loserDepthWhileHolding, Is.EqualTo(2));
+            Assert.That(loserDepthWhileNested, Is.EqualTo(3));
+        }
     }
 
     [Test, CancelAfter(5000)]
-    public async Task OrphanedFireAndForgetChildFallsBackToParentDepthInsteadOfCrossContaminating()
+    public async Task AsyncWrapperAroundLockAsyncHidesTheHoldFromItsCaller()
     {
-        // The exact scenario that motivated the generation-checked fallback: a parent acquires, fires
-        // a detached (unawaited) Task.Run child, and returns immediately - releasing depth 0 before the
-        // child even runs. The child still inherits ambient depth 1 via ExecutionContext flow into
-        // Task.Run, but its "parent" is gone by the time it acquires. It must detect that its remembered
-        // depth-0 generation is stale and fall back to contending for depth 0 itself, NOT skip ahead to
-        // depth 1 - proven here by DepthsCreated staying at 1 (depth 1 is never touched at all) and the
-        // child observing depth 1 (0 + 1 from its own fallback acquisition), not depth 2.
+        var mutex = new AsyncReentrantLock();
+
+#pragma warning disable CHT011 // the wrapper is the point of the test
+        async ValueTask<AsyncReentrantLock.Releaser> EnterAsync() => await mutex.LockAsync().ConfigureAwait(false);
+#pragma warning restore CHT011
+
+        using (await EnterAsync().ConfigureAwait(false))
+        {
+            Assert.That(mutex.CurrentDepth, Is.Zero);
+            await Assert.ThrowsAsync<TimeoutException>(async () => await mutex.LockAsync(TimeSpan.FromMilliseconds(50)).ConfigureAwait(false)).ConfigureAwait(false);
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task OrphanedFireAndForgetChildFallsBackToParentDepth()
+    {
         var mutex = new AsyncReentrantLock();
         var parentReleased = new TaskCompletionSource<bool>();
         int observedDepthAfterChildAcquire = -1;
@@ -267,10 +451,7 @@ public class AsyncReentrantLockTests
         Task childTask;
         using (await mutex.LockAsync().ConfigureAwait(false))
         {
-            childTask = Task.Run(async () =>
-            {
-                // Wait until the parent's using block has definitely already exited, so this is not a
-                // timing-dependent race - the parent is guaranteed gone by the time LockAsync runs below.
+            childTask = Task.Run(async () => {
                 await parentReleased.Task.ConfigureAwait(false);
 
                 using (await mutex.LockAsync().ConfigureAwait(false))
@@ -285,48 +466,207 @@ public class AsyncReentrantLockTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(observedDepthAfterChildAcquire, Is.EqualTo(1), "orphaned child should fall back to depth 0 (bumping to 1), not skip ahead to depth 2");
-            Assert.That(mutex.DepthsCreated, Is.EqualTo(1), "depth 1 should never be touched at all if the fallback worked");
+            Assert.That(observedDepthAfterChildAcquire, Is.EqualTo(1));
+            Assert.That(mutex.DepthsCreated, Is.EqualTo(1), "depth 1 should never be touched");
         }
     }
 
     [Test, CancelAfter(5000)]
-    public async Task ReleaseThrowsWhenOrphanedDeeperHolderStillLive()
+    public async Task OrphanedGrandchildDoesNotRunConcurrentlyWithUnrelatedHolder()
     {
-        // The release-time misuse guard: if a fire-and-forget child is STILL holding depth 1 at the
-        // exact moment its parent releases depth 0, that's unambiguous proof of the fire-and-forget
-        // nesting misuse this type warns against - the release must still happen cleanly, but disposal
-        // must throw afterward to surface the bug immediately instead of letting it manifest later as
-        // unexplained contention.
         var mutex = new AsyncReentrantLock();
-        var childHasLock = new TaskCompletionSource<bool>();
-        var childCanRelease = new TaskCompletionSource<bool>();
+        var unrelatedHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var orphanDone = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int unrelatedInside = 0;
+        int overlap = -1;
+        Task orphan = Task.CompletedTask;
 
-        AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
-
-        Task childTask = Task.Run(async () =>
+        async Task ParentAsync()
         {
             using (await mutex.LockAsync().ConfigureAwait(false))
             {
-                childHasLock.SetResult(true);
-                await childCanRelease.Task.ConfigureAwait(false);
+                orphan = Task.Run(async () => {
+                    await unrelatedHolds.Task.ConfigureAwait(false);
+                    using (await mutex.LockAsync().ConfigureAwait(false))
+                    {
+                        overlap = Volatile.Read(ref unrelatedInside);
+                    }
+
+                    orphanDone.SetResult(true);
+                });
+            }
+        }
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            await ParentAsync().ConfigureAwait(false);
+        }
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Volatile.Write(ref unrelatedInside, 1);
+            unrelatedHolds.SetResult(true);
+            await Task.WhenAny(orphanDone.Task, Task.Delay(500)).ConfigureAwait(false);
+            Volatile.Write(ref unrelatedInside, 0);
+        }
+
+        await orphan.ConfigureAwait(false);
+
+        Assert.That(overlap, Is.Zero, "an orphan two levels deep acquired while an unrelated flow held the lock");
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task ReleaseWaitsForANestedFireAndForgetHolder()
+    {
+        var mutex = new AsyncReentrantLock();
+        var childHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var childRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
+
+        Task child = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                childHolds.SetResult(true);
+                await childRelease.Task.ConfigureAwait(false);
             }
         });
 
-        await childHasLock.Task.ConfigureAwait(false);
+        await childHolds.Task.ConfigureAwait(false);
+        outer.Dispose();
 
-        Assert.Throws<System.InvalidOperationException>(() => outer.Dispose());
+        Task<AsyncReentrantLock.Releaser> next = mutex.LockAsync().AsTask();
+        await AsyncAssert.NeverCompletesAsync(next, 100).ConfigureAwait(false);
 
-        // Let the orphaned child actually finish before checking depth 0 is usable again - otherwise
-        // its still-live depth-1 hold would (correctly, if coarsely) trip the same guard a second time.
-        // The guard only checks "is something still held one level deeper," not "was it specifically
-        // spawned by me" - it can't tell those apart without real per-acquisition ancestry tracking,
-        // which this prototype doesn't have. See the type-level remarks.
-        childCanRelease.SetResult(true);
-        await childTask.ConfigureAwait(false);
+        childRelease.SetResult(true);
+        await child.ConfigureAwait(false);
 
-        // The underlying depth-0 lock must have been released despite the throw - prove it's usable
-        // again immediately, not wedged.
-        using (await mutex.LockAsync().ConfigureAwait(false)) { }
+        using (await next.ConfigureAwait(false))
+        {
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task DeferredReleasesCascadeThroughEveryReleasedLevel()
+    {
+        var mutex = new AsyncReentrantLock();
+        var childHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var childRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
+        AsyncReentrantLock.Releaser nested = await mutex.LockAsync().ConfigureAwait(false);
+
+        Task child = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                childHolds.SetResult(true);
+                await childRelease.Task.ConfigureAwait(false);
+            }
+        });
+
+        await childHolds.Task.ConfigureAwait(false);
+        nested.Dispose();
+        outer.Dispose();
+
+        Task<AsyncReentrantLock.Releaser> next = mutex.LockAsync().AsTask();
+        await AsyncAssert.NeverCompletesAsync(next, 100).ConfigureAwait(false);
+
+        childRelease.SetResult(true);
+        await child.ConfigureAwait(false);
+
+        using (await next.ConfigureAwait(false))
+        {
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+                Assert.That(mutex.DepthsCreated, Is.EqualTo(3));
+            }
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task OrphanQueuedBehindASiblingWaitsAtTopLevelOnceItsParentReleases()
+    {
+        var mutex = new AsyncReentrantLock();
+        var siblingHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var siblingRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var orphanQueued = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var orphanDone = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int unrelatedInside = 0;
+        int overlap = -1;
+        int orphanDepth = -1;
+
+        AsyncReentrantLock.Releaser parent = await mutex.LockAsync().ConfigureAwait(false);
+
+        Task sibling = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                siblingHolds.SetResult(true);
+                await siblingRelease.Task.ConfigureAwait(false);
+            }
+        });
+
+        await siblingHolds.Task.ConfigureAwait(false);
+
+        // Validates its claim on the parent now, then waits for depth 1 behind the sibling.
+        Task orphan = Task.Run(async () => {
+            ValueTask<AsyncReentrantLock.Releaser> pending = mutex.LockAsync();
+            orphanQueued.SetResult(true);
+            using (await pending.ConfigureAwait(false))
+            {
+                overlap = Volatile.Read(ref unrelatedInside);
+                orphanDepth = mutex.CurrentDepth;
+            }
+
+            orphanDone.SetResult(true);
+        });
+
+        await orphanQueued.Task.ConfigureAwait(false);
+        parent.Dispose();
+
+        Task<AsyncReentrantLock.Releaser> unrelated = mutex.LockAsync().AsTask();
+        siblingRelease.SetResult(true);
+
+        using (await unrelated.ConfigureAwait(false))
+        {
+            Volatile.Write(ref unrelatedInside, 1);
+            await Task.WhenAny(orphanDone.Task, Task.Delay(300)).ConfigureAwait(false);
+            Volatile.Write(ref unrelatedInside, 0);
+        }
+
+        await Task.WhenAll(sibling, orphan).ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(overlap, Is.Zero, "the orphan ran while an unrelated flow held the lock");
+            Assert.That(orphanDepth, Is.EqualTo(1), "the orphan should have acquired at top level");
+        }
+    }
+
+    [Test]
+    public void DisposingADefaultReleaser()
+    {
+        AsyncReentrantLock.Releaser releaser = default;
+
+#if DEBUG
+        Assert.Throws<InvalidOperationException>(releaser.Dispose);
+#else
+        Assert.DoesNotThrow(releaser.Dispose);
+#endif
+    }
+
+    [Test]
+    public void DefaultReleasersAreEqual()
+    {
+        var first = default(AsyncReentrantLock.Releaser);
+        var second = default(AsyncReentrantLock.Releaser);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(first, Is.EqualTo(second));
+            Assert.That(first == second, Is.True);
+            Assert.That(first.GetHashCode(), Is.Zero);
+        }
     }
 }

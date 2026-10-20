@@ -406,6 +406,7 @@ catch (TimeoutException)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
 - [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
+- [AsyncReentrantLock](asyncreentrantlock.md) - Async lock a nested call on the same flow can re-acquire (prototype)
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive

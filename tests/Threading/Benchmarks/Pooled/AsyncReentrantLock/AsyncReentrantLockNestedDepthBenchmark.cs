@@ -1,5 +1,5 @@
-// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Threading.Tests.Benchmarks.Pooled.AsyncReentrantLock;
 
@@ -9,25 +9,10 @@ using NUnit.Framework;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Benchmarks measuring how <see cref="AsyncReentrantLock"/>'s cost scales with reentrant nesting depth.
+/// Measures how the cost of <see cref="AsyncReentrantLock"/> scales with nesting depth.
 /// </summary>
 /// <remarks>
-/// <para>
-/// There is no baseline to compare against here - plain <see cref="AsyncLock"/> cannot nest at all
-/// (it would deadlock), which is the entire reason <see cref="AsyncReentrantLock"/> exists. This benchmark
-/// isolates the incremental per-level cost instead: each additional depth pays for one more
-/// <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey,TValue}"/> lookup/insert (the
-/// first time that depth is reached), one more generation check against the parent depth, and one more
-/// <see cref="System.Threading.AsyncLocal{T}"/> read/write pair on both the way in and the way out.
-/// </para>
-/// <para>
-/// <b>Test scenario:</b> Recursively acquire the same <see cref="AsyncReentrantLock"/> <see cref="Depth"/> times
-/// in a row (each acquisition nested inside the previous one's <c>using</c> block), then unwind.
-/// </para>
-/// <para>
-/// <b>Key metric:</b> Mean and Allocated as <see cref="Depth"/> grows (1, 2, 4, 8) - whether cost scales
-/// linearly with depth (expected, since each level is independent bookkeeping) or worse.
-/// </para>
+/// There is no baseline: <see cref="AsyncLock"/> deadlocks on the first nested acquisition.
 /// </remarks>
 [TestFixture]
 [TestFixtureSource(nameof(FixtureArgs))]
@@ -83,7 +68,7 @@ public class AsyncReentrantLockNestedDepthBenchmark
     /// Benchmark for reentrantly acquiring AsyncReentrantLock <see cref="Depth"/> levels deep.
     /// </summary>
     [Test]
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     [BenchmarkCategory("NestedDepth", "AsyncReentrantLock")]
     public Task NestedReentrantAcquireAsync() => RecurseAsync(Depth);
 }
