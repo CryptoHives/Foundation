@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// XMSS Merkle trees inside the SLH-DSA hypertree (FIPS 205 §6, Algorithms 9–11).
@@ -80,6 +81,7 @@ internal static class XmssTree
     /// <param name="message">The n-byte signed message.</param>
     /// <param name="adrs">An address with layer and tree set.</param>
     /// <param name="root">Output: the n-byte candidate root.</param>
+    [SkipLocalsInit]
     public static void PkFromSig(SlhDsaHash hash, SlhDsaParams p, int idx, ReadOnlySpan<byte> signature,
                                  ReadOnlySpan<byte> message, Adrs adrs, Span<byte> root)
     {

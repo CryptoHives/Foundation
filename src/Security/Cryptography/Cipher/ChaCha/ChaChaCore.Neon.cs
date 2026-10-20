@@ -149,6 +149,8 @@ internal readonly partial struct ChaChaCore
                 {
                     Unsafe.Add(ref pOutRef, i) = (byte)(Unsafe.Add(ref pInRef, i) ^ Unsafe.Add(ref pKsRef, i));
                 }
+
+                CryptographicOperations.ZeroMemory(ks);
             }
 
             offset += BlockSizeBytes;

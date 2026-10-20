@@ -175,6 +175,7 @@ public abstract class AesGcmSiv : IAeadCipher
             CryptographicOperations.ZeroMemory(authKey);
             CryptographicOperations.ZeroMemory(encKey);
             CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(roundKeys));
+            CryptographicOperations.ZeroMemory(expectedTag);
         }
     }
 
@@ -236,6 +237,7 @@ public abstract class AesGcmSiv : IAeadCipher
     /// RFC 8452 §4: derives the per-nonce authentication key and expands the per-nonce encryption key.
     /// </summary>
     /// <returns>The number of AES rounds for the encryption key.</returns>
+    [SkipLocalsInit]
     private int DeriveKeys(ReadOnlySpan<byte> nonce, Span<byte> authKey, Span<byte> encKey, Span<uint> roundKeys)
     {
         Span<byte> block = stackalloc byte[BlockSize];
@@ -259,6 +261,7 @@ public abstract class AesGcmSiv : IAeadCipher
     /// <summary>
     /// RFC 8452 §4: tag = AES(encKey, (POLYVAL(authKey, …) ⊕ nonce) with the top bit cleared).
     /// </summary>
+    [SkipLocalsInit]
     private void ComputeTag(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> authKey,
         ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> plaintext,

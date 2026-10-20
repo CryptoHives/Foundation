@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Security.Cryptography.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// The SLH-DSA hash function family H_msg / PRF / PRF_msg / F / H / T_ℓ (FIPS 205 §11).
@@ -211,6 +212,7 @@ internal abstract class SlhDsaHash : IDisposable
             FinishTruncated(_sha256, 32, output);
         }
 
+        [SkipLocalsInit]
         public override void PrfMsg(ReadOnlySpan<byte> skPrf, ReadOnlySpan<byte> optRand,
                                     ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> message, Span<byte> output)
         {
@@ -229,6 +231,7 @@ internal abstract class SlhDsaHash : IDisposable
             CryptographicOperations.ZeroMemory(full);
         }
 
+        [SkipLocalsInit]
         public override void HMsg(ReadOnlySpan<byte> r, ReadOnlySpan<byte> pkRoot,
                                   ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> message, Span<byte> output)
         {
@@ -272,6 +275,7 @@ internal abstract class SlhDsaHash : IDisposable
         private (Hash.HashAlgorithm Sha, byte[] PaddedSeed, int HashLen) TreeHash()
             => P.N == 16 ? (_sha256, _paddedSeed256, 32) : (_sha512!, _paddedSeed512!, 64);
 
+        [SkipLocalsInit]
         private void FinishTruncated(Hash.HashAlgorithm sha, int hashLen, Span<byte> output)
         {
             Span<byte> full = stackalloc byte[64];
@@ -288,6 +292,7 @@ internal abstract class SlhDsaHash : IDisposable
         /// <param name="seedWithCounter">Buffer holding the seed followed by 4 spare bytes for the counter.</param>
         /// <param name="seedLength">The seed length within <paramref name="seedWithCounter"/>.</param>
         /// <param name="output">The mask output.</param>
+        [SkipLocalsInit]
         private static void Mgf1(Hash.HashAlgorithm sha, int hashLen, Span<byte> seedWithCounter, int seedLength, Span<byte> output)
         {
             Span<byte> block = stackalloc byte[64];

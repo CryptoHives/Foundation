@@ -416,6 +416,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Processes a complete 64-byte message block.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> m)
     {
@@ -435,6 +436,7 @@ public sealed class Streebog : HashAlgorithm
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
@@ -555,6 +557,7 @@ public sealed class Streebog : HashAlgorithm
     /// The g_N compression function: h = h ^ E(h ^ N, m) ^ m
     /// Uses Miyaguchi-Preneel construction.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GN(ulong[] h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
     {
@@ -579,6 +582,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// The E function: 12-round block cipher with key schedule.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, Span<ulong> result)
     {
@@ -672,6 +676,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Combined LPS transformation for byte spans (used by test compatibility).
     /// </summary>
+    [SkipLocalsInit]
     internal static void ApplyLPS(Span<byte> data)
     {
         // The T-tables are static readonly ulong[256] and every subscript below is a byte,

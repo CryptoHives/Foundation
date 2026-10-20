@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Implements HMAC (Hash-based Message Authentication Code) as defined in RFC 2104.
@@ -81,6 +82,7 @@ public class HmacCore : IMac
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Finalize(Span<byte> destination)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(HmacCore));
@@ -94,6 +96,7 @@ public class HmacCore : IMac
         // Complete outer hash: H((K' ⊕ opad) ‖ innerResult)
         // The opad key block was already fed in InitializeInner()
         _outerHash.AppendData(innerResult);
+        CryptographicOperations.ZeroMemory(innerResult);
         Span<byte> outerResult = stackalloc byte[_macSize];
         _outerHash.TryGetHashAndReset(outerResult, out _);
 
@@ -157,18 +160,20 @@ public class HmacCore : IMac
         }
     }
 
+    [SkipLocalsInit]
     private void DeriveKeys(ReadOnlySpan<byte> key, int blockSize)
     {
         Span<byte> keyBlock = stackalloc byte[blockSize];
+        keyBlock.Clear();
 
         if (key.Length > blockSize)
         {
-            // Key longer than block size: hash it first. Zero-allocation and self-clearing
-            // since hashedKey is stack-allocated rather than a heap array left uncleared.
+            // Key longer than block size: hash it first.
             _innerHash.AppendData(key);
             Span<byte> hashedKey = stackalloc byte[_macSize];
             _innerHash.TryGetHashAndReset(hashedKey, out _);
             hashedKey.CopyTo(keyBlock);
+            CryptographicOperations.ZeroMemory(hashedKey);
         }
         else
         {
@@ -181,7 +186,7 @@ public class HmacCore : IMac
             _opadKey[i] = (byte)(keyBlock[i] ^ Opad);
         }
 
-        keyBlock.Clear();
+        CryptographicOperations.ZeroMemory(keyBlock);
     }
 
     private void InitializeInner()

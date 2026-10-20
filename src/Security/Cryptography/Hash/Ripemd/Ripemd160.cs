@@ -206,6 +206,7 @@ public sealed class Ripemd160 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < HashSizeBytes)

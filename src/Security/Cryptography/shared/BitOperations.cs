@@ -26,7 +26,7 @@ internal class BitOperations
 /// <summary>
 /// Just a placeholder to allow use of [SkipLocalsInit] attribute in code targeting frameworks that do not have it.
 /// </summary>
-[AttributeUsage(AttributeTargets.Method)]
+[AttributeUsage(AttributeTargets.Constructor | AttributeTargets.Method)]
 internal sealed class SkipLocalsInitAttribute : Attribute
 {
 }

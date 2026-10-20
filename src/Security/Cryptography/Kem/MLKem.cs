@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -291,6 +292,7 @@ public sealed partial class MLKem : IDisposable
     /// <exception cref="ArgumentException">A buffer has an incorrect length.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The buffers overlap.</exception>
+    [SkipLocalsInit]
     public void Encapsulate(Span<byte> ciphertext, Span<byte> sharedSecret)
     {
         ThrowIfDisposed();
