@@ -517,7 +517,7 @@ public class AsyncReentrantLockTests
     }
 
     [Test, CancelAfter(5000)]
-    public async Task ReleaseWaitsForANestedFireAndForgetHolder()
+    public async Task LockStaysHeldWhileANestedFireAndForgetHolderRuns()
     {
         var mutex = new AsyncReentrantLock();
         var childHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -545,6 +545,40 @@ public class AsyncReentrantLockTests
         using (await next.ConfigureAwait(false))
         {
             Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task NestedFireAndForgetHolderCanNestAgainAfterItsParentReleases()
+    {
+        var mutex = new AsyncReentrantLock();
+        var childHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var parentReleased = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int innerDepth = -1;
+
+        AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
+
+        Task child = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                childHolds.SetResult(true);
+                await parentReleased.Task.ConfigureAwait(false);
+                using (await mutex.LockAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false))
+                {
+                    innerDepth = mutex.CurrentDepth;
+                }
+            }
+        });
+
+        await childHolds.Task.ConfigureAwait(false);
+        outer.Dispose();
+        Task<AsyncReentrantLock.Releaser> next = mutex.LockAsync().AsTask();
+        parentReleased.SetResult(true);
+        await child.ConfigureAwait(false);
+
+        using (await next.ConfigureAwait(false))
+        {
+            Assert.That(innerDepth, Is.EqualTo(3));
         }
     }
 

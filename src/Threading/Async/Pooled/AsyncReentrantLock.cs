@@ -313,7 +313,7 @@ public sealed class AsyncReentrantLock
     }
 
     /// <summary>
-    /// Publishes the hold at <paramref name="depth"/> if every ancestor below it is still held,
+    /// Publishes the hold at <paramref name="depth"/> if the claim it nests under is still held,
     /// rechecked now that the level is taken.
     /// </summary>
     private bool TryCommit(DepthLock depthLock, int depth, Claim? top, AmbientState state)
@@ -324,28 +324,27 @@ public sealed class AsyncReentrantLock
             parent = parent.Parent;
         }
 
-        for (Claim? c = parent; c is not null; c = c.Parent)
-        {
-            if (!IsLive(c)) return false;
-        }
+        if (parent is not null && !IsLive(parent)) return false;
 
         state.Top = new Claim(depth, depthLock.Generation, parent);
         return true;
     }
 
     /// <summary>
-    /// The level above the flow's own hold if its whole ancestry is still held, otherwise the lowest
-    /// level whose holder has since released.
+    /// The level above the flow's deepest claim that is still held, or 0 if none is.
     /// </summary>
+    /// <remarks>
+    /// A live claim implies every level below it is still taken, because a level is only freed once the
+    /// level above it is free, so released ancestors below a live claim do not matter.
+    /// </remarks>
     private int ResolveTargetDepth(Claim? top)
     {
-        int depth = top is null ? 0 : top.Depth + 1;
         for (Claim? c = top; c is not null; c = c.Parent)
         {
-            if (!IsLive(c)) depth = c.Depth;
+            if (IsLive(c)) return c.Depth + 1;
         }
 
-        return depth;
+        return 0;
     }
 
     private bool IsLive(Claim claim)

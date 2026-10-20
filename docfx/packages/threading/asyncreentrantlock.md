@@ -54,11 +54,11 @@ A flow can only reach depth `N` while an ancestor holds depth `N - 1`. Depth 0 i
 
 ### Holders that have gone away
 
-Each depth has a generation number, which is bumped when the holder disposes its releaser. A flow remembers the generation of every depth it nested under. Before acquiring, it checks each of them. If any ancestor has released, for example the parent of a fire-and-forget `Task.Run` child that has already returned, the flow targets the lowest depth whose holder is gone, as an ordinary acquisition. It checks again once it holds that depth, and if an ancestor released during the wait, it gives the depth back and retries lower down.
+Each depth has a generation number, which is bumped when the holder disposes its releaser. A flow remembers the generation of every depth it nested under. Before acquiring, it looks for the deepest of them that is still held and nests one above it. If none is, for example in a fire-and-forget `Task.Run` child whose parent has already returned, it acquires depth 0 like any top-level caller. Once it holds the depth, it checks again that the depth it nested under is still held, and if that holder released during the wait, it gives the depth back and retries.
 
 ### The lock stays held while nested holders run
 
-Disposing a releaser ends the hold at once for nesting purposes: no new call can nest under it. The depth itself, though, stays taken while any call nested under it still holds the next depth, and the last one out frees it. A chain of such releases unwinds together. So a fire-and-forget child that is inside the lock when its parent leaves finishes as part of the parent's hold, and nobody from outside gets in until it is done.
+Disposing a releaser ends the hold at once for the parent's flow, which no longer counts as holding the lock. Calls already nested under it keep their place and can nest further. The depth itself, though, stays taken while any call nested under it still holds the next depth, and the last one out frees it. A chain of such releases unwinds together. So a fire-and-forget child that is inside the lock when its parent leaves finishes as part of the parent's hold, and nobody from outside gets in until it is done.
 
 ## Constructor
 
@@ -84,7 +84,7 @@ public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancell
 Acquires the lock, or the next depth if the calling flow already holds it. Dispose the returned `Releaser` to release, either with `using` or with `await using`.
 
 **Throws**:
-- `TimeoutException`: the timeout elapsed before the lock could be acquired.
+- `TimeoutException`: the timeout elapsed before the lock could be acquired. If the holder the call nested under releases during the wait, the call retries with a fresh timeout, so the total wait can exceed `timeout`.
 - `OperationCanceledException`: the operation was cancelled through the token.
 - `ArgumentOutOfRangeException`: `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
 
@@ -110,7 +110,7 @@ private ValueTask<AsyncReentrantLock.Releaser> EnterAsync()
 
 A nested `LockAsync` can wait, but only on concurrent siblings at the same depth, including children the caller started itself. If a holder starts a child that takes the lock and then nests while the child holds it, the holder waits for the child.
 
-### Don't detach work that takes the lock
+### Detached work that takes the lock depends on timing
 
 A `Task.Run` that isn't awaited inherits the depth of its parent, so where it runs depends on timing:
 
@@ -118,7 +118,7 @@ A `Task.Run` that isn't awaited inherits the depth of its parent, so where it ru
 - if the parent has already released, it waits for the lock like any top-level caller;
 - if it still holds a nested depth when the parent releases, the parent carries on, but the lock stays held until the child releases, so a child that never finishes keeps the lock held for good.
 
-A nested holder runs alongside its parent's own code, which holds only the outer depth. Await everything the holder started, or detach the work with `ExecutionContext.SuppressFlow()` so it always acquires as a top-level caller.
+A nested holder runs alongside its parent's own code, which holds only the outer depth. Where that matters, await everything the holder started, or detach the work with `ExecutionContext.SuppressFlow()` so it always acquires as a top-level caller.
 
 ### Depths are never reclaimed
 
@@ -126,7 +126,7 @@ Each depth reached creates one internal lock that lives as long as the instance 
 
 ## Performance
 
-Each acquisition reads and writes an `AsyncLocal`, allocates two small objects and checks the generation of every ancestor depth, on top of the underlying `AsyncLock` acquisition. A contended acquisition also allocates an async state machine. `AsyncReentrantLockBenchmark` measures the uncontended overhead against `AsyncLock`, and `AsyncReentrantLockNestedDepthBenchmark` measures cost against nesting depth.
+Each acquisition reads and writes an `AsyncLocal`, allocates two small objects and checks that the depth it nests under is still held, on top of the underlying `AsyncLock` acquisition. A contended acquisition also allocates an async state machine. `AsyncReentrantLockBenchmark` measures the uncontended overhead against `AsyncLock`, and `AsyncReentrantLockNestedDepthBenchmark` measures cost against nesting depth.
 
 ## See Also
 
