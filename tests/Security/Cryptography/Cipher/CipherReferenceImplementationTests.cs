@@ -8,7 +8,6 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Cross-validates all cipher implementations against each other.
@@ -85,9 +84,15 @@ public class CipherReferenceImplementationTests
 
         byte[] key = GenerateBytes(impl1.KeySizeBits / 8, seed: 0x01);
         byte[] nonce = GenerateBytes(cipher1.NonceSizeBytes, seed: 0x02);
+        nonce[0] &= 0x7F; // MGM takes a 127-bit nonce; no other AEAD minds a clear top bit
         byte[] plaintext = GenerateBytes(plaintextSize, seed: 0x03 + plaintextSize);
         // Ties the AAD length to the plaintext size so empty, partial-block and multi-block AAD are all covered.
         byte[] aad = GenerateBytes(plaintextSize % 67, seed: 0x04);
+        if (plaintext.Length == 0 && aad.Length == 0 && impl1.CipherMode == CipherAlgorithmRegistry.Mode.MGM)
+        {
+            // RFC 9058 forbids an empty message with empty associated data.
+            return;
+        }
 
         // Encrypt with impl1
         byte[] ciphertext1 = new byte[plaintext.Length];
@@ -188,8 +193,13 @@ public class CipherReferenceImplementationTests
     [
         "AES-128-GCM", "AES-192-GCM", "AES-256-GCM",
         "AES-128-CCM", "AES-192-CCM", "AES-256-CCM",
+        "AES-128-GCM-SIV", "AES-256-GCM-SIV",
         "ChaCha20-Poly1305", "XChaCha20-Poly1305",
-        "AES-128-GCM-SIV", "AES-256-GCM-SIV"
+        "ARIA-128-GCM", "ARIA-192-GCM", "ARIA-256-GCM",
+        "ARIA-128-CCM", "ARIA-192-CCM", "ARIA-256-CCM",
+        "Camellia-128-GCM", "Camellia-192-GCM", "Camellia-256-GCM",
+        "Camellia-128-CCM", "Camellia-192-CCM", "Camellia-256-CCM",
+        "SM4-GCM", "SM4-CCM", "SEED-GCM", "Kuznyechik-GCM", "Kuznyechik-MGM", "Magma-MGM"
     ];
 
     private static readonly string[] StreamFamilies = ["ChaCha20"];
@@ -199,7 +209,7 @@ public class CipherReferenceImplementationTests
         "SM4-CBC", "ARIA-128-CBC", "ARIA-256-CBC",
         "Camellia-128-CBC", "Camellia-256-CBC",
         "Kalyna-128-CBC", "Kalyna-256-CBC", "Kalyna-512-CBC",
-        "SEED-CBC"
+        "SEED-CBC", "Magma-CBC"
     ];
 
     private static System.Collections.IEnumerable GetAllAeadImplementationPairs()

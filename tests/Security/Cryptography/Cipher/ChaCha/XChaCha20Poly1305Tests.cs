@@ -3,7 +3,6 @@
 
 namespace Cryptography.Tests.Cipher.ChaCha;
 
-using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
@@ -55,7 +54,7 @@ public class XChaCha20Poly1305Tests
             Assert.Ignore("Not a Managed or Simd implementation.");
         }
 
-        ChaChaCore chaChaCore = new ChaChaCore(_implementation.Source == Source.Managed ? SimdSupport.None : SimdSupport.All);
+        ChaChaCore chaChaCore = new ChaChaCore(_implementation.SimdSupport!.Value);
 
         byte[] key = FromHex(
             "000102030405060708090a0b0c0d0e0f" +

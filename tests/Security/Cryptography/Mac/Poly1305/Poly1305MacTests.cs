@@ -38,6 +38,141 @@ public class Poly1305MacTests
     }
 
     /// <summary>
+    /// The five-limb 26-bit arithmetic reproduces RFC 8439 Section 2.5.2 on its own.
+    /// </summary>
+    [Test]
+    public void Donna32ReproducesRfc8439Section252()
+    {
+        byte[] key = TestHelpers.FromHexString(
+            "85d6be7857556d337f4452fe42d506a8" +
+            "0103808afb0db2fd4abff6af4149f51b");
+        byte[] message = Encoding.ASCII.GetBytes("Cryptographic Forum Research Group");
+        byte[] expected = TestHelpers.FromHexString("a8061dc1305136c6c22b8baf0c0127a9");
+
+        Poly1305Core.LoadKey32(key,
+            out uint r0, out uint r1, out uint r2, out uint r3, out uint r4,
+            out uint s1, out uint s2, out uint s3, out uint s4,
+            out uint pad0, out uint pad1, out uint pad2, out uint pad3);
+        uint h0 = 0, h1 = 0, h2 = 0, h3 = 0, h4 = 0;
+        Poly1305Core.ProcessFullBlock32(message.AsSpan(0, 16), ref h0, ref h1, ref h2, ref h3, ref h4, r0, r1, r2, r3, r4, s1, s2, s3, s4);
+        Poly1305Core.ProcessFullBlock32(message.AsSpan(16, 16), ref h0, ref h1, ref h2, ref h3, ref h4, r0, r1, r2, r3, r4, s1, s2, s3, s4);
+        Poly1305Core.ProcessPartialBlock32(message.AsSpan(32), ref h0, ref h1, ref h2, ref h3, ref h4, r0, r1, r2, r3, r4, s1, s2, s3, s4);
+
+        byte[] tag = new byte[16];
+        Poly1305Core.Finalize32(ref h0, ref h1, ref h2, ref h3, ref h4, pad0, pad1, pad2, pad3, tag);
+        Assert.That(tag, Is.EqualTo(expected));
+    }
+
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// The three-limb 44-bit arithmetic reproduces RFC 8439 Section 2.5.2 on its own.
+    /// </summary>
+    [Test]
+    public void Donna64ReproducesRfc8439Section252()
+    {
+        byte[] key = TestHelpers.FromHexString(
+            "85d6be7857556d337f4452fe42d506a8" +
+            "0103808afb0db2fd4abff6af4149f51b");
+        byte[] message = Encoding.ASCII.GetBytes("Cryptographic Forum Research Group");
+        byte[] expected = TestHelpers.FromHexString("a8061dc1305136c6c22b8baf0c0127a9");
+
+        Poly1305Core.LoadKey64(key, out ulong r0, out ulong r1, out ulong r2, out ulong s1, out ulong s2, out ulong padLo, out ulong padHi);
+        ulong h0 = 0, h1 = 0, h2 = 0;
+        Poly1305Core.AddFullBlock64(message.AsSpan(0, 16), ref h0, ref h1, ref h2);
+        Poly1305Core.MulReduce64(ref h0, ref h1, ref h2, r0, r1, r2, s1, s2);
+        Poly1305Core.AddFullBlock64(message.AsSpan(16, 16), ref h0, ref h1, ref h2);
+        Poly1305Core.MulReduce64(ref h0, ref h1, ref h2, r0, r1, r2, s1, s2);
+        Poly1305Core.AddPartialBlock64(message.AsSpan(32), ref h0, ref h1, ref h2);
+        Poly1305Core.MulReduce64(ref h0, ref h1, ref h2, r0, r1, r2, s1, s2);
+
+        byte[] tag = new byte[16];
+        Poly1305Core.Finalize64(h0, h1, h2, padLo, padHi, tag);
+        Assert.That(tag, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// The 44-bit arithmetic gives the same result step by step whether its key and
+    /// accumulator live in locals or in the fields of an object: readonly key fields assigned
+    /// through <c>out</c>, accumulator fields by <c>ref</c>.
+    /// </summary>
+    /// <remarks>
+    /// A mismatch is a warning, not a failure: the Mono JIT miscompiles the carries on field-held
+    /// state, which the library avoids by passing the accumulator in locals.
+    /// </remarks>
+    [Test]
+    public void Donna64StateInFieldsMatchesStateInLocals()
+    {
+        byte[] key = TestHelpers.FromHexString(
+            "85d6be7857556d337f4452fe42d506a8" +
+            "0103808afb0db2fd4abff6af4149f51b");
+        byte[] message = Encoding.ASCII.GetBytes("Cryptographic Forum Research Group");
+
+        Poly1305Core.LoadKey64(key, out ulong r0, out ulong r1, out ulong r2, out ulong s1, out ulong s2, out ulong padLo, out ulong padHi);
+        var held = new Donna64Fields(key);
+        Warn.Unless((held.R0, held.R1, held.R2, held.S1, held.S2, held.PadLo, held.PadHi),
+            Is.EqualTo((r0, r1, r2, s1, s2, padLo, padHi)), "key loaded through out into readonly fields");
+
+        ulong h0 = 0, h1 = 0, h2 = 0;
+        for (int offset = 0; offset + 16 <= message.Length; offset += 16)
+        {
+            Poly1305Core.AddFullBlock64(message.AsSpan(offset, 16), ref h0, ref h1, ref h2);
+            Poly1305Core.AddFullBlock64(message.AsSpan(offset, 16), ref held.H0, ref held.H1, ref held.H2);
+            Warn.Unless((held.H0, held.H1, held.H2), Is.EqualTo((h0, h1, h2)), $"after adding block at {offset}");
+
+            Poly1305Core.MulReduce64(ref h0, ref h1, ref h2, r0, r1, r2, s1, s2);
+            Poly1305Core.MulReduce64(ref held.H0, ref held.H1, ref held.H2, held.R0, held.R1, held.R2, held.S1, held.S2);
+            Warn.Unless((held.H0, held.H1, held.H2), Is.EqualTo((h0, h1, h2)), $"after multiplying block at {offset}");
+        }
+
+        byte[] expected = new byte[16];
+        byte[] actual = new byte[16];
+        Poly1305Core.Finalize64(h0, h1, h2, padLo, padHi, expected);
+        Poly1305Core.Finalize64(held.H0, held.H1, held.H2, held.PadLo, held.PadHi, actual);
+        Warn.Unless(actual, Is.EqualTo(expected), "finalized tag");
+    }
+
+    private sealed class Donna64Fields
+    {
+        public ulong H0, H1, H2;
+        public readonly ulong R0, R1, R2, S1, S2, PadLo, PadHi;
+
+        public Donna64Fields(ReadOnlySpan<byte> key) =>
+            Poly1305Core.LoadKey64(key, out R0, out R1, out R2, out S1, out S2, out PadLo, out PadHi);
+    }
+
+    /// <summary>
+    /// <see cref="Math.BigMul(ulong, ulong, out ulong)"/>, which the 44-bit arithmetic rests on,
+    /// agrees with a schoolbook multiply over 32-bit halves.
+    /// </summary>
+    [Test]
+    public void MathBigMulMatchesSchoolbookMultiply()
+    {
+        var random = new Random(1305);
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 1000; i++)
+        {
+            random.NextBytes(bytes);
+            ulong a = BitConverter.ToUInt64(bytes, 0) >> (i % 24);
+            ulong b = BitConverter.ToUInt64(bytes, 8) >> (i % 21);
+
+            ulong high = Math.BigMul(a, b, out ulong low);
+
+            ulong expectedLow, expectedHigh;
+            unchecked
+            {
+                ulong aLo = (uint)a, aHi = a >> 32, bLo = (uint)b, bHi = b >> 32;
+                ulong ll = aLo * bLo, lh = aLo * bHi, hl = aHi * bLo, hh = aHi * bHi;
+                ulong mid = (ll >> 32) + (uint)lh + (uint)hl;
+                expectedLow = (mid << 32) | (uint)ll;
+                expectedHigh = hh + (lh >> 32) + (hl >> 32) + (mid >> 32);
+            }
+
+            Assert.That((high, low), Is.EqualTo((expectedHigh, expectedLow)), $"0x{a:X16} * 0x{b:X16}");
+        }
+    }
+#endif
+
+    /// <summary>
     /// RFC 8439 Section 2.5.2 using the streaming Update/Finalize API.
     /// </summary>
     [Test]

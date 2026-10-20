@@ -256,6 +256,82 @@ byte[] sealedData = siv.Encrypt(nonce, plaintext, associatedData);  // ciphertex
 byte[] opened = siv.Decrypt(nonce, sealedData, associatedData);     // throws on a bad tag
 ```
 
+### GCM and CCM over regional block ciphers
+
+```csharp
+public abstract class GcmCipher : IAeadCipher   // AriaGcm, CamelliaGcm, KuznyechikGcm, SeedGcm, Sm4Gcm
+public abstract class CcmCipher : IAeadCipher   // AriaCcm, CamelliaCcm, Sm4Ccm
+```
+
+The GCM (NIST SP 800-38D) and CCM (RFC 3610) modes that AES uses, running over the
+[regional block ciphers](#regional-block-ciphers). Nonce, tag and associated-data rules are the
+same as [AES-GCM](#aes-gcm-galoiscounter-mode) and [AES-CCM](#aes-ccm-counter-with-cbc-mac).
+
+| Class | Key sizes | Standard / protocol use |
+|-------|-----------|-------------------------|
+| `Sm4Gcm`, `Sm4Ccm` | 128 | RFC 8998 (TLS 1.3 `TLS_SM4_GCM_SM3`, `TLS_SM4_CCM_SM3`) |
+| `AriaGcm`, `AriaCcm` | 128/192/256 | RFC 6209 (TLS, GCM) |
+| `CamelliaGcm`, `CamelliaCcm` | 128/192/256 | RFC 6367 (TLS, GCM), RFC 5528 (IPsec, CCM) |
+| `SeedGcm` | 128 | GCM over RFC 4269 SEED |
+| `KuznyechikGcm` | 256 | GCM over GOST R 34.12-2015 |
+
+The key length picks the variant, so `AriaGcm.Create(key)` is ARIA-128-GCM for a 16-byte key and
+ARIA-256-GCM for a 32-byte one; `AlgorithmName` reports which.
+
+**Performance:** GHASH uses PCLMULQDQ or PMULL where available; the block cipher runs its managed
+implementation, so throughput is set by the cipher rather than the mode.
+
+**Usage:**
+```csharp
+using var gcm = Sm4Gcm.Create(key);          // 16 bytes
+byte[] sealedData = gcm.Encrypt(nonce, plaintext, associatedData);   // ciphertext || 16-byte tag
+byte[] opened = gcm.Decrypt(nonce, sealedData, associatedData);      // throws on a bad tag
+
+using var ccm = CamelliaCcm.Create(key);     // 16, 24 or 32 bytes
+byte[] ciphertext = new byte[plaintext.Length];
+byte[] tag = new byte[8];                    // 4-16 bytes, even; the buffer length is the tag length
+ccm.Encrypt(nonce, plaintext, ciphertext, tag, associatedData);
+```
+
+> Kuznyechik's national AEAD mode is MGM, below; `KuznyechikGcm` is for interoperating with
+> systems that run Kuznyechik under GCM.
+
+### Kuznyechik-MGM and Magma-MGM (Multilinear Galois Mode)
+
+```csharp
+public sealed class KuznyechikMgm : IAeadCipher
+public sealed class MagmaMgm : IAeadCipher
+```
+
+MGM (RFC 9058, R 1323565.1.026-2019) over the two GOST R 34.12-2015 ciphers: the AEAD of GOST
+TLS 1.3 (RFC 9367) and GOST CMS. It differs from GCM in ways that matter to a caller:
+
+| | `KuznyechikMgm` | `MagmaMgm` |
+|---|---|---|
+| Nonce | 16 bytes, top bit clear | 8 bytes, top bit clear |
+| Tag | 4-16 bytes | 4-8 bytes |
+| Plaintext + associated data | effectively unlimited | below 2^32 bits (512 MiB) |
+
+- **Nonce:** a nonce with the top bit set throws `ArgumentException`.
+- **Tag:** chosen by the length of the tag buffer; the `byte[]` overloads use a full-block tag.
+- **Input:** at least one of plaintext and associated data must be non-empty, as RFC 9058 requires.
+- **Decryption** checks the tag before decrypting, so a forgery never yields plaintext; the
+  plaintext buffer is zeroed instead.
+
+**Performance:** every block costs two block encryptions, one for the keystream and one for a
+fresh multiplier, so MGM runs at about half the speed of the cipher in CTR mode. The field
+multiply uses PCLMULQDQ or PMULL where available.
+
+**Usage:**
+```csharp
+using var mgm = KuznyechikMgm.Create(key);   // 32 bytes
+nonce[0] &= 0x7F;                              // 16 bytes, top bit clear
+byte[] sealedData = mgm.Encrypt(nonce, plaintext, associatedData);   // ciphertext || 16-byte tag
+byte[] opened = mgm.Decrypt(nonce, sealedData, associatedData);      // throws on a bad tag
+
+using var magmaMgm = MagmaMgm.Create(key);   // 32 bytes; nonce is 8 bytes, top bit clear
+```
+
 ---
 
 ## Key Wrap Utilities
@@ -688,6 +764,35 @@ kuz.IV = iv;   // 16 bytes
 byte[] ciphertext = kuz.Encrypt(plaintext);
 ```
 
+### Magma (Russia)
+
+```csharp
+public sealed class Magma : SymmetricCipher
+```
+
+**Properties:**
+- Key Size: 256 bits
+- Block Size: 64 bits
+- Rounds: 32 (Feistel network)
+- Standard: GOST R 34.12-2015, RFC 8891
+
+**Security:**
+- GOST 28147-89 with its S-boxes fixed to id-tc26-gost-28147-param-Z and big-endian block and
+  key order; not interchangeable with 28147-89 implementations that use other S-boxes or byte orders
+- The 64-bit block means ciphertext blocks start to collide after about 2^32 of them (32 GiB), so
+  one key should protect far less data than that
+- For authenticated encryption use [`MagmaMgm`](#kuznyechik-mgm-and-magma-mgm-multilinear-galois-mode)
+
+**Usage:**
+```csharp
+using var magma = Magma.Create();
+magma.Mode = CipherMode.CBC;
+magma.Padding = PaddingMode.PKCS7;
+magma.Key = key; // 32 bytes
+magma.IV = iv;   // 8 bytes
+byte[] ciphertext = magma.Encrypt(plaintext);
+```
+
 ### Kalyna (Ukraine)
 
 ```csharp
@@ -757,6 +862,7 @@ byte[] decrypted = seed.Decrypt(ciphertext);
 | **ARIA** | Korea | 128/192/256 | 128 bits | 12/14/16 | KS X 1213, RFC 5794 |
 | **Camellia** | Japan | 128/192/256 | 128 bits | 18/24 | RFC 3713, ISO 18033-3 |
 | **Kuznyechik** | Russia | 256 | 128 bits | 10 | GOST R 34.12-2015 |
+| **Magma** | Russia | 256 | 64 bits | 32 | GOST R 34.12-2015, RFC 8891 |
 | **Kalyna** | Ukraine | 128/256 | 128 bits | 10/14 | DSTU 7624:2014 |
 | **SEED** | Korea | 128 | 128 bits | 16 | RFC 4269 |
 
@@ -780,7 +886,7 @@ byte[] decrypted = seed.Decrypt(ciphertext);
 - **GB/T 32907-2016** - SM4 Block Cipher (China)
 - **KS X 1213** - ARIA Block Cipher (Korea)
 - **RFC 3713** - Camellia Encryption Algorithm (Japan, CRYPTREC)
-- **GOST R 34.12-2015** - Kuznyechik Block Cipher (Russia)
+- **GOST R 34.12-2015** - Kuznyechik and Magma Block Ciphers (Russia)
 - **DSTU 7624:2014** - Kalyna Block Cipher (Ukraine)
 - **RFC 4269** - SEED Encryption Algorithm (Korea, KISA)
 
