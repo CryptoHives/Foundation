@@ -20,7 +20,8 @@ using System.Text;
 /// </para>
 /// <para>
 /// KT256 uses a rate of 136 bytes (same as TurboSHAKE256) and splits input into 8192-byte chunks.
-/// For inputs ≤ 8192 bytes, it operates as a single TurboSHAKE256 call with domain separator 0x07.
+/// When <c>S = M || C || length_encode(|C|)</c> fits in 8192 bytes, it operates as a single TurboSHAKE256 call
+/// with domain separator 0x07, so with an empty customization 8191 bytes is the largest such message.
 /// For larger inputs, it uses tree hashing with 64-byte chaining values.
 /// </para>
 /// <para>
@@ -45,7 +46,7 @@ public sealed class KT256 : HashAlgorithm, IExtendableOutput
     public const int ChainingValueSize = 64;
 
     /// <summary>
-    /// Domain separator for single-node mode (input ≤ 8192 bytes).
+    /// Domain separator for single-node mode (S fits in one chunk).
     /// </summary>
     private const byte DomainSingleNode = 0x07;
 

@@ -322,6 +322,7 @@ public class ParallelHashTests
         byte[] output = new byte[32];
         Assert.Throws<ObjectDisposedException>(() => incremental.Squeeze(output));
     }
+
     /// <summary>
     /// The streaming absorber must agree with the one-shot for every way the same message can be
     /// split, including segments that straddle a block boundary and single calls that span

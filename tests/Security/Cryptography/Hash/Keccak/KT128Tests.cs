@@ -187,6 +187,7 @@ public class KT128Tests
     [TestCase(8191, "1B 57 76 36 F7 23 64 3E 99 0C C7 D6 A6 59 83 74 36 FD 6A 10 36 26 60 0E B8 30 1C D1 DB E5 53 D6")]
     [TestCase(8192, "48 F2 56 F6 77 2F 9E DF B6 A8 B6 61 EC 92 DC 93 B9 5E BD 05 A0 8A 17 B3 9A E3 49 08 70 C9 26 C3")]
     [TestCase(83521, "87 01 04 5E 22 20 53 45 FF 4D DA 05 55 5C BB 5C 3A F1 A7 71 C2 B8 9B AE F3 7D B4 3D 99 98 B9 FE")]
+    [TestCase(1419857, "84 4D 61 09 33 B1 B9 96 3C BD EB 5A E3 B6 B0 5C C7 CB D6 7C EE DF 88 3E B6 78 A0 A8 E0 37 16 82")]
     public void PatternAcrossChunkBoundary(int length, string expectedHex)
     {
         byte[] expected = TestHelpers.FromHexString(expectedHex);
@@ -247,6 +248,27 @@ public class KT128Tests
 
         byte[] actual = new byte[32];
         streamed.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// RFC 9861 vectors whose customization string decides the chunk count: |S| is exactly two
+    /// chunks with ptn(8189) and one byte into a third with ptn(8190).
+    /// </summary>
+    [TestCase(8189, "3E D1 2F 70 FB 05 DD B5 86 89 51 0A B3 E4 D2 3C 6C 60 33 84 9A A0 1E 1D 8C 22 0A 29 7F ED CD 0B")]
+    [TestCase(8190, "6A 7C 1B 6A 5C D0 D8 C9 CA 94 3A 4A 21 6C C6 46 04 55 9A 2E A4 5F 78 57 0A 15 25 3D 67 BA 00 AE")]
+    public void PatternCustomizationAcrossChunkBoundary(int customizationLength, string expectedHex)
+    {
+        byte[] expected = TestHelpers.FromHexString(expectedHex);
+        byte[] input = CreatePattern(8192);
+
+        using var kt128 = new KT128(32, CreatePattern(customizationLength));
+        kt128.Absorb(input.AsSpan(0, 5000));
+        kt128.Absorb(input.AsSpan(5000));
+
+        byte[] actual = new byte[32];
+        kt128.Squeeze(actual);
 
         Assert.That(actual, Is.EqualTo(expected));
     }

@@ -117,14 +117,69 @@ public class KT256Tests
         using var kt256 = KT256.Create();
         Assert.That(kt256.BlockSize, Is.EqualTo(136)); // Same rate as TurboSHAKE256
     }
+
+    /// <summary>
+    /// RFC 9861 pattern vectors around and past the chunk boundary.
+    /// </summary>
+    /// <remarks>
+    /// With an empty customization an 8192-byte message is already two chunks, because
+    /// length_encode(0) adds one byte to S; 8191 is the last single-node size.
+    /// </remarks>
+    [TestCase(4913,
+        "64 7E FB 49 FE 9D 71 75 00 17 1B 41 E7 F1 1B D4 91 54 44 43 20 99 97 CE 1C 25 30 D1 5E B1 FF BB " +
+        "59 89 35 EF 95 45 28 FF C1 52 B1 E4 D7 31 EE 26 83 68 06 74 36 5C D1 91 D5 62 BA E7 53 B8 4A A5")]
+    [TestCase(8191,
+        "30 81 43 4D 93 A4 10 8D 8D 8A 33 05 B8 96 82 CE BE DC 7C A4 EA 8A 3C E8 69 FB B7 3C BE 4A 58 EE " +
+        "F6 F2 4D E3 8F FC 17 05 14 C7 0E 7A B2 D0 1F 03 81 26 16 E8 63 D7 69 AF B3 75 31 93 BA 04 5B 20")]
+    [TestCase(8192,
+        "C6 EE 8E 2A D3 20 0C 01 8A C8 7A AA 03 1C DA C2 21 21 B4 12 D0 7D C6 E0 DC CB B5 34 23 74 7E 9A " +
+        "1C 18 83 4D 99 DF 59 6C F0 CF 4B 8D FA FB 7B F0 2D 13 9D 0C 90 35 72 5A DC 1A 01 B7 23 0A 41 FA")]
+    [TestCase(83521,
+        "B0 62 75 D2 84 CD 1C F2 05 BC BE 57 DC CD 3E C1 FF 66 86 E3 ED 15 77 63 83 E1 F2 FA 3C 6A C8 F0 " +
+        "8B F8 A1 62 82 9D B1 A4 4B 2A 43 FF 83 DD 89 C3 CF 1C EB 61 ED E6 59 76 6D 5C CF 81 7A 62 BA 8D")]
+    [TestCase(1419857,
+        "94 73 83 1D 76 A4 C7 BF 77 AC E4 5B 59 F1 45 8B 16 73 D6 4B CD 87 7A 7C 66 B2 66 4A A6 DD 14 9E " +
+        "60 EA B7 1B 5C 2B AB 85 8C 07 4D ED 81 DD CE 2B 40 22 B5 21 59 35 C0 D4 D1 9B F5 11 AE EB 07 72")]
+    public void PatternAcrossChunkBoundary(int length, string expectedHex)
+    {
+        byte[] expected = TestHelpers.FromHexString(expectedHex);
+        byte[] input = CreatePattern(length);
+
+        using var kt256 = new KT256(64);
+        byte[] hash = kt256.ComputeHash(input);
+
+        Assert.That(hash, Is.EqualTo(expected));
+    }
+
+    /// <summary>
+    /// RFC 9861 vectors whose customization string decides the chunk count: |S| is exactly two
+    /// chunks with ptn(8189) and one byte into a third with ptn(8190).
+    /// </summary>
+    [TestCase(8189,
+        "74 E4 78 79 F1 0A 9C 5D 11 BD 2D A7 E1 94 FE 57 E8 63 78 BF 3C 3F 74 48 EF F3 C5 76 A0 F1 8C 5C " +
+        "AA E0 99 99 79 51 20 90 A7 F3 48 AF 42 60 D4 DE 3C 37 F1 EC AF 8D 2C 2C 96 C1 D1 6C 64 B1 24 96")]
+    [TestCase(8190,
+        "F4 B5 90 8B 92 9F FE 01 E0 F7 9E C2 F2 12 43 D4 1A 39 6B 2E 73 03 A6 AF 1D 63 99 CD 6C 7A 0A 2D " +
+        "D7 C4 F6 07 E8 27 7F 9C 9B 1C B4 AB 9D DC 59 D4 B9 2D 1F C7 55 84 41 F1 83 2C 32 79 A4 24 1B 8B")]
+    public void PatternCustomizationAcrossChunkBoundary(int customizationLength, string expectedHex)
+    {
+        byte[] expected = TestHelpers.FromHexString(expectedHex);
+        byte[] input = CreatePattern(8192);
+
+        using var kt256 = new KT256(64, CreatePattern(customizationLength));
+        kt256.Absorb(input.AsSpan(0, 5000));
+        kt256.Absorb(input.AsSpan(5000));
+
+        byte[] actual = new byte[64];
+        kt256.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
     /// <summary>
     /// A message spanning several chunks must hash the same whether it arrives in one call or in
     /// segments that straddle the chunk boundary.
     /// </summary>
-    /// <remarks>
-    /// RFC 9861 publishes no KT256 vector above 17 bytes, so the tree path is pinned here against
-    /// KT256's own one-shot rather than against a published digest.
-    /// </remarks>
     [TestCase(1)]
     [TestCase(4096)]
     [TestCase(8191)]

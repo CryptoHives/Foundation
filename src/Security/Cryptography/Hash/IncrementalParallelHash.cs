@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Provides incremental ParallelHash computation.
@@ -24,7 +25,7 @@ public sealed class IncrementalParallelHash : IDisposable
     private readonly IExtendableOutput _innerXof;
     private readonly int _chainingValueBytes;
     private readonly int _blockSizeBytes;
-    private long _blockFill;
+    private int _blockFill;
     private long _blockCount;
     private bool _finalized;
     private bool _isDisposed;
@@ -86,7 +87,7 @@ public sealed class IncrementalParallelHash : IDisposable
 
         while (!data.IsEmpty)
         {
-            int take = (int)Math.Min(_blockSizeBytes - _blockFill, data.Length);
+            int take = Math.Min(_blockSizeBytes - _blockFill, data.Length);
             _innerXof.Absorb(data.Slice(0, take));
             _blockFill += take;
             data = data.Slice(take);
@@ -108,6 +109,7 @@ public sealed class IncrementalParallelHash : IDisposable
     /// only once per message; use <see cref="Reset"/> to start another.
     /// </remarks>
     /// <exception cref="InvalidOperationException">Thrown when called more than once.</exception>
+    [SkipLocalsInit]
     public Span<byte> Squeeze(Span<byte> output)
     {
         if (_isDisposed)
@@ -169,6 +171,7 @@ public sealed class IncrementalParallelHash : IDisposable
     /// Collapses the block currently held in the inner XOF straight into the final cSHAKE, so no
     /// chaining value is ever stored.
     /// </summary>
+    [SkipLocalsInit]
     private void FlushBlock()
     {
         Span<byte> chainingValue = stackalloc byte[_chainingValueBytes];
@@ -180,6 +183,7 @@ public sealed class IncrementalParallelHash : IDisposable
         _blockFill = 0;
     }
 
+    [SkipLocalsInit]
     private void AbsorbBlockSize()
     {
         Span<byte> encodeBuffer = stackalloc byte[CShake128.EncodeBufferLength];

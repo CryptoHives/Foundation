@@ -20,7 +20,8 @@ using System.Text;
 /// </para>
 /// <para>
 /// KT128 uses a rate of 168 bytes (same as TurboSHAKE128) and splits input into 8192-byte chunks.
-/// For inputs ≤ 8192 bytes, it operates as a single TurboSHAKE128 call with domain separator 0x07.
+/// When <c>S = M || C || length_encode(|C|)</c> fits in 8192 bytes, it operates as a single TurboSHAKE128 call
+/// with domain separator 0x07, so with an empty customization 8191 bytes is the largest such message.
 /// For larger inputs, it uses tree hashing with 32-byte chaining values.
 /// </para>
 /// <para>
@@ -45,7 +46,7 @@ public sealed class KT128 : HashAlgorithm, IExtendableOutput
     public const int ChainingValueSize = 32;
 
     /// <summary>
-    /// Domain separator for single-node mode (input ≤ 8192 bytes).
+    /// Domain separator for single-node mode (S fits in one chunk).
     /// </summary>
     private const byte DomainSingleNode = 0x07;
 
