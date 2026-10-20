@@ -799,6 +799,39 @@ public class Blake3Tests
     }
 
     /// <summary>
+    /// Every digest of at most 32 bytes - written straight from the root chaining value rather
+    /// than from an output block - is the 64-byte digest truncated, keyed or not, on both
+    /// sides of the one-chunk boundary.
+    /// </summary>
+    /// <param name="outputBytes">The digest size in bytes.</param>
+    [Test]
+    public void ShortDigestIsTheLongDigestTruncated([Range(1, 32)] int outputBytes)
+    {
+        byte[] key = GenerateTestInput(Blake3.KeySizeBytes);
+        foreach (byte[] input in new[] { 0, 5, 1024, 1025, 4096 }.Select(GenerateTestInput))
+        {
+            using var shortHash = Blake3.Create(outputBytes);
+            using var longHash = Blake3.Create(64);
+            AssertTruncated(shortHash, longHash, input, outputBytes);
+
+            using var shortKeyed = Blake3.CreateKeyed(key, outputBytes);
+            using var longKeyed = Blake3.CreateKeyed(key, 64);
+            AssertTruncated(shortKeyed, longKeyed, input, outputBytes);
+        }
+
+        static void AssertTruncated(Blake3 shortHash, Blake3 longHash, byte[] input, int outputBytes)
+        {
+            byte[] expected = longHash.ComputeHash(input).AsSpan(0, outputBytes).ToArray();
+            Assert.That(shortHash.ComputeHash(input), Is.EqualTo(expected), $"{input.Length} bytes in");
+
+            shortHash.Initialize();
+            byte[] oneShot = new byte[outputBytes];
+            Assert.That(shortHash.TryHashOneShot(input, oneShot, out _), Is.True);
+            Assert.That(oneShot, Is.EqualTo(expected), $"one-shot, {input.Length} bytes in");
+        }
+    }
+
+    /// <summary>
     /// Verifies <see cref="Blake3.TryHashOneShot"/> can be called repeatedly on the
     /// same instance (it must leave the instance freshly initialized for reuse,
     /// matching <c>TryComputeHash</c>'s auto-reset contract), since

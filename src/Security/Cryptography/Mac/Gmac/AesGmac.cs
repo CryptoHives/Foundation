@@ -153,7 +153,10 @@ public sealed class AesGmac : IDisposable
     /// </summary>
     private static bool CryptographicEquals(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b)
     {
-        if (a.Length != b.Length) return false;
+        if (a.Length != b.Length)
+        {
+            return false;
+        }
 
         int diff = 0;
         for (int i = 0; i < a.Length; i++)

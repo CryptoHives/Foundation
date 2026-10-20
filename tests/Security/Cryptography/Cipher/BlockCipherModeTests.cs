@@ -218,6 +218,7 @@ internal class BlockCipherModeTests
     [Test]
     public void Iso10126InteropsWithInBoxAes([Values(0, 1, 15, 16, 17, 40)] int length)
     {
+        TestHelpers.AssumeNotBrowser("in-box AES");
         byte[] key = Pattern(16, 0x01);
         byte[] iv = Pattern(16, 0x41);
         byte[] pt = Pattern(length, 0x77);
@@ -368,6 +369,7 @@ internal class BlockCipherModeTests
 
     private static void AssertMatchesInBox(CipherMode mode, PaddingMode padding, int feedbackBits, int length)
     {
+        TestHelpers.AssumeNotBrowser("in-box AES");
         byte[] key = Pattern(16, 0x01);
         byte[] iv = Pattern(16, 0x41);
         byte[] pt = Pattern(length, 0x77);

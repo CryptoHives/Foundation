@@ -1021,3 +1021,87 @@ public class SeedCbcBenchmark : CipherBenchmarkBase
         return Decryptor.TransformFinalBlock(EncryptedData, OutputData);
     }
 }
+
+/// <summary>
+/// Benchmarks for Magma-CBC symmetric encryption (Russia, GOST R 34.12-2015).
+/// </summary>
+[TestFixture]
+[TestFixtureSource(nameof(CipherAlgorithmTypeArgs))]
+[Config(typeof(CipherConfig))]
+[MemoryDiagnoser(displayGenColumns: false)]
+[HideColumns("Namespace")]
+[BenchmarkCategory("Cipher", "Regional", "Magma-CBC")]
+[NonParallelizable]
+public class MagmaCbcBenchmark : CipherBenchmarkBase
+{
+    /// <inheritdoc cref="CipherBenchmarkBase"/>
+    public MagmaCbcBenchmark() => TestDataSize = DataSize.K8;
+
+    /// <inheritdoc cref="CipherBenchmarkBase"/>
+    public MagmaCbcBenchmark(CipherAlgorithmType algorithm)
+    {
+        TestCipherAlgorithm = algorithm;
+    }
+
+    [ParamsSource(nameof(Sizes))]
+    public DataSize TestDataSize { get; set; } = DataSize.K8;
+
+    [ParamsSource(nameof(Algorithms))]
+    public CipherAlgorithmType TestCipherAlgorithm { get; set; } = null!;
+
+    /// <inheritdoc cref="CipherBenchmarkBase"/>
+    public static IEnumerable<DataSize> Sizes() => DataSize.Standard;
+
+    /// <inheritdoc cref="CipherBenchmarkBase"/>
+    public static IEnumerable<CipherAlgorithmType> Algorithms() => CipherAlgorithmType.MagmaCbc();
+
+    /// <inheritdoc cref="CipherBenchmarkBase"/>
+    public static IEnumerable<object[]> CipherAlgorithmTypeArgs()
+    {
+        foreach (var alg in Algorithms())
+            yield return new object[] { alg };
+    }
+
+    /// <inheritdoc/>
+    [OneTimeSetUp]
+    public override void GlobalSetup()
+    {
+        Bytes = TestDataSize.Bytes;
+        CipherAlgorithm = (SymmetricCipher)TestCipherAlgorithm.Create();
+        base.GlobalSetup();
+    }
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void EncryptTest()
+    {
+        int result = Encrypt();
+        Assert.That(result, Is.GreaterThanOrEqualTo(InputData.Length));
+    }
+
+    /// <inheritdoc cref="CipherBenchmarkBase"/>
+    [Benchmark(Description = "Encrypt")]
+    public int Encrypt()
+    {
+        Encryptor!.Reset();
+        return Encryptor.TransformFinalBlock(InputData, OutputData);
+    }
+
+    [Test, Repeat(5)]
+    [NonParallelizable]
+    public void DecryptTest()
+    {
+        int result = Decrypt();
+        Assert.That(result, Is.EqualTo(InputData.Length));
+        var decryptedData = OutputData.AsSpan().Slice(0, result);
+        Assert.That(decryptedData.SequenceEqual(InputData), Is.True);
+    }
+
+    /// <inheritdoc cref="CipherBenchmarkBase"/>
+    [Benchmark(Description = "Decrypt")]
+    public int Decrypt()
+    {
+        Decryptor!.Reset();
+        return Decryptor.TransformFinalBlock(EncryptedData, OutputData);
+    }
+}

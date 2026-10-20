@@ -15,7 +15,7 @@ The Cryptography package implements hash algorithms, message authentication code
 - **No OS dependencies** — behaves identically on every platform without calling OS crypto APIs
 - **Hardware acceleration** — optional x86/x64 (AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, AVX2, AVX-512) and Arm64 (ARM AES, ARM SHA, PMULL, NEON) intrinsics, with automatic scalar fallback
 - **Broad coverage** — SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, Ascon-AEAD128, and more
-- **AEAD support** — AES-GCM, AES-CCM, AES-GCM-SIV (nonce-misuse resistant), ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128
+- **AEAD support** — AES-GCM, AES-CCM, AES-GCM-SIV, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, GCM/CCM over the regional block ciphers (SM4, ARIA, Camellia, SEED, Kuznyechik), and Kuznyechik-MGM and Magma-MGM
 - **Key management** — AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
 - **Post-quantum KEM** — ML-KEM-512/768/1024 (FIPS 203) on every target framework, mirroring the .NET 10 `MLKem` API
 - **Post-quantum signatures** — ML-DSA-44/65/87 (FIPS 204) and SLH-DSA (FIPS 205, all 12 parameter sets) on every target framework, mirroring the .NET 10 `MLDsa`/`SlhDsa` APIs — the complete NIST PQC trio
@@ -174,6 +174,7 @@ using CryptoHives.Foundation.Security.Cryptography.Rng;
 | ARIA | Korea | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aria-korea) |
 | Camellia | Japan | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#camellia-japan) |
 | Kuznyechik | Russia | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kuznyechik-russia) |
+| Magma | Russia | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#magma-russia) |
 | Kalyna | Ukraine | 128/256/512 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kalyna-ukraine) |
 | SEED | Korea | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#seed-korea) |
 
@@ -184,6 +185,10 @@ using CryptoHives.Foundation.Security.Cryptography.Rng;
 | AES-GCM | 128/192/256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#aes-gcm-galoiscounter-mode) |
 | AES-CCM | 128/192/256 bits | 7-13 bytes | 4-16 bytes | [Details](cipher-algorithms.md#aes-ccm-counter-with-cbc-mac) |
 | AES-GCM-SIV | 128/256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#aes-gcm-siv-nonce-misuse-resistant) |
+| SM4/ARIA/Camellia/SEED/Kuznyechik-GCM | per cipher | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#gcm-and-ccm-over-regional-block-ciphers) |
+| SM4/ARIA/Camellia-CCM | per cipher | 7-13 bytes | 4-16 bytes | [Details](cipher-algorithms.md#gcm-and-ccm-over-regional-block-ciphers) |
+| Kuznyechik-MGM | 256 bits | 16 bytes, top bit clear | 4-16 bytes | [Details](cipher-algorithms.md#kuznyechik-mgm-and-magma-mgm-multilinear-galois-mode) |
+| Magma-MGM | 256 bits | 8 bytes, top bit clear | 4-8 bytes | [Details](cipher-algorithms.md#kuznyechik-mgm-and-magma-mgm-multilinear-galois-mode) |
 | ChaCha20-Poly1305 | 256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#chacha20-poly1305) |
 | XChaCha20-Poly1305 | 256 bits | 24 bytes | 16 bytes | [Details](cipher-algorithms.md#xchacha20-poly1305) |
 | Ascon-AEAD128 | 128 bits | 16 bytes | 16 bytes | [Details](cipher-algorithms.md#ascon-aead128) |

@@ -368,9 +368,14 @@ public abstract class AesGcmSiv : IAeadCipher
     {
 #if NET8_0_OR_GREATER
         if (AesCoreAesNi.IsSupported && _useAes)
+        {
             return AesCoreAesNi.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
+        }
+
         if (AesCoreArm.IsSupported && _useAes)
+        {
             return AesCoreArm.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
+        }
 #endif
         return AesCore.ExpandKey(key, roundKeys);
     }
