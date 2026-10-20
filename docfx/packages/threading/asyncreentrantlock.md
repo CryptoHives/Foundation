@@ -56,7 +56,7 @@ A flow can only reach depth `N` while an ancestor holds depth `N - 1`. Depth 0 i
 
 Each depth has a generation number, which is bumped when the holder disposes its releaser. A flow remembers the generation of every depth it nested under. Before acquiring, it checks each of them. If any ancestor has released, for example the parent of a fire-and-forget `Task.Run` child that has already returned, the flow targets the lowest depth whose holder is gone, as an ordinary acquisition. It checks again once it holds that depth, and if an ancestor released during the wait, it gives the depth back and retries lower down.
 
-### Release waits for nested holders
+### The lock stays held while nested holders run
 
 Disposing a releaser ends the hold at once for nesting purposes: no new call can nest under it. The depth itself, though, stays taken while any call nested under it still holds the next depth, and the last one out frees it. A chain of such releases unwinds together. So a fire-and-forget child that is inside the lock when its parent leaves finishes as part of the parent's hold, and nobody from outside gets in until it is done.
 
@@ -116,7 +116,7 @@ A `Task.Run` that isn't awaited inherits the depth of its parent, so where it ru
 
 - if it acquires while the parent still holds the lock, it nests and serializes with the parent's other nested calls;
 - if the parent has already released, it waits for the lock like any top-level caller;
-- if it still holds a nested depth when the parent releases, the parent's release waits for it, so a child that never finishes keeps the lock held for good.
+- if it still holds a nested depth when the parent releases, the parent carries on, but the lock stays held until the child releases, so a child that never finishes keeps the lock held for good.
 
 A nested holder runs alongside its parent's own code, which holds only the outer depth. Await everything the holder started, or detach the work with `ExecutionContext.SuppressFlow()` so it always acquires as a top-level caller.
 

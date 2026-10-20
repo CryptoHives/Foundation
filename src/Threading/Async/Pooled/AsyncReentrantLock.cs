@@ -17,8 +17,8 @@ using System.Threading.Tasks;
 /// <remarks>
 /// Reentrancy is tracked through <see cref="ExecutionContext"/>, so an <see langword="async"/> method that
 /// awaits <see cref="LockAsync(CancellationToken)"/> and returns the releaser hides the hold from its caller,
-/// and the caller's next nested acquisition deadlocks. A release waits for nested holders still running,
-/// such as fire-and-forget work, so the lock stays held until the last of them releases.
+/// and the caller's next nested acquisition deadlocks. Releasing returns at once, but the lock stays held
+/// while nested holders such as fire-and-forget work are still running, until the last of them releases.
 /// </remarks>
 #if NET8_0_OR_GREATER
 [System.Diagnostics.CodeAnalysis.Experimental("CHTEXP001", UrlFormat = "https://cryptohives.github.io/Foundation/packages/threading/asyncreentrantlock.html")]
