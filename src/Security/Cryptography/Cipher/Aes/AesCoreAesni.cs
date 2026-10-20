@@ -232,6 +232,7 @@ internal static class AesCoreAesNi
     // AES-192 Key Expansion (12 rounds, 13 round keys)
     // ========================================================================
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ExpandKey192(ReadOnlySpan<byte> key, Span<Vector128<byte>> roundKeys)
     {
@@ -256,8 +257,11 @@ internal static class AesCoreAesNi
         {
             roundKeys[i] = Vector128.Create(expanded.Slice(i * 16, 16));
         }
+
+        CryptographicOperations.ZeroMemory(expanded);
     }
 
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ExpandKey192Flat(ReadOnlySpan<byte> key, Span<byte> expanded)
     {
@@ -271,6 +275,8 @@ internal static class AesCoreAesNi
             // AesCore stores keys in big-endian uint32; AES-NI expects native (little-endian) byte order
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(expanded.Slice(i * 4), w[i]);
         }
+
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(w));
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]

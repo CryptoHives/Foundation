@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Security.Cryptography;
 using System;
 using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
@@ -149,6 +150,7 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <param name="contextUtf8">The UTF-8 encoded context string.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="deriveKey">Unused; disambiguates this overload from the keyed constructor.</param>
+    [SkipLocalsInit]
     private Blake3(SimdSupport simdSupport, ReadOnlySpan<byte> contextUtf8, int outputBytes, bool deriveKey)
     {
         Debug.Assert(deriveKey, "this overload exists only to disambiguate the derive-key case");

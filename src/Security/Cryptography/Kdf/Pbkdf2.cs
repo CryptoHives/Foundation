@@ -6,6 +6,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Implements PBKDF2 (Password-Based Key Derivation Function 2) as defined in
@@ -69,6 +70,7 @@ public static class Pbkdf2
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="iterations"/> is less than 1.
     /// </exception>
+    [SkipLocalsInit]
     public static void DeriveKey(
         HmacFactory hmacFactory,
         ReadOnlySpan<byte> password,

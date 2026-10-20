@@ -285,6 +285,7 @@ public sealed class KT128 : HashAlgorithm, IExtendableOutput
         _buffer = newBuffer;
     }
 
+    [SkipLocalsInit]
     private void FinalizeInternal(Span<byte> output)
     {
         // Build S = M || C || length_encode(|C|)
@@ -324,6 +325,7 @@ public sealed class KT128 : HashAlgorithm, IExtendableOutput
         _turbo.Squeeze(output);
     }
 
+    [SkipLocalsInit]
     private void ComputeTreeHash(ReadOnlySpan<byte> s, Span<byte> output)
     {
         // Calculate number of chunks

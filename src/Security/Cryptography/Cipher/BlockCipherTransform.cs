@@ -195,6 +195,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public int TransformFinalBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (_disposed)
@@ -241,6 +242,8 @@ internal abstract class BlockCipherTransform : ICipherTransform
                 TransformBlock(padded, output.Slice(written));
                 written += unit;
             }
+
+            CryptographicOperations.ZeroMemory(padded);
         }
         else
         {
@@ -316,6 +319,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
         }
     }
 
+    [SkipLocalsInit]
     private void TransformBlockCbc(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (_encrypting)
@@ -346,6 +350,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
         }
     }
 
+    [SkipLocalsInit]
     private void TransformBlockCtr(ReadOnlySpan<byte> input, Span<byte> output)
     {
         Span<byte> keystream = stackalloc byte[_blockSize];
@@ -359,6 +364,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
         IncrementCounter(_counter);
     }
 
+    [SkipLocalsInit]
     private void TransformBlockOfb(ReadOnlySpan<byte> input, Span<byte> output)
     {
         Span<byte> keystream = stackalloc byte[_blockSize];
@@ -371,6 +377,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
         }
     }
 
+    [SkipLocalsInit]
     private void TransformUnitCfb(ReadOnlySpan<byte> input, Span<byte> output)
     {
         int shift = _unitSize;
@@ -422,6 +429,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
         return written;
     }
 
+    [SkipLocalsInit]
     private int TransformFinalBlockCts(ReadOnlySpan<byte> input, Span<byte> output)
     {
         int bs = _blockSize;
@@ -474,6 +482,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
             }
 
             written += bs + lastLength;
+            CryptographicOperations.ZeroMemory(last);
         }
 
         held.Clear();
@@ -485,6 +494,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
     /// Encrypts the full block <paramref name="first"/> and the final <paramref name="lastLength"/>
     /// bytes, emitting the last ciphertext block first and the truncated penultimate one after it.
     /// </summary>
+    [SkipLocalsInit]
     private void EncryptStolenBlocks(ReadOnlySpan<byte> first, ReadOnlySpan<byte> last, int lastLength, Span<byte> output)
     {
         int bs = _blockSize;
@@ -506,12 +516,15 @@ internal abstract class BlockCipherTransform : ICipherTransform
         EncryptBlock(temp, output.Slice(0, bs));
 
         penultimate.Slice(0, lastLength).CopyTo(output.Slice(bs));
+        CryptographicOperations.ZeroMemory(temp);
+        CryptographicOperations.ZeroMemory(penultimate);
     }
 
     /// <summary>
     /// Inverts <see cref="EncryptStolenBlocks"/>: <paramref name="first"/> is the last ciphertext
     /// block and <paramref name="last"/> the truncated penultimate one.
     /// </summary>
+    [SkipLocalsInit]
     private void DecryptStolenBlocks(ReadOnlySpan<byte> first, ReadOnlySpan<byte> last, int lastLength, Span<byte> output)
     {
         int bs = _blockSize;
@@ -533,6 +546,8 @@ internal abstract class BlockCipherTransform : ICipherTransform
         {
             output[i] ^= _feedback[i];
         }
+
+        CryptographicOperations.ZeroMemory(decrypted);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

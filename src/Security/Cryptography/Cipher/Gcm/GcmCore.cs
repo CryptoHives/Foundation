@@ -154,6 +154,7 @@ internal struct GcmCore
     {
     }
 
+    [SkipLocalsInit]
     private GcmCore(SimdSupport simdSupport, ReadOnlySpan<byte> key, BlockCipher128? blockCipher)
     {
         // Compute hash subkey H = E(K, 0^128)
@@ -405,6 +406,7 @@ internal struct GcmCore
     /// <param name="h">The hash subkey H (encrypted zero block).</param>
     /// <param name="data">The input data to hash.</param>
     /// <param name="output">The 16-byte output buffer.</param>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void GHash(
         ReadOnlySpan<byte> h, ReadOnlySpan<byte> data, Span<byte> output)
@@ -413,23 +415,9 @@ internal struct GcmCore
         Span<byte> y = stackalloc byte[BlockSizeBytes];
         y.Clear();
 
-        int offset = 0;
-        while (offset < data.Length)
-        {
-            // XOR with next block
-            int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
-            for (int i = 0; i < blockLen; i++)
-            {
-                y[i] ^= data[offset + i];
-            }
-
-            // Multiply by H in GF(2^128)
-            GfMul(y, h, y);
-
-            offset += BlockSizeBytes;
-        }
-
+        ProcessBlocks(h, data, y);
         y.CopyTo(output);
+        CryptographicOperations.ZeroMemory(y);
     }
 
     /// <summary>
@@ -439,6 +427,7 @@ internal struct GcmCore
     /// <param name="aad">Additional authenticated data.</param>
     /// <param name="ciphertext">The ciphertext.</param>
     /// <param name="output">The 16-byte output buffer.</param>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void GHashComplete(
         ReadOnlySpan<byte> h, ReadOnlySpan<byte> aad,
@@ -468,6 +457,7 @@ internal struct GcmCore
         GfMul(y, h, y);
 
         y.CopyTo(output);
+        CryptographicOperations.ZeroMemory(y);
     }
 
     /// <summary>
@@ -493,37 +483,27 @@ internal struct GcmCore
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
         icb.CopyTo(counter);
 
+        Span<byte> counterWord = counter.Slice(NonceSizeBytes);
+        uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
+
         int offset = 0;
-        while (offset < input.Length)
+        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
-            // Encrypt counter to get keystream
             AesCore.EncryptBlock(counter, keystream, roundKeys, rounds);
-
-            int remaining = input.Length - offset;
-
-            if (remaining >= BlockSizeBytes)
-            {
-                // Full block: XOR using ulong-wide operations
-                ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
-                ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
-                Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(offset, BlockSizeBytes));
-                dst[0] = src[0] ^ ks[0];
-                dst[1] = src[1] ^ ks[1];
-            }
-            else
-            {
-                // Partial block: byte-by-byte XOR
-                for (int i = 0; i < remaining; i++)
-                {
-                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
-                }
-            }
-
-            // Increment counter (32-bit big-endian increment of last 4 bytes)
-            IncrementCounter(counter);
-
+            XorBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
+
+        if (offset < input.Length)
+        {
+            AesCore.EncryptBlock(counter, keystream, roundKeys, rounds);
+            XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
+        }
+
+        CryptographicOperations.ZeroMemory(counter);
+        CryptographicOperations.ZeroMemory(keystream);
     }
 
 #if NET8_0_OR_GREATER
@@ -550,32 +530,27 @@ internal struct GcmCore
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
         icb.CopyTo(counter);
 
+        Span<byte> counterWord = counter.Slice(NonceSizeBytes);
+        uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
+
         int offset = 0;
-        while (offset < input.Length)
+        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
             AesCoreAesNi.EncryptBlock(counter, keystream, roundKeys, rounds);
-
-            int remaining = input.Length - offset;
-
-            if (remaining >= BlockSizeBytes)
-            {
-                ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
-                ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
-                Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(offset, BlockSizeBytes));
-                dst[0] = src[0] ^ ks[0];
-                dst[1] = src[1] ^ ks[1];
-            }
-            else
-            {
-                for (int i = 0; i < remaining; i++)
-                {
-                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
-                }
-            }
-
-            IncrementCounter(counter);
+            XorBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
+
+        if (offset < input.Length)
+        {
+            AesCoreAesNi.EncryptBlock(counter, keystream, roundKeys, rounds);
+            XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
+        }
+
+        CryptographicOperations.ZeroMemory(counter);
+        CryptographicOperations.ZeroMemory(keystream);
     }
 
     /// <summary>
@@ -601,32 +576,27 @@ internal struct GcmCore
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
         icb.CopyTo(counter);
 
+        Span<byte> counterWord = counter.Slice(NonceSizeBytes);
+        uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
+
         int offset = 0;
-        while (offset < input.Length)
+        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
             AesCoreArm.EncryptBlock(counter, keystream, roundKeys, rounds);
-
-            int remaining = input.Length - offset;
-
-            if (remaining >= BlockSizeBytes)
-            {
-                ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
-                ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
-                Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(offset, BlockSizeBytes));
-                dst[0] = src[0] ^ ks[0];
-                dst[1] = src[1] ^ ks[1];
-            }
-            else
-            {
-                for (int i = 0; i < remaining; i++)
-                {
-                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
-                }
-            }
-
-            IncrementCounter(counter);
+            XorBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
+
+        if (offset < input.Length)
+        {
+            AesCoreArm.EncryptBlock(counter, keystream, roundKeys, rounds);
+            XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
+        }
+
+        CryptographicOperations.ZeroMemory(counter);
+        CryptographicOperations.ZeroMemory(keystream);
     }
 #endif
 
@@ -655,33 +625,26 @@ internal struct GcmCore
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
         icb.CopyTo(counter);
 
+        Span<byte> counterWord = counter.Slice(NonceSizeBytes);
+        uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
+
         int offset = 0;
-        while (offset < input.Length)
+        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
             blockCipher.EncryptBlock(counter, keystream);
-
-            int remaining = input.Length - offset;
-
-            if (remaining >= BlockSizeBytes)
-            {
-                ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
-                ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
-                Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(offset, BlockSizeBytes));
-                dst[0] = src[0] ^ ks[0];
-                dst[1] = src[1] ^ ks[1];
-            }
-            else
-            {
-                for (int i = 0; i < remaining; i++)
-                {
-                    output[offset + i] = (byte)(input[offset + i] ^ keystream[i]);
-                }
-            }
-
-            IncrementCounter(counter);
+            XorBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
+        if (offset < input.Length)
+        {
+            blockCipher.EncryptBlock(counter, keystream);
+            XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
+        }
+
+        CryptographicOperations.ZeroMemory(counter);
         CryptographicOperations.ZeroMemory(keystream);
     }
 
@@ -690,6 +653,7 @@ internal struct GcmCore
     /// </summary>
     /// <param name="nonce">The nonce/IV.</param>
     /// <param name="j0">The output J0 buffer (16 bytes).</param>
+    [SkipLocalsInit]
     public void ComputeJ0(ReadOnlySpan<byte> nonce, Span<byte> j0)
     {
         if (nonce.Length == NonceSizeBytes)
@@ -915,24 +879,21 @@ internal struct GcmCore
         ReadOnlySpan<ulong> shoupTable, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
-        while (offset < data.Length)
+        int fullBlockLength = data.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
-            int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
-
-            if (blockLen == BlockSizeBytes)
-            {
-                y0 ^= BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset));
-                y1 ^= BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset + sizeof(UInt64)));
-            }
-            else
-            {
-                BinaryLoad.ReadUInt64PairBigEndianPadded(data.Slice(offset, blockLen), out ulong m0, out ulong m1);
-                y0 ^= m0;
-                y1 ^= m1;
-            }
-
+            y0 ^= BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset));
+            y1 ^= BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset + sizeof(UInt64)));
             GfMulShoup(shoupTable, ref y0, ref y1);
             offset += BlockSizeBytes;
+        }
+
+        if (offset < data.Length)
+        {
+            BinaryLoad.ReadUInt64PairBigEndianPadded(data.Slice(offset), out ulong m0, out ulong m1);
+            y0 ^= m0;
+            y1 ^= m1;
+            GfMulShoup(shoupTable, ref y0, ref y1);
         }
     }
 
@@ -943,24 +904,21 @@ internal struct GcmCore
     private static void ProcessBlocks(ulong h0, ulong h1, ReadOnlySpan<byte> data, ref ulong y0, ref ulong y1)
     {
         int offset = 0;
-        while (offset < data.Length)
+        int fullBlockLength = data.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
-            int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
-
-            if (blockLen == BlockSizeBytes)
-            {
-                y0 ^= BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset));
-                y1 ^= BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset + sizeof(UInt64)));
-            }
-            else
-            {
-                BinaryLoad.ReadUInt64PairBigEndianPadded(data.Slice(offset, blockLen), out ulong m0, out ulong m1);
-                y0 ^= m0;
-                y1 ^= m1;
-            }
-
+            y0 ^= BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset));
+            y1 ^= BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset + sizeof(UInt64)));
             GfMulUlong(h0, h1, ref y0, ref y1);
             offset += BlockSizeBytes;
+        }
+
+        if (offset < data.Length)
+        {
+            BinaryLoad.ReadUInt64PairBigEndianPadded(data.Slice(offset), out ulong m0, out ulong m1);
+            y0 ^= m0;
+            y1 ^= m1;
+            GfMulUlong(h0, h1, ref y0, ref y1);
         }
     }
 
@@ -971,20 +929,18 @@ internal struct GcmCore
     private static void ProcessBlocks(ReadOnlySpan<byte> h, ReadOnlySpan<byte> data, Span<byte> y)
     {
         int offset = 0;
-        while (offset < data.Length)
+        int fullBlockLength = data.Length & ~(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
-            int blockLen = Math.Min(BlockSizeBytes, data.Length - offset);
-
-            // XOR with next block (pad with zeros if partial)
-            for (int i = 0; i < blockLen; i++)
-            {
-                y[i] ^= data[offset + i];
-            }
-
-            // Multiply by H
+            XorBlock(data.Slice(offset), y, y);
             GfMul(y, h, y);
-
             offset += BlockSizeBytes;
+        }
+
+        if (offset < data.Length)
+        {
+            XorPartialBlock(data.Slice(offset), y, y);
+            GfMul(y, h, y);
         }
     }
 
@@ -996,6 +952,31 @@ internal struct GcmCore
     {
         Span<byte> word = counter.Slice(12, 4);
         BinaryPrimitives.WriteUInt32BigEndian(word, BinaryPrimitives.ReadUInt32BigEndian(word) + 1);
+    }
+
+    /// <summary>
+    /// XORs one full block of <paramref name="input"/> with <paramref name="keystream"/> into <paramref name="output"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void XorBlock(ReadOnlySpan<byte> input, ReadOnlySpan<byte> keystream, Span<byte> output)
+    {
+        ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(0, BlockSizeBytes));
+        ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream.Slice(0, BlockSizeBytes));
+        Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(0, BlockSizeBytes));
+        dst[0] = src[0] ^ ks[0];
+        dst[1] = src[1] ^ ks[1];
+    }
+
+    /// <summary>
+    /// XORs all of <paramref name="input"/>, shorter than a block, with <paramref name="keystream"/> into <paramref name="output"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void XorPartialBlock(ReadOnlySpan<byte> input, ReadOnlySpan<byte> keystream, Span<byte> output)
+    {
+        for (int i = 0; i < input.Length; i++)
+        {
+            output[i] = (byte)(input[i] ^ keystream[i]);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -2114,6 +2095,8 @@ internal struct GcmCore
         y = GfMulClmul(_hClmul, y);
 
         Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
+        CryptographicOperations.ZeroMemory(ctrBuf);
+        CryptographicOperations.ZeroMemory(ksBuf);
     }
 
     /// <summary>
@@ -2247,6 +2230,8 @@ internal struct GcmCore
         y = GfMulClmul(_hClmul, y);
 
         Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
+        CryptographicOperations.ZeroMemory(ctrBuf);
+        CryptographicOperations.ZeroMemory(ksBuf);
     }
 
 #if NET10_0_OR_GREATER

@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -51,6 +52,7 @@ public abstract class GcmCipher : IAeadCipher
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Encrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
         Span<byte> ciphertext, Span<byte> tag,
@@ -77,10 +79,14 @@ public abstract class GcmCipher : IAeadCipher
 
         // T = GCTR(J0, GHASH(H, A, C))
         _gcmCore.GctrDispatch(j0, ghash, tag.Slice(0, TagSizeBytes));
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
     }
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool Decrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
         ReadOnlySpan<byte> tag, Span<byte> plaintext,
@@ -108,7 +114,12 @@ public abstract class GcmCipher : IAeadCipher
         Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
-        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        if (!authentic)
         {
             CryptographicOperations.ZeroMemory(plaintext.Slice(0, ciphertext.Length));
             return false;

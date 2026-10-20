@@ -17,6 +17,7 @@ internal sealed class AriaCipherTransform : BlockCipherTransform
     /// <summary>
     /// Initializes a new instance of the <see cref="AriaCipherTransform"/> class.
     /// </summary>
+    [SkipLocalsInit]
     public AriaCipherTransform(
         ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv, bool encrypting,
         CipherMode mode, PaddingMode padding, int feedbackSizeBytes)

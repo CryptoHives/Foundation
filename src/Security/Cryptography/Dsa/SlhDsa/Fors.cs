@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// FORS few-time signatures for SLH-DSA (FIPS 205 §8, Algorithms 14–17).
@@ -26,6 +27,7 @@ internal static class Fors
     /// <summary>
     /// fors_node (Algorithm 15): computes the FORS subtree node <paramref name="i"/> at height <paramref name="z"/>.
     /// </summary>
+    [SkipLocalsInit]
     private static void Node(SlhDsaHash hash, SlhDsaParams p, ReadOnlySpan<byte> skSeed,
                              int i, int z, Adrs adrs, Span<byte> output)
     {
@@ -60,6 +62,7 @@ internal static class Fors
     /// <param name="skSeed">The secret seed SK.seed.</param>
     /// <param name="adrs">A FORS_TREE address with layer 0, tree, and key pair set.</param>
     /// <param name="signature">Output: k·(a + 1)·n bytes — per tree: secret value ‖ auth path.</param>
+    [SkipLocalsInit]
     public static void Sign(SlhDsaHash hash, SlhDsaParams p, ReadOnlySpan<byte> md,
                             ReadOnlySpan<byte> skSeed, Adrs adrs, Span<byte> signature)
     {
@@ -89,6 +92,7 @@ internal static class Fors
     /// <param name="md">The ⌈k·a/8⌉-byte message digest.</param>
     /// <param name="adrs">A FORS_TREE address with layer 0, tree, and key pair set.</param>
     /// <param name="pk">Output: the n-byte FORS public key.</param>
+    [SkipLocalsInit]
     public static void PkFromSig(SlhDsaHash hash, SlhDsaParams p, ReadOnlySpan<byte> signature,
                                  ReadOnlySpan<byte> md, Adrs adrs, Span<byte> pk)
     {
