@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #if !SIGNASSEMBLY
 // See AsyncKeyedLockBaseBenchmark.cs for why AsyncUtilities is behind an alias.

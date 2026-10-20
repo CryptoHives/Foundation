@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Cipher.Aes;
 
@@ -7,6 +7,7 @@ using CryptoHives.Foundation.Security.Cryptography;
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
+using System.Linq;
 
 /// <summary>
 /// Tests for AES ECB, CBC and CTR modes using NIST SP 800-38A Appendix F test vectors.
@@ -118,7 +119,8 @@ internal class AesNistSp80038aTests
     // SIMD variant sources
     // ========================================================================
 
-    private static readonly SimdSupport[] SimdVariants = [SimdSupport.None, SimdSupport.AesNi];
+    // The registry gives AES-128-CBC every tier the AES block transform has, scalar included.
+    private static readonly SimdSupport[] SimdVariants = [.. CipherAlgorithmRegistry.SimdTiers("AES-128-CBC")];
 
     // ========================================================================
     // F.1 ECB Mode Tests
@@ -638,7 +640,7 @@ internal class AesNistSp80038aTests
     }
 
     // ========================================================================
-    // Managed vs AES-NI Cross-Validation
+    // Managed vs SIMD Cross-Validation
     // ========================================================================
 
     private static System.Collections.IEnumerable CrossValidationTestCases()
@@ -650,12 +652,12 @@ internal class AesNistSp80038aTests
     }
 
     /// <summary>
-    /// Verifies Managed and AES-NI produce identical ciphertext for all modes.
+    /// Verifies every supported SIMD tier produces the same ciphertext as the scalar path, for all modes.
     /// </summary>
     [Test]
     [TestCaseSource(nameof(CrossValidationTestCases))]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Factory method; disposed in finally block")]
-    public void ManagedMatchesAesNi(CipherMode mode, int keyLen)
+    public void ManagedMatchesEverySimdTier(CipherMode mode, int keyLen)
     {
         byte[] key = new byte[keyLen];
         byte[] iv = new byte[16];
@@ -666,50 +668,41 @@ internal class AesNistSp80038aTests
             ? [1, 7, 15, 16, 17, 31, 32, 33, 63, 64, 65, 128, 255, 256, 1024]
             : [16, 32, 48, 64, 128, 256, 1024];
 
-        foreach (int size in sizes)
-        {
-            byte[] pt = new byte[size];
-            for (int i = 0; i < size; i++) pt[i] = unchecked((byte)(i ^ 0x5A));
-
-            SymmetricCipher? managed = null;
-            SymmetricCipher? aesni = null;
-            try
+        foreach (SimdSupport tier in SimdVariants.Where(tier => tier != SimdSupport.None))
+            foreach (int size in sizes)
             {
-                managed = CreateAes(keyLen, SimdSupport.None);
+                byte[] pt = new byte[size];
+                for (int i = 0; i < size; i++) pt[i] = unchecked((byte)(i ^ 0x5A));
+
+                using var managed = CreateAes(keyLen, SimdSupport.None);
                 managed.Mode = mode;
                 managed.Padding = PaddingMode.None;
                 managed.Key = key;
                 managed.IV = iv;
 
-                aesni = CreateAes(keyLen, SimdSupport.AesNi);
-                aesni.Mode = mode;
-                aesni.Padding = PaddingMode.None;
-                aesni.Key = key;
-                aesni.IV = iv;
+                using var simd = CreateAes(keyLen, tier);
+                simd.Mode = mode;
+                simd.Padding = PaddingMode.None;
+                simd.Key = key;
+                simd.IV = iv;
 
                 byte[] ctManaged = managed.Encrypt(pt);
-                byte[] ctAesNi = aesni.Encrypt(pt);
+                byte[] ctSimd = simd.Encrypt(pt);
 
-                Assert.That(ctAesNi, Is.EqualTo(ctManaged),
-                    $"{mode} AES-{keyLen * 8} size={size}: AES-NI ciphertext differs from Managed");
+                Assert.That(ctSimd, Is.EqualTo(ctManaged),
+                    $"{mode} AES-{keyLen * 8} size={size}: {tier} ciphertext differs from Managed");
 
                 managed.IV = iv;
-                aesni.IV = iv;
+                simd.IV = iv;
 
                 byte[] ptManaged = managed.Decrypt(ctManaged);
-                byte[] ptAesNi = aesni.Decrypt(ctAesNi);
+                byte[] ptSimd = simd.Decrypt(ctSimd);
 
                 Assert.That(ptManaged, Is.EqualTo(pt),
                     $"{mode} AES-{keyLen * 8} size={size}: Managed decrypt mismatch");
-                Assert.That(ptAesNi, Is.EqualTo(pt),
-                    $"{mode} AES-{keyLen * 8} size={size}: AES-NI decrypt mismatch");
+                Assert.That(ptSimd, Is.EqualTo(pt),
+                    $"{mode} AES-{keyLen * 8} size={size}: {tier} decrypt mismatch");
             }
-            finally
-            {
-                managed?.Dispose();
-                aesni?.Dispose();
-            }
-        }
     }
 
     // ========================================================================

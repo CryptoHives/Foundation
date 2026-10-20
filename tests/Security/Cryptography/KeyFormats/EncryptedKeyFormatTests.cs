@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.KeyFormats;
 
@@ -150,6 +150,7 @@ public class EncryptedKeyFormatTests
     [Test]
     public void LegacyPkcs12TripleDes_IsReadable()
     {
+        TestHelpers.AssumeNotBrowser("in-box TripleDES, which the legacy PKCS#12 schemes delegate to");
         // The scheme older OpenSSL and Windows tooling used for shrouded key bags. This library
         // never writes it, so BouncyCastle stands in for the tool that produced the file.
         using var key = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa44);
@@ -172,6 +173,7 @@ public class EncryptedKeyFormatTests
     [Test]
     public void LegacyPkcs12TripleDes_WrongPasswordThrows()
     {
+        TestHelpers.AssumeNotBrowser("in-box TripleDES, which the legacy PKCS#12 schemes delegate to");
         using var key = MLDsa.GenerateKey(MLDsaAlgorithm.MLDsa44);
 
         byte[] legacy = EncryptedPrivateKeyInfoFactory.CreateEncryptedPrivateKeyInfo(

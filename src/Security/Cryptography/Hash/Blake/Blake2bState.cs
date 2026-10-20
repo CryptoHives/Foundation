@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
 #pragma warning disable CS0414  // _simdSupport is read inside #if NET8_0_OR_GREATER guard
@@ -8,7 +8,6 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
-using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -318,13 +317,10 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
         {
             BinarySpans.WriteUInt64LittleEndian(state, dst, fullWords);
 
-            // Handle partial final word
             int remainingBytes = _outputBytes % sizeof(UInt64);
             if (remainingBytes > 0)
             {
-                Span<byte> temp = stackalloc byte[sizeof(UInt64)];
-                BinaryPrimitives.WriteUInt64LittleEndian(temp, _state[fullWords]);
-                temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt64)));
+                BinaryStore.WriteUInt64LittleEndianTruncated(state[fullWords], dst + (fullWords * sizeof(UInt64)), remainingBytes);
             }
         }
     }

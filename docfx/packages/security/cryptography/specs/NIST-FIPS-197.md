@@ -21,20 +21,20 @@ All variants operate on a fixed block size of 128 bits (16 bytes).
 
 | Algorithm | Key Size | Rounds | Status | Class |
 |-----------|----------|--------|--------|-------|
-| AES-128 ECB | 128 bits | 10 | ✅ Implemented | `Aes128` |
-| AES-192 ECB | 192 bits | 12 | ✅ Implemented | `Aes192` |
-| AES-256 ECB | 256 bits | 14 | ✅ Implemented | `Aes256` |
-| AES-128 CBC | 128 bits | 10 | ✅ Implemented | `Aes128` |
-| AES-192 CBC | 192 bits | 12 | ✅ Implemented | `Aes192` |
-| AES-256 CBC | 256 bits | 14 | ✅ Implemented | `Aes256` |
-| AES-128 CTR | 128 bits | 10 | ✅ Implemented | `Aes128` |
-| AES-192 CTR | 192 bits | 12 | ✅ Implemented | `Aes192` |
-| AES-256 CTR | 256 bits | 14 | ✅ Implemented | `Aes256` |
-| AES-128-GCM | 128 bits | 10 | ✅ Implemented | `AesGcm128` |
-| AES-192-GCM | 192 bits | 12 | ✅ Implemented | `AesGcm192` |
-| AES-256-GCM | 256 bits | 14 | ✅ Implemented | `AesGcm256` |
-| AES-128-CCM | 128 bits | 10 | ✅ Implemented | `AesCcm128` |
-| AES-256-CCM | 256 bits | 14 | ✅ Implemented | `AesCcm256` |
+| AES-128 ECB | 128 bits | 10 | ✅ | `Aes128` |
+| AES-192 ECB | 192 bits | 12 | ✅ | `Aes192` |
+| AES-256 ECB | 256 bits | 14 | ✅ | `Aes256` |
+| AES-128 CBC | 128 bits | 10 | ✅ | `Aes128` |
+| AES-192 CBC | 192 bits | 12 | ✅ | `Aes192` |
+| AES-256 CBC | 256 bits | 14 | ✅ | `Aes256` |
+| AES-128 CTR | 128 bits | 10 | ✅ | `Aes128` |
+| AES-192 CTR | 192 bits | 12 | ✅ | `Aes192` |
+| AES-256 CTR | 256 bits | 14 | ✅ | `Aes256` |
+| AES-128-GCM | 128 bits | 10 | ✅ | `AesGcm128` |
+| AES-192-GCM | 192 bits | 12 | ✅ | `AesGcm192` |
+| AES-256-GCM | 256 bits | 14 | ✅ | `AesGcm256` |
+| AES-128-CCM | 128 bits | 10 | ✅ | `AesCcm128` |
+| AES-256-CCM | 256 bits | 14 | ✅ | `AesCcm256` |
 
 ---
 

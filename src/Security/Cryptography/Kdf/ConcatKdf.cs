@@ -1,11 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -154,6 +155,7 @@ public static class ConcatKdf
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="hmacFactory"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="output"/> is empty.</exception>
+    [SkipLocalsInit]
     public static void DeriveKey(
         HmacFactory hmacFactory,
         ReadOnlySpan<byte> sharedSecret,

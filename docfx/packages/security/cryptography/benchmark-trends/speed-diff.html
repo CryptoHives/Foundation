@@ -72,12 +72,13 @@
   Data source: <code>benchmark-history.sqlite</code>, generated at build time by
   <code>scripts/cryptography-benchmark-trends/import_run_archive.py</code> from the run archive on
   the <code>benchmarks</code> branch. Ratios are computed from mean time, averaged per
-  (family, variant) across every method and data size measured in the selected run — see the
+  (family, variant) across every method and data size measured in the selected run, so the largest sizes weigh
+  most — see the
   <a href="index.html">trends dashboard</a> for per-size detail, and the
   <a href="matrix.html">library matrix</a> for which library supports which algorithm.
 </p>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="../../../../vendor/sql-wasm.js"></script>
 <script>
 (async function () {
   const statusEl = document.getElementById("status");
@@ -101,13 +102,16 @@
   const hiddenLibraries = new Set();
 
   // Collapses implementation-detail variants down to the library they belong to - see the same
-  // helper in matrix.html for the full rationale (SIMD paths, the ArmSha1/ArmSha256 probes that
-  // break the "CryptoHives-" naming convention, and why the three BLAKE3 packages must stay
-  // separate). Kept in sync with that page rather than shared, per this dashboard's convention of
+  // helper in matrix.html for the full rationale (SIMD paths, and why the three BLAKE3 packages
+  // must stay separate). Kept in sync with that page rather than shared, per this dashboard's convention of
   // self-contained pages with no shared JS module.
   function libraryOf(variant) {
-    if (variant.includes("CryptoHives") || variant === "ArmSha1" || variant === "ArmSha256") {
+    if (variant.includes("CryptoHives")) {
       return "CryptoHives";
+    }
+    // The single-threaded Blake3.Managed row measures the same package as the default one.
+    if (variant === "Blake3DissimilisSerial") {
+      return "Blake3Dissimilis";
     }
     return variant;
   }
@@ -372,7 +376,7 @@
 
   try {
     const SQL = await initSqlJs({
-      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`,
+      locateFile: (file) => `../../../../vendor/${file}`,
     });
     const response = await fetch("benchmark-history.sqlite");
     if (!response.ok) throw new Error(`fetch failed: ${response.status}`);

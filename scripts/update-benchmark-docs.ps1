@@ -1,5 +1,5 @@
 ﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # update-benchmark-docs.ps1
 # Records a BenchmarkDotNet run into the archive on the `benchmarks` branch, as
@@ -193,6 +193,10 @@ $packageConfigurations = @{
             @{ Source = "AesCcm128Benchmark-report.md"; Target = "aes-ccm-128.md" }
             @{ Source = "AesCcm256Benchmark-report.md"; Target = "aes-ccm-256.md" }
 
+            # Cipher benchmarks - AES-GCM-SIV. Filed under Cipher by the importer's "aes-gcm" prefix.
+            @{ Source = "AesGcmSiv128Benchmark-report.md"; Target = "aes-gcm-siv-128.md" }
+            @{ Source = "AesGcmSiv256Benchmark-report.md"; Target = "aes-gcm-siv-256.md" }
+
             # Cipher benchmarks - AES-CBC
             @{ Source = "AesCbc128Benchmark-report.md"; Target = "aes-cbc-128.md" }
             @{ Source = "AesCbc256Benchmark-report.md"; Target = "aes-cbc-256.md" }
@@ -217,10 +221,27 @@ $packageConfigurations = @{
             @{ Source = "CamelliaCbc192Benchmark-report.md"; Target = "camellia-cbc-192.md" }
             @{ Source = "CamelliaCbc256Benchmark-report.md"; Target = "camellia-cbc-256.md" }
             @{ Source = "KuznyechikCbcBenchmark-report.md"; Target = "kuznyechik-cbc.md" }
+            @{ Source = "MagmaCbcBenchmark-report.md"; Target = "magma-cbc.md" }
             @{ Source = "KalynaCbc128Benchmark-report.md"; Target = "kalyna-cbc-128.md" }
             @{ Source = "KalynaCbc256Benchmark-report.md"; Target = "kalyna-cbc-256.md" }
             @{ Source = "KalynaCbc512Benchmark-report.md"; Target = "kalyna-cbc-512.md" }
             @{ Source = "SeedCbcBenchmark-report.md"; Target = "seed-cbc.md" }
+
+            # Cipher benchmarks - GCM and CCM over the regional ciphers
+            @{ Source = "Sm4GcmBenchmark-report.md"; Target = "sm4-gcm.md" }
+            @{ Source = "Sm4CcmBenchmark-report.md"; Target = "sm4-ccm.md" }
+            @{ Source = "AriaGcm128Benchmark-report.md"; Target = "aria-gcm-128.md" }
+            @{ Source = "AriaGcm256Benchmark-report.md"; Target = "aria-gcm-256.md" }
+            @{ Source = "AriaCcm128Benchmark-report.md"; Target = "aria-ccm-128.md" }
+            @{ Source = "AriaCcm256Benchmark-report.md"; Target = "aria-ccm-256.md" }
+            @{ Source = "CamelliaGcm128Benchmark-report.md"; Target = "camellia-gcm-128.md" }
+            @{ Source = "CamelliaGcm256Benchmark-report.md"; Target = "camellia-gcm-256.md" }
+            @{ Source = "CamelliaCcm128Benchmark-report.md"; Target = "camellia-ccm-128.md" }
+            @{ Source = "CamelliaCcm256Benchmark-report.md"; Target = "camellia-ccm-256.md" }
+            @{ Source = "SeedGcmBenchmark-report.md"; Target = "seed-gcm.md" }
+            @{ Source = "KuznyechikGcmBenchmark-report.md"; Target = "kuznyechik-gcm.md" }
+            @{ Source = "KuznyechikMgmBenchmark-report.md"; Target = "kuznyechik-mgm.md" }
+            @{ Source = "MagmaMgmBenchmark-report.md"; Target = "magma-mgm.md" }
 
             # MAC benchmarks - HMAC
             @{ Source = "HmacMd5Benchmark-report.md"; Target = "hmac-md5.md" }

@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA5358
 #pragma warning disable CA5401 // ECB/CBC IV values are explicit test inputs; not production use. OpenGost requires IV assignment.

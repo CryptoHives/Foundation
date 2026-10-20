@@ -41,8 +41,9 @@ Nothing is lost by defaulting to stratified: run this script with
 every vector the library can execute. The weekly acvp-full-vectors workflow does
 exactly that.
 
-Compression is deterministic (mtime zeroed), so regenerating unchanged vectors
-produces a byte-identical file rather than a spurious diff.
+The JSON is deterministic, so regenerating unchanged vectors reproduces it
+exactly; the gzip bytes are stable only on the same zlib build, so compare the
+decompressed content.
 
 Source (public, no authentication):
   https://github.com/usnistgov/ACVP-Server

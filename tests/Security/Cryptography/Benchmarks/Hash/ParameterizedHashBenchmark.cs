@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Benchmarks.Hash;
 
@@ -59,16 +59,16 @@ public abstract class ParameterizedHashBenchmark : HashBenchmarkBase
         Array.Clear(_outputData);
         TryComputeHash();
         Assert.That(_outputSize, Is.GreaterThan(0), "Hash output should not be empty.");
-        var result = _outputData.AsSpan().Slice(0, _outputSize).ToArray();
+        byte[] result = _outputData.AsSpan().Slice(0, _outputSize).ToArray();
         Assert.That(_outputSize, Is.EqualTo(HashAlgorithm.HashSize / 8));
-        var previousOutputData = new byte[_outputSize];
+        byte[] previousOutputData = new byte[_outputSize];
         Array.Copy(_outputData, previousOutputData, _outputSize);
         _outputSize = -1;
         Array.Clear(_outputData);
         TryComputeHash();
         Assert.That(_outputData, Is.EqualTo(previousOutputData));
 #else
-        var result = ComputeHash();
+        byte[] result = ComputeHash();
         Assert.That(result, Is.Not.Null, "Hash output should not be null.");
         Assert.That(result.Length, Is.GreaterThan(0), "Hash output should not be empty.");
         Assert.That(result, Has.Length.EqualTo(HashAlgorithm.HashSize / 8));

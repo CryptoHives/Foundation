@@ -1,16 +1,18 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Mac.KMac;
 
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using NUnit.Framework;
+using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Text;
 
 /// <summary>
-/// Pins that KMAC does not leave key material in <see cref="ArrayPool{T}.Shared"/>.
+/// Pins that KMAC neither leaves key material in <see cref="ArrayPool{T}.Shared"/> nor depends on what it rents from it.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -92,6 +94,47 @@ public class KMacBufferHygieneTests
     public void KMac256DoesNotLeaveTheKeyInThePoolWhenItExceedsTheRate()
     {
         AssertNoKeyResidue(outputBytes => KMac256.Create(LongKey(), outputBytes, ""));
+    }
+
+    [TestCase(128, 16, 300)]
+    [TestCase(128, LongKeyLength, 0)]
+    [TestCase(256, 16, 300)]
+    [TestCase(256, LongKeyLength, 0)]
+    public void KMacMatchesBouncyCastleWhenThePoolHandsBackDirtyBuffers(int bits, int keyLength, int customizationLength)
+    {
+        byte[] key = new byte[keyLength];
+        for (int i = 0; i < key.Length; i++)
+        {
+            key[i] = (byte)i;
+        }
+
+        string customization = new('c', customizationLength);
+        byte[] input = new byte[64];
+
+        var reference = new Org.BouncyCastle.Crypto.Macs.KMac(bits, Encoding.UTF8.GetBytes(customization));
+        reference.Init(new KeyParameter(key));
+        reference.BlockUpdate(input, 0, input.Length);
+        byte[] expected = new byte[32];
+        reference.OutputFinal(expected, 0, expected.Length);
+
+        PoisonBucket();
+        using System.Security.Cryptography.HashAlgorithm kmac = bits == 128
+            ? KMac128.Create(key, 32, customization)
+            : KMac256.Create(key, 32, customization);
+
+        Assert.That(kmac.ComputeHash(input), Is.EqualTo(expected));
+    }
+
+    /// <summary>Returns non-zero buffers to the bucket a <c>bytepad</c> over one rate block rents from.</summary>
+    private static void PoisonBucket()
+    {
+        List<byte[]> drained = DrainBucket();
+        foreach (byte[] array in drained)
+        {
+            array.AsSpan().Fill(0xFF);
+        }
+
+        ReturnDrained(drained);
     }
 
     private static void AssertNoKeyResidue(Func<int, System.Security.Cryptography.HashAlgorithm> create)

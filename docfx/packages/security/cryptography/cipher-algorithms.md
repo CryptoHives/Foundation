@@ -26,12 +26,14 @@ public sealed class AesGcm256 : AesGcm
 - Key Sizes: 128, 192, or 256 bits
 - Nonce Size: 12 bytes (recommended), variable supported
 - Tag Size: 16 bytes (default), configurable
-- Performance: Very fast with AES-NI + PCLMULQDQ/VPCLMULQDQ hardware support; 8-block stitched pipeline; ~2× faster than OS at small sizes
+- Performance: Very fast with AES-NI + PCLMULQDQ/VPCLMULQDQ hardware support; 8-block stitched pipeline; ahead of the OS implementation at small sizes (see [benchmarks](benchmarks.md))
 
 **Security:**
-- ✅ Widely used in TLS 1.3, IPsec, QUIC
-- ✅ NIST approved (SP 800-38D)
-- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+- Widely used in TLS 1.3, IPsec, QUIC
+- NIST approved (SP 800-38D)
+
+> [!WARNING]
+> Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -68,13 +70,15 @@ public sealed class AesCcm256 : AesCcm
 - Key Sizes: 128, 192, or 256 bits
 - Nonce Size: 7-13 bytes (12 bytes recommended)
 - Tag Size: 4-16 bytes (must be even)
-- Performance: Slower than GCM, 2.8–3× faster with AES-NI, more compact for small messages
+- Performance: Slower than GCM, much faster with AES-NI (see [benchmarks](benchmarks.md)), more compact for small messages
 
 **Security:**
-- ✅ NIST approved (SP 800-38C)
-- ✅ Widely used in IoT, Bluetooth LE, ZigBee, Thread
-- ✅ RFC 3610 compliant
-- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+- NIST approved (SP 800-38C)
+- Widely used in IoT, Bluetooth LE, ZigBee, Thread
+- RFC 3610 compliant
+
+> [!WARNING]
+> Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -112,10 +116,12 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 - Performance: Fast on all platforms; SSSE3/AVX2 accelerated, no AES-NI dependency
 
 **Security:**
-- ✅ IETF standard (RFC 8439)
-- ✅ Used in TLS 1.3, WireGuard, SSH
-- ✅ Software-friendly alternative to AES-GCM
-- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+- IETF standard (RFC 8439)
+- Used in TLS 1.3, WireGuard, SSH
+- Software-friendly alternative to AES-GCM
+
+> [!WARNING]
+> Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -148,10 +154,10 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
 - Performance: Same as ChaCha20-Poly1305; SSSE3/AVX2 accelerated
 
 **Security:**
-- ✅ Extended nonce version of ChaCha20-Poly1305
-- ✅ Safer for random nonces (negligible collision probability)
-- ✅ Used in libsodium, age encryption
-- ✅ More forgiving of nonce generation mistakes
+- Extended nonce version of ChaCha20-Poly1305
+- Safer for random nonces (negligible collision probability)
+- Used in libsodium, age encryption
+- More forgiving of nonce generation mistakes
 
 **Usage:**
 ```csharp
@@ -188,10 +194,12 @@ public sealed class AsconAead128 : IAeadCipher
 - Performance: Lightweight permutation-based AEAD, optimized for constrained environments
 
 **Security:**
-- ✅ NIST Lightweight Cryptography standard (SP 800-232)
-- ✅ Winner of NIST LWC competition
-- ✅ No lookup-table S-boxes (timing-attack resilient design)
-- ⚠️ Nonce reuse catastrophic - each (key, nonce) pair must be unique
+- NIST Lightweight Cryptography standard (SP 800-232)
+- Winner of NIST LWC competition
+- No lookup-table S-boxes (timing-attack resilient design)
+
+> [!WARNING]
+> Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -215,6 +223,114 @@ bool valid = ascon.Decrypt(nonce, ciphertext, tag, decrypted, aad);
 
 **See Also:**
 - [Ascon Hash/XOF](hash-algorithms.md#ascon)
+
+### AES-GCM-SIV (nonce-misuse resistant)
+
+```csharp
+public abstract class AesGcmSiv : IAeadCipher
+public sealed class AesGcmSiv128 : AesGcmSiv
+public sealed class AesGcmSiv256 : AesGcmSiv
+```
+
+**Properties:**
+- Key Size: 128 or 256 bits (RFC 8452 defines no 192-bit variant)
+- Nonce Size: 96 bits (12 bytes)
+- Tag Size: 128 bits (16 bytes)
+- Standard: RFC 8452
+- Performance: two passes over the plaintext (POLYVAL, then CTR), so slower than AES-GCM;
+  AES-NI and ARM AES for the block cipher, PCLMULQDQ for POLYVAL on x86
+
+**Security:**
+- A repeated nonce reveals only whether the same (associated data, plaintext) pair was
+  sealed twice; it does not leak plaintext or enable forgeries as it does under AES-GCM
+- Per-message authentication and encryption keys derived from the key and nonce
+- .NET has no in-box AES-GCM-SIV; this is a managed implementation on every target framework
+
+> [!WARNING]
+> Still use a unique nonce per message: misuse resistance is a safety net, not a licence.
+
+**Usage:**
+```csharp
+using var siv = AesGcmSiv256.Create(key);                      // 32 bytes
+byte[] sealedData = siv.Encrypt(nonce, plaintext, associatedData);  // ciphertext || 16-byte tag
+byte[] opened = siv.Decrypt(nonce, sealedData, associatedData);     // throws on a bad tag
+```
+
+### GCM and CCM over regional block ciphers
+
+```csharp
+public abstract class GcmCipher : IAeadCipher   // AriaGcm, CamelliaGcm, KuznyechikGcm, SeedGcm, Sm4Gcm
+public abstract class CcmCipher : IAeadCipher   // AriaCcm, CamelliaCcm, Sm4Ccm
+```
+
+The GCM (NIST SP 800-38D) and CCM (RFC 3610) modes that AES uses, running over the
+[regional block ciphers](#regional-block-ciphers). Nonce, tag and associated-data rules are the
+same as [AES-GCM](#aes-gcm-galoiscounter-mode) and [AES-CCM](#aes-ccm-counter-with-cbc-mac).
+
+| Class | Key sizes | Standard / protocol use |
+|-------|-----------|-------------------------|
+| `Sm4Gcm`, `Sm4Ccm` | 128 | RFC 8998 (TLS 1.3 `TLS_SM4_GCM_SM3`, `TLS_SM4_CCM_SM3`) |
+| `AriaGcm`, `AriaCcm` | 128/192/256 | RFC 6209 (TLS, GCM) |
+| `CamelliaGcm`, `CamelliaCcm` | 128/192/256 | RFC 6367 (TLS, GCM), RFC 5528 (IPsec, CCM) |
+| `SeedGcm` | 128 | GCM over RFC 4269 SEED |
+| `KuznyechikGcm` | 256 | GCM over GOST R 34.12-2015 |
+
+The key length picks the variant, so `AriaGcm.Create(key)` is ARIA-128-GCM for a 16-byte key and
+ARIA-256-GCM for a 32-byte one; `AlgorithmName` reports which.
+
+**Performance:** GHASH uses PCLMULQDQ or PMULL where available; the block cipher runs its managed
+implementation, so throughput is set by the cipher rather than the mode.
+
+**Usage:**
+```csharp
+using var gcm = Sm4Gcm.Create(key);          // 16 bytes
+byte[] sealedData = gcm.Encrypt(nonce, plaintext, associatedData);   // ciphertext || 16-byte tag
+byte[] opened = gcm.Decrypt(nonce, sealedData, associatedData);      // throws on a bad tag
+
+using var ccm = CamelliaCcm.Create(key);     // 16, 24 or 32 bytes
+byte[] ciphertext = new byte[plaintext.Length];
+byte[] tag = new byte[8];                    // 4-16 bytes, even; the buffer length is the tag length
+ccm.Encrypt(nonce, plaintext, ciphertext, tag, associatedData);
+```
+
+> Kuznyechik's national AEAD mode is MGM, below; `KuznyechikGcm` is for interoperating with
+> systems that run Kuznyechik under GCM.
+
+### Kuznyechik-MGM and Magma-MGM (Multilinear Galois Mode)
+
+```csharp
+public sealed class KuznyechikMgm : IAeadCipher
+public sealed class MagmaMgm : IAeadCipher
+```
+
+MGM (RFC 9058, R 1323565.1.026-2019) over the two GOST R 34.12-2015 ciphers: the AEAD of GOST
+TLS 1.3 (RFC 9367) and GOST CMS. It differs from GCM in ways that matter to a caller:
+
+| | `KuznyechikMgm` | `MagmaMgm` |
+|---|---|---|
+| Nonce | 16 bytes, top bit clear | 8 bytes, top bit clear |
+| Tag | 4-16 bytes | 4-8 bytes |
+| Plaintext + associated data | effectively unlimited | below 2^32 bits (512 MiB) |
+
+- **Nonce:** a nonce with the top bit set throws `ArgumentException`.
+- **Tag:** chosen by the length of the tag buffer; the `byte[]` overloads use a full-block tag.
+- **Input:** at least one of plaintext and associated data must be non-empty, as RFC 9058 requires.
+- **Decryption** checks the tag before decrypting, so a forgery never yields plaintext; the
+  plaintext buffer is zeroed instead.
+
+**Performance:** every block costs two block encryptions, one for the keystream and one for a
+fresh multiplier, so MGM runs at about half the speed of the cipher in CTR mode. The field
+multiply uses PCLMULQDQ or PMULL where available.
+
+**Usage:**
+```csharp
+using var mgm = KuznyechikMgm.Create(key);   // 32 bytes
+nonce[0] &= 0x7F;                              // 16 bytes, top bit clear
+byte[] sealedData = mgm.Encrypt(nonce, plaintext, associatedData);   // ciphertext || 16-byte tag
+byte[] opened = mgm.Decrypt(nonce, sealedData, associatedData);      // throws on a bad tag
+
+using var magmaMgm = MagmaMgm.Create(key);   // 32 bytes; nonce is 8 bytes, top bit clear
+```
 
 ---
 
@@ -283,16 +399,18 @@ public sealed class Aes256 : SymmetricCipher
 **Properties:**
 - Key Sizes: 128, 192, or 256 bits
 - Block Size: 128 bits (16 bytes)
-- IV Size: 16 bytes (CBC, CTR) or none (ECB)
-- Modes: ECB, CBC, CTR
+- IV Size: 16 bytes (CBC, CTR, OFB, CFB, CTS) or none (ECB)
+- Modes: ECB, CBC, CTR; OFB, CFB and CTS for interoperability
 - Padding: PKCS#7, None, Zeros, ANSIX923, ISO10126
 - Performance: Hardware accelerated with AES-NI; vectorized CBC decrypt (4/8-block interleaved)
 
 **Security:**
-- ✅ NIST approved (FIPS 197)
-- ✅ The most widely used symmetric cipher in the world
-- ⚠️ ECB mode is insecure for multi-block data — use CBC or CTR
-- ⚠️ CBC mode requires unpredictable IVs and is vulnerable to padding oracle attacks without authentication
+- NIST approved (FIPS 197)
+- The most widely used symmetric cipher in the world
+
+> [!WARNING]
+> - ECB mode is insecure for multi-block data — use CBC or CTR
+> - CBC mode requires unpredictable IVs and is vulnerable to padding oracle attacks without authentication
 
 **Usage — CTR Mode (Recommended):**
 ```csharp
@@ -369,11 +487,13 @@ public sealed class ChaCha20 : SymmetricCipher
 - Performance: SSSE3/AVX2 hardware accelerated
 
 **Security:**
-- ✅ IETF standard (RFC 8439)
-- ✅ Constant-time — no timing side channels
-- ✅ Fast in software without dedicated hardware (unlike AES without AES-NI)
-- ⚠️ No authentication — use [ChaCha20-Poly1305](#chacha20-poly1305) for authenticated encryption
-- ⚠️ Nonce reuse is catastrophic — never reuse a (key, nonce) pair
+- IETF standard (RFC 8439)
+- Constant-time — no timing side channels
+- Fast in software without dedicated hardware (unlike AES without AES-NI)
+
+> [!WARNING]
+> - No authentication — use [ChaCha20-Poly1305](#chacha20-poly1305) for authenticated encryption
+> - Reusing a nonce under the same key is catastrophic; every (key, nonce) pair must be unique.
 
 **Usage:**
 ```csharp
@@ -441,6 +561,9 @@ chacha.IV = nonce;
 | **ECB** | Block | Required | ✅ | ✅ | ⚠️ Insecure for multi-block |
 | **CBC** | Block | Required | ❌ | ✅ | Needs unpredictable IV |
 | **CTR** | Stream | None | ✅ | ✅ | Recommended for most uses |
+| **OFB** | Stream | None | ❌ | ❌ | Interoperability only |
+| **CFB** | Segment | To segment size | ❌ | ✅ | `FeedbackSize` 8 (default) up to the block size |
+| **CTS** | Block | None | ❌ | ✅ | CBC-CS3 (RFC 3962); input of at least one block |
 | **Stream** | Stream | None | ✅ | ✅ | ChaCha20 native mode |
 
 
@@ -541,9 +664,9 @@ public sealed class Sm4 : BlockCipherTransform
 - Standard: GB/T 32907-2016
 
 **Security:**
-- ✅ Chinese national standard, mandatory for commercial use in China
-- ✅ Used in Chinese TLS implementations and WAPI (WLAN security)
-- ✅ ISO/IEC 18033-3:2010 listed
+- Chinese national standard, mandatory for commercial use in China
+- Used in Chinese TLS implementations and WAPI (WLAN security)
+- ISO/IEC 18033-3:2010 listed
 
 **Usage:**
 ```csharp
@@ -571,9 +694,9 @@ public sealed class Aria256 : BlockCipherTransform
 - Standard: KS X 1213, RFC 5794
 
 **Security:**
-- ✅ Korean national standard
-- ✅ Used in Korean government and financial systems
-- ✅ RFC 5794 specification
+- Korean national standard
+- Used in Korean government and financial systems
+- RFC 5794 specification
 
 **Usage:**
 ```csharp
@@ -600,9 +723,9 @@ public sealed class Camellia256 : BlockCipherTransform
 - Standard: RFC 3713, ISO/IEC 18033-3
 
 **Security:**
-- ✅ Japanese CRYPTREC recommended cipher
-- ✅ NESSIE selected algorithm (EU)
-- ✅ Comparable security level to AES
+- Japanese CRYPTREC recommended cipher
+- NESSIE selected algorithm (EU)
+- Comparable security level to AES
 
 **Usage:**
 ```csharp
@@ -627,9 +750,9 @@ public sealed class Kuznyechik : BlockCipherTransform
 - Standard: GOST R 34.12-2015
 
 **Security:**
-- ✅ Russian national standard (successor to GOST 28147-89)
-- ✅ Used in Russian government and banking systems
-- ✅ Paired with Streebog hash family
+- Russian national standard (successor to GOST 28147-89)
+- Used in Russian government and banking systems
+- Paired with Streebog hash family
 
 **Usage:**
 ```csharp
@@ -639,6 +762,35 @@ kuz.Padding = PaddingMode.PKCS7;
 kuz.Key = key; // 32 bytes
 kuz.IV = iv;   // 16 bytes
 byte[] ciphertext = kuz.Encrypt(plaintext);
+```
+
+### Magma (Russia)
+
+```csharp
+public sealed class Magma : SymmetricCipher
+```
+
+**Properties:**
+- Key Size: 256 bits
+- Block Size: 64 bits
+- Rounds: 32 (Feistel network)
+- Standard: GOST R 34.12-2015, RFC 8891
+
+**Security:**
+- GOST 28147-89 with its S-boxes fixed to id-tc26-gost-28147-param-Z and big-endian block and
+  key order; not interchangeable with 28147-89 implementations that use other S-boxes or byte orders
+- The 64-bit block means ciphertext blocks start to collide after about 2^32 of them (32 GiB), so
+  one key should protect far less data than that
+- For authenticated encryption use [`MagmaMgm`](#kuznyechik-mgm-and-magma-mgm-multilinear-galois-mode)
+
+**Usage:**
+```csharp
+using var magma = Magma.Create();
+magma.Mode = CipherMode.CBC;
+magma.Padding = PaddingMode.PKCS7;
+magma.Key = key; // 32 bytes
+magma.IV = iv;   // 8 bytes
+byte[] ciphertext = magma.Encrypt(plaintext);
 ```
 
 ### Kalyna (Ukraine)
@@ -660,9 +812,9 @@ public sealed class Kalyna512 : BlockCipherTransform
 - Matches the widest Kalyna configuration in the standard
 
 **Security:**
-- ✅ Ukrainian national standard
-- ✅ Paired with Kupyna hash family
-- ✅ Uses MDS matrix-based diffusion layer
+- Ukrainian national standard
+- Paired with Kupyna hash family
+- Uses MDS matrix-based diffusion layer
 
 **Usage:**
 ```csharp
@@ -687,9 +839,9 @@ public sealed class Seed : BlockCipherTransform
 - Standard: RFC 4269, KISA
 
 **Security:**
-- ✅ Korean national standard (KISA)
-- ✅ Used in Korean financial and government systems
-- ✅ 16-round Feistel structure with S-boxes derived from the golden ratio
+- Korean national standard (KISA)
+- Used in Korean financial and government systems
+- 16-round Feistel structure with S-boxes derived from the golden ratio
 
 **Usage:**
 ```csharp
@@ -710,6 +862,7 @@ byte[] decrypted = seed.Decrypt(ciphertext);
 | **ARIA** | Korea | 128/192/256 | 128 bits | 12/14/16 | KS X 1213, RFC 5794 |
 | **Camellia** | Japan | 128/192/256 | 128 bits | 18/24 | RFC 3713, ISO 18033-3 |
 | **Kuznyechik** | Russia | 256 | 128 bits | 10 | GOST R 34.12-2015 |
+| **Magma** | Russia | 256 | 64 bits | 32 | GOST R 34.12-2015, RFC 8891 |
 | **Kalyna** | Ukraine | 128/256 | 128 bits | 10/14 | DSTU 7624:2014 |
 | **SEED** | Korea | 128 | 128 bits | 16 | RFC 4269 |
 
@@ -733,7 +886,7 @@ byte[] decrypted = seed.Decrypt(ciphertext);
 - **GB/T 32907-2016** - SM4 Block Cipher (China)
 - **KS X 1213** - ARIA Block Cipher (Korea)
 - **RFC 3713** - Camellia Encryption Algorithm (Japan, CRYPTREC)
-- **GOST R 34.12-2015** - Kuznyechik Block Cipher (Russia)
+- **GOST R 34.12-2015** - Kuznyechik and Magma Block Ciphers (Russia)
 - **DSTU 7624:2014** - Kalyna Block Cipher (Ukraine)
 - **RFC 4269** - SEED Encryption Algorithm (Korea, KISA)
 

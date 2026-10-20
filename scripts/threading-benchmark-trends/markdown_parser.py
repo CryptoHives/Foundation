@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 """
 Shared markdown-table parsing for Threading's benchmark trends pipeline, used by both
 import_run_archive.py (the run archive on the `benchmarks` branch, which builds the published
@@ -39,6 +39,9 @@ import re
 import sys
 
 MEASUREMENT_PATTERN = re.compile(r"^([\d,]+\.?\d*)\s*(ns|μs|us|ms)$")
+# BenchmarkDotNet switches the Allocated column to KB/MB for large values, in binary units.
+ALLOCATED_PATTERN = re.compile(r"^(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>B|KB|MB|GB)?$")
+ALLOCATED_UNITS = {"B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3}
 CANCELLATION_COLUMN = "cancellationType"
 
 # BenchmarkDotNet keeps job characteristics in the preamble only while they are constant across
@@ -136,11 +139,10 @@ def parse_allocated_bytes(cell: str) -> int | None:
         return 0
     if cell in ("", "NA"):
         return None
-    cell = cell.rstrip("B").strip()
-    try:
-        return int(round(float(cell)))
-    except ValueError:
+    match = ALLOCATED_PATTERN.match(cell)
+    if not match:
         return None
+    return int(round(float(match.group("value")) * ALLOCATED_UNITS[match.group("unit") or "B"]))
 
 
 def parse_ratio(cell: str) -> float | None:

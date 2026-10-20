@@ -1,0 +1,142 @@
+name: Mono Runtime Tests
+
+# Runs the Cryptography suite on runtimes the regular CI never reaches, all of them Mono:
+#
+#   s390x    Big-endian. The only place the !BitConverter.IsLittleEndian branches execute.
+#   ppc64le  Little-endian, on a different Mono JIT backend.
+#   wasm     browser-wasm on Node.js: the Mono interpreter, single-threaded.
+#
+# Every runtime runs the tests in-process through .github/mono-test-host (the NUnit framework runner,
+# no VSTest), built with /p:MonoRuntimeTests=true, which drops the reference libraries that do not
+# run on Mono (HashifyNET and the two native BLAKE3 packages). s390x and ppc64le run the Red Hat UBI
+# .NET 10 SDK image under QEMU on the x64 runner; the host is built natively and only the run is
+# emulated. Benchmark fixtures are filtered out everywhere: they compare against third-party
+# libraries and would dominate a slow run without exercising anything new. The x86 and ARM SIMD
+# tiers are gated on their instruction sets and never run here.
+
+on:
+  schedule:
+    # Monthly, on the 1st at 02:00 UTC.
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to test. Empty = the default branch.'
+        type: string
+        default: ''
+      platforms:
+        description: 'Which runtimes to test.'
+        type: choice
+        options: [all, s390x, ppc64le, wasm]
+        default: all
+      filter:
+        description: 'Regular expression on the full test name for s390x/ppc64le (e.g. Blake3). Empty = every test.'
+        type: string
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  qemu:
+    name: Cryptography tests, linux-${{ matrix.arch }}
+    if: ${{ inputs.platforms != 'wasm' }}
+    runs-on: ubuntu-latest
+    # Emulated runs are far slower than native; this is the hosted-runner maximum.
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ fromJSON((inputs.platforms == 's390x' || inputs.platforms == 'ppc64le') && format('["{0}"]', inputs.platforms) || '["s390x","ppc64le"]') }}
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.ref }}
+
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Build the test host
+      run: |
+        bash .github/mono-test-host/create-host.sh console "$RUNNER_TEMP/test-host"
+        dotnet build "$RUNNER_TEMP/test-host" -c Release -o artifacts/host
+
+    - name: Register the ${{ matrix.arch }} emulator
+      # Under QEMU the emulated runtime reserves a large address space, which the kernel's default
+      # overcommit heuristic can refuse. The container shares the runner's kernel, so the setting
+      # is made here.
+      run: |
+        sudo sysctl -w vm.overcommit_memory=1
+        docker run --privileged --rm tonistiigi/binfmt --install ${{ matrix.arch }}
+
+    - name: Run the tests on ${{ matrix.arch }}
+      env:
+        ARCH: ${{ matrix.arch }}
+        TEST_FILTER: ${{ inputs.filter }}
+      run: |
+        # The bytes 01 00 read as one 16-bit word: 0100 on a big-endian host, 0001 otherwise.
+        expected=0001
+        if [ "$ARCH" = s390x ]; then expected=0100; fi
+
+        docker run --rm --platform "linux/$ARCH" --user 0 \
+          -e DOTNET_CLI_TELEMETRY_OPTOUT=1 -e DOTNET_NOLOGO=1 \
+          -e TEST_FILTER -e TEST_WORKERS="$(nproc)" -e EXPECTED_ORDER="$expected" \
+          -v "$PWD/artifacts:/artifacts" -w /artifacts \
+          registry.access.redhat.com/ubi9/dotnet-100 \
+          bash -euc '
+            # A run on a host with the wrong byte order would prove nothing.
+            uname -m
+            order=$(printf "\001\000" | od -An -tx2 | tr -d " ")
+            echo "16-bit read of bytes 01 00: $order"
+            [ "$order" = "$EXPECTED_ORDER" ] || { echo "Unexpected byte order."; exit 1; }
+
+            dotnet --info | head -20
+            # The host names any test running longer than 10 minutes; the timeout ends a hang
+            # long before the job limit.
+            timeout 150m dotnet /artifacts/host/TestHost.dll
+          '
+
+  wasm:
+    name: Cryptography tests, browser-wasm (Node.js)
+    if: ${{ !inputs.platforms || inputs.platforms == 'all' || inputs.platforms == 'wasm' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.ref }}
+
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 'lts/*'
+
+    - name: Create the WebAssembly test host
+      run: |
+        dotnet workload install wasm-tools
+        dotnet new install Microsoft.NET.Runtime.WebAssembly.Templates.net10
+        host="$RUNNER_TEMP/test-host"
+        bash .github/mono-test-host/create-host.sh wasmconsole "$host"
+
+        # The template's main.mjs calls an export of the template's Program.cs; just run Main.
+        cat > "$host/main.mjs" <<'EOF'
+        import { dotnet } from './_framework/dotnet.js';
+
+        const exitCode = await dotnet.run();
+        process.exit(exitCode);
+        EOF
+
+        echo "host=$host" >> "$GITHUB_ENV"
+
+    - name: Run the tests on browser-wasm
+      run: dotnet run --project "$host" -c Release

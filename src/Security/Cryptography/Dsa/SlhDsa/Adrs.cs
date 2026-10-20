@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -65,8 +66,7 @@ internal sealed class Adrs
     public void SetTreeAddress(ulong tree)
     {
         WriteWord(4, 0);
-        WriteWord(8, (uint)(tree >> 32));
-        WriteWord(12, (uint)tree);
+        BinaryPrimitives.WriteUInt64BigEndian(_bytes.AsSpan(8), tree);
     }
 
     /// <summary>Sets the address type (word 4) and clears the three type-specific words.</summary>
@@ -110,20 +110,10 @@ internal sealed class Adrs
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private void WriteWord(int offset, uint value)
-    {
-        _bytes[offset] = (byte)(value >> 24);
-        _bytes[offset + 1] = (byte)(value >> 16);
-        _bytes[offset + 2] = (byte)(value >> 8);
-        _bytes[offset + 3] = (byte)value;
-    }
+    private void WriteWord(int offset, uint value) =>
+        BinaryPrimitives.WriteUInt32BigEndian(_bytes.AsSpan(offset), value);
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private uint ReadWord(int offset)
-    {
-        return ((uint)_bytes[offset] << 24)
-             | ((uint)_bytes[offset + 1] << 16)
-             | ((uint)_bytes[offset + 2] << 8)
-             | _bytes[offset + 3];
-    }
+    private uint ReadWord(int offset) =>
+        BinaryPrimitives.ReadUInt32BigEndian(_bytes.AsSpan(offset));
 }

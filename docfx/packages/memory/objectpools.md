@@ -2,21 +2,7 @@
 
 Static helper class for obtaining pooled objects with automatic return to pool.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Pools
-```
-
-## Inheritance
-
-`Object` ? **`ObjectPools`**
-
-## Syntax
-
-```csharp
-public static class ObjectPools
-```
+**Namespace:** `CryptoHives.Foundation.Memory.Pools` · [API reference](xref:CryptoHives.Foundation.Memory.Pools.ObjectPools)
 
 ## Overview
 
@@ -100,7 +86,6 @@ public string FormatMessage(string name, string email)
 }
 ```
 
-
 ## Configuration
 
 The shared `StringBuilder` pool uses the following default settings:
@@ -123,7 +108,7 @@ The shared `StringBuilder` pool uses the following default settings:
 
 ## Best Practices
 
-### DO: Use for Temporary String Building
+### Use for temporary string building
 
 ```csharp
 // Good: Temporary string construction
@@ -133,7 +118,7 @@ sb.Append("Temporary data");
 return sb.ToString();
 ```
 
-### DO: Use in Loops
+### Use in loops
 
 ```csharp
 // Good: Reusing pool across iterations
@@ -149,7 +134,7 @@ for (int i = 0; i < 1000; i++)
 }
 ```
 
-### DON'T: Use for Single Concatenation
+### Don't use for single concatenation
 
 ```csharp
 // Bad: Overhead not worth it
@@ -160,7 +145,7 @@ string result = owner.PooledObject.Append("Hello").ToString();
 string result = "Hello";
 ```
 
-### DON'T: Use for Long-Lived Instances
+### Don't use for long-lived instances
 
 ```csharp
 // Bad: Holding pooled object too long

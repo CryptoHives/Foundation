@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
@@ -35,6 +35,7 @@ internal static class MLDsaCore
     /// <see langword="true"/> to verify the generated key pair with a sign/verify round trip;
     /// <see langword="false"/> to skip it.
     /// </param>
+    [SkipLocalsInit]
     public static void KeyGen(MLDsaParams p, ReadOnlySpan<byte> xi, Span<byte> pk, Span<byte> sk,
                               bool pairwiseConsistencyTest)
     {
@@ -110,6 +111,7 @@ internal static class MLDsaCore
     /// as expected by FIPS 140-3 for signature key generation.
     /// </summary>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
+    [SkipLocalsInit]
     private static void PairwiseConsistencyTest(MLDsaParams p, ReadOnlySpan<byte> xi,
                                                 ReadOnlySpan<byte> pk, ReadOnlySpan<byte> sk)
     {
@@ -126,6 +128,7 @@ internal static class MLDsaCore
 
         // rnd = 0³² — the round trip is deterministic, so it cannot fail intermittently.
         Span<byte> rnd = stackalloc byte[MLDsaParams.SignSeedBytes];
+        rnd.Clear();
 
         byte[] signature = new byte[p.SignatureBytes];
         Sign(p, sk, ReadOnlySpan<byte>.Empty, message, rnd, signature);
@@ -166,6 +169,7 @@ internal static class MLDsaCore
     /// <param name="message">The message M.</param>
     /// <param name="rnd">The 32-byte signing randomness (all-zero for deterministic signing).</param>
     /// <param name="signature">Output: the signature.</param>
+    [SkipLocalsInit]
     public static void Sign(MLDsaParams p, ReadOnlySpan<byte> sk, ReadOnlySpan<byte> prefix,
                             ReadOnlySpan<byte> message, ReadOnlySpan<byte> rnd, Span<byte> signature)
     {
@@ -313,6 +317,7 @@ internal static class MLDsaCore
     /// <param name="message">The message M.</param>
     /// <param name="signature">The signature to verify.</param>
     /// <returns>True when the signature is valid.</returns>
+    [SkipLocalsInit]
     public static bool Verify(MLDsaParams p, ReadOnlySpan<byte> pk, ReadOnlySpan<byte> prefix,
                               ReadOnlySpan<byte> message, ReadOnlySpan<byte> signature)
     {

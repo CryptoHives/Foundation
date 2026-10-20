@@ -9,9 +9,9 @@ ones verbatim. Keeping the upstream shape means MLKemAcvpVectors reads real ACVP
 JSON rather than a bespoke file format.
 
 The output is gzipped because the vectors run to megabytes of hex -- ML-KEM-1024
-alone carries roughly 9.6 KB per key generation case. Compression is
-deterministic (mtime zeroed), so regenerating unchanged vectors produces a
-byte-identical file rather than a spurious diff.
+alone carries roughly 9.6 KB per key generation case. The JSON is
+deterministic, so regenerating unchanged vectors reproduces it exactly; the gzip
+bytes are stable only on the same zlib build, so compare the decompressed content.
 
 Source (public, no authentication):
   https://github.com/usnistgov/ACVP-Server

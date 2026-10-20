@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -80,8 +80,8 @@ public sealed class ChaCha20 : SymmetricCipher
         _simdSupport = simdSupport & ChaChaCore.SimdSupport;
         BlockSizeValue = ChaChaCore.BlockSizeBytes * 8;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0)];
-        LegalBlockSizesValue = [new OS.KeySizes(512, 512, 0)];
+        LegalKeySizesValue = LegalSizes.Bits256;
+        LegalBlockSizesValue = LegalSizes.Bits512;
         Mode = CipherMode.Stream;
         Padding = PaddingMode.None;
     }

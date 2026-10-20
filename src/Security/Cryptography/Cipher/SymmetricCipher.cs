@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -192,6 +192,8 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
     /// </summary>
     protected SymmetricCipher()
     {
+        // CFB8, the in-box default.
+        FeedbackSizeValue = 8;
     }
 
     /// <summary>
@@ -325,20 +327,20 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
     /// <returns>The required output buffer size in bytes.</returns>
     protected virtual int CalculateOutputSize(int inputLength, bool encrypting)
     {
-        if (Mode is CipherMode.Stream or CipherMode.CTR or CipherMode.GCM or CipherMode.CCM)
+        if (Mode is CipherMode.Stream or CipherMode.CTR or CipherMode.OFB or CipherMode.GCM or CipherMode.CCM)
         {
             return encrypting ? inputLength + TagSize : inputLength - TagSize;
         }
 
-        if (Padding == PaddingMode.None)
+        if (Mode == CipherMode.CTS || Padding == PaddingMode.None)
         {
             return inputLength;
         }
 
-        int blockSizeBytes = BlockSize / 8;
+        int unitBytes = Mode == CipherMode.CFB ? FeedbackSize / 8 : BlockSize / 8;
         if (encrypting)
         {
-            return ((inputLength / blockSizeBytes) + 1) * blockSizeBytes;
+            return ((inputLength / unitBytes) + 1) * unitBytes;
         }
         else
         {
@@ -353,7 +355,8 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
     /// <exception cref="OS.CryptographicException">The key size is invalid.</exception>
     protected void ValidateKeySize(int bitLength)
     {
-        foreach (var sizes in LegalKeySizes)
+        // The field rather than LegalKeySizes, whose getter allocates a clone on every call.
+        foreach (var sizes in LegalKeySizesValue!)
         {
             if (bitLength >= sizes.MinSize && bitLength <= sizes.MaxSize)
             {

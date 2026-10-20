@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -416,6 +416,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Processes a complete 64-byte message block.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> m)
     {
@@ -435,6 +436,7 @@ public sealed class Streebog : HashAlgorithm
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
@@ -555,6 +557,7 @@ public sealed class Streebog : HashAlgorithm
     /// The g_N compression function: h = h ^ E(h ^ N, m) ^ m
     /// Uses Miyaguchi-Preneel construction.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GN(ulong[] h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
     {
@@ -579,6 +582,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// The E function: 12-round block cipher with key schedule.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, Span<ulong> result)
     {
@@ -635,7 +639,16 @@ public sealed class Streebog : HashAlgorithm
         ref ulong t6 = ref MemoryMarshalEx.GetArrayDataReference(T6);
         ref ulong t7 = ref MemoryMarshalEx.GetArrayDataReference(T7);
 
-        // Convert ulong span to byte span for table lookups
+        // The lookups index the state's little-endian bytes. Every word is overwritten below,
+        // so a big-endian host can swap in place.
+        if (!BitConverter.IsLittleEndian)
+        {
+            for (int i = 0; i < BlockSizeWords; i++)
+            {
+                data[i] = BinaryPrimitives.ReverseEndianness(data[i]);
+            }
+        }
+
         Span<byte> d = MemoryMarshal.AsBytes(data);
 
         // Compute all 8 rows using lookup tables with hardcoded Tau indices
@@ -663,6 +676,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Combined LPS transformation for byte spans (used by test compatibility).
     /// </summary>
+    [SkipLocalsInit]
     internal static void ApplyLPS(Span<byte> data)
     {
         // The T-tables are static readonly ulong[256] and every subscript below is a byte,
@@ -715,32 +729,59 @@ public sealed class Streebog : HashAlgorithm
             ulong sum = Unsafe.Add(ref rc, 0) + (ulong)bits;
             ulong carry = sum < Unsafe.Add(ref rc, 0) ? 1UL : 0UL;
             Unsafe.Add(ref rc, 0) = sum;
-            if (carry == 0) return;
+            if (carry == 0)
+            {
+                return;
+            }
 
             sum = Unsafe.Add(ref rc, 1) + carry;
             carry = sum < Unsafe.Add(ref rc, 1) ? 1UL : 0UL;
             Unsafe.Add(ref rc, 1) = sum;
-            if (carry == 0) return;
+            if (carry == 0)
+            {
+                return;
+            }
+
             sum = Unsafe.Add(ref rc, 2) + carry;
             carry = sum < Unsafe.Add(ref rc, 2) ? 1UL : 0UL;
             Unsafe.Add(ref rc, 2) = sum;
-            if (carry == 0) return;
+            if (carry == 0)
+            {
+                return;
+            }
+
             sum = Unsafe.Add(ref rc, 3) + carry;
             carry = sum < Unsafe.Add(ref rc, 3) ? 1UL : 0UL;
             Unsafe.Add(ref rc, 3) = sum;
-            if (carry == 0) return;
+            if (carry == 0)
+            {
+                return;
+            }
+
             sum = Unsafe.Add(ref rc, 4) + carry;
             carry = sum < Unsafe.Add(ref rc, 4) ? 1UL : 0UL;
             Unsafe.Add(ref rc, 4) = sum;
-            if (carry == 0) return;
+            if (carry == 0)
+            {
+                return;
+            }
+
             sum = Unsafe.Add(ref rc, 5) + carry;
             carry = sum < Unsafe.Add(ref rc, 5) ? 1UL : 0UL;
             Unsafe.Add(ref rc, 5) = sum;
-            if (carry == 0) return;
+            if (carry == 0)
+            {
+                return;
+            }
+
             sum = Unsafe.Add(ref rc, 6) + carry;
             carry = sum < Unsafe.Add(ref rc, 6) ? 1UL : 0UL;
             Unsafe.Add(ref rc, 6) = sum;
-            if (carry == 0) return;
+            if (carry == 0)
+            {
+                return;
+            }
+
             Unsafe.Add(ref rc, 7) += carry;
         }
     }

@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -36,8 +36,8 @@ public sealed class Kalyna512 : SymmetricCipher
     {
         BlockSizeValue = BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new OS.KeySizes(256, 256, 0), new OS.KeySizes(512, 512, 0)];
-        LegalBlockSizesValue = [new OS.KeySizes(BlockSizeBits, BlockSizeBits, 0)];
+        LegalKeySizesValue = LegalSizes.Bits256Or512;
+        LegalBlockSizesValue = LegalSizes.Bits256;
     }
 
     /// <inheritdoc/>
@@ -68,13 +68,13 @@ public sealed class Kalyna512 : SymmetricCipher
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new KalynaCipherTransform(key, iv, encrypting: true, Mode, Padding, BlockSizeBytes);
+        return new KalynaCipherTransform(key, iv, encrypting: true, Mode, Padding, FeedbackSize / 8, BlockSizeBytes);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new KalynaCipherTransform(key, iv, encrypting: false, Mode, Padding, BlockSizeBytes);
+        return new KalynaCipherTransform(key, iv, encrypting: false, Mode, Padding, FeedbackSize / 8, BlockSizeBytes);
     }
 }

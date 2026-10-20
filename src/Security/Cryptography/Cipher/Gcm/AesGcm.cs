@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 #if NET8_0_OR_GREATER
 using System.Runtime.InteropServices;
@@ -91,6 +92,7 @@ public abstract class AesGcm : IAeadCipher
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Encrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
         Span<byte> ciphertext, Span<byte> tag,
@@ -112,7 +114,7 @@ public abstract class AesGcm : IAeadCipher
         // Compute initial counter for encryption (J0 + 1)
         Span<byte> icb = stackalloc byte[GcmCore.BlockSizeBytes];
         j0.CopyTo(icb);
-        IncrementCounter(icb);
+        GcmCore.IncrementCounter(icb);
 
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GEncryptDispatch(icb, associatedData, plaintext, ciphertext, ghash);
@@ -124,10 +126,14 @@ public abstract class AesGcm : IAeadCipher
         // Write the fixed-size tag; larger caller-supplied buffers are left
         // untouched beyond TagSizeBytes (tag.Length >= TagSizeBytes is guaranteed above).
         fullTag.CopyTo(tag);
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
     }
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool Decrypt(
         ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
         ReadOnlySpan<byte> tag, Span<byte> plaintext,
@@ -149,14 +155,19 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
         Span<byte> icb = stackalloc byte[GcmCore.BlockSizeBytes];
         j0.CopyTo(icb);
-        IncrementCounter(icb);
+        GcmCore.IncrementCounter(icb);
 
         _gcmCore.GDecryptDispatch(icb, associatedData, ciphertext, plaintext, ghash);
 
         Span<byte> expectedTag = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
-        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length)))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length));
+        CryptographicOperations.ZeroMemory(j0);
+        CryptographicOperations.ZeroMemory(icb);
+        CryptographicOperations.ZeroMemory(ghash);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;
@@ -223,14 +234,4 @@ public abstract class AesGcm : IAeadCipher
             _disposed = true;
         }
     }
-
-    private static void IncrementCounter(Span<byte> counter)
-    {
-        for (int i = 15; i >= 12; i--)
-        {
-            if (++counter[i] != 0)
-                break;
-        }
-    }
-
 }

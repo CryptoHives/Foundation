@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// The SLH-DSA hypertree: a d-layer tree of XMSS trees (FIPS 205 §7, Algorithms 12/13).
@@ -22,6 +23,7 @@ internal static class Hypertree
     /// <param name="idxTree">The tree index at the bottom layer.</param>
     /// <param name="idxLeaf">The leaf index within the bottom tree.</param>
     /// <param name="signature">Output: (h + d·len)·n bytes.</param>
+    [SkipLocalsInit]
     public static void Sign(SlhDsaHash hash, SlhDsaParams p, ReadOnlySpan<byte> message,
                             ReadOnlySpan<byte> skSeed, ulong idxTree, int idxLeaf, Span<byte> signature)
     {
@@ -68,6 +70,7 @@ internal static class Hypertree
     /// <param name="idxLeaf">The leaf index within the bottom tree.</param>
     /// <param name="pkRoot">The public key root PK.root.</param>
     /// <returns>True when the recomputed root matches PK.root.</returns>
+    [SkipLocalsInit]
     public static bool Verify(SlhDsaHash hash, SlhDsaParams p, ReadOnlySpan<byte> message,
                               ReadOnlySpan<byte> signature, ulong idxTree, int idxLeaf, ReadOnlySpan<byte> pkRoot)
     {

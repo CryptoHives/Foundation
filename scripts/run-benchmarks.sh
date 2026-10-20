@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # Helper shell script to run the PowerShell benchmark runner on Unix-like systems.
 # Usage: ./scripts/run-benchmarks.sh [options]

@@ -1,10 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
@@ -209,6 +210,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
         Initialize();
     }
 
+    [SkipLocalsInit]
     private void AbsorbBytePad()
     {
         byte[] encodedN = _encodedFunctionName;
@@ -223,7 +225,6 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
         int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        // Create a padded buffer
         int paddedLength = totalLen + padLen;
         byte[]? pooledBuffer = null;
         Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
@@ -241,6 +242,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
 
             encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
             offset += encodedS.Length;
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             // Absorb the bytepad data
             for (int i = 0; i < paddedLength; i += RateBytes)

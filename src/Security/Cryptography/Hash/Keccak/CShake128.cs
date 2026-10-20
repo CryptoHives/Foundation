@@ -1,11 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
-using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
@@ -213,6 +213,7 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
         Initialize();
     }
 
+    [SkipLocalsInit]
     private void AbsorbBytePad()
     {
         // bytepad(encode_string(N) || encode_string(S), rate)
@@ -229,7 +230,6 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
         int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        // Create a padded buffer
         int paddedLength = totalLen + padLen;
         byte[]? pooledBuffer = null;
         Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
@@ -246,6 +246,7 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
             offset += encodedN.Length;
 
             encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             // Absorb the bytepad data
             for (int i = 0; i < paddedLength; i += RateBytes)
@@ -276,6 +277,7 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
     /// </summary>
     /// <param name="s">The byte string to encode.</param>
     /// <returns>The encoded byte string.</returns>
+    [SkipLocalsInit]
     internal static byte[] EncodeString(byte[] s)
     {
         // Length in bits - use long to avoid overflow
@@ -315,15 +317,10 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
             return true;
         }
 
-        Span<byte> tempBytes = stackalloc byte[8];
-        BinaryPrimitives.WriteInt64BigEndian(tempBytes, x);
-
-        // Count how many bytes we need
         byte n = 0;
-        while (x > 0)
+        for (long t = x; t > 0; t >>= 8)
         {
             n++;
-            x >>= 8;
         }
 
         if (destination.Length < n + 1)
@@ -332,7 +329,8 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
             return false;
         }
 
-        tempBytes.Slice(sizeof(long) - n, n).CopyTo(destination.Slice(1));
+        // Shifted so the n significant bytes lead the big-endian encoding.
+        BinaryStore.WriteUInt64BigEndianTruncated((ulong)x << ((sizeof(long) - n) * 8), destination.Slice(1, n));
 
         // Write the length byte
         destination[0] = n;
@@ -365,15 +363,10 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
             return true;
         }
 
-        Span<byte> tempBytes = stackalloc byte[8];
-        BinaryPrimitives.WriteInt64BigEndian(tempBytes, x);
-
-        // Count how many bytes we need
         byte n = 0;
-        while (x > 0)
+        for (long t = x; t > 0; t >>= 8)
         {
             n++;
-            x >>= 8;
         }
 
         if (destination.Length < n + 1)
@@ -382,7 +375,8 @@ public sealed class CShake128 : KeccakCore, IExtendableOutput
             return false;
         }
 
-        tempBytes.Slice(sizeof(long) - n, n).CopyTo(destination);
+        // Shifted so the n significant bytes lead the big-endian encoding.
+        BinaryStore.WriteUInt64BigEndianTruncated((ulong)x << ((sizeof(long) - n) * 8), destination.Slice(0, n));
 
         // Write the length byte
         destination[n] = n;

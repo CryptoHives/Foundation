@@ -1,11 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
@@ -135,6 +136,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Squeeze(Span<byte> output)
     {
         if (_disposed) throw new ObjectDisposedException(GetType().Name);
@@ -190,6 +192,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         base.Dispose(disposing);
     }
 
+    [SkipLocalsInit]
     private void AbsorbCShakePreamble()
     {
         // bytepad(encode_string(N) || encode_string(S), rate) where N = "KMAC"
@@ -204,7 +207,6 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        // Create a padded buffer
         int paddedLength = totalLen + padLen;
         byte[]? pooledBuffer = null;
         Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
@@ -221,6 +223,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
             offset += encodedN.Length;
 
             encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             for (int i = 0; i < paddedLength; i += _rateBytes)
             {
@@ -238,6 +241,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         }
     }
 
+    [SkipLocalsInit]
     private void AbsorbKeyPad()
     {
         // bytepad(encode_string(K), rate)
@@ -251,7 +255,6 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
         int totalLen = leftEncodedBytes + encodedK.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        // Create a padded buffer
         int paddedLength = totalLen + padLen;
         byte[]? pooledBuffer = null;
         Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
@@ -265,6 +268,7 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
             offset += leftEncodedBytes;
 
             encodedK.AsSpan(0, encodedK.Length).CopyTo(paddedBuffer.Slice(offset));
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             for (int i = 0; i < paddedLength; i += _rateBytes)
             {
@@ -277,6 +281,10 @@ public abstract class KeccakKMacCore : KeccakCore, IExtendableOutput
             {
                 // Cleared on return: this buffer held encode_string(K), the raw MAC key.
                 ArrayPool<byte>.Shared.Return(pooledBuffer, clearArray: true);
+            }
+            else
+            {
+                CryptographicOperations.ZeroMemory(paddedBuffer);
             }
         }
     }

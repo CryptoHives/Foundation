@@ -93,6 +93,8 @@ using CryptoHives.Foundation.Threading.Pools;
 
 Not every primitive here beats its popular-library equivalent in every scenario — most of the time it does, but there are exceptions. `AsyncManualResetEvent`, for instance, pays for one `IValueTaskSource` per waiter because a single `ValueTask` can't be awaited by more than one caller. A `Task`-based implementation can let every waiter share the same underlying `Task`/`TaskCompletionSource` instead.
 
+The benchmarks measure each primitive against the BCL and the async libraries people actually use — Nito.AsyncEx, ProtoPromise, Microsoft.VisualStudio.Threading, NeoSmart.AsyncLock, DotNext.Threading (net10.0 only), and the keyed-lock libraries `AsyncKeyedLock`, `KeyedSemaphores`, `Dao.IndividualLock` and `AsyncUtilities` — wherever a comparable primitive exists.
+
 See the [Benchmarks overview](benchmarks.md) for numbers. A local run writes its reports to `tests/Threading/BenchmarkDotNet.Artifacts/results/`; recorded runs are archived on the `benchmarks` branch, which is what the published dashboard is built from.
 
 ## Quick Examples

@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -242,6 +242,7 @@ public sealed class MD5 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < HashSizeBytes)

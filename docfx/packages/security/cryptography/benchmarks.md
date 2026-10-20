@@ -95,7 +95,7 @@ message length; a *+* marks state that also depends on a customization string.
 >| Row | What it measures |
 >|---|---|
 >| `Blake3.Managed` | its default one-shot API — multi-threaded above ~72 KiB |
->| `Blake3.Managed (1 thread)` | the same API with `Hasher.MaxDegreeOfParallelism = 1` |
+>| `Blake3.Managed-Serial` | the same API with `Hasher.MaxDegreeOfParallelism = 1` |
 
 ### Cipher Algorithms
 

@@ -2,17 +2,7 @@
 
 A pooled per-key async exclusive lock. Operations on different keys run fully concurrently; operations on the same key are serialized.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Threading.Async.Pooled
-```
-
-## Syntax
-
-```csharp
-public sealed class AsyncKeyedLock<TKey> where TKey : notnull
-```
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncKeyedLock%601)
 
 ## Overview
 
@@ -177,7 +167,7 @@ See [Benchmarks](benchmarks.md) for the full reports and [Benchmark Trends](benc
 
 ## Best Practices
 
-### DO: Use the using pattern and await the result directly
+### Use the using pattern and await the result directly
 
 ```csharp
 using (await _locks.LockAsync(key).ConfigureAwait(false))
@@ -186,15 +176,15 @@ using (await _locks.LockAsync(key).ConfigureAwait(false))
 }
 ```
 
-### DO: Size the caches to the workload
+### Size the caches to the workload
 
 Set `maxIdleEntries` to the set of keys hot at one time, and `maxRetainedWaiters` to the peak number of waiters queued at one time. The defaults suit a few hundred keys with modest contention.
 
-### DO: Use `TryLock` when a missed acquisition is acceptable
+### Use `TryLock` when a missed acquisition is acceptable
 
 It never waits and never allocates, which makes it well suited to opportunistic work that can be skipped or retried later.
 
-### DON'T: Create a new lock instance per operation
+### Don't create a new lock instance per operation
 
 ```csharp
 // WRONG - each call gets its own registry, so nothing is actually serialized
@@ -207,7 +197,7 @@ public async Task ProcessAsync(string key)
 
 Hold one instance for the lifetime of the component that owns the resource.
 
-### DON'T: Re-enter the same key
+### Don't re-enter the same key
 
 ```csharp
 // WRONG - deadlocks; the lock is not recursive
@@ -217,7 +207,7 @@ using (await _locks.LockAsync(key).ConfigureAwait(false))
 }
 ```
 
-### DON'T: Hold a key across long-running work
+### Don't hold a key across long-running work
 
 The critical section should be short. Holding a key across a network call serializes every caller of that key for the duration.
 

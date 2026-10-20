@@ -1,5 +1,5 @@
 -- SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: MIT OR Apache-2.0
 --
 -- Schema for the benchmark trend-history database.
 --
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     class_name      TEXT    NOT NULL,  -- e.g. 'Blake3Benchmark'
     method          TEXT    NOT NULL,  -- e.g. 'TryComputeHash', 'ComputeMac'
     family          TEXT    NOT NULL,  -- e.g. 'BLAKE3', 'HMAC-SHA256'
-    variant         TEXT    NOT NULL,  -- e.g. 'CryptoHives-AVX512F', 'BouncyCastle', 'OS'
+    variant         TEXT    NOT NULL,  -- e.g. 'CryptoHives-Avx512F', 'BouncyCastle', 'OS'
     -- The target framework the row executed on, e.g. 'net10.0', 'net8.0', 'net462'. Part of the
     -- primary key: the same commit measured on the same machine under two frameworks is two
     -- distinct results, and without this the second silently overwrites the first. NOT NULL and
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS benchmark_runs (
     branch          TEXT,
     bdn_version     TEXT,           -- e.g. '0.15.8'
     os              TEXT,           -- e.g. 'Windows 10 (10.0.19045.6456/22H2/2022Update)'
-    cpu             TEXT,           -- e.g. 'Intel Xeon CPU E3-1240 v5 3.50GHz'
+    cpu             TEXT,           -- e.g. 'AMD Ryzen 5 7600X 4.70GHz'
     logical_cores   INTEGER,
     physical_cores  INTEGER,
     sdk_version     TEXT,           -- e.g. '10.0.102'

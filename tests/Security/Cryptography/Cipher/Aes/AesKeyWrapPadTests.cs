@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Cipher.Aes;
 
@@ -169,6 +169,9 @@ public class AesKeyWrapPadTests
     [TestCase(24, Description = "24 bytes — three full semiblocks")]
     [TestCase(32, Description = "32 bytes — four full semiblocks")]
     [TestCase(255, Description = "255 bytes — large key")]
+    [TestCase(504, Description = "504 bytes — largest wrapped key unwrapped on the stack")]
+    [TestCase(505, Description = "505 bytes — first wrapped key unwrapped in a pooled buffer")]
+    [TestCase(4000, Description = "4000 bytes — pooled buffer")]
     public void KwpRoundTrip(int keyLength)
     {
         byte[] kek = FromHex("000102030405060708090A0B0C0D0E0F");
@@ -187,6 +190,9 @@ public class AesKeyWrapPadTests
     [TestCase(24, Description = "24 bytes — three semiblocks")]
     [TestCase(32, Description = "32 bytes — four semiblocks")]
     [TestCase(256, Description = "256 bytes — large key")]
+    [TestCase(504, Description = "504 bytes — largest wrapped key unwrapped on the stack")]
+    [TestCase(512, Description = "512 bytes — first wrapped key unwrapped in a pooled buffer")]
+    [TestCase(4000, Description = "4000 bytes — pooled buffer")]
     public void KwRoundTrip(int keyLength)
     {
         byte[] kek = FromHex("000102030405060708090A0B0C0D0E0F1011121314151617");

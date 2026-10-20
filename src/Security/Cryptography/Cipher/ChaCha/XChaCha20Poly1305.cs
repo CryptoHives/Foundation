@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -164,10 +164,14 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         // Compute Poly1305 MAC over AAD and ciphertext
         Poly1305Core.ComputeAeadTag(poly1305Key.Slice(0, Poly1305Core.KeySizeBytes),
             associatedData, ciphertext.Slice(0, plaintext.Length), tag);
+
+        CryptographicOperations.ZeroMemory(poly1305Key);
+        CryptographicOperations.ZeroMemory(subkey);
     }
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool Decrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,
@@ -201,16 +205,21 @@ public sealed class XChaCha20Poly1305 : IAeadCipher
         Span<byte> computedTag = stackalloc byte[TagSizeBytesConst];
         Poly1305Core.ComputeAeadTag(poly1305Key.Slice(0, Poly1305Core.KeySizeBytes),
                                      associatedData, ciphertext, computedTag);
+        CryptographicOperations.ZeroMemory(poly1305Key);
 
         // Constant-time comparison
-        if (!CryptographicOperations.FixedTimeEquals(tag, computedTag))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, computedTag);
+        CryptographicOperations.ZeroMemory(computedTag);
+        if (!authentic)
         {
+            CryptographicOperations.ZeroMemory(subkey);
             plaintext.Clear();
             return false;
         }
 
         // Decrypt ciphertext with ChaCha20 (starting from counter = 1)
         _chaChaCore.Transform(subkey, chacha20Nonce, 1, ciphertext, plaintext);
+        CryptographicOperations.ZeroMemory(subkey);
         return true;
     }
 

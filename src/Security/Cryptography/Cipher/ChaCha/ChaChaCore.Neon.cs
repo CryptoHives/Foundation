@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -149,6 +149,8 @@ internal readonly partial struct ChaChaCore
                 {
                     Unsafe.Add(ref pOutRef, i) = (byte)(Unsafe.Add(ref pInRef, i) ^ Unsafe.Add(ref pKsRef, i));
                 }
+
+                CryptographicOperations.ZeroMemory(ks);
             }
 
             offset += BlockSizeBytes;

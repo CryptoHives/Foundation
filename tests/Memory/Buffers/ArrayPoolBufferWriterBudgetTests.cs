@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Memory.Tests.Buffers;
 
@@ -23,10 +23,14 @@ using System.Runtime.InteropServices;
 [Parallelizable(ParallelScope.All)]
 public class ArrayPoolBufferWriterBudgetTests
 {
-    /// <summary>The threshold at which the runtime allocates on the large object heap.</summary>
+    /// <summary>
+    /// The threshold at which the runtime allocates on the large object heap.
+    /// </summary>
     private const int LargeObjectHeapThreshold = 85_000;
 
-    /// <summary>A deliberately awkward width: 12 bytes does not divide 64 KiB into a power of two.</summary>
+    /// <summary>
+    /// A deliberately awkward width: 12 bytes does not divide 64 KiB into a power of two.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     private struct Awkward
     {
@@ -44,11 +48,11 @@ public class ArrayPoolBufferWriterBudgetTests
         public Guid D;
     }
 
-    /// <summary>Rents the largest chunk a writer will hand out, in elements.</summary>
-    private static int LargestChunk<T>()
+    /// <summary>
+    /// Rents the largest chunk a writer will hand out, in elements.
+    /// </summary>
+    private static int LargestChunk<T>(ArrayPoolBufferWriter<T> writer)
     {
-        using var writer = new ArrayPoolBufferWriter<T>();
-
         // Ramp to the ceiling: each new chunk doubles until it stops growing.
         int largest = 0;
         for (int i = 0; i < 64; i++)
@@ -78,11 +82,9 @@ public class ArrayPoolBufferWriterBudgetTests
 
         using var writer = new ArrayPoolBufferWriter<byte>();
 
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(writer.GetSpan(1).Length, Is.EqualTo(256), "first chunk");
-            Assert.That(LargestChunk<byte>(), Is.EqualTo(65_536), "ceiling");
-        }
+        // order must be maintained: the first chunk is the default, and the largest chunk is the ceiling.
+        Assert.That(writer.GetSpan(1).Length, Is.EqualTo(256), "first chunk");
+        Assert.That(LargestChunk(writer), Is.EqualTo(65_536), "ceiling");
     }
 
     [Test]
@@ -123,7 +125,9 @@ public class ArrayPoolBufferWriterBudgetTests
         static void AssertCeilingOffTheLoh<T>()
         {
             int elementSize = Unsafe.SizeOf<T>();
-            long bytes = (long)LargestChunk<T>() * elementSize;
+
+            using var writer = new ArrayPoolBufferWriter<T>();
+            long bytes = (long)LargestChunk(writer) * elementSize;
 
             using (Assert.EnterMultipleScope())
             {
@@ -151,7 +155,8 @@ public class ArrayPoolBufferWriterBudgetTests
 
         static void AssertPowerOfTwo<T>()
         {
-            int largest = LargestChunk<T>();
+            using var writer = new ArrayPoolBufferWriter<T>();
+            int largest = LargestChunk(writer);
             Assert.That(largest & (largest - 1), Is.Zero,
                 $"{typeof(T).Name} chunk of {largest} elements is not a power of two");
         }

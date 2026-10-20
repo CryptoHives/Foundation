@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -95,7 +95,8 @@ internal static class CamelliaCore
     private static readonly ulong[] _sp7;
     private static readonly ulong[] _sp8;
 
-    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "All 8 SP tables share a single 256-iteration initialization loop for efficiency.")]
+    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline",
+        Justification = "All 8 SP tables share a single 256-iteration initialization loop for efficiency.")]
     static CamelliaCore()
     {
         _sp1 = new ulong[256];

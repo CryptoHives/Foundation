@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Hash.Blake;
 
@@ -141,6 +141,25 @@ public class Blake2bTests
 
         Assert.That(hash32, Has.Length.EqualTo(32));
         Assert.That(hash64, Has.Length.EqualTo(64));
+    }
+
+    /// <summary>
+    /// Every output size agrees with BouncyCastle, including those that end partway through a
+    /// state word.
+    /// </summary>
+    /// <param name="outputBytes">The digest size in bytes.</param>
+    [Test]
+    public void EveryOutputSizeMatchesBouncyCastle([Range(1, 64)] int outputBytes)
+    {
+        byte[] input = SequentialBytes(200);
+
+        var bc = new Org.BouncyCastle.Crypto.Digests.Blake2bDigest(outputBytes * 8);
+        bc.BlockUpdate(input, 0, input.Length);
+        byte[] expected = new byte[outputBytes];
+        bc.DoFinal(expected, 0);
+
+        using var blake2b = Blake2b.Create(outputBytes);
+        Assert.That(blake2b.ComputeHash(input), Is.EqualTo(expected));
     }
 
     /// <summary>

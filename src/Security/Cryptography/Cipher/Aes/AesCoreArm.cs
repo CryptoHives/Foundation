@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -48,6 +48,7 @@ internal static class AesCoreArm
     /// <param name="key">The cipher key (16, 24, or 32 bytes).</param>
     /// <param name="roundKeys">Output buffer for round keys as <see cref="Vector128{T}"/>.</param>
     /// <returns>The number of rounds (10, 12, or 14).</returns>
+    [SkipLocalsInit]
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<Vector128<byte>> roundKeys)
     {
         int nr = key.Length switch {
@@ -74,6 +75,8 @@ internal static class AesCoreArm
             roundKeys[i] = Vector128.Create(temp);
         }
 
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(scalarKeys));
+        CryptographicOperations.ZeroMemory(temp);
         return nr;
     }
 

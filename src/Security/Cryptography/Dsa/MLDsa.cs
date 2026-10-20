@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -24,10 +25,7 @@ using OS = System.Security.Cryptography;
 /// private key cannot export a seed. Private key material is zeroed when the instance is disposed.
 /// </para>
 /// <para>
-/// The FIPS 204 pre-hash variants (<c>SignPreHash</c>/<c>VerifyPreHash</c>), external-μ signing
-/// (<c>SignMu</c>/<c>VerifyMu</c>), and the PKCS#8/SPKI/PEM key formats are deliberately not
-/// implemented yet — they are planned as one batch once the post-quantum algorithm set is
-/// complete, so that ML-KEM and ML-DSA gain them together.
+/// External-μ signing (<c>SignMu</c>/<c>VerifyMu</c>) is not implemented.
 /// </para>
 /// <para>
 /// <b>Example usage:</b>
@@ -413,6 +411,7 @@ public sealed partial class MLDsa : IDisposable
     /// <exception cref="ArgumentException">A parameter has an invalid size, or the OID is not an approved pre-hash function.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    [SkipLocalsInit]
     public void SignPreHash(ReadOnlySpan<byte> hash, Span<byte> destination, string hashAlgorithmOid,
                             ReadOnlySpan<byte> context = default)
     {
@@ -468,6 +467,7 @@ public sealed partial class MLDsa : IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="hashAlgorithmOid"/> is null.</exception>
     /// <exception cref="ArgumentException">The OID is not approved, the digest length does not match it, or <paramref name="context"/> is longer than 255 bytes.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool VerifyPreHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature, string hashAlgorithmOid,
                               ReadOnlySpan<byte> context = default)
     {
@@ -604,6 +604,7 @@ public sealed partial class MLDsa : IDisposable
         return new MLDsa(algorithm, seed, secretKey, publicKey);
     }
 
+    [SkipLocalsInit]
     private static byte[] ReconstructPublicKey(MLDsaParams p, ReadOnlySpan<byte> sk)
     {
         Span<byte> rho = stackalloc byte[32];

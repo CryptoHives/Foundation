@@ -31,6 +31,10 @@ Use these when an `await` must happen inside a critical section, or to remove
 | `Dictionary<TKey, SemaphoreSlim>` / one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other. Not reentrant. |
 | `AsyncKeyedLock` (third-party), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify no reentrancy. |
+| `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | Replace the explicit `Release()` with disposing the `Releaser`. |
+| `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern. |
+| `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | Same-named type | |
+| `DotNext.Threading.AsyncExchanger<T>` | `AsyncExchange<T>` | |
 
 ---
 
@@ -42,6 +46,7 @@ sealed class AsyncLock {
     AsyncLock();
     ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default);
     ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryLock(out Releaser releaser);   // never waits, never allocates; on false, never dispose the default releaser
     bool IsTaken { get; }
     readonly struct Releaser : IDisposable, IAsyncDisposable; // Dispose() releases the lock
 }
@@ -72,10 +77,12 @@ sealed class AsyncSemaphore {
 // AsyncManualResetEvent / AsyncAutoResetEvent
 new AsyncManualResetEvent(set: false);           // Set() releases ALL waiters, stays set until Reset()
 new AsyncAutoResetEvent(initialState: false);    // Set() releases ONE waiter, auto-resets
-//   .Set(); .Reset(); ValueTask WaitAsync(CancellationToken); ValueTask WaitAsync(TimeSpan, CancellationToken);
-//   bool TryReset();   // AsyncManualResetEvent/AsyncAutoResetEvent — resets only if currently set
+//   both: .Set(); bool IsSet; ValueTask WaitAsync(CancellationToken); ValueTask WaitAsync(TimeSpan, CancellationToken);
+//   AsyncManualResetEvent only: .Reset();   AsyncAutoResetEvent only: .PulseAll() (releases every current waiter)
 //   bool TryWait();    // AsyncManualResetEvent/AsyncCountdownEvent: non-consuming alias of IsSet
 //                      // AsyncAutoResetEvent: CONSUMES the signal, like a completed WaitAsync()
+//   bool TryReset();   // every primitive: IResettable, for returning an idle instance to a pool —
+//                      // declines (false) while waiters are queued. Not a "reset if set".
 
 // AsyncCountdownEvent
 sealed class AsyncCountdownEvent {
@@ -83,9 +90,13 @@ sealed class AsyncCountdownEvent {
     ValueTask WaitAsync(CancellationToken cancellationToken = default);
     ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
     bool TryWait();               // non-consuming alias of IsSet; never waits, never allocates
-    void Signal(int signalCount = 1);
+    void Signal(); void Signal(int signalCount);
+    ValueTask SignalAndWaitAsync(CancellationToken cancellationToken = default);
+    void AddCount(); void AddCount(int signalCount);
     bool TryAddCount(int signalCount = 1);
+    void Reset(int count = 0);
     bool IsSet { get; }
+    int CurrentCount { get; }
 }
 
 // AsyncReaderWriterLock — using (await rw.ReaderLockAsync(ct)) / (await rw.WriterLockAsync(ct))

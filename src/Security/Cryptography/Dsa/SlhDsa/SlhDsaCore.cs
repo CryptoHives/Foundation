@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -27,6 +28,7 @@ internal static class SlhDsaCore
     /// <param name="pkSeed">The public seed PK.seed (n bytes).</param>
     /// <param name="pk">Output: the 2n-byte public key (PK.seed ‖ PK.root).</param>
     /// <param name="sk">Output: the 4n-byte secret key (SK.seed ‖ SK.prf ‖ PK.seed ‖ PK.root).</param>
+    [SkipLocalsInit]
     public static void KeyGenFromSeeds(SlhDsaParams p, ReadOnlySpan<byte> skSeed, ReadOnlySpan<byte> skPrf,
                                        ReadOnlySpan<byte> pkSeed, Span<byte> pk, Span<byte> sk)
     {
@@ -64,6 +66,7 @@ internal static class SlhDsaCore
     /// million hash invocations and dominates key generation by orders of magnitude.
     /// </remarks>
     /// <exception cref="OS.CryptographicException">The key pair failed the consistency test.</exception>
+    [SkipLocalsInit]
     public static void KeyGen(SlhDsaParams p, Span<byte> pk, Span<byte> sk, bool pairwiseConsistencyTest = true)
     {
         Span<byte> seeds = stackalloc byte[3 * 32];
@@ -102,6 +105,7 @@ internal static class SlhDsaCore
     /// <param name="message">The message M.</param>
     /// <param name="optRand">The n-byte opt_rand: fresh randomness for hedged signing, PK.seed for deterministic signing.</param>
     /// <param name="signature">Output: the signature.</param>
+    [SkipLocalsInit]
     public static void Sign(SlhDsaParams p, ReadOnlySpan<byte> sk, ReadOnlySpan<byte> prefix,
                             ReadOnlySpan<byte> message, ReadOnlySpan<byte> optRand, Span<byte> signature)
     {
@@ -155,6 +159,7 @@ internal static class SlhDsaCore
     /// <param name="message">The message M.</param>
     /// <param name="signature">The signature to verify.</param>
     /// <returns>True when the signature is valid.</returns>
+    [SkipLocalsInit]
     public static bool Verify(SlhDsaParams p, ReadOnlySpan<byte> pk, ReadOnlySpan<byte> prefix,
                               ReadOnlySpan<byte> message, ReadOnlySpan<byte> signature)
     {

@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// ML-KEM-512 Key Encapsulation Mechanism (NIST security category 1).
@@ -115,6 +116,7 @@ public sealed class MLKem512 : IKem
         => GenerateKeyPair(encapsulationKey, decapsulationKey, pairwiseConsistencyTest: true);
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     public void GenerateKeyPair(Span<byte> encapsulationKey, Span<byte> decapsulationKey, bool pairwiseConsistencyTest)
     {
         if (encapsulationKey.Length < EncapsulationKeySizeBytesConst)
@@ -125,6 +127,7 @@ public sealed class MLKem512 : IKem
         Span<byte> seed = stackalloc byte[MLKemParams.KeyGenSeedBytes];
         MLKemCore.GenerateRandomSeed(seed);
         MLKemCore.KeyGen(Params, seed, encapsulationKey, decapsulationKey, pairwiseConsistencyTest);
+        CryptographicOperations.ZeroMemory(seed);
     }
 
     /// <inheritdoc/>
@@ -145,6 +148,7 @@ public sealed class MLKem512 : IKem
     }
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     public void Encapsulate(ReadOnlySpan<byte> encapsulationKey, Span<byte> ciphertext, Span<byte> sharedSecret)
     {
         if (encapsulationKey.Length != EncapsulationKeySizeBytesConst)
@@ -160,6 +164,7 @@ public sealed class MLKem512 : IKem
         Span<byte> m = stackalloc byte[MLKemParams.EncapsSeedBytes];
         MLKemCore.GenerateRandomSeed(m);
         MLKemCore.Encaps(Params, encapsulationKey, m, ciphertext, sharedSecret);
+        CryptographicOperations.ZeroMemory(m);
     }
 
     /// <inheritdoc/>

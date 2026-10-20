@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
+using System.Runtime.CompilerServices;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -243,6 +244,7 @@ public sealed partial class SlhDsa : IDisposable
     /// <exception cref="ArgumentException">A parameter has an invalid size.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    [SkipLocalsInit]
     public void SignData(ReadOnlySpan<byte> data, Span<byte> destination, ReadOnlySpan<byte> context = default)
     {
         ThrowIfDisposed();
@@ -273,6 +275,7 @@ public sealed partial class SlhDsa : IDisposable
     /// <returns>True when the signature is valid; false for invalid signatures, including malformed lengths.</returns>
     /// <exception cref="ArgumentException"><paramref name="context"/> is longer than 255 bytes.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool VerifyData(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature, ReadOnlySpan<byte> context = default)
     {
         ThrowIfDisposed();
@@ -358,6 +361,7 @@ public sealed partial class SlhDsa : IDisposable
     /// <exception cref="ArgumentException">A parameter has an invalid size, or the OID is not an approved pre-hash function.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
     /// <exception cref="OS.CryptographicException">The instance holds no private key.</exception>
+    [SkipLocalsInit]
     public void SignPreHash(ReadOnlySpan<byte> hash, Span<byte> destination, string hashAlgorithmOid,
                             ReadOnlySpan<byte> context = default)
     {
@@ -414,6 +418,7 @@ public sealed partial class SlhDsa : IDisposable
     /// <exception cref="ArgumentNullException"><paramref name="hashAlgorithmOid"/> is null.</exception>
     /// <exception cref="ArgumentException">The OID is not approved, the digest length does not match it, or <paramref name="context"/> is longer than 255 bytes.</exception>
     /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool VerifyPreHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature, string hashAlgorithmOid,
                               ReadOnlySpan<byte> context = default)
     {

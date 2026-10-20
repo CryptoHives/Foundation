@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography;
 
@@ -26,7 +26,7 @@ internal class BitOperations
 /// <summary>
 /// Just a placeholder to allow use of [SkipLocalsInit] attribute in code targeting frameworks that do not have it.
 /// </summary>
-[AttributeUsage(AttributeTargets.Method)]
+[AttributeUsage(AttributeTargets.Constructor | AttributeTargets.Method)]
 internal sealed class SkipLocalsInitAttribute : Attribute
 {
 }

@@ -1,10 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -18,6 +19,7 @@ internal static class Sampling
     /// <param name="p">The parameter set.</param>
     /// <param name="rho">The 32-byte public seed ρ.</param>
     /// <returns>The matrix Â.</returns>
+    [SkipLocalsInit]
     public static int[][][] ExpandA(MLDsaParams p, ReadOnlySpan<byte> rho)
     {
         var matrix = new int[p.K][][];
@@ -45,6 +47,7 @@ internal static class Sampling
     /// </summary>
     /// <param name="seed">The 34-byte seed (ρ ‖ s ‖ r).</param>
     /// <param name="coeffs">The 256-element output polynomial.</param>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void RejNttPoly(ReadOnlySpan<byte> seed, int[] coeffs)
     {
@@ -96,6 +99,7 @@ internal static class Sampling
     /// <param name="nonce">The 16-bit little-endian domain-separation index.</param>
     /// <param name="eta">The parameter η ∈ {2, 4}.</param>
     /// <param name="coeffs">The 256-element output polynomial.</param>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void RejBoundedPoly(ReadOnlySpan<byte> rhoPrime, ushort nonce, int eta, int[] coeffs)
     {
@@ -136,6 +140,7 @@ internal static class Sampling
     /// <param name="rhoDoublePrime">The 64-byte per-message seed ρ″.</param>
     /// <param name="kappa">The rejection-loop counter κ.</param>
     /// <param name="y">Output: ℓ polynomials.</param>
+    [SkipLocalsInit]
     public static void ExpandMask(MLDsaParams p, ReadOnlySpan<byte> rhoDoublePrime, int kappa, int[][] y)
     {
         int bytes = 32 * p.ZBits;
@@ -166,6 +171,7 @@ internal static class Sampling
     /// <param name="p">The parameter set.</param>
     /// <param name="cTilde">The commitment hash c̃ (λ/4 bytes).</param>
     /// <param name="c">The 256-element output polynomial.</param>
+    [SkipLocalsInit]
     public static void SampleInBall(MLDsaParams p, ReadOnlySpan<byte> cTilde, int[] c)
     {
         Array.Clear(c, 0, MLDsaParams.N);
@@ -173,13 +179,9 @@ internal static class Sampling
         using var xof = Shake256.Create(136);
         xof.Absorb(cTilde.Slice(0, p.CTildeBytes));
 
-        Span<byte> signs = stackalloc byte[8];
+        Span<byte> signs = stackalloc byte[sizeof(ulong)];
         xof.Squeeze(signs);
-        ulong signBits = 0;
-        for (int i = 0; i < 8; i++)
-        {
-            signBits |= (ulong)signs[i] << (8 * i);
-        }
+        ulong signBits = BinaryPrimitives.ReadUInt64LittleEndian(signs);
 
         Span<byte> one = stackalloc byte[1];
         for (int i = MLDsaParams.N - p.Tau; i < MLDsaParams.N; i++)

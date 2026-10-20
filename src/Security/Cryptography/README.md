@@ -28,9 +28,9 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 - **OS-independent** — identical results on Windows, Linux, macOS, and anywhere else .NET runs
 - **Standards-based** — implemented from NIST, RFC, and ISO specifications; validated against official test vectors
 - **Hardware-accelerated** — automatic dispatch across AES-NI/AVX2/AVX-512 and the Arm64 crypto and NEON paths, with a scalar fallback always available
-- **Allocation-free hot paths** — `Span<byte>`-based APIs, friendly to `stackalloc`
+- **Allocation-free hot paths** — `Span<byte>`-based APIs, friendly to `stackalloc` and `ArrayPool`
 - **XOF streaming** — `IExtendableOutput` (`Absorb` / `Squeeze` / `Reset`) on all XOF algorithms
-- **`HashAlgorithm` compatible** — drop-in for anything consuming `System.Security.Cryptography.HashAlgorithm`
+- **`HashAlgorithm` compatible** — drop-in for anything consuming `System.Security.Cryptography.HashAlgorithm` with Polyfill for legacy frameworks
 - **Broad algorithm coverage** — SHA-2/3, Keccak, SHAKE, BLAKE2/3, Ascon, regional ciphers, and more
 
 ---
@@ -50,9 +50,9 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Regional hash | SM3, Streebog, Kupyna, LSH, Whirlpool, RIPEMD-160 |
 | Legacy | SHA-1, MD5, HMAC-SHA-1, HMAC-MD5 (backward compatibility only) |
 | MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256/384/512, AES-CMAC, AES-GMAC, Poly1305, KMAC128/256, BLAKE2/3 keyed |
-| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
+| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), AES-GCM-SIV (128/256, RFC 8452), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128; GCM over SM4, ARIA, Camellia, SEED and Kuznyechik; CCM over SM4, ARIA and Camellia; Kuznyechik-MGM and Magma-MGM (RFC 9058) |
 | Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR), ChaCha20 |
-| Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Kalyna (128/256/512), SEED |
+| Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Magma, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
 | Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
 | Post-quantum signatures | ML-DSA-44/65/87 (FIPS 204); SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f} (FIPS 205) |
@@ -228,6 +228,7 @@ cshake.Squeeze(derived);
 | Post-quantum KEM guide (ML-KEM) | [cryptohives.github.io/…/kem-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/kem-algorithms.html) |
 | Post-quantum signatures guide (ML-DSA, SLH-DSA) | [cryptohives.github.io/…/signature-algorithms](https://cryptohives.github.io/Foundation/packages/security/cryptography/signature-algorithms.html) |
 | Erasable memory and secret handling | [cryptohives.github.io/…/erasable-memory](https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html) |
+| Random number generation | [cryptohives.github.io/…/random-numbers](https://cryptohives.github.io/Foundation/packages/security/cryptography/random-numbers.html) |
 | API reference | [cryptohives.github.io/…/api/…Cryptography.Hash](https://cryptohives.github.io/Foundation/api/CryptoHives.Foundation.Security.Cryptography.Hash.html) |
 | Source repository | [github.com/CryptoHives/Foundation](https://github.com/CryptoHives/Foundation) |
 
@@ -237,10 +238,12 @@ cshake.Squeeze(derived);
 
 Every algorithm is implemented from its published specification and validated against official test vectors. Public APIs are designed assuming hostile input.
 
-If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
+If you discover a vulnerability, please don't open a public issue — report it privately through [GitHub's private vulnerability reporting](https://github.com/CryptoHives/Foundation/security/advisories/new). The [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) has the details.
 
 ---
 
 ## ⚖️ License
 
-MIT — © 2026 The Keepers of the CryptoHives
+MIT OR Apache-2.0 — © 2026 The Keepers of the CryptoHives
+
+See [Choosing a license](https://github.com/CryptoHives/Foundation#-choosing-a-license) for how to record which one you use.

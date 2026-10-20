@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA1819 // Properties should not return arrays — benchmark buffers are intentionally shared
 
@@ -122,6 +122,7 @@ public abstract class AeadBenchmarkBase
         // Generate deterministic nonce
         _nonce = new byte[AeadCipher.NonceSizeBytes];
         random.NextBytes(_nonce);
+        _nonce[0] &= 0x7F; // MGM takes a 127-bit nonce; no other AEAD minds a clear top bit
 
         // Generate deterministic AAD (16 bytes - typical for TLS/IPsec headers)
         _aad = new byte[16];

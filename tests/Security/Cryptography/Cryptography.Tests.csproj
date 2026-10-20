@@ -1,5 +1,5 @@
 ﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
-<!-- SPDX-License-Identifier: MIT -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -31,11 +31,23 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="BouncyCastle.Cryptography" />
-    <PackageReference Include="HashifyNET" />
     <PackageReference Include="NaCl.Core" />
     <PackageReference Include="OpenGost.Security.Cryptography" />
     <PackageReference Include="SauceControl.Blake2Fast" />
   </ItemGroup>
+
+  <!--
+    /p:MonoRuntimeTests=true (the Mono runtime workflow) leaves out reference libraries that do not run
+    on Mono: HashifyNET fails in its own initialization on ppc64le, and "Blake3"/"Blake3.Native" wrap
+    a native library with no binary for linux-s390x, linux-ppc64le or browser-wasm.
+  -->
+  <ItemGroup Condition="'$(MonoRuntimeTests)' != 'true'">
+    <PackageReference Include="HashifyNET" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(MonoRuntimeTests)' != 'true'">
+    <DefineConstants>$(DefineConstants);HASHIFYNET</DefineConstants>
+  </PropertyGroup>
 
   <!-- Konscious.Security.Cryptography.Blake2 is not strong name signed -->
   <ItemGroup Condition="'$(SignAssembly)' != 'true'">
@@ -60,14 +72,21 @@
   </ItemGroup>
 
   <!-- Blake3 NuGet packages that only support .NET 8+ and which are not strong name signed. -->
-  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true' AND '$(MonoRuntimeTests)' != 'true'">
     <PackageReference Include="Blake3" Aliases="Blake3Managed" />
     <PackageReference Include="Blake3.Native" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true' AND '$(MonoRuntimeTests)' != 'true'">
+    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <PackageReference Include="Blake3.Managed" />
   </ItemGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
-    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED;BLAKE3_DISSIMILIS</DefineConstants>
+    <DefineConstants>$(DefineConstants);BLAKE3_DISSIMILIS</DefineConstants>
   </PropertyGroup>
 
   <!--
@@ -153,6 +172,18 @@
                       LogicalName="Cryptography.Tests.TestData.mldsa-prehash-acvp-fips204.json.gz" />
     <EmbeddedResource Include="TestData/slhdsa-prehash-acvp-fips205.json.gz"
                       LogicalName="Cryptography.Tests.TestData.slhdsa-prehash-acvp-fips205.json.gz" />
+  </ItemGroup>
+
+  <!--
+    Kuznyechik-MGM and Magma-MGM (RFC 9058) vectors. No .NET library implements MGM, so these
+    come from an independent Python MGM that must reproduce the RFC 9058 examples first.
+    Regenerate with scripts/generate-mgm-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mgm-kuznyechik.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mgm-kuznyechik.json.gz" />
+    <EmbeddedResource Include="TestData/mgm-magma.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mgm-magma.json.gz" />
   </ItemGroup>
 
   <ItemGroup>

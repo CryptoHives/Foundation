@@ -1,11 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Kdf;
 
 using CryptoHives.Foundation.Security.Cryptography.Mac;
 using System;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Implements the Key-Based Key Derivation Function (KBKDF) in Counter Mode as defined
@@ -130,6 +131,7 @@ public static class Kbkdf
     /// The complete fixed input data appended after the counter in each PRF invocation.
     /// Typically composed as <c>Label ‖ 0x00 ‖ Context ‖ [L]₄</c>.
     /// </param>
+    [SkipLocalsInit]
     internal static void CounterMode(
         HmacFactory macFactory,
         ReadOnlySpan<byte> key,

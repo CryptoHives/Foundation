@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
@@ -131,6 +132,7 @@ public static class ParallelHash
         }
     }
 
+    [SkipLocalsInit]
     private static Span<byte> RunHashWithXof(
         IExtendableOutput finalXof,
         Span<byte> output,

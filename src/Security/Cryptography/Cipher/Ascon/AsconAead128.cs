@@ -1,12 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using CH = CryptoHives.Foundation.Security.Cryptography;
 using OS = System.Security.Cryptography;
 
 /// <summary>
@@ -105,7 +104,7 @@ public sealed class AsconAead128 : IAeadCipher
             throw new ArgumentException($"Key must be {KeySizeBytesConst} bytes.", nameof(key));
 
         _k0 = BinaryPrimitives.ReadUInt64LittleEndian(key.AsSpan(0));
-        _k1 = BinaryPrimitives.ReadUInt64LittleEndian(key.AsSpan(8));
+        _k1 = BinaryPrimitives.ReadUInt64LittleEndian(key.AsSpan(sizeof(ulong)));
     }
 
     /// <inheritdoc/>
@@ -128,9 +127,10 @@ public sealed class AsconAead128 : IAeadCipher
     public static AsconAead128 Create(byte[] key) => new(key);
 
     /// <inheritdoc/>
-    public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                        Span<byte> ciphertext, Span<byte> tag,
-                        ReadOnlySpan<byte> associatedData = default)
+    public void Encrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
+        Span<byte> ciphertext, Span<byte> tag,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (_disposed)
             throw new ObjectDisposedException(GetType().Name);
@@ -147,7 +147,7 @@ public sealed class AsconAead128 : IAeadCipher
         ulong s2 = _k1;
         ulong s3 = BinaryPrimitives.ReadUInt64LittleEndian(nonce);
         ulong s4 = BinaryPrimitives.ReadUInt64LittleEndian(nonce.Slice(8));
-        CH.Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
+        Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
         s3 ^= _k0;
         s4 ^= _k1;
 
@@ -162,6 +162,7 @@ public sealed class AsconAead128 : IAeadCipher
     }
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     public bool Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
                         ReadOnlySpan<byte> tag, Span<byte> plaintext,
                         ReadOnlySpan<byte> associatedData = default)
@@ -180,8 +181,8 @@ public sealed class AsconAead128 : IAeadCipher
         ulong s1 = _k0;
         ulong s2 = _k1;
         ulong s3 = BinaryPrimitives.ReadUInt64LittleEndian(nonce);
-        ulong s4 = BinaryPrimitives.ReadUInt64LittleEndian(nonce.Slice(8));
-        CH.Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
+        ulong s4 = BinaryPrimitives.ReadUInt64LittleEndian(nonce.Slice(sizeof(ulong)));
+        Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
         s3 ^= _k0;
         s4 ^= _k1;
 
@@ -195,7 +196,9 @@ public sealed class AsconAead128 : IAeadCipher
         Span<byte> computedTag = stackalloc byte[TagSizeBytesConst];
         Finalize(ref s0, ref s1, ref s2, ref s3, ref s4, computedTag);
 
-        if (!CryptographicOperations.FixedTimeEquals(tag, computedTag))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, computedTag);
+        CryptographicOperations.ZeroMemory(computedTag);
+        if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;
@@ -205,8 +208,9 @@ public sealed class AsconAead128 : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Encrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (_disposed)
             throw new ObjectDisposedException(GetType().Name);
@@ -220,8 +224,9 @@ public sealed class AsconAead128 : IAeadCipher
     }
 
     /// <inheritdoc/>
-    public byte[] Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextWithTag,
-                          ReadOnlySpan<byte> associatedData = default)
+    public byte[] Decrypt(
+        ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertextWithTag,
+        ReadOnlySpan<byte> associatedData = default)
     {
         if (_disposed)
             throw new ObjectDisposedException(GetType().Name);
@@ -255,8 +260,9 @@ public sealed class AsconAead128 : IAeadCipher
     /// Processes associated data through the sponge.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void ProcessAad(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
-                                   ReadOnlySpan<byte> associatedData)
+    private static void ProcessAad(
+        ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
+        ReadOnlySpan<byte> associatedData)
     {
         if (!associatedData.IsEmpty)
         {
@@ -267,7 +273,7 @@ public sealed class AsconAead128 : IAeadCipher
             {
                 s0 ^= BinaryPrimitives.ReadUInt64LittleEndian(associatedData.Slice(offset));
                 s1 ^= BinaryPrimitives.ReadUInt64LittleEndian(associatedData.Slice(offset + 8));
-                CH.Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
+                Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
                 offset += RateBytes;
             }
 
@@ -284,7 +290,7 @@ public sealed class AsconAead128 : IAeadCipher
                 s0 ^= PadPartialWord(associatedData.Slice(offset, remaining), remaining);
             }
 
-            CH.Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
+            Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
         }
 
         // Domain separation
@@ -295,8 +301,9 @@ public sealed class AsconAead128 : IAeadCipher
     /// Encrypts plaintext data through the sponge.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void EncryptData(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
-                                    ReadOnlySpan<byte> plaintext, Span<byte> ciphertext)
+    private static void EncryptData(
+        ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4,
+        ReadOnlySpan<byte> plaintext, Span<byte> ciphertext)
     {
         int offset = 0;
 
@@ -309,7 +316,7 @@ public sealed class AsconAead128 : IAeadCipher
             s1 ^= BinaryPrimitives.ReadUInt64LittleEndian(plaintext.Slice(offset + 8));
             BinaryPrimitives.WriteUInt64LittleEndian(ciphertext.Slice(offset + 8), s1);
 
-            CH.Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
+            Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
             offset += RateBytes;
         }
 
@@ -360,7 +367,7 @@ public sealed class AsconAead128 : IAeadCipher
             BinaryPrimitives.WriteUInt64LittleEndian(plaintext.Slice(offset + 8), s1 ^ c1);
             s1 = c1;
 
-            CH.Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
+            Hash.AsconCore.P8(ref s0, ref s1, ref s2, ref s3, ref s4);
             offset += RateBytes;
         }
 
@@ -399,7 +406,7 @@ public sealed class AsconAead128 : IAeadCipher
     {
         s2 ^= _k0;
         s3 ^= _k1;
-        CH.Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
+        Hash.AsconCore.P12(ref s0, ref s1, ref s2, ref s3, ref s4);
         s3 ^= _k0;
         s4 ^= _k1;
 
@@ -413,9 +420,9 @@ public sealed class AsconAead128 : IAeadCipher
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void EncryptPartialWord(ref ulong s, ReadOnlySpan<byte> input, Span<byte> output)
     {
-        ulong pt = ReadPartialLE(input);
+        ulong pt = BinaryLoad.ReadUInt64LittleEndianPadded(input);
         s ^= pt;
-        WritePartialLE(s, output);
+        BinaryStore.WriteUInt64LittleEndianTruncated(s, output);
     }
 
     /// <summary>
@@ -425,36 +432,10 @@ public sealed class AsconAead128 : IAeadCipher
     private static void DecryptPartialWord(ref ulong s, ReadOnlySpan<byte> input, Span<byte> output)
     {
         int len = input.Length;
-        ulong ct = ReadPartialLE(input);
-        WritePartialLE(s ^ ct, output);
+        ulong ct = BinaryLoad.ReadUInt64LittleEndianPadded(input);
+        BinaryStore.WriteUInt64LittleEndianTruncated(s ^ ct, output);
         ulong mask = ulong.MaxValue << (len << 3);
         s = (s & mask) ^ ct;
-    }
-
-    /// <summary>
-    /// Reads 1–7 bytes as a little-endian partial ulong.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ulong ReadPartialLE(ReadOnlySpan<byte> data)
-    {
-        ulong result = 0;
-        for (int i = 0; i < data.Length; i++)
-        {
-            result |= (ulong)data[i] << (i << 3);
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// Writes 1–7 bytes from a little-endian ulong.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void WritePartialLE(ulong value, Span<byte> data)
-    {
-        for (int i = 0; i < data.Length; i++)
-        {
-            data[i] = (byte)(value >> (i << 3));
-        }
     }
 
     /// <summary>
@@ -463,7 +444,7 @@ public sealed class AsconAead128 : IAeadCipher
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ulong PadPartialWord(ReadOnlySpan<byte> data, int len)
     {
-        ulong result = ReadPartialLE(data);
+        ulong result = BinaryLoad.ReadUInt64LittleEndianPadded(data);
         result |= 0x01UL << (len << 3);
         return result;
     }

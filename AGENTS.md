@@ -21,7 +21,8 @@ this repo). Sources:
 
 - `src/Threading/PORTING.md` — async synchronization primitives
 - `src/Memory/PORTING.md` — ArrayPool-backed buffers/streams/pools
-- `src/Security/Cryptography/PORTING.md` — managed hashes, MAC, KDF, ciphers
+- `src/Security/Cryptography/PORTING.md` — managed hashes, MAC, KDF, ciphers, ML-KEM, ML-DSA,
+  SLH-DSA and their key formats
 
 The cross-package version is `docfx/porting-to-cryptohives.md` (published to the docs site at
 <https://cryptohives.github.io/Foundation/porting-to-cryptohives.html>).

@@ -1,11 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Pre-hash support shared by HashML-DSA (FIPS 204 §5.4) and HashSLH-DSA (FIPS 205 §10.2).
@@ -83,6 +84,7 @@ internal static class PreHash
     /// <param name="oid">The dotted-decimal OID.</param>
     /// <param name="destination">The output buffer.</param>
     /// <returns>The number of bytes written.</returns>
+    [SkipLocalsInit]
     internal static int EncodeOid(string oid, Span<byte> destination)
     {
         string[] parts = oid.Split('.');
@@ -103,6 +105,7 @@ internal static class PreHash
         return 2 + bodyLength;
     }
 
+    [SkipLocalsInit]
     private static int EncodeArc(long value, Span<byte> destination)
     {
         // Base-128, most significant group first, high bit set on all but the last byte.

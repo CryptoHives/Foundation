@@ -14,6 +14,8 @@
   href: signature-algorithms.md
 - name: Erasable Memory
   href: erasable-memory.md
+- name: Random Number Generation
+  href: random-numbers.md
 - name: XOF Mode
   href: xof-mode.md
 - name: Pooled Hash API

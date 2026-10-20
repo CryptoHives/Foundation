@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -30,8 +30,8 @@ public sealed class Aria128 : SymmetricCipher
     {
         BlockSizeValue = 128;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new OS.KeySizes(128, 128, 0)];
-        LegalBlockSizesValue = [new OS.KeySizes(128, 128, 0)];
+        LegalKeySizesValue = LegalSizes.Bits128;
+        LegalBlockSizesValue = LegalSizes.Bits128;
     }
 
     /// <inheritdoc/>
@@ -48,13 +48,13 @@ public sealed class Aria128 : SymmetricCipher
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new AriaCipherTransform(key, iv, encrypting: true, Mode, Padding);
+        return new AriaCipherTransform(key, iv, encrypting: true, Mode, Padding, FeedbackSize / 8);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new AriaCipherTransform(key, iv, encrypting: false, Mode, Padding);
+        return new AriaCipherTransform(key, iv, encrypting: false, Mode, Padding, FeedbackSize / 8);
     }
 }

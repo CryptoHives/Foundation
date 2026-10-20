@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -343,6 +343,7 @@ public sealed class KT128 : HashAlgorithm, IExtendableOutput
     /// Squeezes the chaining value for the chunk currently in <c>_inner</c> straight into the
     /// final-node sponge, so no chaining value is ever stored.
     /// </summary>
+    [SkipLocalsInit]
     private void FlushChunk()
     {
         Span<byte> chainingValue = stackalloc byte[ChainingValueSize];
@@ -354,6 +355,7 @@ public sealed class KT128 : HashAlgorithm, IExtendableOutput
         _chunkFill = 0;
     }
 
+    [SkipLocalsInit]
     private void FinalizeInternal(Span<byte> output)
     {
         // S = M || C || length_encode(|C|)
@@ -411,11 +413,8 @@ public sealed class KT128 : HashAlgorithm, IExtendableOutput
             temp >>= 8;
         }
 
-        // Write value bytes in big-endian order
-        for (int i = 0; i < n; i++)
-        {
-            output[i] = (byte)(value >> ((n - 1 - i) * 8));
-        }
+        // Shifted so the n significant bytes lead the big-endian encoding.
+        BinaryStore.WriteUInt64BigEndianTruncated(value << ((sizeof(ulong) - n) * 8), output.Slice(0, n));
 
         // Append byte count
         output[n] = (byte)n;

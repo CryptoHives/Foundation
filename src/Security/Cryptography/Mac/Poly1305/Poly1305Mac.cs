@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
@@ -148,11 +148,25 @@ public sealed class Poly1305Mac : IMac
         }
 
         // Process full blocks directly from input
+#if NET8_0_OR_GREATER
+        // The accumulator stays in locals across the loop: field-held, it takes a store and a
+        // reload on the critical path of every block.
+        ulong h0 = _h0, h1 = _h1, h2 = _h2;
+        while (offset + BlockSize <= input.Length)
+        {
+            Poly1305Core.AddFullBlock64(input.Slice(offset, BlockSize), ref h0, ref h1, ref h2);
+            Poly1305Core.MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
+            offset += BlockSize;
+        }
+
+        _h0 = h0; _h1 = h1; _h2 = h2;
+#else
         while (offset + BlockSize <= input.Length)
         {
             ProcessFullBlock(input.Slice(offset, BlockSize));
             offset += BlockSize;
         }
+#endif
 
         // Buffer remaining data
         int remaining = input.Length - offset;
@@ -171,12 +185,16 @@ public sealed class Poly1305Mac : IMac
         if (destination.Length < TagSizeBytes) throw new ArgumentException("Destination buffer is too small.", nameof(destination));
         if (_finalized) throw new InvalidOperationException("Already finalized. Call Reset() first.");
 
+#if NET8_0_OR_GREATER
+        ulong h0 = _h0, h1 = _h1, h2 = _h2;
+#endif
+
         // Process remaining buffered data as a partial block
         if (_bufferLength > 0)
         {
 #if NET8_0_OR_GREATER
-            Poly1305Core.AddPartialBlock64(_buffer.AsSpan(0, _bufferLength), ref _h0, ref _h1, ref _h2);
-            Poly1305Core.MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
+            Poly1305Core.AddPartialBlock64(_buffer.AsSpan(0, _bufferLength), ref h0, ref h1, ref h2);
+            Poly1305Core.MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
 #else
             Poly1305Core.ProcessPartialBlock32(_buffer.AsSpan(0, _bufferLength),
                 ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
@@ -186,7 +204,7 @@ public sealed class Poly1305Mac : IMac
 
         // Finalize and write tag
 #if NET8_0_OR_GREATER
-        Poly1305Core.Finalize64(_h0, _h1, _h2, _padLo, _padHi, destination);
+        Poly1305Core.Finalize64(h0, h1, h2, _padLo, _padHi, destination);
 #else
         Poly1305Core.Finalize32(ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
             _pad0, _pad1, _pad2, _pad3, destination);
@@ -257,8 +275,10 @@ public sealed class Poly1305Mac : IMac
     private void ProcessFullBlock(ReadOnlySpan<byte> block)
     {
 #if NET8_0_OR_GREATER
-        Poly1305Core.AddFullBlock64(block, ref _h0, ref _h1, ref _h2);
-        Poly1305Core.MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
+        ulong h0 = _h0, h1 = _h1, h2 = _h2;
+        Poly1305Core.AddFullBlock64(block, ref h0, ref h1, ref h2);
+        Poly1305Core.MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
+        _h0 = h0; _h1 = h1; _h2 = h2;
 #else
         Poly1305Core.ProcessFullBlock32(block,
             ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,

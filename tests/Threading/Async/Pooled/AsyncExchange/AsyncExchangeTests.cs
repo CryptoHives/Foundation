@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA2012 // ValueTask instances should only be consumed once — intentional in race tests
 #pragma warning disable CA1031 // Catch a more specific exception type — intentional in race tests
@@ -233,7 +233,7 @@ public class AsyncExchangeTests
 
         await AsyncAssert.CancelAsync(cts).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter.ConfigureAwait(false));
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await waiter.ConfigureAwait(false)).ConfigureAwait(false);
 
         using (Assert.EnterMultipleScope())
         {
@@ -465,13 +465,13 @@ public class AsyncExchangeTests
     }
 
     [Test, CancelAfter(3000)]
-    public void ZeroTimeoutThrowsWhenNoCounterpartIsWaiting()
+    public async Task ZeroTimeoutThrowsWhenNoCounterpartIsWaiting()
     {
         using var pool = new TestObjectPool<int>();
         var ex = new AsyncExchange<int>(pool: pool);
 
-        Assert.ThrowsAsync<TimeoutException>(
-            async () => await ex.ExchangeAsync(1, TimeSpan.Zero).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(
+            async () => await ex.ExchangeAsync(1, TimeSpan.Zero).ConfigureAwait(false)).ConfigureAwait(false);
 
         using (Assert.EnterMultipleScope())
         {
@@ -503,13 +503,13 @@ public class AsyncExchangeTests
     }
 
     [Test, CancelAfter(10000)]
-    public void TimeoutThrowsAndClearsTheSlot()
+    public async Task TimeoutThrowsAndClearsTheSlot()
     {
         using var pool = new TestObjectPool<int>();
         var ex = new AsyncExchange<int>(pool: pool);
 
-        Assert.ThrowsAsync<TimeoutException>(
-            async () => await ex.ExchangeAsync(1, TimeSpan.FromMilliseconds(50)).ConfigureAwait(false));
+        await Assert.ThrowsAsync<TimeoutException>(
+            async () => await ex.ExchangeAsync(1, TimeSpan.FromMilliseconds(50)).ConfigureAwait(false)).ConfigureAwait(false);
 
         using (Assert.EnterMultipleScope())
         {
