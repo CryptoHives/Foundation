@@ -50,7 +50,7 @@ flow A (top level)  →  holds nothing  →  takes depth 0
 flow B (unrelated)  →  holds nothing  →  waits for depth 0   ← still excluded
 ```
 
-A flow can only reach depth `N` while an ancestor holds depth `N - 1`. Depth 0 is a single exclusive lock, so only one tree of nested calls is active at a time. **Siblings still serialize**: if a holder runs `await Task.WhenAll(NestedA(), NestedB())` and both re-acquire, both target depth 1 and take turns.
+A flow can only reach depth `N` while an ancestor holds depth `N - 1`. Depth 0 is a single exclusive lock, so only one tree of nested calls is active at a time. **Siblings still serialize**: if a holder runs `await Task.WhenAll(NestedA(), NestedB())` and both re-acquire, both target depth 1 and serialize on it.
 
 ### Holders that have gone away
 
@@ -114,7 +114,7 @@ A nested `LockAsync` can wait, but only on concurrent siblings at the same depth
 
 A `Task.Run` that isn't awaited inherits the depth of its parent, so where it runs depends on timing:
 
-- if it acquires while the parent still holds the lock, it nests and takes turns with the parent's other nested calls;
+- if it acquires while the parent still holds the lock, it nests and serializes with the parent's other nested calls;
 - if the parent has already released, it waits for the lock like any top-level caller;
 - if it still holds a nested depth when the parent releases, the parent's release waits for it, so a child that never finishes keeps the lock held for good.
 
