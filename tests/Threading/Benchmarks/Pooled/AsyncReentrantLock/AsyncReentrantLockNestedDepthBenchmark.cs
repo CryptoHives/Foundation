@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+#pragma warning disable CHTEXP001 // AsyncReentrantLock is experimental
+
 namespace Threading.Tests.Benchmarks.Pooled.AsyncReentrantLock;
 
 using BenchmarkDotNet.Attributes;

@@ -1,6 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+#pragma warning disable CHTEXP001 // AsyncReentrantLock is experimental
 #pragma warning disable CA1849 // Call async methods when in an async method
 
 namespace Threading.Tests.Async.Pooled.AsyncReentrantLock;

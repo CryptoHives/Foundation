@@ -11,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// A prototype async lock that a nested call on the same logical async flow can re-acquire without
+/// An experimental async lock that a nested call on the same logical async flow can re-acquire without
 /// deadlocking, unlike <see cref="AsyncLock"/>.
 /// </summary>
 /// <remarks>
@@ -20,6 +20,9 @@ using System.Threading.Tasks;
 /// and the caller's next nested acquisition deadlocks. A release waits for nested holders still running,
 /// such as fire-and-forget work, so the lock stays held until the last of them releases.
 /// </remarks>
+#if NET8_0_OR_GREATER
+[System.Diagnostics.CodeAnalysis.Experimental("CHTEXP001", UrlFormat = "https://cryptohives.github.io/Foundation/packages/threading/asyncreentrantlock.html")]
+#endif
 public sealed class AsyncReentrantLock
 {
     private readonly AsyncLocal<AmbientState?> _ambient = new();

@@ -31,7 +31,7 @@ Use these when an `await` must happen inside a critical section, or to remove
 | `Dictionary<TKey, SemaphoreSlim>` / one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other. Not reentrant. |
 | `AsyncKeyedLock` (third-party), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify no reentrancy. |
-| `lock` / `Monitor` that a nested call re-enters, once async | `AsyncReentrantLock` | Prototype. Never wrap `LockAsync` in an `async` method; return its `ValueTask` directly. |
+| `lock` / `Monitor` that a nested call re-enters, once async | `AsyncReentrantLock` | Experimental: suppress `CHTEXP001` to use it. Never wrap `LockAsync` in an `async` method; return its `ValueTask` directly. |
 | `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | Replace the explicit `Release()` with disposing the `Releaser`. |
 | `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern. |
 | `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | Same-named type | |
@@ -171,7 +171,7 @@ public async Task FetchAsync(CancellationToken ct)
    pooled source never returns to the pool.
 6. **`AsyncLock` is not reentrant** — re-acquiring on the same call stack deadlocks. If the
    source lock was reentrant, first try narrowing the locked region so nothing nested re-enters it.
-   If that is not possible, use `AsyncReentrantLock` (prototype) and flag it for human review.
+   If that is not possible, use `AsyncReentrantLock` (experimental, `CHTEXP001`) and flag it for human review.
 7. There is **no** `SemaphoreSlim`-style `bool WaitAsync(timeout)`. Rewrite
    `if (await sem.WaitAsync(timeout))` to try/catch `TimeoutException` or use a token — except
    the `timeout == 0` / `Wait(0)` case, which is a non-blocking probe: use the primitive's

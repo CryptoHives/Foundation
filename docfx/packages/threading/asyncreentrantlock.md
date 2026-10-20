@@ -4,7 +4,7 @@ An async exclusive lock that a nested call on the same logical async flow can re
 
 **Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncReentrantLock)
 
-> **Prototype.** The type works and is tested, but it has not had the allocation and pooling work the other primitives have had, and its API may change. Prefer [`AsyncLock`](asynclock.md) wherever the locked region can be narrowed, or released before calling out.
+> **Experimental.** The type ships in the package but is marked `[Experimental("CHTEXP001")]` on .NET 8 and later, so using it is a compile error until you opt in with `#pragma warning disable CHTEXP001` or `<NoWarn>$(NoWarn);CHTEXP001</NoWarn>`. It works and is tested, but it has not had the allocation and pooling work the other primitives have had, and its API may change. Prefer [`AsyncLock`](asynclock.md) wherever the locked region can be narrowed, or released before calling out.
 
 ## Overview
 

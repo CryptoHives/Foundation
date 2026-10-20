@@ -358,7 +358,7 @@ using (await _lock1.LockAsync())
 
 - [Threading Package Overview](index.md)
 - [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion; distinct keys never block each other
-- [AsyncReentrantLock](asyncreentrantlock.md) - Async lock a nested call on the same flow can re-acquire (prototype)
+- [AsyncReentrantLock](asyncreentrantlock.md) - Async lock a nested call on the same flow can re-acquire (experimental)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock

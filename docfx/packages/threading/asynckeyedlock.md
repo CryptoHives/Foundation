@@ -215,7 +215,7 @@ The critical section should be short. Holding a key across a network call serial
 
 - [Threading Package Overview](index.md)
 - [AsyncLock](asynclock.md) - Non-keyed async mutual exclusion lock
-- [AsyncReentrantLock](asyncreentrantlock.md) - Async lock a nested call on the same flow can re-acquire (prototype)
+- [AsyncReentrantLock](asyncreentrantlock.md) - Async lock a nested call on the same flow can re-acquire (experimental)
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
