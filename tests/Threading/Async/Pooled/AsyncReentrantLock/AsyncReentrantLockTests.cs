@@ -9,6 +9,7 @@ namespace Threading.Tests.Async.Pooled.AsyncReentrantLock;
 using CryptoHives.Foundation.Threading.Async.Pooled;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -105,6 +106,52 @@ public class AsyncReentrantLockTests
             Assert.That(mutex.DepthsCreated, Is.EqualTo(Depth));
             Assert.That(mutex.CurrentDepth, Is.Zero);
         }
+    }
+
+    [TestCase(6)]
+    [TestCase(AsyncReentrantLock.MaxDepthLocksCapacity)]
+    [CancelAfter(5000)]
+    public async Task NestingBeyondMaxDepthThrowsAndLeavesDepthUnchanged(int maxDepth)
+    {
+        var mutex = maxDepth == AsyncReentrantLock.MaxDepthLocksCapacity
+            ? new AsyncReentrantLock()
+            : new AsyncReentrantLock(AsyncReentrantLock.DefaultDepthLocksCapacity, maxDepth);
+        var releasers = new List<AsyncReentrantLock.Releaser>();
+
+        for (int i = 0; i < maxDepth; i++)
+        {
+            releasers.Add(await mutex.LockAsync().ConfigureAwait(false));
+        }
+
+#pragma warning disable VSTHRD110, CA2012 // the call throws before returning a ValueTask
+        Assert.Throws<InvalidOperationException>(() => mutex.LockAsync());
+#pragma warning restore VSTHRD110, CA2012
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(maxDepth));
+            Assert.That(mutex.DepthsCreated, Is.EqualTo(maxDepth));
+        }
+
+        for (int i = releasers.Count - 1; i >= 0; i--)
+        {
+            releasers[i].Dispose();
+        }
+
+        Assert.That(mutex.CurrentDepth, Is.Zero);
+
+        using (await mutex.LockAsync(TimeSpan.Zero).ConfigureAwait(false))
+        {
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+        }
+    }
+
+    [TestCase(AsyncReentrantLock.DefaultDepthLocksCapacity - 1, AsyncReentrantLock.MaxDepthLocksCapacity)]
+    [TestCase(AsyncReentrantLock.DefaultDepthLocksCapacity, AsyncReentrantLock.DefaultDepthLocksCapacity - 1)]
+    [TestCase(8, 6)]
+    public void ConstructorRejectsInvalidCapacities(int defaultCapacity, int maxCapacity)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => _ = new AsyncReentrantLock(defaultCapacity, maxCapacity));
     }
 
     [Test, CancelAfter(5000)]

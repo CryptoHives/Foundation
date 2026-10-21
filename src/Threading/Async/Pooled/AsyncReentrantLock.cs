@@ -26,12 +26,12 @@ using System.Threading.Tasks;
 public sealed class AsyncReentrantLock
 {
     /// <summary>
-    /// Gets the default capacity depth for the nested locks.
+    /// The default initial capacity of the depth table, and the smallest capacity accepted.
     /// </summary>
     public const int DefaultDepthLocksCapacity = 4;
 
     /// <summary>
-    /// Gets the maximum allowed depth of the nested locks.
+    /// The default maximum nesting depth.
     /// </summary>
     public const int MaxDepthLocksCapacity = 32;
 
@@ -45,6 +45,12 @@ public sealed class AsyncReentrantLock
     /// <summary>
     /// Constructs a new <see cref="AsyncReentrantLock"/>.
     /// </summary>
+    /// <param name="defaultDepthLocksCapacity">The initial capacity of the depth table; it grows on demand up to <paramref name="maxDepthLocksCapacity"/>.</param>
+    /// <param name="maxDepthLocksCapacity">The maximum nesting depth; a call that would nest deeper throws <see cref="InvalidOperationException"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when either capacity is below <see cref="DefaultDepthLocksCapacity"/>, or
+    /// <paramref name="defaultDepthLocksCapacity"/> exceeds <paramref name="maxDepthLocksCapacity"/>.
+    /// </exception>
     public AsyncReentrantLock(
         int defaultDepthLocksCapacity = DefaultDepthLocksCapacity,
         int maxDepthLocksCapacity = MaxDepthLocksCapacity)
@@ -214,6 +220,9 @@ public sealed class AsyncReentrantLock
     /// <exception cref="OperationCanceledException">
     /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the call would nest deeper than the maximum depth set at construction.
+    /// </exception>
     public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default)
         => Acquire(Timeout.InfiniteTimeSpan, cancellationToken);
 
@@ -235,6 +244,9 @@ public sealed class AsyncReentrantLock
     /// <exception cref="OperationCanceledException">
     /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the call would nest deeper than the maximum depth set at construction.
+    /// </exception>
     public ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -247,12 +259,17 @@ public sealed class AsyncReentrantLock
     {
         AmbientState? inherited = _ambient.Value;
         Claim? top = inherited?.Top;
+        int depth = ResolveTargetDepth(top);
+        if (depth >= _maxDepthLocksCapacity)
+        {
+            throw new InvalidOperationException($"Nesting exceeds the maximum depth of {_maxDepthLocksCapacity} for this AsyncReentrantLock.");
+        }
+
         var state = new AmbientState(top);
 
         // safe, _ambient is AsyncLocal, it only modifies the current execution context
         _ambient.Value = state;
 
-        int depth = ResolveTargetDepth(top);
         while (true)
         {
             DepthLock depthLock = GetDepthLock(depth);
@@ -419,6 +436,8 @@ public sealed class AsyncReentrantLock
                 {
                     newLength *= 2;
                 }
+
+                newLength = Math.Min(newLength, _maxDepthLocksCapacity);
 
                 var grown = new DepthLock?[newLength];
                 Array.Copy(current, grown, current.Length);

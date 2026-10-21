@@ -63,8 +63,15 @@ Disposing a releaser ends the hold at once for the parent's flow, which no longe
 ## Constructor
 
 ```csharp
-public AsyncReentrantLock()
+public AsyncReentrantLock(
+    int defaultDepthLocksCapacity = DefaultDepthLocksCapacity,   // 4
+    int maxDepthLocksCapacity = MaxDepthLocksCapacity)           // 32
 ```
+
+| Parameter | Description |
+|-----------|-------------|
+| `defaultDepthLocksCapacity` | Initial capacity of the depth table; it grows on demand up to `maxDepthLocksCapacity`. At least 4. |
+| `maxDepthLocksCapacity` | Maximum nesting depth. A call that would nest deeper throws `InvalidOperationException`. At least 4, and not below `defaultDepthLocksCapacity`. |
 
 ## Properties
 
@@ -87,6 +94,7 @@ Acquires the lock, or the next depth if the calling flow already holds it. Dispo
 - `TimeoutException`: the timeout elapsed before the lock could be acquired. If the holder the call nested under releases during the wait, the call retries with a fresh timeout, so the total wait can exceed `timeout`.
 - `OperationCanceledException`: the operation was cancelled through the token.
 - `ArgumentOutOfRangeException`: `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
+- `InvalidOperationException`: the call would nest deeper than the maximum depth set at construction.
 
 There is no `TryLock` and no synchronous API.
 
@@ -126,7 +134,7 @@ A nested holder runs alongside its parent's own code, which holds only the outer
 
 ### Depths are never reclaimed
 
-Each depth reached creates one internal lock that lives as long as the instance does. Unbounded recursion under the lock grows that table without limit.
+Each depth reached creates one internal lock that lives as long as the instance does. Recursion under the lock grows that table up to the maximum depth set at construction (32 by default), after which `LockAsync` throws `InvalidOperationException`.
 
 ## Performance
 
