@@ -579,6 +579,7 @@ var evt = new AsyncAutoResetEvent(
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md)
 - [AsyncLock](asynclock.md)
 - [AsyncKeyedLock](asynckeyedlock.md)
+- [AsyncReentrantLock](asyncreentrantlock.md)
 - [AsyncCountdownEvent](asynccountdownevent.md)
 - [AsyncBarrier](asyncbarrier.md)
 - [AsyncSemaphore](asyncsemaphore.md)
