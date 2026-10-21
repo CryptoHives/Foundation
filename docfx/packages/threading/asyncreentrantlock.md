@@ -110,6 +110,10 @@ private ValueTask<AsyncReentrantLock.Releaser> EnterAsync()
 
 A nested `LockAsync` can wait, but only on concurrent siblings at the same depth, including children the caller started itself. If a holder starts a child that takes the lock and then nests while the child holds it, the holder waits for the child.
 
+### Acquire one at a time per flow
+
+Await each `LockAsync` before starting the next one on the same flow, and dispose releasers in reverse order. Each acquisition records what the flow held before it and restores that on dispose, so overlapping or out-of-order acquisitions leave the flow with a wrong view of what it holds, and a later nested call can deadlock. Concurrent tasks are not affected: each has its own copy of that state.
+
 ### Detached work that takes the lock depends on timing
 
 A `Task.Run` that isn't awaited inherits the depth of its parent, so where it runs depends on timing:

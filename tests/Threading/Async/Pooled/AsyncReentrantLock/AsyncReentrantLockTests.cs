@@ -166,6 +166,50 @@ public class AsyncReentrantLockTests
         }
     }
 
+    [Test, CancelAfter(5000)]
+    public async Task ConcurrentSiblingsSeeOnlyTheirOwnDepth()
+    {
+        const int Siblings = 4;
+        var mutex = new AsyncReentrantLock();
+        var allQueued = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int queued = 0;
+        int wrongDepths = 0;
+
+        async Task SiblingAsync()
+        {
+            if (mutex.CurrentDepth != 1) Interlocked.Increment(ref wrongDepths);
+
+            ValueTask<AsyncReentrantLock.Releaser> pending = mutex.LockAsync();
+            if (Interlocked.Increment(ref queued) == Siblings) allQueued.SetResult(true);
+
+            using (await pending.ConfigureAwait(false))
+            {
+                await allQueued.Task.ConfigureAwait(false);
+                if (mutex.CurrentDepth != 2) Interlocked.Increment(ref wrongDepths);
+            }
+
+            if (mutex.CurrentDepth != 1) Interlocked.Increment(ref wrongDepths);
+        }
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            var siblings = new Task[Siblings];
+            for (int i = 0; i < Siblings; i++)
+            {
+                siblings[i] = Task.Run(SiblingAsync);
+            }
+
+            await Task.WhenAll(siblings).ConfigureAwait(false);
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(wrongDepths, Is.Zero);
+            Assert.That(mutex.CurrentDepth, Is.Zero);
+        }
+    }
+
     [Test, CancelAfter(10000)]
     public async Task ConcurrentTreesOfSiblingsSerializeAtEveryDepth()
     {
