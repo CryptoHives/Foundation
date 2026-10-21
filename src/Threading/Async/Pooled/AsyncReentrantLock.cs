@@ -25,21 +25,41 @@ using System.Threading.Tasks;
 #endif
 public sealed class AsyncReentrantLock
 {
-    private readonly AsyncLocal<AmbientState?> _ambient = new();
+    /// <summary>
+    /// Gets the default capacity depth for the nested locks.
+    /// </summary>
+    public const int DefaultDepthLocksCapacity = 4;
+
+    /// <summary>
+    /// Gets the maximum allowed depth of the nested locks.
+    /// </summary>
+    public const int MaxDepthLocksCapacity = 32;
+
+    private readonly AsyncLocal<AmbientState?> _ambient;
     private readonly DepthLock _depth0Lock;
-    private readonly object _growLock = new();
+    private readonly object _growLock;
+    private readonly int _maxDepthLocksCapacity;
     private volatile DepthLock?[] _depthLocks;
     private int _depthsCreated;
 
     /// <summary>
     /// Constructs a new <see cref="AsyncReentrantLock"/>.
     /// </summary>
-    public AsyncReentrantLock()
+    public AsyncReentrantLock(
+        int defaultDepthLocksCapacity = DefaultDepthLocksCapacity,
+        int maxDepthLocksCapacity = MaxDepthLocksCapacity)
     {
+        if (defaultDepthLocksCapacity < DefaultDepthLocksCapacity) throw new ArgumentOutOfRangeException(nameof(defaultDepthLocksCapacity));
+        if (maxDepthLocksCapacity < DefaultDepthLocksCapacity) throw new ArgumentOutOfRangeException(nameof(maxDepthLocksCapacity));
+        if (defaultDepthLocksCapacity > maxDepthLocksCapacity) throw new ArgumentOutOfRangeException(nameof(defaultDepthLocksCapacity));
+
+        _ambient = new();
+        _growLock = new();
         _depth0Lock = new DepthLock();
-        _depthLocks = new DepthLock?[4];
+        _depthLocks = new DepthLock?[defaultDepthLocksCapacity];
         _depthLocks[0] = _depth0Lock;
         _depthsCreated = 1;
+        _maxDepthLocksCapacity = maxDepthLocksCapacity;
     }
 
     /// <summary>
@@ -228,6 +248,8 @@ public sealed class AsyncReentrantLock
         AmbientState? inherited = _ambient.Value;
         Claim? top = inherited?.Top;
         var state = new AmbientState(top);
+
+        // safe, _ambient is AsyncLocal, it only modifies the current execution context
         _ambient.Value = state;
 
         int depth = ResolveTargetDepth(top);
@@ -288,7 +310,10 @@ public sealed class AsyncReentrantLock
 
         // Marked before the next level is inspected and inspected after it is freed in Free, so one side always sees the other.
         depthLock.MarkReleasePending();
-        if (TryGetDepthLock(depth + 1)?.Lock.IsTaken == true) return;
+        if (TryGetDepthLock(depth + 1)?.Lock.IsTaken == true)
+        {
+            return;
+        }
 
         if (depthLock.TryTakeReleasePending())
         {
@@ -305,10 +330,16 @@ public sealed class AsyncReentrantLock
         while (true)
         {
             depthLock.Lock.ReleaseLock();
-            if (depth == 0 || depthLock.Lock.IsTaken) return;
+            if (depth == 0 || depthLock.Lock.IsTaken)
+            {
+                return;
+            }
 
             depthLock = TryGetDepthLock(--depth)!;
-            if (!depthLock.TryTakeReleasePending()) return;
+            if (!depthLock.TryTakeReleasePending())
+            {
+                return;
+            }
         }
     }
 
@@ -324,9 +355,13 @@ public sealed class AsyncReentrantLock
             parent = parent.Parent;
         }
 
-        if (parent is not null && !IsLive(parent)) return false;
+        if (parent is not null && !IsLive(parent))
+        {
+            return false;
+        }
 
         state.Top = new Claim(depth, depthLock.Generation, parent);
+
         return true;
     }
 
@@ -341,7 +376,10 @@ public sealed class AsyncReentrantLock
     {
         for (Claim? c = top; c is not null; c = c.Parent)
         {
-            if (IsLive(c)) return c.Depth + 1;
+            if (IsLive(c))
+            {
+                return c.Depth + 1;
+            }
         }
 
         return 0;
