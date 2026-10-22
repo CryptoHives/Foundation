@@ -202,8 +202,8 @@ finally
 
 **Use `CryptographicOperations.ZeroMemory` rather than `Array.Clear` or `Span<T>.Clear()`.**
 Clearing a buffer you are about to discard is a dead store - nothing reads the zeros back - so a
-compiler or JIT is free to delete the write and leave the secret in memory. `ZeroMemory` is marked
-`NoInlining | NoOptimization`, which removes that liberty. This library exposes its own because the
+compiler or JIT is free to delete the write and leave the secret in memory. `ZeroMemory` is a
+non-inlined call that clears with an init-block, which removes that liberty. This library exposes its own because the
 in-box type does not exist below .NET Standard 2.1 and, on every version that has it, still takes
 only a `Span<byte>`: there is no character overload in the box on any .NET version.
 

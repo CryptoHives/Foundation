@@ -60,6 +60,15 @@ internal struct GcmCore
     /// </summary>
     public const int ShoupTableSpanSize = ShoupTableSize * 2;
 
+    // Stack depth below the entry point that ScrubStack must reach on each path: the deepest callee
+    // chain's frames, less the frame ScrubStack itself occupies, rounded up to 16. Read from JIT
+    // disassembly on x64 with the Windows ABI, which saves more registers than other ABIs.
+    private const int ScrubScalar = 304;
+    private const int ScrubPipelinedEncrypt128 = 640;
+    private const int ScrubPipelinedDecrypt128 = 1264;
+    private const int ScrubPipelinedEncrypt256 = 384;
+    private const int ScrubPipelinedDecrypt256 = 752;
+
     /// <summary>
     /// Reduction polynomial for GF(2^128): x^128 + x^7 + x^2 + x + 1
     /// Represented as the lower 128 bits: 0xe1 shifted appropriately.
@@ -114,6 +123,8 @@ internal struct GcmCore
     private readonly ulong[] _shoupTable; // Precomputed 4-bit Shoup multiplication table
     private readonly int _rounds;
     private readonly BlockCipher128? _blockCipher;
+    private readonly int _encryptScrubBytes;
+    private readonly int _decryptScrubBytes;
 #if NET8_0_OR_GREATER
     // selected accelerations by SimdSupport
     private readonly bool _useAes;
@@ -222,7 +233,35 @@ internal struct GcmCore
                 _usePipeline = _usePclmul || _usePclmulV256;
             }
         }
+
+        _encryptScrubBytes = ComputeScrubBytes(_usePipeline, _usePclmulV256, decrypt: false);
+        _decryptScrubBytes = ComputeScrubBytes(_usePipeline, _usePclmulV256, decrypt: true);
+#else
+        _encryptScrubBytes = ScrubScalar;
+        _decryptScrubBytes = ScrubScalar;
 #endif
+    }
+
+    /// <summary>
+    /// Gets the number of stack bytes to scrub after an encryption on the selected path.
+    /// </summary>
+    public readonly int EncryptScrubBytes => _encryptScrubBytes;
+
+    /// <summary>
+    /// Gets the number of stack bytes to scrub after a decryption on the selected path.
+    /// </summary>
+    public readonly int DecryptScrubBytes => _decryptScrubBytes;
+
+    private static int ComputeScrubBytes(bool pipelined, bool wide, bool decrypt)
+    {
+        if (!pipelined)
+        {
+            return ScrubScalar;
+        }
+
+        return wide
+            ? (decrypt ? ScrubPipelinedDecrypt256 : ScrubPipelinedEncrypt256)
+            : (decrypt ? ScrubPipelinedDecrypt128 : ScrubPipelinedEncrypt128);
     }
 
     /// <summary>
@@ -417,7 +456,6 @@ internal struct GcmCore
 
         ProcessBlocks(h, data, y);
         y.CopyTo(output);
-        CryptographicOperations.ZeroMemory(y);
     }
 
     /// <summary>
@@ -457,7 +495,6 @@ internal struct GcmCore
         GfMul(y, h, y);
 
         y.CopyTo(output);
-        CryptographicOperations.ZeroMemory(y);
     }
 
     /// <summary>
@@ -502,8 +539,6 @@ internal struct GcmCore
             XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
         }
 
-        CryptographicOperations.ZeroMemory(counter);
-        CryptographicOperations.ZeroMemory(keystream);
     }
 
 #if NET8_0_OR_GREATER
@@ -549,8 +584,6 @@ internal struct GcmCore
             XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
         }
 
-        CryptographicOperations.ZeroMemory(counter);
-        CryptographicOperations.ZeroMemory(keystream);
     }
 
     /// <summary>
@@ -595,8 +628,6 @@ internal struct GcmCore
             XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
         }
 
-        CryptographicOperations.ZeroMemory(counter);
-        CryptographicOperations.ZeroMemory(keystream);
     }
 #endif
 
@@ -644,8 +675,6 @@ internal struct GcmCore
             XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
         }
 
-        CryptographicOperations.ZeroMemory(counter);
-        CryptographicOperations.ZeroMemory(keystream);
     }
 
     /// <summary>
@@ -2095,8 +2124,6 @@ internal struct GcmCore
         y = GfMulClmul(_hClmul, y);
 
         Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
-        CryptographicOperations.ZeroMemory(ctrBuf);
-        CryptographicOperations.ZeroMemory(ksBuf);
     }
 
     /// <summary>
@@ -2230,8 +2257,6 @@ internal struct GcmCore
         y = GfMulClmul(_hClmul, y);
 
         Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
-        CryptographicOperations.ZeroMemory(ctrBuf);
-        CryptographicOperations.ZeroMemory(ksBuf);
     }
 
 #if NET10_0_OR_GREATER
