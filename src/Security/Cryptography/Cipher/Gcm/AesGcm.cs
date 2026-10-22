@@ -126,9 +126,9 @@ public abstract class AesGcm : IAeadCipher
         // Write the fixed-size tag; larger caller-supplied buffers are left
         // untouched beyond TagSizeBytes (tag.Length >= TagSizeBytes is guaranteed above).
         fullTag.CopyTo(tag);
-        CryptographicOperations.ZeroMemory(j0);
-        CryptographicOperations.ZeroMemory(icb);
-        CryptographicOperations.ZeroMemory(ghash);
+
+        // The locals above carry only nonce, hash and tag; the keystream lives in the callees' frames.
+        CryptographicOperations.ScrubStack(_gcmCore.EncryptScrubBytes);
     }
 
     /// <inheritdoc/>
@@ -163,10 +163,7 @@ public abstract class AesGcm : IAeadCipher
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
         bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length));
-        CryptographicOperations.ZeroMemory(j0);
-        CryptographicOperations.ZeroMemory(icb);
-        CryptographicOperations.ZeroMemory(ghash);
-        CryptographicOperations.ZeroMemory(expectedTag);
+        CryptographicOperations.ScrubStack(_gcmCore.DecryptScrubBytes);
         if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
