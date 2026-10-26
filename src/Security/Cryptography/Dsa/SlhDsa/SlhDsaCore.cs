@@ -88,8 +88,6 @@ internal static class SlhDsaCore
         Sign(p, sk, ReadOnlySpan<byte>.Empty, message, sk.Slice(2 * p.N, p.N), signature);
         bool consistent = Verify(p, pk, ReadOnlySpan<byte>.Empty, message, signature);
 
-        CryptographicOperations.ZeroMemory(message);
-
         if (!consistent)
         {
             throw new OS.CryptographicException("SLH-DSA key generation failed the pairwise consistency test.");
@@ -146,8 +144,6 @@ internal static class SlhDsaCore
         Hypertree.Sign(hash, p, pkFors.Slice(0, p.N), skSeed, idxTree, idxLeaf,
                        signature.Slice(p.N + forsSigBytes));
 
-        CryptographicOperations.ZeroMemory(digest);
-        CryptographicOperations.ZeroMemory(pkFors);
     }
 
     /// <summary>

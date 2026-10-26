@@ -49,8 +49,6 @@ internal static class Fors
         adrs.SetTreeHeight(z);
         adrs.SetTreeIndex(i);
         hash.H(adrs, children.AsSpan(0, p.N), children.AsSpan(p.N, p.N), output);
-
-        CryptographicOperations.ZeroMemory(children);
     }
 
     /// <summary>

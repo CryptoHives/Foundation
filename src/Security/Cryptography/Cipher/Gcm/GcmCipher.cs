@@ -80,8 +80,6 @@ public abstract class GcmCipher : IAeadCipher
         // T = GCTR(J0, GHASH(H, A, C))
         _gcmCore.GctrDispatch(j0, ghash, tag.Slice(0, TagSizeBytes));
 
-        // The locals above carry only nonce, hash and tag; the keystream lives in the callees' frames.
-        CryptographicOperations.ScrubStack(_gcmCore.EncryptScrubBytes);
     }
 
     /// <inheritdoc/>
@@ -115,7 +113,6 @@ public abstract class GcmCipher : IAeadCipher
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
         bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag);
-        CryptographicOperations.ScrubStack(_gcmCore.DecryptScrubBytes);
         if (!authentic)
         {
             CryptographicOperations.ZeroMemory(plaintext.Slice(0, ciphertext.Length));

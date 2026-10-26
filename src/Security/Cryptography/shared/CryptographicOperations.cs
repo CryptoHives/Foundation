@@ -24,36 +24,6 @@ using System.Runtime.InteropServices;
 public static class CryptographicOperations
 {
     /// <summary>
-    /// The number of bytes <see cref="ScrubStack"/> clears when no size is given.
-    /// </summary>
-    internal const int StackScrubBytes = 64;
-
-    /// <summary>
-    /// The most <see cref="ScrubStack"/> will clear, however large a size it is asked for.
-    /// </summary>
-    internal const int MaxStackScrubBytes = 2048;
-
-    /// <summary>
-    /// Erases the stack region just below the caller's frame, where the frames of the methods it
-    /// has already called kept their locals and spills.
-    /// </summary>
-    /// <param name="length">The number of bytes to clear, limited to <see cref="MaxStackScrubBytes"/>.</param>
-    /// <remarks>
-    /// Best effort: call it last from the outermost method, after the work has returned. It reaches
-    /// only <paramref name="length"/> bytes, so a callee chain with larger frames leaves its
-    /// deepest part behind.
-    /// </remarks>
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    internal static void ScrubStack(int length = StackScrubBytes)
-    {
-        if (length > MaxStackScrubBytes) length = MaxStackScrubBytes;
-
-        Span<byte> scratch = stackalloc byte[length];
-        ZeroMemory(scratch);
-    }
-
-    /// <summary>
     /// Fills a span with zeros in a way that is not subject to compiler optimizations.
     /// </summary>
     /// <param name="buffer">The buffer to clear.</param>

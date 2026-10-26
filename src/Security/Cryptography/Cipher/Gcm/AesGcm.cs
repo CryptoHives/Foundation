@@ -119,16 +119,10 @@ public abstract class AesGcm : IAeadCipher
         Span<byte> ghash = stackalloc byte[GcmCore.BlockSizeBytes];
         _gcmCore.GEncryptDispatch(icb, associatedData, plaintext, ciphertext, ghash);
 
-        // Compute tag: T = GCTR(J0, GHASH(H, A, C))
-        Span<byte> fullTag = stackalloc byte[GcmCore.BlockSizeBytes];
-        _gcmCore.GctrDispatch(j0, ghash, fullTag);
-
-        // Write the fixed-size tag; larger caller-supplied buffers are left
+        // Compute tag: T = GCTR(J0, GHASH(H, A, C)); larger caller-supplied buffers are left
         // untouched beyond TagSizeBytes (tag.Length >= TagSizeBytes is guaranteed above).
-        fullTag.CopyTo(tag);
+        _gcmCore.GctrDispatch(j0, ghash, tag.Slice(0, TagSizeBytes));
 
-        // The locals above carry only nonce, hash and tag; the keystream lives in the callees' frames.
-        CryptographicOperations.ScrubStack(_gcmCore.EncryptScrubBytes);
     }
 
     /// <inheritdoc/>
@@ -163,7 +157,6 @@ public abstract class AesGcm : IAeadCipher
         _gcmCore.GctrDispatch(j0, ghash, expectedTag);
 
         bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag.Slice(0, tag.Length));
-        CryptographicOperations.ScrubStack(_gcmCore.DecryptScrubBytes);
         if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
