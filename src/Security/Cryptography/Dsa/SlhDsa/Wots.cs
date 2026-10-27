@@ -58,7 +58,6 @@ internal static class Wots
         hash.T(pkAdrs, tmp, pk);
 
         CryptographicOperations.ZeroMemory(sk);
-        CryptographicOperations.ZeroMemory(tmp);
     }
 
     /// <summary>

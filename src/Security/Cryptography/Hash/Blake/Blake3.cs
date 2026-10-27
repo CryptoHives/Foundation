@@ -162,15 +162,8 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
         _mode = Blake3Mode.DeriveKey;
 
         Span<byte> contextKey = stackalloc byte[KeySizeBytes];
-        try
-        {
-            Blake3State.DeriveContextKey(simdSupport, contextUtf8, contextKey);
-            _core = new Blake3State(simdSupport, outputBytes, contextKey, Blake3State.FlagDeriveKeyMaterial);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(contextKey);
-        }
+        Blake3State.DeriveContextKey(simdSupport, contextUtf8, contextKey);
+        _core = new Blake3State(simdSupport, outputBytes, contextKey, Blake3State.FlagDeriveKeyMaterial);
 
         Initialize();
     }

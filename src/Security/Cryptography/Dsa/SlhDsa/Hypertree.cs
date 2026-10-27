@@ -54,8 +54,6 @@ internal static class Hypertree
                 idxTree >>= p.HPrime;
             }
         }
-
-        CryptographicOperations.ZeroMemory(root);
     }
 
     /// <summary>
