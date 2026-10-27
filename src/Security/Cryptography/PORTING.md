@@ -319,8 +319,8 @@ finally
 ```
 
 **Clear it with `CryptographicOperations.ZeroMemory`, not `Array.Clear`.** A clear on a buffer you
-are about to drop is a dead store, and a compiler may delete it; `ZeroMemory` is
-`NoInlining | NoOptimization` so it cannot. This package exposes its own because the in-box type
+are about to drop is a dead store, and a compiler may delete it; `ZeroMemory` is a
+non-inlined call that clears with an init-block, so it cannot. This package exposes its own because the in-box type
 does not exist below netstandard2.1 and has **no character overload** on any .NET version. Importing
 both namespaces in one file is `CS0104` — alias one side,
 `using Bcl = System.Security.Cryptography;`.
@@ -406,6 +406,7 @@ cipher and key-format code, so they are listed once here rather than in each sec
 ```csharp
 CryptographicOperations.ZeroMemory(Span<byte> | byte[] | Span<char> | char[]);
 bool CryptographicOperations.FixedTimeEquals(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right);
+bool CryptographicOperations.FixedTimeEquals(ReadOnlySpan<byte> source, byte value);
 ```
 
 **Replace these during a port:**

@@ -222,6 +222,7 @@ internal struct GcmCore
                 _usePipeline = _usePclmul || _usePclmulV256;
             }
         }
+
 #endif
     }
 
@@ -417,7 +418,6 @@ internal struct GcmCore
 
         ProcessBlocks(h, data, y);
         y.CopyTo(output);
-        CryptographicOperations.ZeroMemory(y);
     }
 
     /// <summary>
@@ -454,10 +454,7 @@ internal struct GcmCore
         {
             y[i] ^= lenBlock[i];
         }
-        GfMul(y, h, y);
-
-        y.CopyTo(output);
-        CryptographicOperations.ZeroMemory(y);
+        GfMul(y, h, output);
     }
 
     /// <summary>
@@ -502,8 +499,6 @@ internal struct GcmCore
             XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
         }
 
-        CryptographicOperations.ZeroMemory(counter);
-        CryptographicOperations.ZeroMemory(keystream);
     }
 
 #if NET8_0_OR_GREATER
@@ -549,8 +544,6 @@ internal struct GcmCore
             XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
         }
 
-        CryptographicOperations.ZeroMemory(counter);
-        CryptographicOperations.ZeroMemory(keystream);
     }
 
     /// <summary>
@@ -595,8 +588,6 @@ internal struct GcmCore
             XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
         }
 
-        CryptographicOperations.ZeroMemory(counter);
-        CryptographicOperations.ZeroMemory(keystream);
     }
 #endif
 
@@ -644,8 +635,6 @@ internal struct GcmCore
             XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
         }
 
-        CryptographicOperations.ZeroMemory(counter);
-        CryptographicOperations.ZeroMemory(keystream);
     }
 
     /// <summary>
@@ -2095,8 +2084,6 @@ internal struct GcmCore
         y = GfMulClmul(_hClmul, y);
 
         Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
-        CryptographicOperations.ZeroMemory(ctrBuf);
-        CryptographicOperations.ZeroMemory(ksBuf);
     }
 
     /// <summary>
@@ -2230,8 +2217,6 @@ internal struct GcmCore
         y = GfMulClmul(_hClmul, y);
 
         Ssse3.Shuffle(y, ByteSwapMask).CopyTo(ghashOut);
-        CryptographicOperations.ZeroMemory(ctrBuf);
-        CryptographicOperations.ZeroMemory(ksBuf);
     }
 
 #if NET10_0_OR_GREATER

@@ -142,7 +142,6 @@ internal abstract class SlhDsaHash : IDisposable
         public override void Dispose()
         {
             _shake.Dispose();
-            CryptographicOperations.ZeroMemory(PkSeed);
         }
     }
 
@@ -264,12 +263,6 @@ internal abstract class SlhDsaHash : IDisposable
         {
             _sha256.Dispose();
             _sha512?.Dispose();
-            CryptographicOperations.ZeroMemory(PkSeed);
-            CryptographicOperations.ZeroMemory(_paddedSeed256);
-            if (_paddedSeed512 is not null)
-            {
-                CryptographicOperations.ZeroMemory(_paddedSeed512);
-            }
         }
 
         private (Hash.HashAlgorithm Sha, byte[] PaddedSeed, int HashLen) TreeHash()
@@ -311,7 +304,6 @@ internal abstract class SlhDsaHash : IDisposable
                 counter++;
             }
 
-            CryptographicOperations.ZeroMemory(block);
         }
     }
 }

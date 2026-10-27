@@ -347,7 +347,6 @@ internal static class MLKemCore
         bool consistent = CryptographicOperations.FixedTimeEquals(ss1, ss2);
 
         CryptographicOperations.ZeroMemory(m);
-        CryptographicOperations.ZeroMemory(ct);
         CryptographicOperations.ZeroMemory(ss1);
         CryptographicOperations.ZeroMemory(ss2);
 
@@ -531,7 +530,6 @@ internal static class MLKemCore
         CryptographicOperations.ZeroMemory(gInput);
         CryptographicOperations.ZeroMemory(gOutput);
         CryptographicOperations.ZeroMemory(kBar);
-        CryptographicOperations.ZeroMemory(cPrime);
     }
 
     // ========================================================================
