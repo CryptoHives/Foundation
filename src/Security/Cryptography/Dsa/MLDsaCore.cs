@@ -134,8 +134,6 @@ internal static class MLDsaCore
         Sign(p, sk, ReadOnlySpan<byte>.Empty, message, rnd, signature);
         bool consistent = Verify(p, pk, ReadOnlySpan<byte>.Empty, message, signature);
 
-        CryptographicOperations.ZeroMemory(message);
-
         if (!consistent)
         {
             throw new OS.CryptographicException("ML-DSA key generation failed the pairwise consistency test.");

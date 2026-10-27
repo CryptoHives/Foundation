@@ -224,6 +224,74 @@ public class ErasableMemoryTests
     }
 
     [Test]
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(15)]
+    [TestCase(64)]
+    [TestCase(1001)]
+    public void ZeroMemoryClearsOnlyTheSliceItIsGiven(int length)
+    {
+        byte[] bytes = new byte[length + 8];
+        bytes.AsSpan().Fill(0xAA);
+        CryptographicOperations.ZeroMemory(bytes.AsSpan(4, length));
+
+        Assert.That(bytes.AsSpan(0, 4).ToArray(), Is.All.EqualTo((byte)0xAA));
+        Assert.That(bytes.AsSpan(4, length).ToArray(), Is.All.EqualTo((byte)0));
+        Assert.That(bytes.AsSpan(4 + length).ToArray(), Is.All.EqualTo((byte)0xAA));
+
+        char[] chars = new char[length + 8];
+        chars.AsSpan().Fill('ꪪ');
+        CryptographicOperations.ZeroMemory(chars.AsSpan(4, length));
+
+        Assert.That(chars.AsSpan(0, 4).ToArray(), Is.All.EqualTo('ꪪ'));
+        Assert.That(chars.AsSpan(4, length).ToArray(), Is.All.EqualTo('\0'));
+        Assert.That(chars.AsSpan(4 + length).ToArray(), Is.All.EqualTo('ꪪ'));
+    }
+
+    [Test]
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(33)]
+    public void ZeroMemoryClearsWholeArrays(int length)
+    {
+        byte[] bytes = new byte[length];
+        bytes.AsSpan().Fill(0xAA);
+        CryptographicOperations.ZeroMemory(bytes);
+        Assert.That(bytes, Is.All.EqualTo((byte)0));
+
+        char[] chars = new char[length];
+        chars.AsSpan().Fill('ꪪ');
+        CryptographicOperations.ZeroMemory(chars);
+        Assert.That(chars, Is.All.EqualTo('\0'));
+    }
+
+    [Test]
+    public void ZeroMemoryIgnoresNullArrays()
+    {
+        Assert.DoesNotThrow(() => CryptographicOperations.ZeroMemory((byte[])null!));
+        Assert.DoesNotThrow(() => CryptographicOperations.ZeroMemory((char[])null!));
+    }
+
+    [Test]
+    [TestCase(0, -1, true)]
+    [TestCase(1, -1, true)]
+    [TestCase(33, -1, true)]
+    [TestCase(33, 0, false)]
+    [TestCase(33, 16, false)]
+    [TestCase(33, 32, false)]
+    public void FixedTimeEqualsAgainstAByteChecksEveryElement(int length, int differingIndex, bool expected)
+    {
+        byte[] data = new byte[length];
+        data.AsSpan().Fill(0x5A);
+        if (differingIndex >= 0)
+        {
+            data[differingIndex] = 0x5B;
+        }
+
+        Assert.That(CryptographicOperations.FixedTimeEquals(data, 0x5A), Is.EqualTo(expected));
+    }
+
+    [Test]
     public void ABytePasswordThatIsNotValidUtf8IsUnreachableFromAnyCharacterPassword()
     {
         // The other half of the same rule, and the reason the byte overload exists at all: these
