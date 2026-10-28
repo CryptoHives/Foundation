@@ -108,16 +108,14 @@ internal struct MgmCore
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
 
         _blockCipher.EncryptBlock(nonce, counter);
-        ulong left = BinaryPrimitives.ReadUInt64BigEndian(counter);
-        ulong right = BinaryPrimitives.ReadUInt64BigEndian(counter.Slice(sizeof(ulong)));
+        BinarySpans.ReadUInt64PairBigEndian(counter, out ulong left, out ulong right);
 
         ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream);
         int offset = 0;
         int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
-            BinaryPrimitives.WriteUInt64BigEndian(counter, left);
-            BinaryPrimitives.WriteUInt64BigEndian(counter.Slice(sizeof(ulong)), right++);
+            BinarySpans.WriteUInt64PairBigEndian(counter, left, right++);
             _blockCipher.EncryptBlock(counter, keystream);
 
             ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(offset, BlockSizeBytes));
@@ -129,8 +127,7 @@ internal struct MgmCore
 
         if (offset < input.Length)
         {
-            BinaryPrimitives.WriteUInt64BigEndian(counter, left);
-            BinaryPrimitives.WriteUInt64BigEndian(counter.Slice(sizeof(ulong)), right);
+            BinarySpans.WriteUInt64PairBigEndian(counter, left, right);
             _blockCipher.EncryptBlock(counter, keystream);
 
             ReadOnlySpan<byte> tail = input.Slice(offset);
@@ -158,17 +155,15 @@ internal struct MgmCore
         nonce.CopyTo(block);
         block[0] |= 0x80;
         _blockCipher.EncryptBlock(block, h);
-        var state = new TagState(
-            BinaryPrimitives.ReadUInt64BigEndian(h),
-            BinaryPrimitives.ReadUInt64BigEndian(h.Slice(sizeof(ulong))));
+        BinarySpans.ReadUInt64PairBigEndian(h, out ulong h0, out ulong h1);
+        var state = new TagState(h0, h1);
 
         Absorb(ref state, associatedData, block, h);
         Absorb(ref state, ciphertext, block, h);
         AbsorbBlock(ref state, (ulong)associatedData.Length * 8, (ulong)ciphertext.Length * 8, block, h);
 
         Reduce(state.A3, state.A2, state.A1, state.A0, out ulong sumLeft, out ulong sumRight);
-        BinaryPrimitives.WriteUInt64BigEndian(block, sumLeft);
-        BinaryPrimitives.WriteUInt64BigEndian(block.Slice(sizeof(ulong)), sumRight);
+        BinarySpans.WriteUInt64PairBigEndian(block, sumLeft, sumRight);
         _blockCipher.EncryptBlock(block, tag);
 
         CryptographicOperations.ZeroMemory(h);
@@ -181,11 +176,8 @@ internal struct MgmCore
         int offset = 0;
         for (; offset + BlockSizeBytes <= data.Length; offset += BlockSizeBytes)
         {
-            AbsorbBlock(
-                ref state,
-                BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset)),
-                BinaryPrimitives.ReadUInt64BigEndian(data.Slice(offset + sizeof(ulong))),
-                block, h);
+            BinarySpans.ReadUInt64PairBigEndian(data.Slice(offset), out ulong left, out ulong right);
+            AbsorbBlock(ref state, left, right, block, h);
         }
 
         if (offset < data.Length)
@@ -198,14 +190,11 @@ internal struct MgmCore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private readonly void AbsorbBlock(ref TagState state, ulong left, ulong right, Span<byte> block, Span<byte> h)
     {
-        BinaryPrimitives.WriteUInt64BigEndian(block, state.ZLeft++);
-        BinaryPrimitives.WriteUInt64BigEndian(block.Slice(sizeof(ulong)), state.ZRight);
+        BinarySpans.WriteUInt64PairBigEndian(block, state.ZLeft++, state.ZRight);
         _blockCipher.EncryptBlock(block, h);
 
-        MultiplyAccumulate(
-            BinaryPrimitives.ReadUInt64BigEndian(h),
-            BinaryPrimitives.ReadUInt64BigEndian(h.Slice(sizeof(ulong))),
-            left, right, ref state);
+        BinarySpans.ReadUInt64PairBigEndian(h, out ulong hLeft, out ulong hRight);
+        MultiplyAccumulate(hLeft, hRight, left, right, ref state);
     }
 
     /// <summary>

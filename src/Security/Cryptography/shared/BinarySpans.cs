@@ -33,16 +33,19 @@ internal static class BinarySpans
     public static void ReadUInt32LittleEndian(ReadOnlySpan<byte> source, Span<uint> destination)
     {
         int count = source.Length / sizeof(UInt32);
-        if (BitConverter.IsLittleEndian)
+        destination = destination.Slice(0, count);
+        ref byte src = ref MemoryMarshal.GetReference(source);
+        ref uint dst = ref MemoryMarshal.GetReference(destination);
+        if (!BitConverter.IsLittleEndian)
         {
-            MemoryMarshal.Cast<byte, uint>(source).Slice(0, count).CopyTo(destination);
+            for (nuint i = 0; i < (nuint)count; i++)
+            {
+                Unsafe.Add(ref dst, i) = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref src, i * sizeof(UInt32))));
+            }
         }
         else
         {
-            for (int i = 0; i < count; i++)
-            {
-                destination[i] = BinaryPrimitives.ReadUInt32LittleEndian(source.Slice(i * sizeof(UInt32)));
-            }
+            Unsafe.CopyBlockUnaligned(ref Unsafe.As<uint, byte>(ref dst), ref src, (uint)(count * sizeof(UInt32)));
         }
     }
 
@@ -55,17 +58,194 @@ internal static class BinarySpans
     public static void ReadUInt64LittleEndian(ReadOnlySpan<byte> source, Span<ulong> destination)
     {
         int count = source.Length / sizeof(UInt64);
-        if (BitConverter.IsLittleEndian)
+        destination = destination.Slice(0, count);
+        ref byte src = ref MemoryMarshal.GetReference(source);
+        ref ulong dst = ref MemoryMarshal.GetReference(destination);
+        if (!BitConverter.IsLittleEndian)
         {
-            MemoryMarshal.Cast<byte, ulong>(source).Slice(0, count).CopyTo(destination);
+            for (nuint i = 0; i < (nuint)count; i++)
+            {
+                Unsafe.Add(ref dst, i) = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ulong>(ref Unsafe.Add(ref src, i * sizeof(UInt64))));
+            }
         }
         else
         {
-            for (int i = 0; i < count; i++)
+            Unsafe.CopyBlockUnaligned(ref Unsafe.As<ulong, byte>(ref dst), ref src, (uint)(count * sizeof(UInt64)));
+        }
+    }
+
+    /// <summary>
+    /// Reads big-endian <see cref="UInt32"/> words from a byte span into a destination word span.
+    /// </summary>
+    /// <param name="source">The source bytes. The number of words read is <c>source.Length / 4</c>.</param>
+    /// <param name="destination">The destination word span (must have room for the words derived from <paramref name="source"/>).</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void ReadUInt32BigEndian(ReadOnlySpan<byte> source, Span<uint> destination)
+    {
+        int count = source.Length / sizeof(UInt32);
+        destination = destination.Slice(0, count);
+        ref byte src = ref MemoryMarshal.GetReference(source);
+        ref uint dst = ref MemoryMarshal.GetReference(destination);
+        if (BitConverter.IsLittleEndian)
+        {
+            for (nuint i = 0; i < (nuint)count; i++)
             {
-                destination[i] = BinaryPrimitives.ReadUInt64LittleEndian(source.Slice(i * sizeof(UInt64)));
+                Unsafe.Add(ref dst, i) = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref src, i * sizeof(UInt32))));
             }
         }
+        else
+        {
+            Unsafe.CopyBlockUnaligned(ref Unsafe.As<uint, byte>(ref dst), ref src, (uint)(count * sizeof(UInt32)));
+        }
+    }
+
+    /// <summary>
+    /// Reads big-endian <see cref="UInt64"/> words from a byte span into a destination word span.
+    /// </summary>
+    /// <param name="source">The source bytes. The number of words read is <c>source.Length / 8</c>.</param>
+    /// <param name="destination">The destination word span (must have room for the words derived from <paramref name="source"/>).</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void ReadUInt64BigEndian(ReadOnlySpan<byte> source, Span<ulong> destination)
+    {
+        int count = source.Length / sizeof(UInt64);
+        destination = destination.Slice(0, count);
+        ref byte src = ref MemoryMarshal.GetReference(source);
+        ref ulong dst = ref MemoryMarshal.GetReference(destination);
+        if (BitConverter.IsLittleEndian)
+        {
+            for (nuint i = 0; i < (nuint)count; i++)
+            {
+                Unsafe.Add(ref dst, i) = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ulong>(ref Unsafe.Add(ref src, i * sizeof(UInt64))));
+            }
+        }
+        else
+        {
+            Unsafe.CopyBlockUnaligned(ref Unsafe.As<ulong, byte>(ref dst), ref src, (uint)(count * sizeof(UInt64)));
+        }
+    }
+
+    /// <summary>
+    /// Writes <see cref="UInt32"/> words to a byte span in big-endian order.
+    /// </summary>
+    /// <param name="source">The source word span.</param>
+    /// <param name="destination">The destination bytes (must be at least <paramref name="source"/>.Length × 4 bytes).</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void WriteUInt32BigEndian(ReadOnlySpan<uint> source, Span<byte> destination)
+    {
+        destination = destination.Slice(0, source.Length * sizeof(UInt32));
+        ref uint src = ref MemoryMarshal.GetReference(source);
+        ref byte dst = ref MemoryMarshal.GetReference(destination);
+        if (BitConverter.IsLittleEndian)
+        {
+            for (nuint i = 0; i < (nuint)source.Length; i++)
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref dst, i * sizeof(UInt32)), BinaryPrimitives.ReverseEndianness(Unsafe.Add(ref src, i)));
+            }
+        }
+        else
+        {
+            Unsafe.CopyBlockUnaligned(ref dst, ref Unsafe.As<uint, byte>(ref src), (uint)(source.Length * sizeof(UInt32)));
+        }
+    }
+
+    /// <summary>
+    /// Writes <see cref="UInt64"/> words to a byte span in big-endian order.
+    /// </summary>
+    /// <param name="source">The source word span.</param>
+    /// <param name="destination">The destination bytes (must be at least <paramref name="source"/>.Length × 8 bytes).</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static void WriteUInt64BigEndian(ReadOnlySpan<ulong> source, Span<byte> destination)
+    {
+        destination = destination.Slice(0, source.Length * sizeof(UInt64));
+        ref ulong src = ref MemoryMarshal.GetReference(source);
+        ref byte dst = ref MemoryMarshal.GetReference(destination);
+        if (BitConverter.IsLittleEndian)
+        {
+            for (nuint i = 0; i < (nuint)source.Length; i++)
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref dst, i * sizeof(UInt64)), BinaryPrimitives.ReverseEndianness(Unsafe.Add(ref src, i)));
+            }
+        }
+        else
+        {
+            Unsafe.CopyBlockUnaligned(ref dst, ref Unsafe.As<ulong, byte>(ref src), (uint)(source.Length * sizeof(UInt64)));
+        }
+    }
+
+    /// <summary>
+    /// Reads two big-endian <see cref="UInt64"/> words from the first 16 bytes of a span.
+    /// </summary>
+    /// <param name="source">The source bytes (at least 16).</param>
+    /// <param name="first">The word at offset 0.</param>
+    /// <param name="second">The word at offset 8.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ReadUInt64PairBigEndian(ReadOnlySpan<byte> source, out ulong first, out ulong second)
+    {
+        ref byte src = ref MemoryMarshal.GetReference(source.Slice(0, 2 * sizeof(UInt64)));
+        first = Unsafe.ReadUnaligned<ulong>(ref src);
+        second = Unsafe.ReadUnaligned<ulong>(ref Unsafe.Add(ref src, sizeof(UInt64)));
+        if (BitConverter.IsLittleEndian)
+        {
+            first = BinaryPrimitives.ReverseEndianness(first);
+            second = BinaryPrimitives.ReverseEndianness(second);
+        }
+    }
+
+    /// <summary>
+    /// Writes two <see cref="UInt64"/> words big-endian into the first 16 bytes of a span.
+    /// </summary>
+    /// <param name="destination">The destination bytes (at least 16).</param>
+    /// <param name="first">The word written at offset 0.</param>
+    /// <param name="second">The word written at offset 8.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteUInt64PairBigEndian(Span<byte> destination, ulong first, ulong second)
+    {
+        ref byte dst = ref MemoryMarshal.GetReference(destination.Slice(0, 2 * sizeof(UInt64)));
+        Unsafe.WriteUnaligned(ref dst, BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(first) : first);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref dst, sizeof(UInt64)), BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(second) : second);
+    }
+
+    /// <summary>
+    /// Reads four big-endian <see cref="UInt32"/> words from the first 16 bytes of a span.
+    /// </summary>
+    /// <param name="source">The source bytes (at least 16).</param>
+    /// <param name="w0">The word at offset 0.</param>
+    /// <param name="w1">The word at offset 4.</param>
+    /// <param name="w2">The word at offset 8.</param>
+    /// <param name="w3">The word at offset 12.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ReadUInt32QuadBigEndian(ReadOnlySpan<byte> source, out uint w0, out uint w1, out uint w2, out uint w3)
+    {
+        ref byte src = ref MemoryMarshal.GetReference(source.Slice(0, 4 * sizeof(UInt32)));
+        w0 = Unsafe.ReadUnaligned<uint>(ref src);
+        w1 = Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref src, sizeof(UInt32)));
+        w2 = Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref src, 2 * sizeof(UInt32)));
+        w3 = Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref src, 3 * sizeof(UInt32)));
+        if (BitConverter.IsLittleEndian)
+        {
+            w0 = BinaryPrimitives.ReverseEndianness(w0);
+            w1 = BinaryPrimitives.ReverseEndianness(w1);
+            w2 = BinaryPrimitives.ReverseEndianness(w2);
+            w3 = BinaryPrimitives.ReverseEndianness(w3);
+        }
+    }
+
+    /// <summary>
+    /// Writes four <see cref="UInt32"/> words big-endian into the first 16 bytes of a span.
+    /// </summary>
+    /// <param name="destination">The destination bytes (at least 16).</param>
+    /// <param name="w0">The word written at offset 0.</param>
+    /// <param name="w1">The word written at offset 4.</param>
+    /// <param name="w2">The word written at offset 8.</param>
+    /// <param name="w3">The word written at offset 12.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void WriteUInt32QuadBigEndian(Span<byte> destination, uint w0, uint w1, uint w2, uint w3)
+    {
+        ref byte dst = ref MemoryMarshal.GetReference(destination.Slice(0, 4 * sizeof(UInt32)));
+        Unsafe.WriteUnaligned(ref dst, BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(w0) : w0);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref dst, sizeof(UInt32)), BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(w1) : w1);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref dst, 2 * sizeof(UInt32)), BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(w2) : w2);
+        Unsafe.WriteUnaligned(ref Unsafe.Add(ref dst, 3 * sizeof(UInt32)), BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(w3) : w3);
     }
 
     /// <summary>
@@ -83,10 +263,9 @@ internal static class BinarySpans
         }
         else
         {
-            var src = new ReadOnlySpan<byte>(source, sizeof(uint) * count);
             for (int i = 0; i < count; i++)
             {
-                destination[i] = BinaryPrimitives.ReadUInt32LittleEndian(src.Slice(i * sizeof(uint)));
+                destination[i] = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<uint>(source + i * sizeof(uint)));
             }
         }
     }
@@ -106,10 +285,9 @@ internal static class BinarySpans
         }
         else
         {
-            var src = new ReadOnlySpan<byte>(source, sizeof(ulong) * count);
             for (int i = 0; i < count; i++)
             {
-                destination[i] = BinaryPrimitives.ReadUInt64LittleEndian(src.Slice(i * sizeof(ulong)));
+                destination[i] = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ulong>(source + i * sizeof(ulong)));
             }
         }
     }
@@ -122,16 +300,19 @@ internal static class BinarySpans
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void WriteUInt32LittleEndian(ReadOnlySpan<uint> source, Span<byte> destination)
     {
-        if (BitConverter.IsLittleEndian)
+        destination = destination.Slice(0, source.Length * sizeof(UInt32));
+        ref uint src = ref MemoryMarshal.GetReference(source);
+        ref byte dst = ref MemoryMarshal.GetReference(destination);
+        if (!BitConverter.IsLittleEndian)
         {
-            MemoryMarshal.AsBytes(source).CopyTo(destination);
+            for (nuint i = 0; i < (nuint)source.Length; i++)
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref dst, i * sizeof(UInt32)), BinaryPrimitives.ReverseEndianness(Unsafe.Add(ref src, i)));
+            }
         }
         else
         {
-            for (int i = 0; i < source.Length; i++)
-            {
-                BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(i * sizeof(UInt32)), source[i]);
-            }
+            Unsafe.CopyBlockUnaligned(ref dst, ref Unsafe.As<uint, byte>(ref src), (uint)(source.Length * sizeof(UInt32)));
         }
     }
 
@@ -143,16 +324,19 @@ internal static class BinarySpans
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static void WriteUInt64LittleEndian(ReadOnlySpan<ulong> source, Span<byte> destination)
     {
-        if (BitConverter.IsLittleEndian)
+        destination = destination.Slice(0, source.Length * sizeof(UInt64));
+        ref ulong src = ref MemoryMarshal.GetReference(source);
+        ref byte dst = ref MemoryMarshal.GetReference(destination);
+        if (!BitConverter.IsLittleEndian)
         {
-            MemoryMarshal.AsBytes(source).CopyTo(destination);
+            for (nuint i = 0; i < (nuint)source.Length; i++)
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref dst, i * sizeof(UInt64)), BinaryPrimitives.ReverseEndianness(Unsafe.Add(ref src, i)));
+            }
         }
         else
         {
-            for (int i = 0; i < source.Length; i++)
-            {
-                BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(i * sizeof(UInt64)), source[i]);
-            }
+            Unsafe.CopyBlockUnaligned(ref dst, ref Unsafe.As<ulong, byte>(ref src), (uint)(source.Length * sizeof(UInt64)));
         }
     }
 
@@ -184,10 +368,9 @@ internal static class BinarySpans
         }
         else
         {
-            var dst = new Span<byte>(destination, sizeof(uint) * count);
             for (int i = 0; i < count; i++)
             {
-                BinaryPrimitives.WriteUInt32LittleEndian(dst.Slice(i * sizeof(uint)), source[i]);
+                Unsafe.WriteUnaligned(destination + i * sizeof(uint), BinaryPrimitives.ReverseEndianness(source[i]));
             }
         }
     }
@@ -220,10 +403,9 @@ internal static class BinarySpans
         }
         else
         {
-            var dst = new Span<byte>(destination, sizeof(ulong) * count);
             for (int i = 0; i < count; i++)
             {
-                BinaryPrimitives.WriteUInt64LittleEndian(dst.Slice(i * sizeof(ulong)), source[i]);
+                Unsafe.WriteUnaligned(destination + i * sizeof(ulong), BinaryPrimitives.ReverseEndianness(source[i]));
             }
         }
     }

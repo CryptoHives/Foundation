@@ -160,8 +160,7 @@ internal static class CamelliaCore
         if (key.Length != 16 && key.Length != 24 && key.Length != 32)
             throw new ArgumentException("Key must be 16, 24, or 32 bytes.", nameof(key));
 
-        ulong klh = BinaryPrimitives.ReadUInt64BigEndian(key);
-        ulong kll = BinaryPrimitives.ReadUInt64BigEndian(key.Slice(8));
+        BinarySpans.ReadUInt64PairBigEndian(key, out ulong klh, out ulong kll);
         ulong krh, krl;
 
         if (key.Length == 16)
@@ -218,11 +217,9 @@ internal static class CamelliaCore
     public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output,
         ReadOnlySpan<ulong> subkeys, int rounds)
     {
-        ulong d1 = BinaryPrimitives.ReadUInt64BigEndian(input);
-        ulong d2 = BinaryPrimitives.ReadUInt64BigEndian(input.Slice(8));
+        BinarySpans.ReadUInt64PairBigEndian(input, out ulong d1, out ulong d2);
         EncryptBlock(d1, d2, out ulong r1, out ulong r2, subkeys, rounds);
-        BinaryPrimitives.WriteUInt64BigEndian(output, r1);
-        BinaryPrimitives.WriteUInt64BigEndian(output.Slice(8), r2);
+        BinarySpans.WriteUInt64PairBigEndian(output, r1, r2);
     }
 
     /// <summary>
@@ -293,11 +290,9 @@ internal static class CamelliaCore
     public static void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output,
         ReadOnlySpan<ulong> subkeys, int rounds)
     {
-        ulong d1 = BinaryPrimitives.ReadUInt64BigEndian(input);
-        ulong d2 = BinaryPrimitives.ReadUInt64BigEndian(input.Slice(8));
+        BinarySpans.ReadUInt64PairBigEndian(input, out ulong d1, out ulong d2);
         DecryptBlock(d1, d2, out ulong r1, out ulong r2, subkeys, rounds);
-        BinaryPrimitives.WriteUInt64BigEndian(output, r1);
-        BinaryPrimitives.WriteUInt64BigEndian(output.Slice(8), r2);
+        BinarySpans.WriteUInt64PairBigEndian(output, r1, r2);
     }
 
     /// <summary>

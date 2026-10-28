@@ -50,41 +50,35 @@ internal sealed class CamelliaCipherTransform : BlockCipherTransform
 
         if (IsEncrypting)
         {
-            ulong fbk0 = BinaryPrimitives.ReadUInt64BigEndian(fb);
-            ulong fbk1 = BinaryPrimitives.ReadUInt64BigEndian(fb.Slice(8));
+            BinarySpans.ReadUInt64PairBigEndian(fb, out ulong fbk0, out ulong fbk1);
             for (int i = 0; i < blocks; i++)
             {
                 ReadOnlySpan<byte> inBlk = input.Slice(i * 16, 16);
                 Span<byte> outBlk = output.Slice(i * 16, 16);
-                ulong d1 = BinaryPrimitives.ReadUInt64BigEndian(inBlk) ^ fbk0;
-                ulong d2 = BinaryPrimitives.ReadUInt64BigEndian(inBlk.Slice(8)) ^ fbk1;
+                BinarySpans.ReadUInt64PairBigEndian(inBlk, out ulong d1, out ulong d2);
+                d1 ^= fbk0;
+                d2 ^= fbk1;
                 CamelliaCore.EncryptBlock(d1, d2, out ulong r1, out ulong r2, sk, rds);
-                BinaryPrimitives.WriteUInt64BigEndian(outBlk, r1);
-                BinaryPrimitives.WriteUInt64BigEndian(outBlk.Slice(8), r2);
+                BinarySpans.WriteUInt64PairBigEndian(outBlk, r1, r2);
                 fbk0 = r1;
                 fbk1 = r2;
             }
-            BinaryPrimitives.WriteUInt64BigEndian(fb, fbk0);
-            BinaryPrimitives.WriteUInt64BigEndian(fb.Slice(8), fbk1);
+            BinarySpans.WriteUInt64PairBigEndian(fb, fbk0, fbk1);
         }
         else
         {
-            ulong fbk0 = BinaryPrimitives.ReadUInt64BigEndian(fb);
-            ulong fbk1 = BinaryPrimitives.ReadUInt64BigEndian(fb.Slice(8));
+            BinarySpans.ReadUInt64PairBigEndian(fb, out ulong fbk0, out ulong fbk1);
             for (int i = 0; i < blocks; i++)
             {
                 ReadOnlySpan<byte> inBlk = input.Slice(i * 16, 16);
                 Span<byte> outBlk = output.Slice(i * 16, 16);
-                ulong in0 = BinaryPrimitives.ReadUInt64BigEndian(inBlk);
-                ulong in1 = BinaryPrimitives.ReadUInt64BigEndian(inBlk.Slice(8));
+                BinarySpans.ReadUInt64PairBigEndian(inBlk, out ulong in0, out ulong in1);
                 CamelliaCore.DecryptBlock(in0, in1, out ulong r1, out ulong r2, sk, rds);
-                BinaryPrimitives.WriteUInt64BigEndian(outBlk, r1 ^ fbk0);
-                BinaryPrimitives.WriteUInt64BigEndian(outBlk.Slice(8), r2 ^ fbk1);
+                BinarySpans.WriteUInt64PairBigEndian(outBlk, r1 ^ fbk0, r2 ^ fbk1);
                 fbk0 = in0;
                 fbk1 = in1;
             }
-            BinaryPrimitives.WriteUInt64BigEndian(fb, fbk0);
-            BinaryPrimitives.WriteUInt64BigEndian(fb.Slice(8), fbk1);
+            BinarySpans.WriteUInt64PairBigEndian(fb, fbk0, fbk1);
         }
 
         return blocks * 16;

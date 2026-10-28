@@ -44,10 +44,7 @@ internal static class MagmaCore
     /// <param name="roundKeys">Receives the eight round keys.</param>
     public static void ExpandKey(ReadOnlySpan<byte> key, Span<uint> roundKeys)
     {
-        for (int i = 0; i < RoundKeyCount; i++)
-        {
-            roundKeys[i] = BinaryPrimitives.ReadUInt32BigEndian(key.Slice(i * sizeof(uint)));
-        }
+        BinarySpans.ReadUInt32BigEndian(key.Slice(0, RoundKeyCount * sizeof(uint)), roundKeys);
     }
 
     /// <summary>

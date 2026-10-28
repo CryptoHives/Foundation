@@ -8,6 +8,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Computes the RIPEMD-160 hash for the input data.
@@ -50,46 +51,6 @@ public sealed class Ripemd160 : HashAlgorithm
     private const uint H2 = 0x98BADCFE;
     private const uint H3 = 0x10325476;
     private const uint H4 = 0xC3D2E1F0;
-
-    // Left line message schedule
-    private static readonly int[] RL =
-    [
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-        7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8,
-        3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12,
-        1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6, 2,
-        4, 0, 5, 9, 7, 12, 2, 10, 14, 1, 3, 8, 11, 6, 15, 13
-    ];
-
-    // Right line message schedule
-    private static readonly int[] RR =
-    [
-        5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12,
-        6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2,
-        15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13,
-        8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10, 14,
-        12, 15, 10, 4, 1, 5, 8, 7, 6, 2, 13, 14, 0, 3, 9, 11
-    ];
-
-    // Left line rotations
-    private static readonly int[] SL =
-    [
-        11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8,
-        7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12,
-        11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5,
-        11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8, 6, 5, 12,
-        9, 15, 5, 11, 6, 8, 13, 12, 5, 12, 13, 14, 11, 8, 5, 6
-    ];
-
-    // Right line rotations
-    private static readonly int[] SR =
-    [
-        8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6,
-        9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11,
-        9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5,
-        15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12, 5, 15, 8,
-        8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11
-    ];
 
     private uint _h0, _h1, _h2, _h3, _h4;
     private readonly byte[] _buffer;
@@ -258,70 +219,177 @@ public sealed class Ripemd160 : HashAlgorithm
 
         unchecked
         {
-            BinarySpans.ReadUInt32LittleEndian(block, x);
+            BinarySpans.ReadUInt32LittleEndian(block.Slice(0, BlockSizeBytes), x);
+            ref uint xPtr = ref MemoryMarshal.GetReference(x);
 
             uint al = _h0, bl = _h1, cl = _h2, dl = _h3, el = _h4;
             uint ar = _h0, br = _h1, cr = _h2, dr = _h3, er = _h4;
 
-            // Round 0 (j = 0-15): FL = x^y^z, FR = x^(y|~z)
-            for (int j = 0; j < 16; j++)
-            {
-                uint tl = al + (bl ^ cl ^ dl) + x[RL[j]] + 0x00000000;
-                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
-                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
-
-                uint tr = ar + (br ^ (cr | ~dr)) + x[RR[j]] + 0x50A28BE6;
-                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
-                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
-            }
-
-            // Round 1 (j = 16-31): FL = (x&y)|(~x&z), FR = (x&z)|(y&~z)
-            for (int j = 16; j < 32; j++)
-            {
-                uint tl = al + ((bl & cl) | (~bl & dl)) + x[RL[j]] + 0x5A827999;
-                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
-                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
-
-                uint tr = ar + ((br & dr) | (cr & ~dr)) + x[RR[j]] + 0x5C4DD124;
-                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
-                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
-            }
-
-            // Round 2 (j = 32-47): FL = (x|~y)^z, FR = (x|~y)^z
-            for (int j = 32; j < 48; j++)
-            {
-                uint tl = al + ((bl | ~cl) ^ dl) + x[RL[j]] + 0x6ED9EBA1;
-                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
-                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
-
-                uint tr = ar + ((br | ~cr) ^ dr) + x[RR[j]] + 0x6D703EF3;
-                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
-                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
-            }
-
-            // Round 3 (j = 48-63): FL = (x&z)|(y&~z), FR = (x&y)|(~x&z)
-            for (int j = 48; j < 64; j++)
-            {
-                uint tl = al + ((bl & dl) | (cl & ~dl)) + x[RL[j]] + 0x8F1BBCDC;
-                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
-                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
-
-                uint tr = ar + ((br & cr) | (~br & dr)) + x[RR[j]] + 0x7A6D76E9;
-                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
-                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
-            }
-
-            // Round 4 (j = 64-79): FL = x^(y|~z), FR = x^y^z
-            for (int j = 64; j < 80; j++)
-            {
-                uint tl = al + (bl ^ (cl | ~dl)) + x[RL[j]] + 0xA953FD4E;
-                tl = BitOperations.RotateLeft(tl, SL[j]) + el;
-                al = el; el = dl; dl = BitOperations.RotateLeft(cl, 10); cl = bl; bl = tl;
-
-                uint tr = ar + (br ^ cr ^ dr) + x[RR[j]] + 0x00000000;
-                tr = BitOperations.RotateLeft(tr, SR[j]) + er;
-                ar = er; er = dr; dr = BitOperations.RotateLeft(cr, 10); cr = br; br = tr;
-            }
+            // Round 0
+            Step(ref al, F1(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 0), 0x00000000, 11);
+            Step(ref ar, F5(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 5), 0x50A28BE6, 8);
+            Step(ref el, F1(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 1), 0x00000000, 14);
+            Step(ref er, F5(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 14), 0x50A28BE6, 9);
+            Step(ref dl, F1(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 2), 0x00000000, 15);
+            Step(ref dr, F5(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 7), 0x50A28BE6, 9);
+            Step(ref cl, F1(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 3), 0x00000000, 12);
+            Step(ref cr, F5(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 0), 0x50A28BE6, 11);
+            Step(ref bl, F1(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 4), 0x00000000, 5);
+            Step(ref br, F5(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 9), 0x50A28BE6, 13);
+            Step(ref al, F1(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 5), 0x00000000, 8);
+            Step(ref ar, F5(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 2), 0x50A28BE6, 15);
+            Step(ref el, F1(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 6), 0x00000000, 7);
+            Step(ref er, F5(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 11), 0x50A28BE6, 15);
+            Step(ref dl, F1(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 7), 0x00000000, 9);
+            Step(ref dr, F5(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 4), 0x50A28BE6, 5);
+            Step(ref cl, F1(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 8), 0x00000000, 11);
+            Step(ref cr, F5(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 13), 0x50A28BE6, 7);
+            Step(ref bl, F1(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 9), 0x00000000, 13);
+            Step(ref br, F5(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 6), 0x50A28BE6, 7);
+            Step(ref al, F1(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 10), 0x00000000, 14);
+            Step(ref ar, F5(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 15), 0x50A28BE6, 8);
+            Step(ref el, F1(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 11), 0x00000000, 15);
+            Step(ref er, F5(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 8), 0x50A28BE6, 11);
+            Step(ref dl, F1(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 12), 0x00000000, 6);
+            Step(ref dr, F5(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 1), 0x50A28BE6, 14);
+            Step(ref cl, F1(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 13), 0x00000000, 7);
+            Step(ref cr, F5(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 10), 0x50A28BE6, 14);
+            Step(ref bl, F1(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 14), 0x00000000, 9);
+            Step(ref br, F5(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 3), 0x50A28BE6, 12);
+            Step(ref al, F1(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 15), 0x00000000, 8);
+            Step(ref ar, F5(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 12), 0x50A28BE6, 6);
+            // Round 1
+            Step(ref el, F2(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 7), 0x5A827999, 7);
+            Step(ref er, F4(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 6), 0x5C4DD124, 9);
+            Step(ref dl, F2(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 4), 0x5A827999, 6);
+            Step(ref dr, F4(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 11), 0x5C4DD124, 13);
+            Step(ref cl, F2(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 13), 0x5A827999, 8);
+            Step(ref cr, F4(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 3), 0x5C4DD124, 15);
+            Step(ref bl, F2(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 1), 0x5A827999, 13);
+            Step(ref br, F4(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 7), 0x5C4DD124, 7);
+            Step(ref al, F2(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 10), 0x5A827999, 11);
+            Step(ref ar, F4(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 0), 0x5C4DD124, 12);
+            Step(ref el, F2(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 6), 0x5A827999, 9);
+            Step(ref er, F4(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 13), 0x5C4DD124, 8);
+            Step(ref dl, F2(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 15), 0x5A827999, 7);
+            Step(ref dr, F4(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 5), 0x5C4DD124, 9);
+            Step(ref cl, F2(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 3), 0x5A827999, 15);
+            Step(ref cr, F4(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 10), 0x5C4DD124, 11);
+            Step(ref bl, F2(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 12), 0x5A827999, 7);
+            Step(ref br, F4(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 14), 0x5C4DD124, 7);
+            Step(ref al, F2(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 0), 0x5A827999, 12);
+            Step(ref ar, F4(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 15), 0x5C4DD124, 7);
+            Step(ref el, F2(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 9), 0x5A827999, 15);
+            Step(ref er, F4(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 8), 0x5C4DD124, 12);
+            Step(ref dl, F2(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 5), 0x5A827999, 9);
+            Step(ref dr, F4(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 12), 0x5C4DD124, 7);
+            Step(ref cl, F2(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 2), 0x5A827999, 11);
+            Step(ref cr, F4(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 4), 0x5C4DD124, 6);
+            Step(ref bl, F2(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 14), 0x5A827999, 7);
+            Step(ref br, F4(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 9), 0x5C4DD124, 15);
+            Step(ref al, F2(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 11), 0x5A827999, 13);
+            Step(ref ar, F4(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 1), 0x5C4DD124, 13);
+            Step(ref el, F2(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 8), 0x5A827999, 12);
+            Step(ref er, F4(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 2), 0x5C4DD124, 11);
+            // Round 2
+            Step(ref dl, F3(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 3), 0x6ED9EBA1, 11);
+            Step(ref dr, F3(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 15), 0x6D703EF3, 9);
+            Step(ref cl, F3(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 10), 0x6ED9EBA1, 13);
+            Step(ref cr, F3(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 5), 0x6D703EF3, 7);
+            Step(ref bl, F3(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 14), 0x6ED9EBA1, 6);
+            Step(ref br, F3(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 1), 0x6D703EF3, 15);
+            Step(ref al, F3(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 4), 0x6ED9EBA1, 7);
+            Step(ref ar, F3(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 3), 0x6D703EF3, 11);
+            Step(ref el, F3(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 9), 0x6ED9EBA1, 14);
+            Step(ref er, F3(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 7), 0x6D703EF3, 8);
+            Step(ref dl, F3(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 15), 0x6ED9EBA1, 9);
+            Step(ref dr, F3(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 14), 0x6D703EF3, 6);
+            Step(ref cl, F3(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 8), 0x6ED9EBA1, 13);
+            Step(ref cr, F3(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 6), 0x6D703EF3, 6);
+            Step(ref bl, F3(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 1), 0x6ED9EBA1, 15);
+            Step(ref br, F3(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 9), 0x6D703EF3, 14);
+            Step(ref al, F3(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 2), 0x6ED9EBA1, 14);
+            Step(ref ar, F3(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 11), 0x6D703EF3, 12);
+            Step(ref el, F3(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 7), 0x6ED9EBA1, 8);
+            Step(ref er, F3(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 8), 0x6D703EF3, 13);
+            Step(ref dl, F3(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 0), 0x6ED9EBA1, 13);
+            Step(ref dr, F3(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 12), 0x6D703EF3, 5);
+            Step(ref cl, F3(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 6), 0x6ED9EBA1, 6);
+            Step(ref cr, F3(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 2), 0x6D703EF3, 14);
+            Step(ref bl, F3(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 13), 0x6ED9EBA1, 5);
+            Step(ref br, F3(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 10), 0x6D703EF3, 13);
+            Step(ref al, F3(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 11), 0x6ED9EBA1, 12);
+            Step(ref ar, F3(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 0), 0x6D703EF3, 13);
+            Step(ref el, F3(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 5), 0x6ED9EBA1, 7);
+            Step(ref er, F3(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 4), 0x6D703EF3, 7);
+            Step(ref dl, F3(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 12), 0x6ED9EBA1, 5);
+            Step(ref dr, F3(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 13), 0x6D703EF3, 5);
+            // Round 3
+            Step(ref cl, F4(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 1), 0x8F1BBCDC, 11);
+            Step(ref cr, F2(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 8), 0x7A6D76E9, 15);
+            Step(ref bl, F4(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 9), 0x8F1BBCDC, 12);
+            Step(ref br, F2(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 6), 0x7A6D76E9, 5);
+            Step(ref al, F4(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 11), 0x8F1BBCDC, 14);
+            Step(ref ar, F2(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 4), 0x7A6D76E9, 8);
+            Step(ref el, F4(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 10), 0x8F1BBCDC, 15);
+            Step(ref er, F2(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 1), 0x7A6D76E9, 11);
+            Step(ref dl, F4(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 0), 0x8F1BBCDC, 14);
+            Step(ref dr, F2(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 3), 0x7A6D76E9, 14);
+            Step(ref cl, F4(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 8), 0x8F1BBCDC, 15);
+            Step(ref cr, F2(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 11), 0x7A6D76E9, 14);
+            Step(ref bl, F4(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 12), 0x8F1BBCDC, 9);
+            Step(ref br, F2(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 15), 0x7A6D76E9, 6);
+            Step(ref al, F4(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 4), 0x8F1BBCDC, 8);
+            Step(ref ar, F2(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 0), 0x7A6D76E9, 14);
+            Step(ref el, F4(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 13), 0x8F1BBCDC, 9);
+            Step(ref er, F2(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 5), 0x7A6D76E9, 6);
+            Step(ref dl, F4(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 3), 0x8F1BBCDC, 14);
+            Step(ref dr, F2(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 12), 0x7A6D76E9, 9);
+            Step(ref cl, F4(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 7), 0x8F1BBCDC, 5);
+            Step(ref cr, F2(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 2), 0x7A6D76E9, 12);
+            Step(ref bl, F4(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 15), 0x8F1BBCDC, 6);
+            Step(ref br, F2(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 13), 0x7A6D76E9, 9);
+            Step(ref al, F4(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 14), 0x8F1BBCDC, 8);
+            Step(ref ar, F2(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 9), 0x7A6D76E9, 12);
+            Step(ref el, F4(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 5), 0x8F1BBCDC, 6);
+            Step(ref er, F2(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 7), 0x7A6D76E9, 5);
+            Step(ref dl, F4(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 6), 0x8F1BBCDC, 5);
+            Step(ref dr, F2(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 10), 0x7A6D76E9, 15);
+            Step(ref cl, F4(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 2), 0x8F1BBCDC, 12);
+            Step(ref cr, F2(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 14), 0x7A6D76E9, 8);
+            // Round 4
+            Step(ref bl, F5(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 4), 0xA953FD4E, 9);
+            Step(ref br, F1(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 12), 0x00000000, 8);
+            Step(ref al, F5(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 0), 0xA953FD4E, 15);
+            Step(ref ar, F1(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 15), 0x00000000, 5);
+            Step(ref el, F5(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 5), 0xA953FD4E, 5);
+            Step(ref er, F1(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 10), 0x00000000, 12);
+            Step(ref dl, F5(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 9), 0xA953FD4E, 11);
+            Step(ref dr, F1(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 4), 0x00000000, 9);
+            Step(ref cl, F5(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 7), 0xA953FD4E, 6);
+            Step(ref cr, F1(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 1), 0x00000000, 12);
+            Step(ref bl, F5(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 12), 0xA953FD4E, 8);
+            Step(ref br, F1(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 5), 0x00000000, 5);
+            Step(ref al, F5(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 2), 0xA953FD4E, 13);
+            Step(ref ar, F1(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 8), 0x00000000, 14);
+            Step(ref el, F5(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 10), 0xA953FD4E, 12);
+            Step(ref er, F1(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 7), 0x00000000, 6);
+            Step(ref dl, F5(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 14), 0xA953FD4E, 5);
+            Step(ref dr, F1(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 6), 0x00000000, 8);
+            Step(ref cl, F5(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 1), 0xA953FD4E, 12);
+            Step(ref cr, F1(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 2), 0x00000000, 13);
+            Step(ref bl, F5(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 3), 0xA953FD4E, 13);
+            Step(ref br, F1(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 13), 0x00000000, 6);
+            Step(ref al, F5(bl, cl, dl), ref cl, el, Unsafe.Add(ref xPtr, 8), 0xA953FD4E, 14);
+            Step(ref ar, F1(br, cr, dr), ref cr, er, Unsafe.Add(ref xPtr, 14), 0x00000000, 5);
+            Step(ref el, F5(al, bl, cl), ref bl, dl, Unsafe.Add(ref xPtr, 11), 0xA953FD4E, 11);
+            Step(ref er, F1(ar, br, cr), ref br, dr, Unsafe.Add(ref xPtr, 0), 0x00000000, 15);
+            Step(ref dl, F5(el, al, bl), ref al, cl, Unsafe.Add(ref xPtr, 6), 0xA953FD4E, 8);
+            Step(ref dr, F1(er, ar, br), ref ar, cr, Unsafe.Add(ref xPtr, 3), 0x00000000, 13);
+            Step(ref cl, F5(dl, el, al), ref el, bl, Unsafe.Add(ref xPtr, 15), 0xA953FD4E, 5);
+            Step(ref cr, F1(dr, er, ar), ref er, br, Unsafe.Add(ref xPtr, 9), 0x00000000, 11);
+            Step(ref bl, F5(cl, dl, el), ref dl, al, Unsafe.Add(ref xPtr, 13), 0xA953FD4E, 6);
+            Step(ref br, F1(cr, dr, er), ref dr, ar, Unsafe.Add(ref xPtr, 11), 0x00000000, 11);
 
             uint t = _h1 + cl + dr;
             _h1 = _h2 + dl + er;
@@ -331,4 +399,26 @@ public sealed class Ripemd160 : HashAlgorithm
             _h0 = t;
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void Step(ref uint a, uint f, ref uint c, uint e, uint x, uint k, int s)
+    {
+        a = BitOperations.RotateLeft(a + f + x + k, s) + e;
+        c = BitOperations.RotateLeft(c, 10);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint F1(uint x, uint y, uint z) => x ^ y ^ z;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint F2(uint x, uint y, uint z) => (x & y) | (~x & z);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint F3(uint x, uint y, uint z) => (x | ~y) ^ z;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint F4(uint x, uint y, uint z) => (x & z) | (y & ~z);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint F5(uint x, uint y, uint z) => x ^ (y | ~z);
 }

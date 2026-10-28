@@ -774,7 +774,7 @@ internal unsafe partial struct KeccakCoreState
                         Avx2.Permute4x64(bbaeio, 0b00_11_10_01).AsDouble(),
                         bbu.AsDouble(), 0b1000).AsUInt64();
                     abaeio = Avx2.Xor(bbaeio, Avx2.AndNot(bbeiou, bbioua));
-                    abaeio = Avx2.Xor(abaeio, RoundConstantsAvx2[round + 1]); // Apply constant early
+                    abaeio = Avx2.Xor(abaeio, rc); // Apply constant early
 
                     abu = Avx2.Xor(bbu, Avx2.AndNot(bbaeio, bbeiou));
                     abu = Avx2.Permute4x64(abu, 0b00_00_00_00);
