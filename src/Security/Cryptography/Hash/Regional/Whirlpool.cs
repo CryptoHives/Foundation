@@ -299,10 +299,7 @@ public sealed class Whirlpool : HashAlgorithm
         ProcessBlock(_buffer);
 
         // Output hash (big-endian)
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * sizeof(UInt64)), _hash[i]);
-        }
+        BinarySpans.WriteUInt64BigEndian(_hash.AsSpan(0, 8), destination);
 
         bytesWritten = HashSizeBytes;
         return true;
@@ -332,10 +329,7 @@ public sealed class Whirlpool : HashAlgorithm
             Span<ulong> blockData = stackalloc ulong[8];
 
             // Convert block to ulong array
-            for (int i = 0; i < 8; i++)
-            {
-                blockData[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * sizeof(UInt64)));
-            }
+            BinarySpans.ReadUInt64BigEndian(block.Slice(0, BlockSizeBytes), blockData);
 
             // Initialize state with key (current hash) XOR block
             for (int i = 0; i < 8; i++)
@@ -415,7 +409,7 @@ public sealed class Whirlpool : HashAlgorithm
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong PackRow(byte b0, byte b1, byte b2, byte b3, byte b4, byte b5, byte b6, byte b7)
     {
         return ((ulong)b0 << 56) | ((ulong)b1 << 48) | ((ulong)b2 << 40) | ((ulong)b3 << 32) |

@@ -361,7 +361,7 @@ internal static class CamelliaCore
     /// <summary>
     /// Performs six Feistel rounds in forward (encryption) order.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SixRounds(ref ulong d1, ref ulong d2,
         ReadOnlySpan<ulong> k, int offset)
     {
@@ -376,7 +376,7 @@ internal static class CamelliaCore
     /// <summary>
     /// Performs six Feistel rounds in reverse (decryption) order.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SixRoundsReverse(ref ulong d1, ref ulong d2,
         ReadOnlySpan<ulong> k, int offset)
     {
@@ -396,7 +396,7 @@ internal static class CamelliaCore
     /// that combines the S-box and the P-function column for that byte position.
     /// The eight 64-bit table values are XOR-folded to produce the F-function output.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong F(ulong input, ulong key)
     {
         ulong x = input ^ key;
@@ -421,7 +421,7 @@ internal static class CamelliaCore
     /// <summary>
     /// FL-function: key-dependent linear mixing applied every 6 rounds.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong FL(ulong x, ulong k)
     {
         uint x1 = (uint)(x >> 32);
@@ -438,7 +438,7 @@ internal static class CamelliaCore
     /// <summary>
     /// FLINV-function: inverse of <see cref="FL"/>.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong FLINV(ulong y, ulong k)
     {
         uint y1 = (uint)(y >> 32);

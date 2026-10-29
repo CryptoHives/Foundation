@@ -199,10 +199,7 @@ internal static class AesCore
         unchecked
         {
             // Copy key bytes to first Nk words
-            for (int i = 0; i < nk; i++)
-            {
-                roundKeys[i] = BinaryPrimitives.ReadUInt32BigEndian(key.Slice(i * sizeof(UInt32)));
-            }
+            BinarySpans.ReadUInt32BigEndian(key.Slice(0, nk * sizeof(UInt32)), roundKeys);
 
             // Generate remaining round key words
             for (int i = nk; i < nw; i++)

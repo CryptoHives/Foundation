@@ -1265,7 +1265,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <summary>
     /// Compresses one root-chunk block, CV in locals and the counter folded away as zero.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressRootBlockScalar(
         ref uint cv0, ref uint cv1, ref uint cv2, ref uint cv3,
         ref uint cv4, ref uint cv5, ref uint cv6, ref uint cv7,

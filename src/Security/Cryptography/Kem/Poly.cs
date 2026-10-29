@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Polynomial operations over ℤ_q[X]/(X²⁵⁶ + 1) for ML-KEM.
@@ -107,13 +108,18 @@ internal static class Poly
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void PointwiseMultiplyAccumulate(Span<short> r, ReadOnlySpan<short> a, ReadOnlySpan<short> b)
     {
-        ReadOnlySpan<short> zetas = Ntt.ZetaTable;
-        for (int i = 0; i < MLKemParams.N / 4; i++)
+        if (r.Length < MLKemParams.N || a.Length < MLKemParams.N || b.Length < MLKemParams.N) throw new ArgumentException("Full polynomials are required.");
+
+        ref short zr = ref MemoryMarshal.GetReference(Ntt.ZetaTable);
+        ref short rr = ref MemoryMarshal.GetReference(r);
+        ref short ar = ref MemoryMarshal.GetReference(a);
+        ref short br = ref MemoryMarshal.GetReference(b);
+        for (nuint i = 0; i < MLKemParams.N / 4; i++)
         {
-            int offset = 4 * i;
-            short zeta = zetas[64 + i];
-            Ntt.BaseCaseMultiply(r, offset, a, offset, b, offset, zeta);
-            Ntt.BaseCaseMultiply(r, offset + 2, a, offset + 2, b, offset + 2, (short)-zeta);
+            nuint offset = 4 * i;
+            short zeta = Unsafe.Add(ref zr, 64 + i);
+            Ntt.BaseCaseMultiply(ref Unsafe.Add(ref rr, offset), ref Unsafe.Add(ref ar, offset), ref Unsafe.Add(ref br, offset), zeta);
+            Ntt.BaseCaseMultiply(ref Unsafe.Add(ref rr, offset + 2), ref Unsafe.Add(ref ar, offset + 2), ref Unsafe.Add(ref br, offset + 2), (short)-zeta);
         }
     }
 

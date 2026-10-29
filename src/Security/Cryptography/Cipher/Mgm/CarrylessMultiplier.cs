@@ -48,7 +48,7 @@ internal readonly struct CarrylessMultiplier
     /// <summary>
     /// Computes the 128-bit carry-less product of <paramref name="a"/> and <paramref name="b"/>.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public void Multiply(ulong a, ulong b, out ulong hi, out ulong lo)
     {
 #if NET8_0_OR_GREATER
@@ -79,7 +79,7 @@ internal readonly struct CarrylessMultiplier
     /// <remarks>
     /// Constant time wherever integer multiplication is, as on every 64-bit CPU .NET supports.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong MultiplyLow(ulong x, ulong y)
     {
         const ulong M0 = 0x1111111111111111, M1 = M0 << 1, M2 = M0 << 2, M3 = M0 << 3;
@@ -95,7 +95,7 @@ internal readonly struct CarrylessMultiplier
         return (z0 & M0) | (z1 & M1) | (z2 & M2) | (z3 & M3);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong ReverseBits(ulong x)
     {
         x = ((x >> 1) & 0x5555555555555555) | ((x & 0x5555555555555555) << 1);

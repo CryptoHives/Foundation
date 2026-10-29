@@ -78,20 +78,18 @@ internal static class SHA512Core
         ref ulong sPtr = ref MemoryMarshal.GetReference(state);
 
         Span<ulong> w = stackalloc ulong[Rounds];
+        ref ulong wPtr = ref MemoryMarshal.GetReference(w);
 
         unchecked
         {
             // Prepare message schedule - load first 16 words from block
-            for (int i = 0; i < 16; i++)
-            {
-                w[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * sizeof(UInt64)));
-            }
+            BinarySpans.ReadUInt64BigEndian(block.Slice(0, BlockSizeBytes), w);
 
             // Extend message schedule W[16..79]
-            for (int i = 16; i < Rounds; i++)
+            for (nuint i = 16; i < Rounds; i++)
             {
-                ulong w15 = w[i - 15];
-                ulong w2 = w[i - 2];
+                ulong w15 = Unsafe.Add(ref wPtr, i - 15);
+                ulong w2 = Unsafe.Add(ref wPtr, i - 2);
 
                 // σ0(x) = ROTR^1(x) XOR ROTR^8(x) XOR SHR^7(x)
                 ulong s0 = BitOperations.RotateRight(w15, 1) ^ BitOperations.RotateRight(w15, 8) ^ (w15 >> 7);
@@ -99,7 +97,7 @@ internal static class SHA512Core
                 // σ1(x) = ROTR^19(x) XOR ROTR^61(x) XOR SHR^6(x)
                 ulong s1 = BitOperations.RotateRight(w2, 19) ^ BitOperations.RotateRight(w2, 61) ^ (w2 >> 6);
 
-                w[i] = w[i - 16] + s0 + w[i - 7] + s1;
+                Unsafe.Add(ref wPtr, i) = Unsafe.Add(ref wPtr, i - 16) + s0 + Unsafe.Add(ref wPtr, i - 7) + s1;
             }
 
             // Initialize working variables
@@ -114,9 +112,8 @@ internal static class SHA512Core
 
             // 8 Unrolled compression rounds with implicit variable rotation
             ref ulong kPtr = ref MemoryMarshalEx.GetArrayDataReference(K);
-            ref ulong wPtr = ref MemoryMarshal.GetReference(w);
 
-            for (int i = 0; i < Rounds; i += 8)
+            for (nuint i = 0; i < Rounds; i += 8)
             {
                 Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, Unsafe.Add(ref kPtr, i + 0), Unsafe.Add(ref wPtr, i + 0));
                 Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, Unsafe.Add(ref kPtr, i + 1), Unsafe.Add(ref wPtr, i + 1));

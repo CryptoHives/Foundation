@@ -6,6 +6,7 @@
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,7 +22,8 @@ using System.Threading.Tasks;
 /// while nested holders such as fire-and-forget work are still running, until the last of them releases.
 /// </remarks>
 #if NET8_0_OR_GREATER
-[System.Diagnostics.CodeAnalysis.Experimental("CHTEXP001", UrlFormat = "https://cryptohives.github.io/Foundation/packages/threading/asyncreentrantlock.html")]
+[Experimental("CHTEXP001",
+    UrlFormat = "https://cryptohives.github.io/Foundation/packages/threading/asyncreentrantlock.html")]
 #endif
 public sealed class AsyncReentrantLock
 {
