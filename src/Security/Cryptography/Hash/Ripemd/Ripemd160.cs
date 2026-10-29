@@ -400,25 +400,25 @@ public sealed class Ripemd160 : HashAlgorithm
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Step(ref uint a, uint f, ref uint c, uint e, uint x, uint k, int s)
     {
         a = BitOperations.RotateLeft(a + f + x + k, s) + e;
         c = BitOperations.RotateLeft(c, 10);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint F1(uint x, uint y, uint z) => x ^ y ^ z;
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint F2(uint x, uint y, uint z) => (x & y) | (~x & z);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint F3(uint x, uint y, uint z) => (x | ~y) ^ z;
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint F4(uint x, uint y, uint z) => (x & z) | (y & ~z);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint F5(uint x, uint y, uint z) => x ^ (y | ~z);
 }

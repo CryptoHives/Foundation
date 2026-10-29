@@ -383,7 +383,7 @@ public abstract class AesGcmSiv : IAeadCipher
         return AesCore.ExpandKey(key, roundKeys);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<uint> roundKeys, int rounds)
     {
 #if NET8_0_OR_GREATER

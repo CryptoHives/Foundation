@@ -260,10 +260,11 @@ internal readonly partial struct ChaChaCore
 
         ref byte inputBase = ref MemoryMarshal.GetReference(input);
         ref byte outputBase = ref MemoryMarshal.GetReference(output);
+        ref byte keystream = ref MemoryMarshal.GetReference(MemoryMarshal.AsBytes(wState));
 
         int offset = 0;
-        Span<byte> ks = stackalloc byte[BlockSizeBytes];
-        while (offset < input.Length)
+        int remaining = input.Length;
+        while (remaining > 0)
         {
             // Copy state to working state
             state.CopyTo(wState);
@@ -276,42 +277,38 @@ internal readonly partial struct ChaChaCore
                 wState[i] += state[i];
             }
 
-            int remaining = input.Length - offset;
-
-            if (remaining >= BlockSizeBytes)
+            if (remaining < BlockSizeBytes)
             {
-                // Full block: XOR keystream with input using widened operations
-                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
-                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
-                XorBlock(ref inRef, MemoryMarshal.AsBytes(wState), ref outRef);
+                break;
             }
-            else
-            {
-                // Partial block: serialize keystream then XOR byte-by-byte
-                Span<byte> keystream = MemoryMarshal.AsBytes(wState);
-                if (!BitConverter.IsLittleEndian)
-                {
-                    BinarySpans.WriteUInt32LittleEndian(wState.Slice(0, StateWords), ks);
-                    keystream = ks;
-                }
 
-                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
-                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
-                for (int i = 0; i < remaining; i++)
-                {
-                    Unsafe.Add(ref outRef, i) = (byte)(Unsafe.Add(ref inRef, i) ^ keystream[i]);
-                }
-            }
+            // Full block: XOR keystream with input using widened operations
+            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+            XorBlock(ref inRef, ref keystream, ref outRef);
 
             offset += BlockSizeBytes;
+            remaining -= BlockSizeBytes;
 
             // Increment counter in the base state
             state[12]++;
         }
 
+        if (remaining > 0)
+        {
+            // Partial block: serialize keystream then XOR byte-by-byte
+            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
+            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+            for (int i = 0; i < remaining; i++)
+            {
+                // The keystream words are little-endian on the wire, so byte j of a word sits at 3 - j in memory on big-endian hosts.
+                byte k = Unsafe.Add(ref keystream, BitConverter.IsLittleEndian ? i : (i & ~3) + 3 - (i & 3));
+                Unsafe.Add(ref outRef, i) = (byte)(Unsafe.Add(ref inRef, i) ^ k);
+            }
+        }
+
         CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(state));
         CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(wState));
-        CryptographicOperations.ZeroMemory(ks);
     }
 
     /// <summary>
@@ -319,45 +316,41 @@ internal readonly partial struct ChaChaCore
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void XorBlock(ref byte input, ReadOnlySpan<byte> keystream, ref byte output)
+    private static void XorBlock(ref byte input, ref byte keystream, ref byte output)
     {
         if (BitConverter.IsLittleEndian)
         {
-            ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
-
             Unsafe.WriteUnaligned(ref output,
-                Unsafe.ReadUnaligned<ulong>(ref input) ^ Unsafe.ReadUnaligned<ulong>(ref ksRef));
+                Unsafe.ReadUnaligned<ulong>(ref input) ^ Unsafe.ReadUnaligned<ulong>(ref keystream));
             Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 8),
                 Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 8)) ^
-                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 8)));
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref keystream, 8)));
             Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 16),
                 Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 16)) ^
-                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 16)));
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref keystream, 16)));
             Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 24),
                 Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 24)) ^
-                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 24)));
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref keystream, 24)));
             Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 32),
                 Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 32)) ^
-                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 32)));
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref keystream, 32)));
             Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 40),
                 Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 40)) ^
-                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 40)));
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref keystream, 40)));
             Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 48),
                 Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 48)) ^
-                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 48)));
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref keystream, 48)));
             Unsafe.WriteUnaligned(ref Unsafe.AddByteOffset(ref output, 56),
                 Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref input, 56)) ^
-                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref ksRef, 56)));
+                Unsafe.ReadUnaligned<ulong>(ref Unsafe.AddByteOffset(ref keystream, 56)));
         }
         else
         {
-            Span<byte> ks = stackalloc byte[BlockSizeBytes];
-            ReadOnlySpan<uint> ksWords = MemoryMarshal.Cast<byte, uint>(keystream);
-            BinarySpans.WriteUInt32LittleEndian(ksWords.Slice(0, StateWords), ks);
-
+            // The keystream words are little-endian on the wire, so byte j of a word sits at 3 - j in memory.
             for (int i = 0; i < BlockSizeBytes; i++)
             {
-                Unsafe.Add(ref output, i) = (byte)(Unsafe.Add(ref input, i) ^ ks[i]);
+                byte k = Unsafe.Add(ref keystream, (i & ~3) + 3 - (i & 3));
+                Unsafe.Add(ref output, i) = (byte)(Unsafe.Add(ref input, i) ^ k);
             }
         }
     }

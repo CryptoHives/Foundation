@@ -215,7 +215,7 @@ internal static class AesCoreAesNi
         roundKeys[10] = k;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<byte> KeyExpand128(Vector128<byte> key, Vector128<byte> keygen)
     {
         // keygen = [_, _, _, rcon^SubWord(RotWord(W3))]
@@ -347,7 +347,7 @@ internal static class AesCoreAesNi
         roundKeys[14] = k0;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<byte> KeyExpand256A(Vector128<byte> key, Vector128<byte> keygen)
     {
         keygen = Sse2.Shuffle(keygen.AsInt32(), 0xFF).AsByte(); // broadcast dword 3
@@ -359,7 +359,7 @@ internal static class AesCoreAesNi
         return Sse2.Xor(key, keygen);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<byte> KeyExpand256B(Vector128<byte> key, Vector128<byte> prevKey)
     {
         // For AES-256 even round: SubWord without RotWord

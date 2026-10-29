@@ -93,7 +93,7 @@ internal static class BlockPadding
     /// Timing must not depend on where the first bad pad byte is: a data-dependent exit here is
     /// the classic CBC padding-oracle side channel, exploitable even without a distinct error.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static bool IsPaddingValid(ReadOnlySpan<byte> unit, byte padValue, byte fill, bool checkFill)
     {
         int unitSize = unit.Length;

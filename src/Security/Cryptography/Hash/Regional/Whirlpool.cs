@@ -409,7 +409,7 @@ public sealed class Whirlpool : HashAlgorithm
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong PackRow(byte b0, byte b1, byte b2, byte b3, byte b4, byte b5, byte b6, byte b7)
     {
         return ((ulong)b0 << 56) | ((ulong)b1 << 48) | ((ulong)b2 << 40) | ((ulong)b3 << 32) |

@@ -356,12 +356,9 @@ internal abstract class BlockCipherTransform : ICipherTransform
         Span<byte> keystream = stackalloc byte[_blockSize];
         EncryptBlock(_counter, keystream);
 
-        for (int i = 0; i < input.Length; i++)
-        {
-            output[i] = (byte)(input[i] ^ keystream[i]);
-        }
+        BinaryOperations.Xor(input, keystream, output);
 
-        IncrementCounter(_counter);
+        BinaryOperations.IncrementBigEndian(_counter);
     }
 
     [SkipLocalsInit]
@@ -371,10 +368,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
         EncryptBlock(_feedback, keystream);
         keystream.CopyTo(_feedback);
 
-        for (int i = 0; i < input.Length; i++)
-        {
-            output[i] = (byte)(input[i] ^ keystream[i]);
-        }
+        BinaryOperations.Xor(input, keystream, output);
     }
 
     [SkipLocalsInit]
@@ -548,17 +542,5 @@ internal abstract class BlockCipherTransform : ICipherTransform
         }
 
         CryptographicOperations.ZeroMemory(decrypted);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void IncrementCounter(Span<byte> counter)
-    {
-        for (int i = counter.Length - 1; i >= 0; i--)
-        {
-            if (++counter[i] != 0)
-            {
-                break;
-            }
-        }
     }
 }

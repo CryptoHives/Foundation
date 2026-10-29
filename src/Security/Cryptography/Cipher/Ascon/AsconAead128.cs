@@ -401,7 +401,7 @@ public sealed class AsconAead128 : IAeadCipher
     /// <summary>
     /// Finalizes the AEAD computation and produces the authentication tag.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void Finalize(ref ulong s0, ref ulong s1, ref ulong s2, ref ulong s3, ref ulong s4, Span<byte> tag)
     {
         s2 ^= _k0;
@@ -417,7 +417,7 @@ public sealed class AsconAead128 : IAeadCipher
     /// <summary>
     /// Encrypts a partial word (less than 8 bytes) and XORs into the state word.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void EncryptPartialWord(ref ulong s, ReadOnlySpan<byte> input, Span<byte> output)
     {
         ulong pt = BinaryLoad.ReadUInt64LittleEndianPadded(input);
@@ -428,7 +428,7 @@ public sealed class AsconAead128 : IAeadCipher
     /// <summary>
     /// Decrypts a partial word (less than 8 bytes) and replaces in the state word.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void DecryptPartialWord(ref ulong s, ReadOnlySpan<byte> input, Span<byte> output)
     {
         int len = input.Length;
@@ -441,7 +441,7 @@ public sealed class AsconAead128 : IAeadCipher
     /// <summary>
     /// Reads a partial word and applies padding.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong PadPartialWord(ReadOnlySpan<byte> data, int len)
     {
         ulong result = BinaryLoad.ReadUInt64LittleEndianPadded(data);
@@ -452,6 +452,6 @@ public sealed class AsconAead128 : IAeadCipher
     /// <summary>
     /// Returns the padding constant: 0x01 shifted to the given byte position.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong Pad(int i) => 0x01UL << (i << 3);
 }

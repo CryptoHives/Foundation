@@ -126,7 +126,7 @@ internal static class MagmaCore
     /// <summary>
     /// The round function g without the key addition: t, then a rotation left by 11.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint G(ReadOnlySpan<uint> tables, uint x)
     {
         return tables[(int)(x & 0xFF)]

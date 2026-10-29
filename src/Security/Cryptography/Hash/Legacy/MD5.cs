@@ -51,6 +51,68 @@ public sealed class MD5 : HashAlgorithm
     private const uint C0 = 0x98badcfe;
     private const uint D0 = 0x10325476;
 
+    // Per-round shift amounts
+    private static readonly int[] S =
+    [
+        7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
+        5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
+        4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
+        6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21
+    ];
+
+    // Pre-computed constants: floor(2^32 * abs(sin(i + 1)))
+    private static readonly uint[] K =
+    [
+        0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+        0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+        0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+        0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+        0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+        0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+        0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+        0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+        0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+        0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+        0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+        0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+        0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+        0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+        0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+        0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
+    ];
+
+    /// <summary>
+    /// Precomputed message-word index for each round (replaces the per-round
+    /// branch + modulo that would otherwise run 64 times per block).
+    /// </summary>
+    private static readonly int[] G = BuildMessageWordIndices();
+
+    private static int[] BuildMessageWordIndices()
+    {
+        var g = new int[64];
+        for (int i = 0; i < 16; i++)
+        {
+            g[i] = i;
+        }
+
+        for (int i = 16; i < 32; i++)
+        {
+            g[i] = (5 * i + 1) % 16;
+        }
+
+        for (int i = 32; i < 48; i++)
+        {
+            g[i] = (3 * i + 5) % 16;
+        }
+
+        for (int i = 48; i < 64; i++)
+        {
+            g[i] = (7 * i) % 16;
+        }
+
+        return g;
+    }
+
     private uint _a, _b, _c, _d;
     private readonly byte[] _buffer;
     private int _bufferLength;
@@ -233,83 +295,56 @@ public sealed class MD5 : HashAlgorithm
         unchecked
         {
             // Parse block into 16 little-endian 32-bit words
-            BinarySpans.ReadUInt32LittleEndian(block.Slice(0, BlockSizeBytes), m);
+            BinarySpans.ReadUInt32LittleEndian(block, m);
 
             uint a = _a;
             uint b = _b;
             uint c = _c;
             uint d = _d;
 
+            ref int gPtr = ref MemoryMarshalEx.GetArrayDataReference(G);
+            ref uint kPtr = ref MemoryMarshalEx.GetArrayDataReference(K);
             ref uint mPtr = ref MemoryMarshal.GetReference(m);
 
-            // Round 1
-            F(ref a, b, c, d, Unsafe.Add(ref mPtr, 0), 0xd76aa478, 7);
-            F(ref d, a, b, c, Unsafe.Add(ref mPtr, 1), 0xe8c7b756, 12);
-            F(ref c, d, a, b, Unsafe.Add(ref mPtr, 2), 0x242070db, 17);
-            F(ref b, c, d, a, Unsafe.Add(ref mPtr, 3), 0xc1bdceee, 22);
-            F(ref a, b, c, d, Unsafe.Add(ref mPtr, 4), 0xf57c0faf, 7);
-            F(ref d, a, b, c, Unsafe.Add(ref mPtr, 5), 0x4787c62a, 12);
-            F(ref c, d, a, b, Unsafe.Add(ref mPtr, 6), 0xa8304613, 17);
-            F(ref b, c, d, a, Unsafe.Add(ref mPtr, 7), 0xfd469501, 22);
-            F(ref a, b, c, d, Unsafe.Add(ref mPtr, 8), 0x698098d8, 7);
-            F(ref d, a, b, c, Unsafe.Add(ref mPtr, 9), 0x8b44f7af, 12);
-            F(ref c, d, a, b, Unsafe.Add(ref mPtr, 10), 0xffff5bb1, 17);
-            F(ref b, c, d, a, Unsafe.Add(ref mPtr, 11), 0x895cd7be, 22);
-            F(ref a, b, c, d, Unsafe.Add(ref mPtr, 12), 0x6b901122, 7);
-            F(ref d, a, b, c, Unsafe.Add(ref mPtr, 13), 0xfd987193, 12);
-            F(ref c, d, a, b, Unsafe.Add(ref mPtr, 14), 0xa679438e, 17);
-            F(ref b, c, d, a, Unsafe.Add(ref mPtr, 15), 0x49b40821, 22);
-            // Round 2
-            G(ref a, b, c, d, Unsafe.Add(ref mPtr, 1), 0xf61e2562, 5);
-            G(ref d, a, b, c, Unsafe.Add(ref mPtr, 6), 0xc040b340, 9);
-            G(ref c, d, a, b, Unsafe.Add(ref mPtr, 11), 0x265e5a51, 14);
-            G(ref b, c, d, a, Unsafe.Add(ref mPtr, 0), 0xe9b6c7aa, 20);
-            G(ref a, b, c, d, Unsafe.Add(ref mPtr, 5), 0xd62f105d, 5);
-            G(ref d, a, b, c, Unsafe.Add(ref mPtr, 10), 0x02441453, 9);
-            G(ref c, d, a, b, Unsafe.Add(ref mPtr, 15), 0xd8a1e681, 14);
-            G(ref b, c, d, a, Unsafe.Add(ref mPtr, 4), 0xe7d3fbc8, 20);
-            G(ref a, b, c, d, Unsafe.Add(ref mPtr, 9), 0x21e1cde6, 5);
-            G(ref d, a, b, c, Unsafe.Add(ref mPtr, 14), 0xc33707d6, 9);
-            G(ref c, d, a, b, Unsafe.Add(ref mPtr, 3), 0xf4d50d87, 14);
-            G(ref b, c, d, a, Unsafe.Add(ref mPtr, 8), 0x455a14ed, 20);
-            G(ref a, b, c, d, Unsafe.Add(ref mPtr, 13), 0xa9e3e905, 5);
-            G(ref d, a, b, c, Unsafe.Add(ref mPtr, 2), 0xfcefa3f8, 9);
-            G(ref c, d, a, b, Unsafe.Add(ref mPtr, 7), 0x676f02d9, 14);
-            G(ref b, c, d, a, Unsafe.Add(ref mPtr, 12), 0x8d2a4c8a, 20);
-            // Round 3
-            H(ref a, b, c, d, Unsafe.Add(ref mPtr, 5), 0xfffa3942, 4);
-            H(ref d, a, b, c, Unsafe.Add(ref mPtr, 8), 0x8771f681, 11);
-            H(ref c, d, a, b, Unsafe.Add(ref mPtr, 11), 0x6d9d6122, 16);
-            H(ref b, c, d, a, Unsafe.Add(ref mPtr, 14), 0xfde5380c, 23);
-            H(ref a, b, c, d, Unsafe.Add(ref mPtr, 1), 0xa4beea44, 4);
-            H(ref d, a, b, c, Unsafe.Add(ref mPtr, 4), 0x4bdecfa9, 11);
-            H(ref c, d, a, b, Unsafe.Add(ref mPtr, 7), 0xf6bb4b60, 16);
-            H(ref b, c, d, a, Unsafe.Add(ref mPtr, 10), 0xbebfbc70, 23);
-            H(ref a, b, c, d, Unsafe.Add(ref mPtr, 13), 0x289b7ec6, 4);
-            H(ref d, a, b, c, Unsafe.Add(ref mPtr, 0), 0xeaa127fa, 11);
-            H(ref c, d, a, b, Unsafe.Add(ref mPtr, 3), 0xd4ef3085, 16);
-            H(ref b, c, d, a, Unsafe.Add(ref mPtr, 6), 0x04881d05, 23);
-            H(ref a, b, c, d, Unsafe.Add(ref mPtr, 9), 0xd9d4d039, 4);
-            H(ref d, a, b, c, Unsafe.Add(ref mPtr, 12), 0xe6db99e5, 11);
-            H(ref c, d, a, b, Unsafe.Add(ref mPtr, 15), 0x1fa27cf8, 16);
-            H(ref b, c, d, a, Unsafe.Add(ref mPtr, 2), 0xc4ac5665, 23);
-            // Round 4
-            I(ref a, b, c, d, Unsafe.Add(ref mPtr, 0), 0xf4292244, 6);
-            I(ref d, a, b, c, Unsafe.Add(ref mPtr, 7), 0x432aff97, 10);
-            I(ref c, d, a, b, Unsafe.Add(ref mPtr, 14), 0xab9423a7, 15);
-            I(ref b, c, d, a, Unsafe.Add(ref mPtr, 5), 0xfc93a039, 21);
-            I(ref a, b, c, d, Unsafe.Add(ref mPtr, 12), 0x655b59c3, 6);
-            I(ref d, a, b, c, Unsafe.Add(ref mPtr, 3), 0x8f0ccc92, 10);
-            I(ref c, d, a, b, Unsafe.Add(ref mPtr, 10), 0xffeff47d, 15);
-            I(ref b, c, d, a, Unsafe.Add(ref mPtr, 1), 0x85845dd1, 21);
-            I(ref a, b, c, d, Unsafe.Add(ref mPtr, 8), 0x6fa87e4f, 6);
-            I(ref d, a, b, c, Unsafe.Add(ref mPtr, 15), 0xfe2ce6e0, 10);
-            I(ref c, d, a, b, Unsafe.Add(ref mPtr, 6), 0xa3014314, 15);
-            I(ref b, c, d, a, Unsafe.Add(ref mPtr, 13), 0x4e0811a1, 21);
-            I(ref a, b, c, d, Unsafe.Add(ref mPtr, 4), 0xf7537e82, 6);
-            I(ref d, a, b, c, Unsafe.Add(ref mPtr, 11), 0xbd3af235, 10);
-            I(ref c, d, a, b, Unsafe.Add(ref mPtr, 2), 0x2ad7d2bb, 15);
-            I(ref b, c, d, a, Unsafe.Add(ref mPtr, 9), 0xeb86d391, 21);
+            for (int i = 0; i < 16; i++)
+            {
+                uint f = (b & c) | (~b & d);
+                uint temp = d;
+                d = c;
+                c = b;
+                b = b + BitOperations.RotateLeft(a + f + Unsafe.Add(ref kPtr, i) + Unsafe.Add(ref mPtr, Unsafe.Add(ref gPtr, i)), S[i]);
+                a = temp;
+            }
+
+            for (int i = 16; i < 32; i++)
+            {
+                uint f = (d & b) | (~d & c);
+                uint temp = d;
+                d = c;
+                c = b;
+                b = b + BitOperations.RotateLeft(a + f + Unsafe.Add(ref kPtr, i) + Unsafe.Add(ref mPtr, Unsafe.Add(ref gPtr, i)), S[i]);
+                a = temp;
+            }
+
+            for (int i = 32; i < 48; i++)
+            {
+                uint f = b ^ c ^ d;
+                uint temp = d;
+                d = c;
+                c = b;
+                b = b + BitOperations.RotateLeft(a + f + Unsafe.Add(ref kPtr, i) + Unsafe.Add(ref mPtr, Unsafe.Add(ref gPtr, i)), S[i]);
+                a = temp;
+            }
+
+            for (int i = 48; i < 64; i++)
+            {
+                uint f = c ^ (b | ~d);
+                uint temp = d;
+                d = c;
+                c = b;
+                b = b + BitOperations.RotateLeft(a + f + Unsafe.Add(ref kPtr, i) + Unsafe.Add(ref mPtr, Unsafe.Add(ref gPtr, i)), S[i]);
+                a = temp;
+            }
 
             _a += a;
             _b += b;
@@ -317,20 +352,4 @@ public sealed class MD5 : HashAlgorithm
             _d += d;
         }
     }
-
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void F(ref uint a, uint b, uint c, uint d, uint m, uint k, int s)
-        => a = b + BitOperations.RotateLeft(a + ((b & c) | (~b & d)) + m + k, s);
-
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void G(ref uint a, uint b, uint c, uint d, uint m, uint k, int s)
-        => a = b + BitOperations.RotateLeft(a + ((d & b) | (~d & c)) + m + k, s);
-
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void H(ref uint a, uint b, uint c, uint d, uint m, uint k, int s)
-        => a = b + BitOperations.RotateLeft(a + (b ^ c ^ d) + m + k, s);
-
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void I(ref uint a, uint b, uint c, uint d, uint m, uint k, int s)
-        => a = b + BitOperations.RotateLeft(a + (c ^ (b | ~d)) + m + k, s);
 }
