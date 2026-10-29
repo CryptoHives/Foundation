@@ -33,6 +33,7 @@ internal sealed class CamelliaCipherTransform : BlockCipherTransform
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public override int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         // Only the hot CBC path is overridden here; all other modes fall through to the base

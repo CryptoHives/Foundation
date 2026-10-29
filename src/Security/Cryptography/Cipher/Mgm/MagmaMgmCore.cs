@@ -153,7 +153,7 @@ internal struct MagmaMgmCore
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private readonly void AbsorbBlock(ulong block, ref ulong z, ref ulong sumHi, ref ulong sumLo)
     {
         _multiplier.Multiply(MagmaCore.Encrypt(z, _roundKeys), block, out ulong hi, out ulong lo);
@@ -162,10 +162,10 @@ internal struct MagmaMgmCore
         z = IncrementLeft(z);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong IncrementRight(ulong value) => (value & 0xFFFFFFFF00000000) | (uint)((uint)value + 1);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong IncrementLeft(ulong value) => ((ulong)((uint)(value >> 32) + 1) << 32) | (uint)value;
 
     /// <summary>

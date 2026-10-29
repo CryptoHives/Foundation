@@ -173,9 +173,6 @@ public sealed class SHA256 : Sha2HashAlgorithm<uint>
     protected override void OutputHash(Span<byte> destination, uint[] state)
     {
         // Convert state to bytes (big-endian)
-        for (int i = 0; i < HashSizeBytes / sizeof(UInt32); i++)
-        {
-            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * sizeof(UInt32)), state[i]);
-        }
+        BinarySpans.WriteUInt32BigEndian(state.AsSpan(0, HashSizeBytes / sizeof(UInt32)), destination);
     }
 }

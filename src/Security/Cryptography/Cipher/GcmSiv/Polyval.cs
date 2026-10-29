@@ -179,7 +179,7 @@ internal static class Polyval
     /// dot(a, b) = a · b · x^-128 in POLYVAL's field: a schoolbook carry-less multiply, then two
     /// Montgomery folds by x^128 + x^127 + x^126 + x^121 + 1.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector128<ulong> Dot(Vector128<ulong> a, Vector128<ulong> b)
     {
         Vector128<ulong> poly = Vector128.Create(1UL, 0xc200000000000000UL);

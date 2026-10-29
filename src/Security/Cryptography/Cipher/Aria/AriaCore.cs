@@ -275,7 +275,7 @@ internal static class AriaCore
         x[12] = SB1[x[12]]; x[13] = SB2[x[13]]; x[14] = SB3[x[14]]; x[15] = SB4[x[15]];
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SubstLayerOdd(
         ref byte x0, ref byte x1, ref byte x2, ref byte x3,
         ref byte x4, ref byte x5, ref byte x6, ref byte x7,
@@ -293,7 +293,7 @@ internal static class AriaCore
     }
 
     // Even-round substitution: SB3, SB4, SB1, SB2 pattern
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SubstLayerEven(Span<byte> x)
     {
         x[0] = SB3[x[0]]; x[1] = SB4[x[1]]; x[2] = SB1[x[2]]; x[3] = SB2[x[3]];
@@ -302,7 +302,7 @@ internal static class AriaCore
         x[12] = SB3[x[12]]; x[13] = SB4[x[13]]; x[14] = SB1[x[14]]; x[15] = SB2[x[15]];
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SubstLayerEven(
         ref byte x0, ref byte x1, ref byte x2, ref byte x3,
         ref byte x4, ref byte x5, ref byte x6, ref byte x7,
@@ -320,6 +320,7 @@ internal static class AriaCore
     }
 
     // Diffusion layer A (binary matrix from RFC 5794)
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void DiffuseA(ReadOnlySpan<byte> x, Span<byte> y)
     {
         byte x0 = x[0]; byte x1 = x[1]; byte x2 = x[2]; byte x3 = x[3];
@@ -396,7 +397,7 @@ internal static class AriaCore
         CryptographicOperations.ZeroMemory(temp);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Xor128(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, Span<byte> result)
     {
         for (int i = 0; i < 16; i++)

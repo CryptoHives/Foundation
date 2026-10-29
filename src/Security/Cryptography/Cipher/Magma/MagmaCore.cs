@@ -44,10 +44,7 @@ internal static class MagmaCore
     /// <param name="roundKeys">Receives the eight round keys.</param>
     public static void ExpandKey(ReadOnlySpan<byte> key, Span<uint> roundKeys)
     {
-        for (int i = 0; i < RoundKeyCount; i++)
-        {
-            roundKeys[i] = BinaryPrimitives.ReadUInt32BigEndian(key.Slice(i * sizeof(uint)));
-        }
+        BinarySpans.ReadUInt32BigEndian(key.Slice(0, RoundKeyCount * sizeof(uint)), roundKeys);
     }
 
     /// <summary>
@@ -129,7 +126,7 @@ internal static class MagmaCore
     /// <summary>
     /// The round function g without the key addition: t, then a rotation left by 11.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint G(ReadOnlySpan<uint> tables, uint x)
     {
         return tables[(int)(x & 0xFF)]
