@@ -3,6 +3,7 @@
 
 namespace CryptoHives.Foundation.Security.Cryptography.Dsa;
 
+using System;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -40,61 +41,61 @@ internal static class Ntt
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Forward(int[] a)
     {
-        int k = 0;
-        for (int len = 128; len > 0; len >>= 1)
+        if (a.Length < MLDsaParams.N) throw new ArgumentException("A full polynomial is required.", nameof(a));
+
+        ref int ar = ref MemoryMarshalEx.GetArrayDataReference(a);
+        ref int zr = ref MemoryMarshalEx.GetArrayDataReference(Zetas);
+        nuint k = 0;
+        for (nuint len = 128; len > 0; len >>= 1)
         {
-            for (int start = 0; start < MLDsaParams.N; start += 2 * len)
+            for (nuint start = 0; start < MLDsaParams.N; start += 2 * len)
             {
-                int zeta = Zetas[++k];
-                for (int j = start; j < start + len; j++)
+                int zeta = Unsafe.Add(ref zr, ++k);
+                for (nuint j = start; j < start + len; j++)
                 {
-                    int t = MontgomeryMultiply(zeta, a[j + len]);
-                    a[j + len] = a[j] - t;
-                    a[j] = a[j] + t;
+                    ref int lo = ref Unsafe.Add(ref ar, j);
+                    ref int hi = ref Unsafe.Add(ref ar, j + len);
+                    int t = MontgomeryMultiply(zeta, hi);
+                    hi = lo - t;
+                    lo += t;
                 }
             }
         }
     }
 
-    /// <summary>
-    /// Performs the inverse NTT in-place (FIPS 204 Algorithm 42).
-    /// </summary>
-    /// <remarks>
-    /// The output carries an extra Montgomery factor R that cancels the R⁻¹ introduced by
-    /// <see cref="MontgomeryMultiply"/> in the preceding pointwise multiplication, so the
-    /// composition InverseNTT(â ∘ᵐ b̂) yields the standard-domain product.
-    /// </remarks>
-    /// <param name="a">The 256 coefficients of the polynomial, modified in-place.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Inverse(int[] a)
     {
-        int k = MLDsaParams.N;
-        for (int len = 1; len < MLDsaParams.N; len <<= 1)
+        if (a.Length < MLDsaParams.N) throw new ArgumentException("A full polynomial is required.", nameof(a));
+
+        ref int ar = ref MemoryMarshalEx.GetArrayDataReference(a);
+        ref int zr = ref MemoryMarshalEx.GetArrayDataReference(Zetas);
+        nuint k = MLDsaParams.N;
+        for (nuint len = 1; len < MLDsaParams.N; len <<= 1)
         {
-            for (int start = 0; start < MLDsaParams.N; start += 2 * len)
+            for (nuint start = 0; start < MLDsaParams.N; start += 2 * len)
             {
-                int zeta = -Zetas[--k];
-                for (int j = start; j < start + len; j++)
+                int zeta = -Unsafe.Add(ref zr, --k);
+                for (nuint j = start; j < start + len; j++)
                 {
-                    int t = a[j];
-                    a[j] = t + a[j + len];
-                    a[j + len] = t - a[j + len];
-                    a[j + len] = MontgomeryMultiply(zeta, a[j + len]);
+                    ref int lo = ref Unsafe.Add(ref ar, j);
+                    ref int hi = ref Unsafe.Add(ref ar, j + len);
+                    int t = lo;
+                    int h = hi;
+                    lo = t + h;
+                    hi = MontgomeryMultiply(zeta, t - h);
                 }
             }
         }
 
-        for (int j = 0; j < MLDsaParams.N; j++)
+        int scale = InverseScale;
+        for (nuint j = 0; j < MLDsaParams.N; j++)
         {
-            a[j] = MontgomeryMultiply(InverseScale, a[j]);
+            ref int c = ref Unsafe.Add(ref ar, j);
+            c = MontgomeryMultiply(scale, c);
         }
     }
 
-    /// <summary>
-    /// Montgomery reduction: given a 64-bit value a with |a| ≤ 2³¹·q, computes a · R⁻¹ mod± q.
-    /// </summary>
-    /// <param name="a">The value to reduce.</param>
-    /// <returns>The Montgomery-reduced value in (−q, q).</returns>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static int MontgomeryReduce(long a)
     {

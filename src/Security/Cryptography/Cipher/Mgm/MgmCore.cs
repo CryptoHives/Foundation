@@ -195,7 +195,7 @@ internal struct MgmCore
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private readonly void AbsorbBlock(ref TagState state, ulong left, ulong right, Span<byte> block, Span<byte> h)
     {
         BinaryPrimitives.WriteUInt64BigEndian(block, state.ZLeft++);
@@ -211,7 +211,7 @@ internal struct MgmCore
     /// <summary>
     /// Adds the unreduced 256-bit product of two field elements to the running sum (Karatsuba).
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private readonly void MultiplyAccumulate(ulong xHi, ulong xLo, ulong yHi, ulong yLo, ref TagState state)
     {
         _multiplier.Multiply(xLo, yLo, out ulong lo1, out ulong lo0);
@@ -229,6 +229,7 @@ internal struct MgmCore
     /// <summary>
     /// Reduces a 256-bit polynomial modulo w^128 + w^7 + w^2 + w + 1.
     /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Reduce(ulong a3, ulong a2, ulong a1, ulong a0, out ulong hi, out ulong lo)
     {
         // w^128 ≡ w^7 + w^2 + w + 1; the bits that fold past w^127 fold once more.

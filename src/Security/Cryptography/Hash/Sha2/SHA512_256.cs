@@ -127,9 +127,6 @@ public sealed class SHA512_256 : Sha2HashAlgorithm<ulong>
     protected override void OutputHash(Span<byte> destination, ulong[] state)
     {
         // Output first 4 words (32 bytes) in big-endian
-        for (int i = 0; i < 4; i++)
-        {
-            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * sizeof(UInt64)), state[i]);
-        }
+        BinarySpans.WriteUInt64BigEndian(state.AsSpan(0, 4), destination);
     }
 }

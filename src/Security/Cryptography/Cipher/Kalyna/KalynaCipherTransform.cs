@@ -26,6 +26,7 @@ internal sealed class KalynaCipherTransform : BlockCipherTransform
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public override int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         // Only the hot CBC path is overridden here; all other modes fall through to the base
@@ -38,11 +39,11 @@ internal sealed class KalynaCipherTransform : BlockCipherTransform
         }
 
         Span<byte> fb = FeedbackSpan;
+        ulong fbk0 = BinaryPrimitives.ReadUInt64LittleEndian(fb);
+        ulong fbk1 = BinaryPrimitives.ReadUInt64LittleEndian(fb.Slice(8));
 
         if (IsEncrypting)
         {
-            ulong fbk0 = BinaryPrimitives.ReadUInt64LittleEndian(fb);
-            ulong fbk1 = BinaryPrimitives.ReadUInt64LittleEndian(fb.Slice(8));
             for (int i = 0; i < blocks; i++)
             {
                 ReadOnlySpan<byte> inBlk = input.Slice(i * _blockSizeBytes, _blockSizeBytes);
@@ -55,13 +56,9 @@ internal sealed class KalynaCipherTransform : BlockCipherTransform
                 fbk0 = w0;
                 fbk1 = w1;
             }
-            BinaryPrimitives.WriteUInt64LittleEndian(fb, fbk0);
-            BinaryPrimitives.WriteUInt64LittleEndian(fb.Slice(8), fbk1);
         }
         else
         {
-            ulong fbk0 = BinaryPrimitives.ReadUInt64LittleEndian(fb);
-            ulong fbk1 = BinaryPrimitives.ReadUInt64LittleEndian(fb.Slice(8));
             for (int i = 0; i < blocks; i++)
             {
                 ReadOnlySpan<byte> inBlk = input.Slice(i * 16, 16);
@@ -75,9 +72,10 @@ internal sealed class KalynaCipherTransform : BlockCipherTransform
                 fbk0 = in0;
                 fbk1 = in1;
             }
-            BinaryPrimitives.WriteUInt64LittleEndian(fb, fbk0);
-            BinaryPrimitives.WriteUInt64LittleEndian(fb.Slice(8), fbk1);
         }
+
+        BinaryPrimitives.WriteUInt64LittleEndian(fb, fbk0);
+        BinaryPrimitives.WriteUInt64LittleEndian(fb.Slice(8), fbk1);
 
         return blocks * _blockSizeBytes;
     }
