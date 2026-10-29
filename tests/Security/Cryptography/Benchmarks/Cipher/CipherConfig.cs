@@ -12,6 +12,7 @@ using BenchmarkDotNet.Running;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// BenchmarkDotNet configuration for symmetric cipher benchmarks.
@@ -28,6 +29,15 @@ public class CipherConfig : ManualConfig
     {
         // Disable default exporters
         WithOptions(ConfigOptions.DisableLogFile);
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(
+                maxDepth: 12,
+                printSource: false,
+                exportGithubMarkdown: true,
+                exportCombinedDisassemblyReport: true)));
+        }
 
         Orderer = new CategoryThenDataSizeOrderer();
         AddColumn(new DescriptionColumn());

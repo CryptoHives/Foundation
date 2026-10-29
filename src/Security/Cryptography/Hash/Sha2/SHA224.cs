@@ -158,9 +158,6 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     protected override void OutputHash(Span<byte> destination, uint[] state)
     {
         // Output first 7 words (28 bytes) in big-endian
-        for (int i = 0; i < HashSizeBytes / sizeof(UInt32); i++)
-        {
-            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * sizeof(UInt32)), state[i]);
-        }
+        BinarySpans.WriteUInt32BigEndian(state.AsSpan(0, HashSizeBytes / sizeof(UInt32)), destination);
     }
 }

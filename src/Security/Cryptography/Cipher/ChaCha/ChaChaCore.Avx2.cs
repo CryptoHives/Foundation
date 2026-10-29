@@ -104,8 +104,9 @@ internal readonly partial struct ChaChaCore
         ref byte outputBase = ref MemoryMarshal.GetReference(output);
 
         // Main loop: process 2 blocks (128 bytes) per iteration.
-        int offset = 0;
-        while (offset + DualBlockSizeBytes <= input.Length)
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        while (offset + DualBlockSizeBytes <= length)
         {
             Vector256<uint> row3 = row3Base;
             Vector256<uint> w0 = row0, w1 = row1, w2 = row2, w3 = row3;
@@ -132,8 +133,8 @@ internal readonly partial struct ChaChaCore
             // Extract lower and upper 128-bit lanes, then XOR with input.
             // Block N (lower lane): rows w0..w3 lower halves → bytes [offset .. offset+63]
             // Block N+1 (upper lane): rows w0..w3 upper halves → bytes [offset+64 .. offset+127]
-            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
-            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, offset);
+            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, offset);
 
             // Block N (lower lanes)
             Vector128<byte> in0 = Vector128.LoadUnsafe(ref inRef);
@@ -161,11 +162,11 @@ internal readonly partial struct ChaChaCore
         }
 
         // Remaining data: delegate to SSSE3 single-block path.
-        if (offset < input.Length)
+        if (offset < length)
         {
             // Recover the current counter from the lower lane of row3Base.
             uint currentCounter = row3Base.GetElement(0);
-            TransformSsse3(key, nonce, currentCounter, input.Slice(offset), output.Slice(offset));
+            TransformSsse3(key, nonce, currentCounter, input.Slice((int)offset), output.Slice((int)offset));
         }
     }
 

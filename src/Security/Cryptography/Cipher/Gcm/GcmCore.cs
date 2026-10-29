@@ -251,7 +251,7 @@ internal struct GcmCore
     /// </summary>
     private Span<Vector128<byte>> AesNiRoundKeys
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptionsEx.HotPath)]
         get => MemoryMarshal.Cast<uint, Vector128<byte>>(_encRoundKeys.AsSpan());
     }
 #endif
@@ -476,27 +476,32 @@ internal struct GcmCore
             return;
         }
 
+        ref byte inRef = ref MemoryMarshal.GetReference(input);
+        ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(0, input.Length));
+
         Span<byte> counter = stackalloc byte[BlockSizeBytes];
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
+        ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
         icb.CopyTo(counter);
 
         Span<byte> counterWord = counter.Slice(NonceSizeBytes);
         uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
 
-        int offset = 0;
-        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             AesCore.EncryptBlock(counter, keystream, roundKeys, rounds);
-            XorBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
-        if (offset < input.Length)
+        if (offset < length)
         {
             AesCore.EncryptBlock(counter, keystream, roundKeys, rounds);
-            XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
     }
@@ -521,27 +526,32 @@ internal struct GcmCore
             return;
         }
 
+        ref byte inRef = ref MemoryMarshal.GetReference(input);
+        ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(0, input.Length));
+
         Span<byte> counter = stackalloc byte[BlockSizeBytes];
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
+        ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
         icb.CopyTo(counter);
 
         Span<byte> counterWord = counter.Slice(NonceSizeBytes);
         uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
 
-        int offset = 0;
-        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             AesCoreAesNi.EncryptBlock(counter, keystream, roundKeys, rounds);
-            XorBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
-        if (offset < input.Length)
+        if (offset < length)
         {
             AesCoreAesNi.EncryptBlock(counter, keystream, roundKeys, rounds);
-            XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
     }
@@ -565,27 +575,32 @@ internal struct GcmCore
             return;
         }
 
+        ref byte inRef = ref MemoryMarshal.GetReference(input);
+        ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(0, input.Length));
+
         Span<byte> counter = stackalloc byte[BlockSizeBytes];
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
+        ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
         icb.CopyTo(counter);
 
         Span<byte> counterWord = counter.Slice(NonceSizeBytes);
         uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
 
-        int offset = 0;
-        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             AesCoreArm.EncryptBlock(counter, keystream, roundKeys, rounds);
-            XorBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
-        if (offset < input.Length)
+        if (offset < length)
         {
             AesCoreArm.EncryptBlock(counter, keystream, roundKeys, rounds);
-            XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
     }
@@ -612,27 +627,32 @@ internal struct GcmCore
             return;
         }
 
+        ref byte inRef = ref MemoryMarshal.GetReference(input);
+        ref byte outRef = ref MemoryMarshal.GetReference(output.Slice(0, input.Length));
+
         Span<byte> counter = stackalloc byte[BlockSizeBytes];
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
+        ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
         icb.CopyTo(counter);
 
         Span<byte> counterWord = counter.Slice(NonceSizeBytes);
         uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
 
-        int offset = 0;
-        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             blockCipher.EncryptBlock(counter, keystream);
-            XorBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
-        if (offset < input.Length)
+        if (offset < length)
         {
             blockCipher.EncryptBlock(counter, keystream);
-            XorPartialBlock(input.Slice(offset), keystream, output.Slice(offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
     }
@@ -917,58 +937,27 @@ internal struct GcmCore
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void ProcessBlocks(ReadOnlySpan<byte> h, ReadOnlySpan<byte> data, Span<byte> y)
     {
-        int offset = 0;
-        int fullBlockLength = data.Length & ~(BlockSizeBytes - 1);
+        ref byte dataRef = ref MemoryMarshal.GetReference(data);
+        ref byte yRef = ref MemoryMarshal.GetReference(y.Slice(0, BlockSizeBytes));
+
+        nuint offset = 0;
+        nuint length = (nuint)data.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
-            XorBlock(data.Slice(offset), y, y);
+            BinaryOperations.Xor128(ref Unsafe.Add(ref dataRef, offset), ref yRef, ref yRef);
             GfMul(y, h, y);
             offset += BlockSizeBytes;
         }
 
-        if (offset < data.Length)
+        if (offset < length)
         {
-            XorPartialBlock(data.Slice(offset), y, y);
+            BinaryOperations.Xor(ref Unsafe.Add(ref dataRef, offset), ref yRef, ref yRef, length - offset);
             GfMul(y, h, y);
         }
     }
 
-    /// <summary>
-    /// Increments the counter block (last 32 bits, big-endian).
-    /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    internal static void IncrementCounter(Span<byte> counter)
-    {
-        Span<byte> word = counter.Slice(12, 4);
-        BinaryPrimitives.WriteUInt32BigEndian(word, BinaryPrimitives.ReadUInt32BigEndian(word) + 1);
-    }
-
-    /// <summary>
-    /// XORs one full block of <paramref name="input"/> with <paramref name="keystream"/> into <paramref name="output"/>.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void XorBlock(ReadOnlySpan<byte> input, ReadOnlySpan<byte> keystream, Span<byte> output)
-    {
-        ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(0, BlockSizeBytes));
-        ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream.Slice(0, BlockSizeBytes));
-        Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(0, BlockSizeBytes));
-        dst[0] = src[0] ^ ks[0];
-        dst[1] = src[1] ^ ks[1];
-    }
-
-    /// <summary>
-    /// XORs all of <paramref name="input"/>, shorter than a block, with <paramref name="keystream"/> into <paramref name="output"/>.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void XorPartialBlock(ReadOnlySpan<byte> input, ReadOnlySpan<byte> keystream, Span<byte> output)
-    {
-        for (int i = 0; i < input.Length; i++)
-        {
-            output[i] = (byte)(input[i] ^ keystream[i]);
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void GctrDispatch(ReadOnlySpan<byte> icb, ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (_blockCipher is not null)
@@ -993,7 +982,7 @@ internal struct GcmCore
         GctrAes(_encRoundKeys, _rounds, icb, input, output);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public void GHashDispatch(ReadOnlySpan<byte> aad, ReadOnlySpan<byte> ciphertext, Span<byte> output)
     {
 #if NET8_0_OR_GREATER
@@ -1012,7 +1001,7 @@ internal struct GcmCore
         GHashComplete(_shoupTable, aad, ciphertext, output);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public void GEncryptDispatch(
         ReadOnlySpan<byte> icb,
         ReadOnlySpan<byte> aad, ReadOnlySpan<byte> plaintext,
@@ -1035,7 +1024,7 @@ internal struct GcmCore
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     public void GDecryptDispatch(
         ReadOnlySpan<byte> icb,
         ReadOnlySpan<byte> aad, ReadOnlySpan<byte> ciphertext,

@@ -99,9 +99,10 @@ internal readonly partial struct ChaChaCore
         ref byte inputBase = ref MemoryMarshal.GetReference(input);
         ref byte outputBase = ref MemoryMarshal.GetReference(output);
 
-        int offset = 0;
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
         Span<byte> ks = stackalloc byte[BlockSizeBytes];
-        while (offset < input.Length)
+        while (offset < length)
         {
             // Working copy (row3 has per-block counter)
             Vector128<uint> row3 = row3Base;
@@ -127,13 +128,13 @@ internal readonly partial struct ChaChaCore
             w2 = Sse2.Add(w2, row2);
             w3 = Sse2.Add(w3, row3);
 
-            int remaining = input.Length - offset;
+            nuint remaining = length - offset;
 
             if (remaining >= BlockSizeBytes)
             {
                 // Full block: XOR keystream with input
-                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
-                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+                ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, offset);
+                ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, offset);
 
                 Vector128<byte> in0 = Vector128.LoadUnsafe(ref inRef);
                 Vector128<byte> in1 = Vector128.LoadUnsafe(ref inRef, 16);
@@ -153,10 +154,10 @@ internal readonly partial struct ChaChaCore
                 w2.AsByte().CopyTo(ks.Slice(32));
                 w3.AsByte().CopyTo(ks.Slice(48));
 
-                ref byte pInRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
-                ref byte pOutRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+                ref byte pInRef = ref Unsafe.AddByteOffset(ref inputBase, offset);
+                ref byte pOutRef = ref Unsafe.AddByteOffset(ref outputBase, offset);
                 ref byte pKsRef = ref MemoryMarshal.GetReference(ks);
-                for (int i = 0; i < remaining; i++)
+                for (nuint i = 0; i < remaining; i++)
                 {
                     Unsafe.Add(ref pOutRef, i) = (byte)(Unsafe.Add(ref pInRef, i) ^ Unsafe.Add(ref pKsRef, i));
                 }

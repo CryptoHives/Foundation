@@ -228,10 +228,7 @@ public sealed class SM3 : HashAlgorithm
         unchecked
         {
             // Message expansion - load first 16 words
-            for (int i = 0; i < 16; i++)
-            {
-                w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
-            }
+            BinarySpans.ReadUInt32BigEndian(block.Slice(0, BlockSizeBytes), w);
 
             // Message expansion - compute W[16..67]
             for (int i = 16; i < 68; i++)
@@ -302,9 +299,9 @@ public sealed class SM3 : HashAlgorithm
     }
 
     // Permutation functions
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint P0(uint x) => x ^ BitOperations.RotateLeft(x, 9) ^ BitOperations.RotateLeft(x, 17);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint P1(uint x) => x ^ BitOperations.RotateLeft(x, 15) ^ BitOperations.RotateLeft(x, 23);
 }

@@ -4,8 +4,8 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Kem;
 
 using System;
-
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Number Theoretic Transform (NTT) operations over ℤ_3329 for ML-KEM.
@@ -64,19 +64,23 @@ internal static class Ntt
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Forward(Span<short> r)
     {
-        // Bound once rather than re-evaluating the property in the butterfly loop.
-        ReadOnlySpan<short> zetas = Zetas;
-        int k = 1;
-        for (int len = 128; len >= 2; len >>= 1)
+        if (r.Length < MLKemParams.N) throw new ArgumentException("A full polynomial is required.", nameof(r));
+
+        ref short rr = ref MemoryMarshal.GetReference(r);
+        ref short zr = ref MemoryMarshal.GetReference(Zetas);
+        nuint k = 1;
+        for (nuint len = 128; len >= 2; len >>= 1)
         {
-            for (int start = 0; start < 256; start += 2 * len)
+            for (nuint start = 0; start < MLKemParams.N; start += 2 * len)
             {
-                short zeta = zetas[k++];
-                for (int j = start; j < start + len; j++)
+                short zeta = Unsafe.Add(ref zr, k++);
+                for (nuint j = start; j < start + len; j++)
                 {
-                    short t = MontgomeryReduce(zeta * r[j + len]);
-                    r[j + len] = (short)(r[j] - t);
-                    r[j] = (short)(r[j] + t);
+                    ref short lo = ref Unsafe.Add(ref rr, j);
+                    ref short hi = ref Unsafe.Add(ref rr, j + len);
+                    short t = MontgomeryReduce(zeta * hi);
+                    hi = (short)(lo - t);
+                    lo = (short)(lo + t);
                 }
             }
         }
@@ -93,27 +97,34 @@ internal static class Ntt
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void Inverse(Span<short> r)
     {
-        ReadOnlySpan<short> zetas = Zetas;
-        int k = 127;
-        for (int len = 2; len <= 128; len <<= 1)
+        if (r.Length < MLKemParams.N) throw new ArgumentException("A full polynomial is required.", nameof(r));
+
+        ref short rr = ref MemoryMarshal.GetReference(r);
+        ref short zr = ref MemoryMarshal.GetReference(Zetas);
+        nuint k = 127;
+        for (nuint len = 2; len <= 128; len <<= 1)
         {
-            for (int start = 0; start < 256; start += 2 * len)
+            for (nuint start = 0; start < MLKemParams.N; start += 2 * len)
             {
-                short zeta = zetas[k--];
-                for (int j = start; j < start + len; j++)
+                short zeta = Unsafe.Add(ref zr, k--);
+                for (nuint j = start; j < start + len; j++)
                 {
-                    short t = r[j];
-                    r[j] = BarrettReduce((short)(t + r[j + len]));
-                    r[j + len] = MontgomeryReduce(zeta * (r[j + len] - t));
+                    ref short lo = ref Unsafe.Add(ref rr, j);
+                    ref short hi = ref Unsafe.Add(ref rr, j + len);
+                    short t = lo;
+                    short h = hi;
+                    lo = BarrettReduce((short)(t + h));
+                    hi = MontgomeryReduce(zeta * (h - t));
                 }
             }
         }
 
-        // Multiply by n^{-1} = 3303 in Montgomery form (3303 · R mod q)
+        // Multiply by n^{-1} = 3303 in Montgomery form (3303 * R mod q)
         const short f = 1441;
-        for (int j = 0; j < 256; j++)
+        for (nuint j = 0; j < MLKemParams.N; j++)
         {
-            r[j] = MontgomeryReduce(f * r[j]);
+            ref short c = ref Unsafe.Add(ref rr, j);
+            c = MontgomeryReduce(f * c);
         }
     }
 
@@ -124,27 +135,24 @@ internal static class Ntt
     /// FIPS 203 Algorithm 11 (BaseCaseMultiply). Used for pointwise multiplication
     /// of polynomials in NTT domain.
     /// </remarks>
-    /// <param name="r">The output coefficients (2 values), accumulated.</param>
-    /// <param name="rOff">Offset into <paramref name="r"/>.</param>
-    /// <param name="a">First operand coefficients.</param>
-    /// <param name="aOff">Offset into <paramref name="a"/>.</param>
-    /// <param name="b">Second operand coefficients.</param>
-    /// <param name="bOff">Offset into <paramref name="b"/>.</param>
+    /// <param name="r">The first of the two output coefficients, accumulated.</param>
+    /// <param name="a">The first of the two coefficients of the first operand.</param>
+    /// <param name="b">The first of the two coefficients of the second operand.</param>
     /// <param name="zeta">The twist factor ζ for this base case.</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    public static void BaseCaseMultiply(Span<short> r, int rOff, ReadOnlySpan<short> a, int aOff, ReadOnlySpan<short> b, int bOff, short zeta)
+    public static void BaseCaseMultiply(ref short r, ref short a, ref short b, short zeta)
     {
-        int a0 = a[aOff];
-        int a1 = a[aOff + 1];
-        int b0 = b[bOff];
-        int b1 = b[bOff + 1];
+        int a0 = a;
+        int a1 = Unsafe.Add(ref a, 1);
+        int b0 = b;
+        int b1 = Unsafe.Add(ref b, 1);
 
         short t = MontgomeryReduce(a1 * b1);
         t = MontgomeryReduce(t * zeta);
         t += MontgomeryReduce(a0 * b0);
-        r[rOff] = (short)(r[rOff] + t);
+        r = (short)(r + t);
 
-        r[rOff + 1] = (short)(r[rOff + 1] + MontgomeryReduce(a0 * b1) + MontgomeryReduce(a1 * b0));
+        Unsafe.Add(ref r, 1) = (short)(Unsafe.Add(ref r, 1) + MontgomeryReduce(a0 * b1) + MontgomeryReduce(a1 * b0));
     }
 
     /// <summary>

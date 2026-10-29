@@ -296,7 +296,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     {
                         var counter = new Span<byte>(counterPtr, AesCore.BlockSizeBytes);
                         EncryptBlockDispatch(counter, counterOut);
-                        IncrementCounter(counter);
+                        BinaryOperations.IncrementBigEndian(counter);
                     }
 
                     for (int i = 0; i < remainder; i++)
@@ -332,7 +332,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                     {
                         var counter = new Span<byte>(counterPtr, AesCore.BlockSizeBytes);
                         EncryptBlockDispatch(counter, counterOut);
-                        IncrementCounter(counter);
+                        BinaryOperations.IncrementBigEndian(counter);
                     }
 
                     for (int i = 0; i < remainder; i++)
@@ -647,10 +647,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
                 DecryptBlockDispatch(input, output);
 
                 // XOR with previous ciphertext (or IV)
-                for (int i = 0; i < BlockSize; i++)
-                {
-                    output[i] ^= feedbackBlock[i];
-                }
+                BinaryOperations.Xor128(output, feedbackBlock, output);
 
                 // Save ciphertext for next block
                 savedInput.CopyTo(feedbackBlock);
@@ -674,29 +671,10 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
             EncryptBlockDispatch(counter, keystream);
 
             // XOR with input
-            for (int i = 0; i < BlockSize; i++)
-            {
-                output[i] = (byte)(input[i] ^ keystream[i]);
-            }
+            BinaryOperations.Xor128(input, keystream, output);
 
             // Increment counter
-            IncrementCounter(counter);
-        }
-    }
-
-    /// <summary>
-    /// Increments the counter for CTR mode (big-endian increment).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void IncrementCounter(Span<byte> counter)
-    {
-        // Increment as big-endian 128-bit integer
-        for (int i = BlockSize - 1; i >= 0; i--)
-        {
-            if (++counter[i] != 0)
-            {
-                break;
-            }
+            BinaryOperations.IncrementBigEndian(counter);
         }
     }
 
@@ -704,7 +682,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
     // Hardware AES Dispatch
     // ========================================================================
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void EncryptBlockDispatch(ReadOnlySpan<byte> input, Span<byte> output)
     {
         fixed (uint* p = _buffers.Keys)
@@ -729,7 +707,7 @@ internal sealed unsafe class AesCipherTransform : ICipherTransform
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void DecryptBlockDispatch(ReadOnlySpan<byte> input, Span<byte> output)
     {
         fixed (uint* p = _buffers.Keys)

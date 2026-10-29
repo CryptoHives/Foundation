@@ -231,10 +231,7 @@ public sealed partial class SHA1 : HashAlgorithm
         PadAndFinalize();
 
         // Output 5 words (20 bytes) in big-endian
-        for (int i = 0; i < 5; i++)
-        {
-            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * sizeof(UInt32)), _state[i]);
-        }
+        BinarySpans.WriteUInt32BigEndian(_state.AsSpan(0, 5), destination);
 
         bytesWritten = HashSizeBytes;
         return true;
@@ -274,10 +271,7 @@ public sealed partial class SHA1 : HashAlgorithm
         unchecked
         {
             // Parse block into 16 32-bit words (big-endian)
-            for (int i = 0; i < 16; i++)
-            {
-                Unsafe.Add(ref wPtr, i) = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
-            }
+            BinarySpans.ReadUInt32BigEndian(block.Slice(0, BlockSizeBytes), _w);
 
             // Extend 16 words to 80 words
             for (int i = 16; i < 80; i++)

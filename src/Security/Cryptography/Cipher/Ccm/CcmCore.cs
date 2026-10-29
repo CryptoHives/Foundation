@@ -263,30 +263,30 @@ internal unsafe struct CcmCore
     {
         Span<byte> counterBlock = stackalloc byte[BlockSizeBytes];
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
+        ref byte inRef = ref MemoryMarshal.GetReference(plaintext);
+        ref byte outRef = ref MemoryMarshal.GetReference(ciphertext.Slice(0, plaintext.Length));
+        ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
 
-        int offset = 0;
+        nuint offset = 0;
         uint counter = 1; // Start from 1 (0 is used for MAC)
 
-        int fullBlockLength = plaintext.Length & ~(BlockSizeBytes - 1);
+        nuint length = (nuint)plaintext.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             FormatCounterBlock(nonce, counter, counterBlock, L);
             EncryptBlockDispatch(counterBlock, keystream);
-            XorBlock(plaintext.Slice(offset), keystream, ciphertext.Slice(offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             offset += BlockSizeBytes;
             counter++;
         }
 
-        if (offset < plaintext.Length)
+        if (offset < length)
         {
             FormatCounterBlock(nonce, counter, counterBlock, L);
             EncryptBlockDispatch(counterBlock, keystream);
 
-            ReadOnlySpan<byte> tail = plaintext.Slice(offset);
-            for (int i = 0; i < tail.Length; i++)
-            {
-                ciphertext[offset + i] = (byte)(tail[i] ^ keystream[i]);
-            }
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
         CryptographicOperations.ZeroMemory(keystream);
@@ -396,38 +396,33 @@ internal unsafe struct CcmCore
     /// </summary>
     private void CbcMacBlocks(ReadOnlySpan<byte> data, Span<byte> x, Span<byte> b)
     {
-        int offset = 0;
-        int fullBlockLength = data.Length & ~(BlockSizeBytes - 1);
+        ref byte dataRef = ref MemoryMarshal.GetReference(data);
+        ref byte xRef = ref MemoryMarshal.GetReference(x.Slice(0, BlockSizeBytes));
+        ref byte bRef = ref MemoryMarshal.GetReference(b.Slice(0, BlockSizeBytes));
+
+        nuint offset = 0;
+        nuint length = (nuint)data.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
-            XorBlock(data.Slice(offset), x, b);
+            BinaryOperations.Xor128(ref Unsafe.Add(ref dataRef, offset), ref xRef, ref bRef);
             EncryptBlockDispatch(b, x);
             offset += BlockSizeBytes;
         }
 
-        if (offset < data.Length)
+        if (offset < length)
         {
             b.Clear();
-            data.Slice(offset).CopyTo(b);
-            XorBlock(b, x, b);
+            data.Slice((int)offset).CopyTo(b);
+            BinaryOperations.Xor128(ref bRef, ref xRef, ref bRef);
             EncryptBlockDispatch(b, x);
         }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void XorBlock(ReadOnlySpan<byte> input, ReadOnlySpan<byte> keystream, Span<byte> output)
-    {
-        ReadOnlySpan<ulong> src = MemoryMarshal.Cast<byte, ulong>(input.Slice(0, BlockSizeBytes));
-        ReadOnlySpan<ulong> ks = MemoryMarshal.Cast<byte, ulong>(keystream.Slice(0, BlockSizeBytes));
-        Span<ulong> dst = MemoryMarshal.Cast<byte, ulong>(output.Slice(0, BlockSizeBytes));
-        dst[0] = src[0] ^ ks[0];
-        dst[1] = src[1] ^ ks[1];
     }
 
     /// <summary>
     /// Dispatches a single block encryption to the block cipher, or to a hardware-accelerated or managed AES.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void EncryptBlockDispatch(Span<byte> input, Span<byte> output)
     {
         if (_blockCipher is not null)
