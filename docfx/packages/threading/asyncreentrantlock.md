@@ -96,6 +96,15 @@ Acquires the lock, or the next depth if the calling flow already holds it. Dispo
 - `ArgumentOutOfRangeException`: `timeout` is negative and not `Timeout.InfiniteTimeSpan`.
 - `InvalidOperationException`: the call would nest deeper than the maximum depth set at construction.
 
+### LockLeafAsync
+
+```csharp
+public ValueTask<Releaser> LockLeafAsync(CancellationToken cancellationToken = default)
+public ValueTask<Releaser> LockLeafAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+```
+
+Acquires the lock at the same depth `LockAsync` would, so siblings at that depth still serialize with it and a parent's release still waits for it, but without recording the hold for further nesting. That skips the `AsyncLocal` write and the per-acquisition allocations. Use it for innermost regions that never call back into the lock: a `LockAsync` or `LockLeafAsync` call made inside a leaf hold deadlocks, as with `AsyncLock`. Throws the same exceptions as `LockAsync`.
+
 There is no `TryLock` and no synchronous API.
 
 ## Pitfalls
@@ -116,7 +125,7 @@ private ValueTask<AsyncReentrantLock.Releaser> EnterAsync()
 
 ### Nesting is a real acquisition
 
-A nested `LockAsync` can wait, but only on concurrent siblings at the same depth, including children the caller started itself. If a holder starts a child that takes the lock and then nests while the child holds it, the holder waits for the child.
+A nested `LockAsync` can wait, but only on concurrent siblings at the same depth, including children the caller started itself. If a holder starts a child that takes the lock and then nests while the child holds it, the holder waits for the child. A hold taken with `LockLeafAsync` cannot be nested into at all.
 
 ### Acquire one at a time per flow
 
@@ -138,7 +147,7 @@ Each depth reached creates one internal lock that lives as long as the instance 
 
 ## Performance
 
-Each acquisition reads and writes an `AsyncLocal`, allocates two small objects and checks that the depth it nests under is still held, on top of the underlying `AsyncLock` acquisition. A contended acquisition also allocates an async state machine. `AsyncReentrantLockBenchmark` measures the uncontended overhead against `AsyncLock`, and `AsyncReentrantLockNestedDepthBenchmark` measures cost against nesting depth.
+Each acquisition reads and writes an `AsyncLocal`, allocates two small objects and checks that the depth it nests under is still held, on top of the underlying `AsyncLock` acquisition. A contended acquisition also allocates an async state machine. `LockLeafAsync` skips the `AsyncLocal` write and both allocations, so use it at innermost call sites that don't nest further. `AsyncReentrantLockBenchmark` measures the uncontended overhead against `AsyncLock`, and `AsyncReentrantLockNestedDepthBenchmark` measures cost against nesting depth.
 
 ## See Also
 

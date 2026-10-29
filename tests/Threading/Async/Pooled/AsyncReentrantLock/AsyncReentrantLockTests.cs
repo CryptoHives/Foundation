@@ -627,7 +627,7 @@ public class AsyncReentrantLockTests
         await childHolds.Task.ConfigureAwait(false);
         outer.Dispose();
 
-        Task<AsyncReentrantLock.Releaser> next = mutex.LockAsync().AsTask();
+        Task<AsyncReentrantLock.Releaser> next = mutex.LockAsync(TimeSpan.FromSeconds(2)).AsTask();
         await AsyncAssert.NeverCompletesAsync(next, 100).ConfigureAwait(false);
 
         childRelease.SetResult(true);
@@ -767,6 +767,212 @@ public class AsyncReentrantLockTests
         {
             Assert.That(overlap, Is.Zero, "the orphan ran while an unrelated flow held the lock");
             Assert.That(orphanDepth, Is.EqualTo(1), "the orphan should have acquired at top level");
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task LeafAtTopLevelExcludesOtherCallers()
+    {
+        var mutex = new AsyncReentrantLock();
+
+        AsyncReentrantLock.Releaser leaf = await mutex.LockLeafAsync().ConfigureAwait(false);
+        Task<AsyncReentrantLock.Releaser> other = Task.Run(() => mutex.LockAsync().AsTask());
+        await AsyncAssert.NeverCompletesAsync(other, 100).ConfigureAwait(false);
+
+        leaf.Dispose();
+
+        using (await other.ConfigureAwait(false))
+        {
+            Assert.That(mutex.DepthsCreated, Is.EqualTo(1));
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task NestedLeafSerializesWithSiblingsAtItsDepth()
+    {
+        var mutex = new AsyncReentrantLock();
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            AsyncReentrantLock.Releaser leaf = await mutex.LockLeafAsync().ConfigureAwait(false);
+            Task<AsyncReentrantLock.Releaser> sibling = Task.Run(() => mutex.LockAsync().AsTask());
+            await AsyncAssert.NeverCompletesAsync(sibling, 100).ConfigureAwait(false);
+
+            leaf.Dispose();
+
+            using (await sibling.ConfigureAwait(false))
+            {
+                Assert.That(mutex.DepthsCreated, Is.EqualTo(2));
+            }
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task LeafLeavesCurrentDepthUnchanged()
+    {
+        var mutex = new AsyncReentrantLock();
+
+        using (await mutex.LockLeafAsync().ConfigureAwait(false))
+        {
+            Assert.That(mutex.CurrentDepth, Is.Zero);
+        }
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            using (await mutex.LockLeafAsync().ConfigureAwait(false))
+            {
+                Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+            }
+
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+        }
+
+        Assert.That(mutex.CurrentDepth, Is.Zero);
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task LockStaysHeldWhileANestedLeafRuns()
+    {
+        var mutex = new AsyncReentrantLock();
+        var childHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var childRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        AsyncReentrantLock.Releaser outer = await mutex.LockAsync().ConfigureAwait(false);
+
+        Task child = Task.Run(async () => {
+            using (await mutex.LockLeafAsync().ConfigureAwait(false))
+            {
+                childHolds.SetResult(true);
+                await childRelease.Task.ConfigureAwait(false);
+            }
+        });
+
+        await childHolds.Task.ConfigureAwait(false);
+        outer.Dispose();
+
+        Task<AsyncReentrantLock.Releaser> next = mutex.LockAsync(TimeSpan.FromSeconds(2)).AsTask();
+        await AsyncAssert.NeverCompletesAsync(next, 100).ConfigureAwait(false);
+
+        childRelease.SetResult(true);
+        await child.ConfigureAwait(false);
+
+        using (await next.ConfigureAwait(false))
+        {
+            Assert.That(mutex.CurrentDepth, Is.EqualTo(1));
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task OrphanedLeafFallsBackToTopLevel()
+    {
+        var mutex = new AsyncReentrantLock();
+        var parentReleased = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task child;
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            child = Task.Run(async () => {
+                await parentReleased.Task.ConfigureAwait(false);
+                using (await mutex.LockLeafAsync().ConfigureAwait(false))
+                {
+                }
+            });
+        }
+
+        AsyncReentrantLock.Releaser holder = await mutex.LockAsync().ConfigureAwait(false);
+        parentReleased.SetResult(true);
+        await AsyncAssert.NeverCompletesAsync(child, 100).ConfigureAwait(false);
+
+        holder.Dispose();
+        await child.ConfigureAwait(false);
+
+        Assert.That(mutex.DepthsCreated, Is.EqualTo(1));
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task LeafRespectsMaxDepth()
+    {
+        var mutex = new AsyncReentrantLock(AsyncReentrantLock.DefaultDepthLocksCapacity, AsyncReentrantLock.DefaultDepthLocksCapacity);
+        var releasers = new List<AsyncReentrantLock.Releaser>();
+
+        for (int i = 0; i < AsyncReentrantLock.DefaultDepthLocksCapacity; i++)
+        {
+            releasers.Add(await mutex.LockAsync().ConfigureAwait(false));
+        }
+
+#pragma warning disable VSTHRD110, CA2012 // the call throws before returning a ValueTask
+        Assert.Throws<InvalidOperationException>(() => mutex.LockLeafAsync());
+#pragma warning restore VSTHRD110, CA2012
+
+        for (int i = releasers.Count - 1; i >= 0; i--)
+        {
+            releasers[i].Dispose();
+        }
+
+        Assert.That(mutex.CurrentDepth, Is.Zero);
+    }
+
+    [Test, CancelAfter(10000)]
+    public async Task ConcurrentMixedLeafAndNestedCallersNeverOverlap()
+    {
+        var mutex = new AsyncReentrantLock();
+        int insideTop = 0;
+        int insideNested = 0;
+        int violations = 0;
+
+        void Enter(ref int inside)
+        {
+            if (Interlocked.Increment(ref inside) > 1)
+            {
+                Interlocked.Increment(ref violations);
+            }
+        }
+
+        async Task NestedAsync(bool leaf)
+        {
+            using (leaf ? await mutex.LockLeafAsync().ConfigureAwait(false) : await mutex.LockAsync().ConfigureAwait(false))
+            {
+                Enter(ref insideNested);
+                await Task.Delay(2).ConfigureAwait(false);
+                Interlocked.Decrement(ref insideNested);
+            }
+        }
+
+        async Task TreeAsync(int i)
+        {
+            if (i % 3 == 0)
+            {
+                using (await mutex.LockLeafAsync().ConfigureAwait(false))
+                {
+                    Enter(ref insideTop);
+                    await Task.Delay(2).ConfigureAwait(false);
+                    Interlocked.Decrement(ref insideTop);
+                }
+
+                return;
+            }
+
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                Enter(ref insideTop);
+                await Task.WhenAll(NestedAsync(true), NestedAsync(false), NestedAsync(true)).ConfigureAwait(false);
+                Interlocked.Decrement(ref insideTop);
+            }
+        }
+
+        var trees = new Task[12];
+        for (int i = 0; i < trees.Length; i++)
+        {
+            int index = i;
+            trees[i] = Task.Run(() => TreeAsync(index));
+        }
+
+        await Task.WhenAll(trees).ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(violations, Is.Zero);
+            Assert.That(mutex.CurrentDepth, Is.Zero);
         }
     }
 

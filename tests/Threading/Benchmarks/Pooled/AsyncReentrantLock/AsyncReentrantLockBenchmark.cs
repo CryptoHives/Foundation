@@ -67,4 +67,18 @@ public class AsyncReentrantLockBenchmark
             unchecked { _counter++; }
         }
     }
+
+    /// <summary>
+    /// Benchmark for AsyncReentrantLock acquired as a leaf (single uncontended, non-nested acquisition).
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("Single", "AsyncReentrantLock")]
+    public async Task LockUnlockLeafSingleAsync()
+    {
+        using (await _reentrantLock.LockLeafAsync().ConfigureAwait(false))
+        {
+            unchecked { _counter++; }
+        }
+    }
 }
