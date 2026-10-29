@@ -487,20 +487,21 @@ internal struct GcmCore
         Span<byte> counterWord = counter.Slice(NonceSizeBytes);
         uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
 
-        int offset = 0;
-        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             AesCore.EncryptBlock(counter, keystream, roundKeys, rounds);
-            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
-        if (offset < input.Length)
+        if (offset < length)
         {
             AesCore.EncryptBlock(counter, keystream, roundKeys, rounds);
-            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset), (nuint)(input.Length - offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
     }
@@ -536,20 +537,21 @@ internal struct GcmCore
         Span<byte> counterWord = counter.Slice(NonceSizeBytes);
         uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
 
-        int offset = 0;
-        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             AesCoreAesNi.EncryptBlock(counter, keystream, roundKeys, rounds);
-            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
-        if (offset < input.Length)
+        if (offset < length)
         {
             AesCoreAesNi.EncryptBlock(counter, keystream, roundKeys, rounds);
-            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset), (nuint)(input.Length - offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
     }
@@ -584,20 +586,21 @@ internal struct GcmCore
         Span<byte> counterWord = counter.Slice(NonceSizeBytes);
         uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
 
-        int offset = 0;
-        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             AesCoreArm.EncryptBlock(counter, keystream, roundKeys, rounds);
-            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
-        if (offset < input.Length)
+        if (offset < length)
         {
             AesCoreArm.EncryptBlock(counter, keystream, roundKeys, rounds);
-            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset), (nuint)(input.Length - offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
     }
@@ -635,20 +638,21 @@ internal struct GcmCore
         Span<byte> counterWord = counter.Slice(NonceSizeBytes);
         uint ctr = BinaryPrimitives.ReadUInt32BigEndian(counterWord);
 
-        int offset = 0;
-        int fullBlockLength = input.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)input.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             blockCipher.EncryptBlock(counter, keystream);
-            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             BinaryPrimitives.WriteUInt32BigEndian(counterWord, ++ctr);
             offset += BlockSizeBytes;
         }
 
-        if (offset < input.Length)
+        if (offset < length)
         {
             blockCipher.EncryptBlock(counter, keystream);
-            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset), (nuint)(input.Length - offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
     }
@@ -936,18 +940,19 @@ internal struct GcmCore
         ref byte dataRef = ref MemoryMarshal.GetReference(data);
         ref byte yRef = ref MemoryMarshal.GetReference(y.Slice(0, BlockSizeBytes));
 
-        int offset = 0;
-        int fullBlockLength = data.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)data.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
-            BinaryOperations.Xor128(ref Unsafe.Add(ref dataRef, (nuint)offset), ref yRef, ref yRef);
+            BinaryOperations.Xor128(ref Unsafe.Add(ref dataRef, offset), ref yRef, ref yRef);
             GfMul(y, h, y);
             offset += BlockSizeBytes;
         }
 
-        if (offset < data.Length)
+        if (offset < length)
         {
-            BinaryOperations.Xor(ref Unsafe.Add(ref dataRef, (nuint)offset), ref yRef, ref yRef, (nuint)(data.Length - offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref dataRef, offset), ref yRef, ref yRef, length - offset);
             GfMul(y, h, y);
         }
     }

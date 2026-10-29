@@ -267,25 +267,26 @@ internal unsafe struct CcmCore
         ref byte outRef = ref MemoryMarshal.GetReference(ciphertext.Slice(0, plaintext.Length));
         ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
 
-        int offset = 0;
+        nuint offset = 0;
         uint counter = 1; // Start from 1 (0 is used for MAC)
 
-        int fullBlockLength = plaintext.Length & ~(BlockSizeBytes - 1);
+        nuint length = (nuint)plaintext.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
             FormatCounterBlock(nonce, counter, counterBlock, L);
             EncryptBlockDispatch(counterBlock, keystream);
-            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset));
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             offset += BlockSizeBytes;
             counter++;
         }
 
-        if (offset < plaintext.Length)
+        if (offset < length)
         {
             FormatCounterBlock(nonce, counter, counterBlock, L);
             EncryptBlockDispatch(counterBlock, keystream);
 
-            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, (nuint)offset), ref ksRef, ref Unsafe.Add(ref outRef, (nuint)offset), (nuint)(plaintext.Length - offset));
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
         }
 
         CryptographicOperations.ZeroMemory(keystream);
@@ -399,19 +400,20 @@ internal unsafe struct CcmCore
         ref byte xRef = ref MemoryMarshal.GetReference(x.Slice(0, BlockSizeBytes));
         ref byte bRef = ref MemoryMarshal.GetReference(b.Slice(0, BlockSizeBytes));
 
-        int offset = 0;
-        int fullBlockLength = data.Length & ~(BlockSizeBytes - 1);
+        nuint offset = 0;
+        nuint length = (nuint)data.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
         while (offset < fullBlockLength)
         {
-            BinaryOperations.Xor128(ref Unsafe.Add(ref dataRef, (nuint)offset), ref xRef, ref bRef);
+            BinaryOperations.Xor128(ref Unsafe.Add(ref dataRef, offset), ref xRef, ref bRef);
             EncryptBlockDispatch(b, x);
             offset += BlockSizeBytes;
         }
 
-        if (offset < data.Length)
+        if (offset < length)
         {
             b.Clear();
-            data.Slice(offset).CopyTo(b);
+            data.Slice((int)offset).CopyTo(b);
             BinaryOperations.Xor128(ref bRef, ref xRef, ref bRef);
             EncryptBlockDispatch(b, x);
         }

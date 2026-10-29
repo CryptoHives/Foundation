@@ -262,8 +262,8 @@ internal readonly partial struct ChaChaCore
         ref byte outputBase = ref MemoryMarshal.GetReference(output);
         ref byte keystream = ref MemoryMarshal.GetReference(MemoryMarshal.AsBytes(wState));
 
-        int offset = 0;
-        int remaining = input.Length;
+        nuint offset = 0;
+        nuint remaining = (nuint)input.Length;
         while (remaining > 0)
         {
             // Copy state to working state
@@ -283,8 +283,8 @@ internal readonly partial struct ChaChaCore
             }
 
             // Full block: XOR keystream with input using widened operations
-            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
-            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
+            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, offset);
+            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, offset);
             XorBlock(ref inRef, ref keystream, ref outRef);
 
             offset += BlockSizeBytes;
@@ -297,12 +297,12 @@ internal readonly partial struct ChaChaCore
         if (remaining > 0)
         {
             // Partial block: serialize keystream then XOR byte-by-byte
-            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, (nint)offset);
-            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, (nint)offset);
-            for (int i = 0; i < remaining; i++)
+            ref byte inRef = ref Unsafe.AddByteOffset(ref inputBase, offset);
+            ref byte outRef = ref Unsafe.AddByteOffset(ref outputBase, offset);
+            for (nuint i = 0; i < remaining; i++)
             {
                 // The keystream words are little-endian on the wire, so byte j of a word sits at 3 - j in memory on big-endian hosts.
-                byte k = Unsafe.Add(ref keystream, BitConverter.IsLittleEndian ? i : (i & ~3) + 3 - (i & 3));
+                byte k = Unsafe.Add(ref keystream, BitConverter.IsLittleEndian ? i : (i & ~(nuint)3) + 3 - (i & 3));
                 Unsafe.Add(ref outRef, i) = (byte)(Unsafe.Add(ref inRef, i) ^ k);
             }
         }
