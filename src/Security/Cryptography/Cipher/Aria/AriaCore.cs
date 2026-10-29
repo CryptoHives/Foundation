@@ -320,6 +320,7 @@ internal static class AriaCore
     }
 
     // Diffusion layer A (binary matrix from RFC 5794)
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void DiffuseA(ReadOnlySpan<byte> x, Span<byte> y)
     {
         byte x0 = x[0]; byte x1 = x[1]; byte x2 = x[2]; byte x3 = x[3];
@@ -371,10 +372,10 @@ internal static class AriaCore
     {
         Span<byte> temp = stackalloc byte[2 * sizeof(ulong)];
         // XOR with round constant
-        BinarySpans.ReadUInt64PairBigEndian(d, out ulong hi, out ulong lo);
-        hi ^= ckHi;
-        lo ^= ckLo;
-        BinarySpans.WriteUInt64PairBigEndian(temp, hi, lo);
+        ulong hi = BinaryPrimitives.ReadUInt64BigEndian(d) ^ ckHi;
+        ulong lo = BinaryPrimitives.ReadUInt64BigEndian(d.Slice(8)) ^ ckLo;
+        BinaryPrimitives.WriteUInt64BigEndian(temp, hi);
+        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(sizeof(ulong)), lo);
 
         SubstLayerOdd(temp);
         DiffuseA(temp, output);
@@ -386,10 +387,10 @@ internal static class AriaCore
     private static void FE(ReadOnlySpan<byte> d, ulong ckHi, ulong ckLo, Span<byte> output)
     {
         Span<byte> temp = stackalloc byte[2 * sizeof(ulong)];
-        BinarySpans.ReadUInt64PairBigEndian(d, out ulong hi, out ulong lo);
-        hi ^= ckHi;
-        lo ^= ckLo;
-        BinarySpans.WriteUInt64PairBigEndian(temp, hi, lo);
+        ulong hi = BinaryPrimitives.ReadUInt64BigEndian(d) ^ ckHi;
+        ulong lo = BinaryPrimitives.ReadUInt64BigEndian(d.Slice(8)) ^ ckLo;
+        BinaryPrimitives.WriteUInt64BigEndian(temp, hi);
+        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(sizeof(ulong)), lo);
 
         SubstLayerEven(temp);
         DiffuseA(temp, output);

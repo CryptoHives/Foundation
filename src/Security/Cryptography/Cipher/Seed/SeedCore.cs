@@ -203,7 +203,10 @@ internal static class SeedCore
     /// <param name="roundKeys">The 32-word output round key array.</param>
     public static void ExpandKey(ReadOnlySpan<byte> key, uint[] roundKeys)
     {
-        BinarySpans.ReadUInt32QuadBigEndian(key, out uint key0, out uint key1, out uint key2, out uint key3);
+        uint key0 = BinaryPrimitives.ReadUInt32BigEndian(key);
+        uint key1 = BinaryPrimitives.ReadUInt32BigEndian(key[4..]);
+        uint key2 = BinaryPrimitives.ReadUInt32BigEndian(key[8..]);
+        uint key3 = BinaryPrimitives.ReadUInt32BigEndian(key[12..]);
 
         for (int i = 0; i < 16; i += 2)
         {
@@ -235,7 +238,8 @@ internal static class SeedCore
     /// <param name="roundKeys">The 32-word round keys.</param>
     public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, uint[] roundKeys)
     {
-        BinarySpans.ReadUInt64PairBigEndian(input, out ulong l, out ulong r);
+        ulong l = BinaryPrimitives.ReadUInt64BigEndian(input);
+        ulong r = BinaryPrimitives.ReadUInt64BigEndian(input[8..]);
 
         for (int i = 0; i < 32; i += 4)
         {
@@ -243,7 +247,8 @@ internal static class SeedCore
             r ^= F(roundKeys[i + 2], roundKeys[i + 3], l);
         }
 
-        BinarySpans.WriteUInt64PairBigEndian(output, r, l);
+        BinaryPrimitives.WriteUInt64BigEndian(output, r);
+        BinaryPrimitives.WriteUInt64BigEndian(output[8..], l);
     }
 
     /// <summary>
@@ -254,7 +259,8 @@ internal static class SeedCore
     /// <param name="roundKeys">The 32-word round keys.</param>
     public static void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output, uint[] roundKeys)
     {
-        BinarySpans.ReadUInt64PairBigEndian(input, out ulong l, out ulong r);
+        ulong l = BinaryPrimitives.ReadUInt64BigEndian(input);
+        ulong r = BinaryPrimitives.ReadUInt64BigEndian(input[8..]);
 
         for (int i = 28; i >= 0; i -= 4)
         {
@@ -262,7 +268,8 @@ internal static class SeedCore
             r ^= F(roundKeys[i], roundKeys[i + 1], l);
         }
 
-        BinarySpans.WriteUInt64PairBigEndian(output, r, l);
+        BinaryPrimitives.WriteUInt64BigEndian(output, r);
+        BinaryPrimitives.WriteUInt64BigEndian(output[8..], l);
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]

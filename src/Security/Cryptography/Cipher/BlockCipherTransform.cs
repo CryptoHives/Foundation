@@ -143,6 +143,7 @@ internal abstract class BlockCipherTransform : ICipherTransform
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public virtual int TransformBlock(ReadOnlySpan<byte> input, Span<byte> output)
     {
         if (_disposed)

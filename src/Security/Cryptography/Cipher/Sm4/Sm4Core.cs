@@ -273,11 +273,10 @@ internal unsafe partial struct Sm4Core
         if (key.Length != BlockSizeBytes)
             throw new ArgumentException("Key must be 16 bytes.", nameof(key));
 
-        BinarySpans.ReadUInt32QuadBigEndian(key, out uint k0, out uint k1, out uint k2, out uint k3);
-        k0 ^= FK[0];
-        k1 ^= FK[1];
-        k2 ^= FK[2];
-        k3 ^= FK[3];
+        uint k0 = BinaryPrimitives.ReadUInt32BigEndian(key) ^ FK[0];
+        uint k1 = BinaryPrimitives.ReadUInt32BigEndian(key[4..]) ^ FK[1];
+        uint k2 = BinaryPrimitives.ReadUInt32BigEndian(key[8..]) ^ FK[2];
+        uint k3 = BinaryPrimitives.ReadUInt32BigEndian(key[12..]) ^ FK[3];
 
         fixed (uint* rk = _roundKeys)
         {
@@ -337,7 +336,10 @@ internal unsafe partial struct Sm4Core
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void EncryptBlockScalar(ReadOnlySpan<byte> input, Span<byte> output, uint* roundKeys)
     {
-        BinarySpans.ReadUInt32QuadBigEndian(input, out uint x0, out uint x1, out uint x2, out uint x3);
+        uint x0 = BinaryPrimitives.ReadUInt32BigEndian(input);
+        uint x1 = BinaryPrimitives.ReadUInt32BigEndian(input[4..]);
+        uint x2 = BinaryPrimitives.ReadUInt32BigEndian(input[8..]);
+        uint x3 = BinaryPrimitives.ReadUInt32BigEndian(input[12..]);
 
         for (int i = 0; i < Rounds; i++)
         {
@@ -351,13 +353,19 @@ internal unsafe partial struct Sm4Core
         }
 
         // Output in reverse order
-        BinarySpans.WriteUInt32QuadBigEndian(output, x3, x2, x1, x0);
+        BinaryPrimitives.WriteUInt32BigEndian(output, x3);
+        BinaryPrimitives.WriteUInt32BigEndian(output[4..], x2);
+        BinaryPrimitives.WriteUInt32BigEndian(output[8..], x1);
+        BinaryPrimitives.WriteUInt32BigEndian(output[12..], x0);
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void DecryptBlockScalar(ReadOnlySpan<byte> input, Span<byte> output, uint* roundKeys)
     {
-        BinarySpans.ReadUInt32QuadBigEndian(input, out uint x0, out uint x1, out uint x2, out uint x3);
+        uint x0 = BinaryPrimitives.ReadUInt32BigEndian(input);
+        uint x1 = BinaryPrimitives.ReadUInt32BigEndian(input[4..]);
+        uint x2 = BinaryPrimitives.ReadUInt32BigEndian(input[8..]);
+        uint x3 = BinaryPrimitives.ReadUInt32BigEndian(input[12..]);
 
         for (int i = Rounds - 1; i >= 0; i--)
         {
@@ -370,7 +378,10 @@ internal unsafe partial struct Sm4Core
             x3 = nx;
         }
 
-        BinarySpans.WriteUInt32QuadBigEndian(output, x3, x2, x1, x0);
+        BinaryPrimitives.WriteUInt32BigEndian(output, x3);
+        BinaryPrimitives.WriteUInt32BigEndian(output[4..], x2);
+        BinaryPrimitives.WriteUInt32BigEndian(output[8..], x1);
+        BinaryPrimitives.WriteUInt32BigEndian(output[12..], x0);
     }
 
     /// <summary>

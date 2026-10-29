@@ -160,7 +160,8 @@ internal static class CamelliaCore
         if (key.Length != 16 && key.Length != 24 && key.Length != 32)
             throw new ArgumentException("Key must be 16, 24, or 32 bytes.", nameof(key));
 
-        BinarySpans.ReadUInt64PairBigEndian(key, out ulong klh, out ulong kll);
+        ulong klh = BinaryPrimitives.ReadUInt64BigEndian(key);
+        ulong kll = BinaryPrimitives.ReadUInt64BigEndian(key.Slice(8));
         ulong krh, krl;
 
         if (key.Length == 16)
@@ -217,9 +218,11 @@ internal static class CamelliaCore
     public static void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output,
         ReadOnlySpan<ulong> subkeys, int rounds)
     {
-        BinarySpans.ReadUInt64PairBigEndian(input, out ulong d1, out ulong d2);
+        ulong d1 = BinaryPrimitives.ReadUInt64BigEndian(input);
+        ulong d2 = BinaryPrimitives.ReadUInt64BigEndian(input.Slice(8));
         EncryptBlock(d1, d2, out ulong r1, out ulong r2, subkeys, rounds);
-        BinarySpans.WriteUInt64PairBigEndian(output, r1, r2);
+        BinaryPrimitives.WriteUInt64BigEndian(output, r1);
+        BinaryPrimitives.WriteUInt64BigEndian(output.Slice(8), r2);
     }
 
     /// <summary>
@@ -290,9 +293,11 @@ internal static class CamelliaCore
     public static void DecryptBlock(ReadOnlySpan<byte> input, Span<byte> output,
         ReadOnlySpan<ulong> subkeys, int rounds)
     {
-        BinarySpans.ReadUInt64PairBigEndian(input, out ulong d1, out ulong d2);
+        ulong d1 = BinaryPrimitives.ReadUInt64BigEndian(input);
+        ulong d2 = BinaryPrimitives.ReadUInt64BigEndian(input.Slice(8));
         DecryptBlock(d1, d2, out ulong r1, out ulong r2, subkeys, rounds);
-        BinarySpans.WriteUInt64PairBigEndian(output, r1, r2);
+        BinaryPrimitives.WriteUInt64BigEndian(output, r1);
+        BinaryPrimitives.WriteUInt64BigEndian(output.Slice(8), r2);
     }
 
     /// <summary>
@@ -356,7 +361,7 @@ internal static class CamelliaCore
     /// <summary>
     /// Performs six Feistel rounds in forward (encryption) order.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SixRounds(ref ulong d1, ref ulong d2,
         ReadOnlySpan<ulong> k, int offset)
     {
@@ -371,7 +376,7 @@ internal static class CamelliaCore
     /// <summary>
     /// Performs six Feistel rounds in reverse (decryption) order.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SixRoundsReverse(ref ulong d1, ref ulong d2,
         ReadOnlySpan<ulong> k, int offset)
     {
@@ -391,7 +396,7 @@ internal static class CamelliaCore
     /// that combines the S-box and the P-function column for that byte position.
     /// The eight 64-bit table values are XOR-folded to produce the F-function output.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong F(ulong input, ulong key)
     {
         ulong x = input ^ key;
@@ -416,7 +421,7 @@ internal static class CamelliaCore
     /// <summary>
     /// FL-function: key-dependent linear mixing applied every 6 rounds.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong FL(ulong x, ulong k)
     {
         uint x1 = (uint)(x >> 32);
@@ -433,7 +438,7 @@ internal static class CamelliaCore
     /// <summary>
     /// FLINV-function: inverse of <see cref="FL"/>.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong FLINV(ulong y, ulong k)
     {
         uint y1 = (uint)(y >> 32);
