@@ -325,6 +325,8 @@ public sealed class AsyncReentrantLock
         return Acquire(timeout, leaf: true, cancellationToken);
     }
 
+    // Idea: a RunAsync(Func<ValueTask> body) overload that holds the lock around the body cannot hide the hold from
+    // its caller the way an async wrapper returning a Releaser does; see asherman.io/projects/csharp-async-reentrant-locks.html.
     // Must stay non-async, like all callers: the slot write has to land in the caller's ExecutionContext.
     private ValueTask<Releaser> Acquire(TimeSpan timeout, bool leaf, CancellationToken cancellationToken)
     {

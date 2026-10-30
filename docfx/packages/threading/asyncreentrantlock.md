@@ -123,6 +123,35 @@ private ValueTask<AsyncReentrantLock.Releaser> EnterAsync()
     => _lock.LockAsync();
 ```
 
+The [CryptoHives.Foundation.Threading.Analyzers](../threading.analyzers/index.md) package reports this as [CHT013](../threading.analyzers/CHT013.md).
+
+### Guard the resource where it is used
+
+A lock can do two jobs: keep a compound operation atomic against other callers, or guard a resource on every access. Reentrancy serves only the first. A child that nests into the lock is part of its parent's operation, so it does not exclude the parent's own code. Code that touches the resource directly while a child is inside runs alongside that child:
+
+```csharp
+using (await _lock.LockAsync(ct).ConfigureAwait(false))
+{
+    Task child = Task.Run(() => WriteAsync(ct));   // WriteAsync takes _lock: nests
+    _file.Write(header);                           // not excluded from the child
+    await child.ConfigureAwait(false);
+}
+```
+
+Take the lock where the resource is touched, so every access acquires it, including the parent's own:
+
+```csharp
+private async Task WriteHeaderAsync(CancellationToken ct)
+{
+    using (await _lock.LockAsync(ct).ConfigureAwait(false))   // nests, serializes with the child
+    {
+        _file.Write(header);
+    }
+}
+```
+
+When the resource needs exclusion of its own, a separate [`AsyncLock`](asynclock.md) around it is the alternative. Take the two locks in the same order everywhere, this one first, so they cannot deadlock against each other.
+
 ### Nesting is a real acquisition
 
 A nested `LockAsync` can wait, but only on concurrent siblings at the same depth, including children the caller started itself. If a holder starts a child that takes the lock and then nests while the child holds it, the holder waits for the child. A hold taken with `LockLeafAsync` cannot be nested into at all.

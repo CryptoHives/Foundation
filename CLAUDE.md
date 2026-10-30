@@ -227,6 +227,7 @@ Diagnostics:
 | CHT010 | Warning | ValueTask captured in lambda/closure |
 | CHT011 | Warning | `async` method only forwards an awaited ValueTask; return it directly |
 | CHT012 | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
+| CHT013 | Warning | `async` method returns an `AsyncReentrantLock` releaser (hides the hold; nested acquisition deadlocks) |
 
 CHT004 and CHT006 were removed; their IDs are not reused. When adding or removing a rule, record it in `AnalyzerReleases.Unshipped.md`. The project targets `netstandard2.0` only and suppresses RS1007/RS1038 on purpose (see its `.csproj`). Tests derive from `AnalyzerTestBase<TAnalyzer>` and mark expected locations with `{|#0:code|}`.
 

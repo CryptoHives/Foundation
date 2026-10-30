@@ -49,3 +49,5 @@
       href: ../threading.analyzers/CHT011.md
     - name: CHT012 - async wrapper boxes state machine
       href: ../threading.analyzers/CHT012.md
+    - name: CHT013 - Releaser returned from async method
+      href: ../threading.analyzers/CHT013.md

@@ -1,6 +1,6 @@
 ---
 title: Threading.Analyzers Package
-_description: CryptoHives.Foundation.Threading.Analyzers — Roslyn analyzers and code fixes (CHT001–CHT012) that catch ValueTask misuse at compile time. Ships separately from the Threading package.
+_description: CryptoHives.Foundation.Threading.Analyzers — Roslyn analyzers and code fixes (CHT001–CHT013) that catch ValueTask misuse at compile time. Ships separately from the Threading package.
 ---
 
 # CryptoHives.Foundation.Threading.Analyzers
@@ -35,6 +35,7 @@ Or add to your project file:
 | [CHT010](CHT010.md) | Warning | ValueTask captured in lambda/closure |
 | [CHT011](CHT011.md) | Warning | `async` method only forwards an awaited ValueTask |
 | [CHT012](CHT012.md) | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
+| [CHT013](CHT013.md) | Warning | `async` method returns an `AsyncReentrantLock` releaser, hiding the hold from its caller |
 
 ## Quick Reference
 

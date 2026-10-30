@@ -216,7 +216,8 @@ public class AsyncReentrantLockTests
     [Test, CancelAfter(5000)]
     public async Task NestedTaskRunSiblingsReenterWithMutualExclusion()
     {
-        // Adapted from the README sample of https://github.com/matthew-a-thomas/cs-reentrant-async-lock
+        // Adapted from the README sample
+        // of https://github.com/matthew-a-thomas/cs-reentrant-async-lock
         var mutex = new AsyncReentrantLock();
         int raceCondition = 0;
 
@@ -238,6 +239,85 @@ public class AsyncReentrantLockTests
         }
 
         Assert.That(raceCondition, Is.EqualTo(2));
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task ParentCodeRunsAlongsideANestedChild()
+    {
+        // The scenario of https://itnext.io/reentrant-recursive-async-lock-is-impossible-in-c-e9593f4aa38a:
+        // a nested child is reentrant, so it does not exclude the code of the parent that started it.
+        var mutex = new AsyncReentrantLock();
+        var childHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var childRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int childInside = 0;
+        int overlap = -1;
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Task child = Task.Run(async () => {
+                using (await mutex.LockAsync().ConfigureAwait(false))
+                {
+                    Volatile.Write(ref childInside, 1);
+                    childHolds.SetResult(true);
+                    await childRelease.Task.ConfigureAwait(false);
+                    Volatile.Write(ref childInside, 0);
+                }
+            });
+
+            await childHolds.Task.ConfigureAwait(false);
+            overlap = Volatile.Read(ref childInside);
+
+            childRelease.SetResult(true);
+            await child.ConfigureAwait(false);
+        }
+
+        Assert.That(overlap, Is.EqualTo(1));
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task ParentThatReacquiresSerializesWithANestedChild()
+    {
+        // The resolution of https://blog.adamfurmanek.pl/2022/06/25/async-wandering-part-13/: the parent
+        // re-acquires around its own code, which then serializes with the child as a sibling.
+        var mutex = new AsyncReentrantLock();
+        var childHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var childRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int childInside = 0;
+        int overlap = -1;
+        int parentDepth = -1;
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Task child = Task.Run(async () => {
+                using (await mutex.LockAsync().ConfigureAwait(false))
+                {
+                    Volatile.Write(ref childInside, 1);
+                    childHolds.SetResult(true);
+                    await childRelease.Task.ConfigureAwait(false);
+                    Volatile.Write(ref childInside, 0);
+                }
+            });
+
+            await childHolds.Task.ConfigureAwait(false);
+
+            Task<AsyncReentrantLock.Releaser> parentSection = mutex.LockAsync().AsTask();
+            await AsyncAssert.NeverCompletesAsync(parentSection, 100).ConfigureAwait(false);
+
+            childRelease.SetResult(true);
+            using (await parentSection.ConfigureAwait(false))
+            {
+                overlap = Volatile.Read(ref childInside);
+                parentDepth = mutex.CurrentDepth;
+            }
+
+            await child.ConfigureAwait(false);
+        }
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(overlap, Is.Zero);
+            Assert.That(parentDepth, Is.EqualTo(2));
+        }
     }
 
     [Test, CancelAfter(5000)]
@@ -615,9 +695,9 @@ public class AsyncReentrantLockTests
     {
         var mutex = new AsyncReentrantLock();
 
-#pragma warning disable CHT011 // the wrapper is the point of the test
+#pragma warning disable CHT011, CHT013 // the wrapper is the point of the test
         async ValueTask<AsyncReentrantLock.Releaser> EnterAsync() => await mutex.LockAsync().ConfigureAwait(false);
-#pragma warning restore CHT011
+#pragma warning restore CHT011, CHT013
 
         using (await EnterAsync().ConfigureAwait(false))
         {

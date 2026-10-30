@@ -203,6 +203,7 @@ After porting, build. The analyzer emits (full descriptions:
 | CHT010 (Warn) | `ValueTask` captured in a lambda/closure. |
 | CHT011 (Warn) | `async` method only forwards an awaited `ValueTask` — return it directly. |
 | CHT012 (Info) | `async` `ValueTask` wrapper boxes a state machine when it suspends. |
+| CHT013 (Warn) | `async` method returns an `AsyncReentrantLock` releaser — the caller's next nested acquisition deadlocks. |
 
 Resolve every CHT0xx before considering the async phase done. Do not suppress them to make
 the build pass unless a human explicitly approves a specific instance.
@@ -527,7 +528,7 @@ Work phase by phase; build + test after each:
 
 Verification checklist:
 - [ ] Solution builds clean under `TreatWarningsAsErrors=true`.
-- [ ] Zero unresolved `CHT001`–`CHT012` diagnostics.
+- [ ] Zero unresolved `CHT001`–`CHT013` diagnostics.
 - [ ] All existing tests pass. For hashing, add/keep a test asserting the new digest equals
       a known-answer vector or the pre-port output for representative inputs.
 - [ ] No `ValueTask` stored in a field, awaited twice, `.Result`-ed, or `WhenAll`-ed.

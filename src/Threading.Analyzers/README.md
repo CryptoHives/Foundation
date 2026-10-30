@@ -44,6 +44,7 @@ Or as a development-only dependency (no runtime reference):
 | [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Warning | `ValueTask` captured in a lambda/closure |
 | [CHT011](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT011.html) | Warning | `async` method only forwards an awaited `ValueTask` |
 | [CHT012](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT012.html) | Info | `async` `ValueTask` wrapper boxes a state machine when it suspends |
+| [CHT013](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT013.html) | Warning | `async` method returns an `AsyncReentrantLock` releaser, hiding the hold from its caller |
 
 ---
 
