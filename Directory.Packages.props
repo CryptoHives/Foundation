@@ -8,7 +8,9 @@
   -->
   <ItemGroup Label="Packages">
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
+    <PackageVersion Include="Microsoft.Bcl.Numerics" Version="10.0.14" />    
     <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="10.0.14" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
