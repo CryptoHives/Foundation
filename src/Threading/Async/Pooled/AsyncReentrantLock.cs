@@ -124,7 +124,12 @@ public sealed class AsyncReentrantLock
         private int _generation;
         private int _releasePending;
 
-        public AsyncLock Lock { get; } = new();
+        public DepthLock()
+        {
+            Lock = new AsyncLock();
+        }
+
+        public AsyncLock Lock { get; }
 
         public int Generation => Volatile.Read(ref _generation);
 
@@ -281,7 +286,8 @@ public sealed class AsyncReentrantLock
                 return AcquireSlowAsync(pending, depthLock, depth, top, state, inherited, timeout, cancellationToken);
             }
 
-            _ = pending.Result;
+            // synchronous completion case
+            _ = pending.GetAwaiter().GetResult();
             if (TryCommit(depthLock, depth, top, state))
             {
                 return new ValueTask<Releaser>(new Releaser(this, depthLock, inherited, depth));
