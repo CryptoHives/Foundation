@@ -44,6 +44,9 @@ Or as a development-only dependency (no runtime reference):
 | [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Warning | `ValueTask` captured in a lambda/closure |
 | [CHT011](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT011.html) | Warning | `async` method only forwards an awaited `ValueTask` |
 | [CHT012](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT012.html) | Info | `async` `ValueTask` wrapper boxes a state machine when it suspends |
+| [CHT013](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT013.html) | Warning | `async` method returns an `AsyncReentrantLock` releaser, hiding the hold from its caller |
+
+CHT001, CHT005 and CHT008 overlap the .NET SDK's [CA2012](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2012), so with both enabled a line can be reported by each. The other rules have no CA2012 counterpart.
 
 ---
 
@@ -71,16 +74,34 @@ var t2 = vt.AsTask(); // Error: already consumed
 ValueTask<int> vt = GetValueTask();
 int result = vt.Result; // Warning: undefined behavior
 
-// CHT007: AsTask() before signaling — Info (performance)
-Task t = someAsyncLock.LockAsync().AsTask();
-// ... other work ...
-await t; // Info: storing AsTask() before signal causes 10–100x slowdown
+// CHT007: AsTask() stored, then awaited once later — Info (performance)
+Task t = _event.WaitAsync().AsTask(); // Info: allocates a Task the single await doesn't need
+_event.Set();
+await t;
 
 // CHT008: Unconsumed — Warning
 GetValueTask(); // Warning: result not awaited or discarded
 
 // CHT009: SemaphoreSlim(1, 1) as async lock — Info
 private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1); // Info: consider AsyncLock
+
+// CHT010: Captured in a closure — Warning
+ValueTask vt = GetValueTask();
+Func<Task> f = async () => await vt; // Warning: the closure may run more than once
+
+// CHT011: async only forwards — Warning
+async ValueTask<int> GetAsync() => await GetValueTaskOfInt(); // Warning: return it directly
+
+// CHT012: async ValueTask wrapper around cleanup — Info
+async ValueTask<int> GetAsync()
+{
+    try { return await GetValueTaskOfInt(); } // Info: boxes a state machine when it suspends
+    finally { Cleanup(); }
+}
+
+// CHT013: Releaser returned from an async method — Warning
+async ValueTask<AsyncReentrantLock.Releaser> EnterAsync()
+    => await _reentrantLock.LockAsync(); // Warning: the caller's nested LockAsync deadlocks
 ```
 
 ## ✅ Correct Patterns
@@ -110,6 +131,16 @@ await Task.WhenAll(
 
 // Explicit discard
 _ = GetValueTask();
+
+// Closure: convert once, capture the Task
+Task t = GetValueTask().AsTask();
+Func<Task> f = () => t;
+
+// Forwarding: return the ValueTask without async
+ValueTask<int> GetAsync() => GetValueTaskOfInt();
+
+// AsyncReentrantLock: return the ValueTask from LockAsync without async
+ValueTask<AsyncReentrantLock.Releaser> EnterAsync() => _reentrantLock.LockAsync();
 ```
 
 ---
@@ -130,6 +161,7 @@ Most diagnostics come with a code fix:
 | CHT010 | Convert to `AsTask()` at declaration; use `Preserve()` |
 | CHT011 | Remove `async` and return the `ValueTask` directly |
 | CHT012 | Pool the state machine box (.NET 6+ only; a partial mitigation) |
+| CHT013 | None; return the `ValueTask` from `LockAsync` directly (the CHT011 fix does this when it applies) |
 
 ---
 

@@ -203,4 +203,339 @@ public class TestClass
         await VerifyCodeFixAsync(source, fixedSource, codeActionIndex: 1, TestReferenceAssemblies)
             .ConfigureAwait(false);
     }
+
+    [Test]
+    public async Task NotConsumedInASyncMethodOffersOnlyTheDiscard()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask GetAsync() => default;
+
+    public void Run()
+    {
+        {|CHT008:GetAsync()|};
+    }
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask GetAsync() => default;
+
+    public void Run()
+    {
+        _ = GetAsync();
+    }
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task NotConsumedInALambdaBodyIsDiscarded()
+    {
+        string source = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask FooAsync() => default;
+
+    public Action Create() => () => {|CHT008:FooAsync()|};
+}";
+        string fixedSource = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask FooAsync() => default;
+
+    public Action Create() => () => _ = FooAsync();
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    // ── Await fixes need an async context, and parentheses where precedence demands ──
+
+    [Test]
+    public async Task BlockingGetResultInASyncMethodOffersOnlyAsTask()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public int Run()
+    {
+        return {|CHT002:GetAsync().GetAwaiter().GetResult()|};
+    }
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public int Run()
+    {
+        return GetAsync().AsTask().GetAwaiter().GetResult();
+    }
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ConfiguredGetResultConvertsBeforeConfigureAwait()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public int Run(ValueTask<int> vt)
+    {
+        return {|CHT002:vt.ConfigureAwait(false).GetAwaiter().GetResult()|};
+    }
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public int Run(ValueTask<int> vt)
+    {
+        return vt.AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
+    }
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task DirectResultAccessInASyncMethodOffersOnlyAsTaskResult()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public int Run()
+    {
+        return {|CHT005:GetAsync().Result|};
+    }
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public int Run()
+    {
+        return GetAsync().AsTask().Result;
+    }
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task DirectResultAccessFollowedByAMemberIsParenthesized()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public async Task<string> RunAsync()
+    {
+        return {|CHT005:GetAsync().Result|}.ToString();
+    }
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public async Task<string> RunAsync()
+    {
+        return (await GetAsync()).ToString();
+    }
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    // ── CHT001: declarations the AsTask fix must not damage ──────────────────
+
+    [Test]
+    public async Task MultipleAwaitInAMultiDeclaratorDeclarationKeepsEveryDeclarator()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public async Task RunAsync()
+    {
+        ValueTask<int> vt = GetAsync(), other = GetAsync();
+        int a = await vt;
+        int b = await {|CHT001:vt|};
+        int c = await other;
+    }
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+
+    public async Task RunAsync()
+    {
+        ValueTask<int> vt = GetAsync().Preserve(), other = GetAsync();
+        int a = await vt;
+        int b = await vt;
+        int c = await other;
+    }
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task MultipleAwaitConvertsToTaskWithTheShortestTypeName()
+    {
+        string source = @"
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<List<int>> GetAsync() => default;
+
+    public async Task RunAsync()
+    {
+        ValueTask<List<int>> vt = GetAsync();
+        var a = await vt;
+        var b = await {|CHT001:vt|};
+    }
+}";
+        string fixedSource = @"
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<List<int>> GetAsync() => default;
+
+    public async Task RunAsync()
+    {
+        Task<List<int>> vt = GetAsync().AsTask();
+        var a = await vt;
+        var b = await vt;
+    }
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    // ── CHT003: the field fix converts the assignments too ───────────────────
+
+    [Test]
+    public async Task StoredInFieldConvertsAssignmentsToAsTask()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> {|CHT003:_pending|};
+
+    public TestClass()
+    {
+        _pending = GetAsync();
+    }
+
+    private ValueTask<int> GetAsync() => default;
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private Task<int> _pending;
+
+    public TestClass()
+    {
+        _pending = GetAsync().AsTask();
+    }
+
+    private ValueTask<int> GetAsync() => default;
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task StoredInPropertyOffersNoFix()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    {|CHT003:public ValueTask<int> Pending { get; set; }|}
+}";
+        await VerifyCodeFixAsync(source, source).ConfigureAwait(false);
+    }
+
+    // ── CHT007: AsTask() stored before other work ────────────────────────────
+
+    [Test]
+    public async Task AsTaskStoredBeforeOtherWorkKeepsTheValueTask()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+    private void Prepare() { }
+
+    public async Task<int> RunAsync()
+    {
+        Task<int> {|CHT007:t = GetAsync().AsTask()|};
+        Prepare();
+        return await t;
+    }
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+    private void Prepare() { }
+
+    public async Task<int> RunAsync()
+    {
+        ValueTask<int> t = GetAsync();
+        Prepare();
+        return await t;
+    }
+}";
+        await VerifyCodeFixAsync(source, fixedSource).ConfigureAwait(false);
+    }
 }

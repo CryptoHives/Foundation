@@ -814,9 +814,9 @@ public class AsyncBarrierTests
     {
         var barrier = new AsyncBarrier(2);
 
-#pragma warning disable VSTHRD110
+#pragma warning disable VSTHRD110, CHT008
         Assert.Throws<ArgumentOutOfRangeException>(() => barrier.SignalAndWaitAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test]
@@ -836,9 +836,9 @@ public class AsyncBarrierTests
         var barrier = new AsyncBarrier(1);
         barrier.RemoveParticipants(1);
 
-#pragma warning disable VSTHRD110
+#pragma warning disable VSTHRD110, CHT008
         Assert.Throws<InvalidOperationException>(() => barrier.SignalAndWaitAsync());
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test]
@@ -847,9 +847,9 @@ public class AsyncBarrierTests
         var barrier = new AsyncBarrier(1);
         barrier.RemoveParticipants(1);
 
-#pragma warning disable VSTHRD110
+#pragma warning disable VSTHRD110, CHT008
         Assert.Throws<InvalidOperationException>(() => barrier.SignalAndWaitAsync(TimeSpan.FromSeconds(5)));
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test]

@@ -84,6 +84,7 @@ If the target project uses Central Package Management (`Directory.Packages.props
 | `Dictionary<TKey, SemaphoreSlim>` / a registry of one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other; released keys stay cached, so repeat acquisitions allocate nothing. |
 | `AsyncKeyedLock` (the third-party package), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | Same per-key semantics, without the striping some libraries use. |
 | `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify the source did not rely on reentrancy. |
+| `lock` / `Monitor` re-entered from a nested call, once the code is async | `AsyncReentrantLock` | Experimental: suppress `CHTEXP001` to use it. Prefer narrowing the locked region. Never wrap `LockAsync` in an `async` method: the caller then no longer counts as holding the lock, and its next nested acquisition deadlocks. See [AsyncReentrantLock](packages/threading/asyncreentrantlock.md). |
 | `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | DotNext releases with an explicit `Release()`; here the lock is released by disposing the `Releaser`, so wrap the critical section in `using`. |
 | `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern for reader and writer locks; upgradeable readers are a distinct mode here. |
 | `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | The same-named type in this package | DotNext's types are net10.0-only; these run on every target down to net462. |
@@ -202,6 +203,7 @@ After porting, build. The analyzer emits (full descriptions:
 | CHT010 (Warn) | `ValueTask` captured in a lambda/closure. |
 | CHT011 (Warn) | `async` method only forwards an awaited `ValueTask` — return it directly. |
 | CHT012 (Info) | `async` `ValueTask` wrapper boxes a state machine when it suspends. |
+| CHT013 (Warn) | `async` method returns an `AsyncReentrantLock` releaser — the caller's next nested acquisition deadlocks. |
 
 Resolve every CHT0xx before considering the async phase done. Do not suppress them to make
 the build pass unless a human explicitly approves a specific instance.
@@ -526,7 +528,7 @@ Work phase by phase; build + test after each:
 
 Verification checklist:
 - [ ] Solution builds clean under `TreatWarningsAsErrors=true`.
-- [ ] Zero unresolved `CHT001`–`CHT012` diagnostics.
+- [ ] Zero unresolved `CHT001`–`CHT013` diagnostics.
 - [ ] All existing tests pass. For hashing, add/keep a test asserting the new digest equals
       a known-answer vector or the pre-port output for representative inputs.
 - [ ] No `ValueTask` stored in a field, awaited twice, `.Result`-ed, or `WhenAll`-ed.

@@ -911,16 +911,17 @@ public class TestClass
         ValueTask vt = default;
         for (int i = 0; i < 1; i++)
         {
-            await vt;
+            await {|#0:vt|};
         }
-        await {|#0:vt|};
+        await {|#1:vt|};
     }
 }";
-        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
-            .WithLocation(0)
-            .WithArguments("vt");
-
-        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+        // The loop's own await is a second consumption on its next iteration; the analyzer does not
+        // evaluate the bound.
+        await VerifyAnalyzerAsync(
+            code,
+            Diagnostic(DiagnosticDescriptors.MultipleAwait).WithLocation(0).WithArguments("vt"),
+            Diagnostic(DiagnosticDescriptors.MultipleAwait).WithLocation(1).WithArguments("vt")).ConfigureAwait(false);
     }
 
     [Test]
@@ -1087,4 +1088,550 @@ public class TestClass
         await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
+    // ── CHT001: one consumption per path ─────────────────────────────────────
+
+    [Test]
+    public async Task AwaitInEachIfBranchNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod(bool condition)
+    {
+        ValueTask vt = default;
+        if (condition)
+        {
+            await vt;
+        }
+        else
+        {
+            await vt.ConfigureAwait(false);
+        }
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitInEachConditionalBranchNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task<int> TestMethod(bool condition)
+    {
+        ValueTask<int> vt = default;
+        return condition ? await vt + 1 : await vt;
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitThroughConditionalOnceNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod(bool condition, ValueTask other)
+    {
+        ValueTask vt = default;
+        await (condition ? vt : other);
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitThroughConditionalThenAwaitAgainReportsError()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod(bool condition, ValueTask other)
+    {
+        ValueTask vt = default;
+        await (condition ? vt : other).ConfigureAwait(false);
+        await {|#0:vt|};
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ReturnThroughConditionalAfterAsTaskReportsError()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public ValueTask TestMethod(bool condition)
+    {
+        ValueTask vt = default;
+        _ = vt.AsTask();
+        return condition ? {|#0:vt|} : default;
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitInEachSwitchSectionNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod(int value)
+    {
+        ValueTask vt = default;
+        switch (value)
+        {
+            case 1:
+                await vt;
+                break;
+            default:
+                await vt;
+                break;
+        }
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitBeforeAndInsideABranchReportsError()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod(bool condition)
+    {
+        ValueTask vt = default;
+        await vt;
+        if (condition)
+        {
+            await {|#0:vt|};
+        }
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ReassignedValueTaskAwaitedAgainNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> NextAsync() => default;
+
+    public async Task TestMethod()
+    {
+        ValueTask<int> vt = NextAsync();
+        await vt;
+        vt = NextAsync();
+        await vt;
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ReassignedToPreservedValueTaskAllowsMultipleAwaitsNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> NextAsync() => default;
+
+    public async Task TestMethod()
+    {
+        ValueTask<int> vt = NextAsync();
+        await vt;
+        vt = NextAsync().Preserve();
+        await vt;
+        await vt;
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitOnceInsideALoopReportsError()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        for (int i = 0; i < 2; i++)
+        {
+            await {|#0:vt|};
+        }
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitInsideALoopThatReassignsNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<bool> NextAsync() => default;
+
+    public async Task TestMethod()
+    {
+        ValueTask<bool> vt = NextAsync();
+        while (await vt)
+        {
+            vt = NextAsync();
+        }
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitInsideALoopThatBreaksNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        while (true)
+        {
+            await vt;
+            break;
+        }
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ParameterAwaitedTwiceReportsError()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod(ValueTask<int> vt)
+    {
+        int a = await vt;
+        int b = await {|#0:vt|};
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitedTwiceInOneExpressionReportsError()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task<int> TestMethod()
+    {
+        ValueTask<int> vt = default;
+        return await vt + await {|#0:vt|};
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitInTryAndAgainInCatchReportsError()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        try
+        {
+            await vt;
+        }
+        catch (InvalidOperationException)
+        {
+            await {|#0:vt|};
+        }
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ConfiguredGetAwaiterGetResultReportsWarning()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public int TestMethod(ValueTask<int> vt)
+    {
+        return {|#0:vt.ConfigureAwait(false).GetAwaiter().GetResult()|};
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.BlockingGetResult)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ValueTaskDroppedByAnExpressionBodiedLambdaReportsWarning()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask FooAsync() => default;
+
+    public Action Create() => () => {|#0:FooAsync()|};
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.NotConsumed)
+            .WithLocation(0)
+            .WithArguments("FooAsync()");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task CapturedValueTaskInLocalFunctionReportsError()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public async Task TestMethod()
+    {
+        ValueTask vt = default;
+        await RunAsync();
+
+        async Task RunAsync() => await {|#0:vt|};
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.CapturedInClosure)
+            .WithLocation(0)
+            .WithArguments("vt");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    // ── CHT010: only real captures ───────────────────────────────────────────
+
+    [Test]
+    public async Task LambdaParameterValueTaskNoDiagnostic()
+    {
+        string code = @"
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public void TestMethod(ValueTask<int>[] pending)
+    {
+        Func<ValueTask, Task> run = async vt => await vt;
+        var results = pending.Select(async vt => await vt.ConfigureAwait(false)).ToArray();
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task LocalDeclaredInsideLambdaNoDiagnostic()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    public void TestMethod()
+    {
+        Func<Task> run = async () =>
+        {
+            ValueTask vt;
+            vt = default;
+            await vt;
+        };
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    // ── CHT003: reusable values in readonly fields ───────────────────────────
+
+    [Test]
+    public async Task ReadonlyFieldHoldingACompletedValueNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private static readonly ValueTask s_done = default;
+    private static readonly ValueTask<int> s_zero = default(ValueTask<int>);
+    private static readonly ValueTask<int> s_answer = new ValueTask<int>(42);
+    private static readonly ValueTask s_wrapped = new ValueTask(Task.CompletedTask);
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task MutableFieldHoldingACompletedValueReportsWarning()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> {|#0:_answer = new ValueTask<int>(42)|};
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.StoredInField)
+            .WithLocation(0)
+            .WithArguments("_answer");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    // ── CHT007: AsTask() stored, other work, then awaited ────────────────────
+
+    [Test]
+    public async Task AsTaskStoredBeforeOtherWorkReportsInfo()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask WaitAsync() => default;
+    private void Prepare() { }
+    private void Set() { }
+
+    public async Task TestMethod()
+    {
+        Task {|#0:t = WaitAsync().AsTask()|};
+        Prepare();
+        Set();
+        await t;
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.AsTaskStoredBeforeSignal)
+            .WithLocation(0);
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AsTaskStoredAndAwaitedTwiceNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> GetAsync() => default;
+    private void Prepare() { }
+
+    public async Task TestMethod()
+    {
+        var t = GetAsync().AsTask();
+        Prepare();
+        await t;
+        await t;
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AsTaskStoredAndPassedToWhenAllNoDiagnostic()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask GetAsync() => default;
+    private void Prepare() { }
+
+    public async Task TestMethod()
+    {
+        Task t = GetAsync().AsTask();
+        Prepare();
+        await Task.WhenAll(t, Task.CompletedTask);
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
 }

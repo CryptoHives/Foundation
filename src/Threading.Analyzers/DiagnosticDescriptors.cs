@@ -158,4 +158,18 @@ public static class DiagnosticDescriptors
         description: "This method awaits exactly one ValueTask and returns it, but the await is wrapped in cleanup (try/catch, try/finally or using) that keeps the async machinery load-bearing. The cost is real but conditional: a call that completes synchronously allocates nothing, while every call that actually suspends boxes a state machine onto the heap - so this is a contended-path cost that an uncontended benchmark will not show. Consider whether the cleanup can be relocated to the awaited operation's own completion and failure paths, which allows the inner ValueTask to be returned directly. Applying [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))] to the method is a lower-effort alternative that pools the box, but it only helps when boxes are reused in sequence - it cannot reduce peak live objects, so it does little when many waiters suspend at the same time. Measure before choosing. If the cleanup genuinely requires the await boundary, suppress this diagnostic with a comment explaining why.",
         helpLinkUri: HelpLinkBase + "CHT012.html",
         customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+
+    /// <summary>
+    /// CHT013: async method returns an AsyncReentrantLock releaser.
+    /// </summary>
+    public static readonly DiagnosticDescriptor AsyncReentrantReleaserReturnedFromAsync = new(
+        id: DiagnosticIds.AsyncReentrantReleaserReturnedFromAsync,
+        title: "async method returns an AsyncReentrantLock releaser",
+        messageFormat: "'{0}' returns an AsyncReentrantLock releaser from an async method; the hold does not reach the caller, so the caller's next nested acquisition deadlocks",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "AsyncReentrantLock records each hold in an AsyncLocal. An async method runs in its own ExecutionContext, so the hold it acquires is invisible to the caller that receives the releaser: the caller holds the lock, but the lock does not see it as nested, and the caller's next LockAsync waits for a lock it already holds. Return the ValueTask from LockAsync directly from a non-async method, or acquire the lock in the caller.",
+        helpLinkUri: HelpLinkBase + "CHT013.html",
+        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
 }

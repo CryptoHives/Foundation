@@ -8,6 +8,8 @@
       href: asynclock.md
     - name: AsyncKeyedLock
       href: asynckeyedlock.md
+    - name: AsyncReentrantLock
+      href: asyncreentrantlock.md
     - name: AsyncAutoResetEvent
       href: asyncautoresetevent.md
     - name: AsyncManualResetEvent
@@ -47,3 +49,5 @@
       href: ../threading.analyzers/CHT011.md
     - name: CHT012 - async wrapper boxes state machine
       href: ../threading.analyzers/CHT012.md
+    - name: CHT013 - Releaser returned from async method
+      href: ../threading.analyzers/CHT013.md

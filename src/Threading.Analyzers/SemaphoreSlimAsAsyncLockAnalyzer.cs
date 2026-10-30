@@ -17,9 +17,10 @@ using System.Collections.Immutable;
 public sealed class SemaphoreSlimAsAsyncLockAnalyzer : DiagnosticAnalyzer
 {
     private const string SemaphoreSlimFullName = "System.Threading.SemaphoreSlim";
+    private const string AsyncLockFullName = "CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock";
 
     /// <inheritdoc/>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
         ImmutableArray.Create(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock);
 
     /// <inheritdoc/>
@@ -33,10 +34,18 @@ public sealed class SemaphoreSlimAsAsyncLockAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterSyntaxNodeAction(
-            AnalyzeObjectCreation,
-            SyntaxKind.ObjectCreationExpression,
-            SyntaxKind.ImplicitObjectCreationExpression);
+        context.RegisterCompilationStartAction(start => {
+            // Suggesting AsyncLock is only useful where the project can use it.
+            if (start.Compilation.GetTypeByMetadataName(AsyncLockFullName) is null)
+            {
+                return;
+            }
+
+            start.RegisterSyntaxNodeAction(
+                AnalyzeObjectCreation,
+                SyntaxKind.ObjectCreationExpression,
+                SyntaxKind.ImplicitObjectCreationExpression);
+        });
     }
 
     private static void AnalyzeObjectCreation(SyntaxNodeAnalysisContext context)

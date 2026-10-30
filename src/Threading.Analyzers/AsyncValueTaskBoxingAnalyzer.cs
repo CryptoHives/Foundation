@@ -34,10 +34,12 @@ using System.Linq;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
 {
-    /// <inheritdoc/>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
+    private static readonly ImmutableArray<DiagnosticDescriptor> s_supportedDiagnostics = ImmutableArray.Create(
         DiagnosticDescriptors.RedundantAsyncForwarding,
         DiagnosticDescriptors.AsyncWrapperBoxesStateMachine);
+
+    /// <inheritdoc/>
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => s_supportedDiagnostics;
 
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
@@ -50,24 +52,33 @@ public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
-        context.RegisterSyntaxNodeAction(AnalyzeLocalFunction, SyntaxKind.LocalFunctionStatement);
+        context.RegisterCompilationStartAction(start => {
+            ValueTaskTypes? types = ValueTaskTypes.Create(start.Compilation);
+            if (types is null)
+            {
+                return;
+            }
+
+            start.RegisterSyntaxNodeAction(c => AnalyzeMethod(c, types), SyntaxKind.MethodDeclaration);
+            start.RegisterSyntaxNodeAction(c => AnalyzeLocalFunction(c, types), SyntaxKind.LocalFunctionStatement);
+        });
     }
 
-    private static void AnalyzeMethod(SyntaxNodeAnalysisContext context)
+    private static void AnalyzeMethod(SyntaxNodeAnalysisContext context, ValueTaskTypes types)
     {
         var method = (MethodDeclarationSyntax)context.Node;
-        Analyze(context, method, method.Modifiers, method.AttributeLists, method.Body, method.ExpressionBody, method.Identifier.Text);
+        Analyze(context, types, method, method.Modifiers, method.AttributeLists, method.Body, method.ExpressionBody, method.Identifier.Text);
     }
 
-    private static void AnalyzeLocalFunction(SyntaxNodeAnalysisContext context)
+    private static void AnalyzeLocalFunction(SyntaxNodeAnalysisContext context, ValueTaskTypes types)
     {
         var local = (LocalFunctionStatementSyntax)context.Node;
-        Analyze(context, local, local.Modifiers, local.AttributeLists, local.Body, local.ExpressionBody, local.Identifier.Text);
+        Analyze(context, types, local, local.Modifiers, local.AttributeLists, local.Body, local.ExpressionBody, local.Identifier.Text);
     }
 
     private static void Analyze(
         SyntaxNodeAnalysisContext context,
+        ValueTaskTypes types,
         SyntaxNode declaration,
         SyntaxTokenList modifiers,
         SyntaxList<AttributeListSyntax> attributeLists,
@@ -100,7 +111,7 @@ public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (!IsValueTaskType(symbol.ReturnType))
+        if (!types.IsValueTask(symbol.ReturnType))
         {
             return;
         }
@@ -109,11 +120,17 @@ public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
 
         // Nested lambdas and local functions compile into their own state machines, so their awaits say
         // nothing about this one.
-        List<AwaitExpressionSyntax> awaits = bodyNode
+        List<SyntaxNode> ownNodes = bodyNode
             .DescendantNodes(descendIntoChildren: node => !IsSeparateAsyncScope(node, bodyNode))
-            .OfType<AwaitExpressionSyntax>()
             .ToList();
 
+        // `await foreach` and `await using` suspend too, without an await expression to show for it.
+        if (ownNodes.Any(IsImplicitAwait))
+        {
+            return;
+        }
+
+        List<AwaitExpressionSyntax> awaits = ownNodes.OfType<AwaitExpressionSyntax>().ToList();
         if (awaits.Count != 1)
         {
             return;
@@ -121,15 +138,22 @@ public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
 
         AwaitExpressionSyntax await = awaits[0];
 
-        // Only a forwarded ValueTask can be returned in place of the wrapper. Awaiting a Task here would
-        // change the returned type, and awaiting something already converted (AsTask, Preserve) means the
-        // caller asked for different semantics.
-        if (!IsValueTaskExpression(context.SemanticModel, await.Expression, context.CancellationToken))
+        // Only a forwarded ValueTask can be returned in place of the wrapper, and only one of exactly the
+        // returned type: awaiting a Task would change the returned type, a ValueTask<int> forwarded from a
+        // ValueTask<long> method relies on a conversion only the await performs, and awaiting something
+        // already converted (AsTask, Preserve) means the caller asked for different semantics.
+        if (!IsValueTaskExpression(context.SemanticModel, await.Expression, symbol.ReturnType, context.CancellationToken))
         {
             return;
         }
 
-        if (!IsForwardedResult(await, symbol.ReturnsVoid || IsNonGenericValueTask(symbol.ReturnType)))
+        if (!IsForwardedResult(await, SymbolEqualityComparer.Default.Equals(symbol.ReturnType, types.ValueTask)))
+        {
+            return;
+        }
+
+        // Any other return would still be a plain value once the method is no longer async.
+        if (ownNodes.OfType<ReturnStatementSyntax>().Any(r => r.Expression != await))
         {
             return;
         }
@@ -180,6 +204,14 @@ public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
         => !ReferenceEquals(node, bodyNode)
             && node is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax;
 
+    private static bool IsImplicitAwait(SyntaxNode node)
+        => node switch {
+            CommonForEachStatementSyntax forEach => forEach.AwaitKeyword.IsKind(SyntaxKind.AwaitKeyword),
+            UsingStatementSyntax usingStatement => usingStatement.AwaitKeyword.IsKind(SyntaxKind.AwaitKeyword),
+            LocalDeclarationStatementSyntax local => local.AwaitKeyword.IsKind(SyntaxKind.AwaitKeyword),
+            _ => false,
+        };
+
     /// <summary>
     /// Whether the awaited result is handed straight back to the caller, rather than being stored,
     /// inspected or combined with anything.
@@ -195,32 +227,28 @@ public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
         }
 
         // Non-generic ValueTask has no result to return, so a bare `await X();` is the forwarding shape -
-        // provided nothing follows it, which the caller of this method verifies via the statement's
-        // position.
-        return returnsNonGeneric && parent is ExpressionStatementSyntax statement && IsLastStatement(statement);
+        // provided nothing follows it.
+        return returnsNonGeneric && parent is ExpressionStatementSyntax statement && IsLastInBody(statement);
     }
 
     /// <summary>
-    /// Whether <paramref name="statement"/> is the final statement of its enclosing block, so that
-    /// returning at that point would not skip any work.
+    /// Whether nothing in the method runs after <paramref name="statement"/>: it is last in the method
+    /// body, or last in a <c>try</c> or <c>using</c> block that is itself last in the body. A trailing
+    /// statement inside an if or loop is not the end of the method.
     /// </summary>
-    private static bool IsLastStatement(ExpressionStatementSyntax statement)
+    private static bool IsLastInBody(StatementSyntax statement)
     {
-        if (statement.Parent is not BlockSyntax block)
+        if (statement.Parent is not BlockSyntax block || !ReferenceEquals(block.Statements.LastOrDefault(), statement))
         {
             return false;
         }
 
-        if (!ReferenceEquals(block.Statements.LastOrDefault(), statement))
-        {
-            return false;
-        }
-
-        // The block must itself be the method body; a trailing statement inside an if or loop is not the
-        // end of the method.
-        return block.Parent is MethodDeclarationSyntax or LocalFunctionStatementSyntax
-            || block.Parent is TryStatementSyntax
-            || block.Parent is UsingStatementSyntax;
+        return block.Parent switch {
+            MethodDeclarationSyntax or LocalFunctionStatementSyntax => true,
+            TryStatementSyntax tryStatement => tryStatement.Block == block && IsLastInBody(tryStatement),
+            UsingStatementSyntax usingStatement => IsLastInBody(usingStatement),
+            _ => false,
+        };
     }
 
     /// <summary>
@@ -259,11 +287,12 @@ public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
         };
 
     /// <summary>
-    /// Whether the expression's type is <c>ValueTask</c> or <c>ValueTask&lt;T&gt;</c>, seeing through a
-    /// trailing <c>ConfigureAwait</c> - which returns a configured-awaitable struct rather than the
-    /// ValueTask itself, but does not change what is being forwarded.
+    /// Whether the expression is of exactly <paramref name="returnType"/>, a ValueTask the caller has
+    /// already checked, seeing through a trailing <c>ConfigureAwait</c> - which returns a
+    /// configured-awaitable struct rather than the ValueTask itself, but does not change what is being
+    /// forwarded.
     /// </summary>
-    private static bool IsValueTaskExpression(SemanticModel model, ExpressionSyntax expression, System.Threading.CancellationToken cancellationToken)
+    private static bool IsValueTaskExpression(SemanticModel model, ExpressionSyntax expression, ITypeSymbol returnType, System.Threading.CancellationToken cancellationToken)
     {
         ExpressionSyntax unwrapped = expression;
 
@@ -273,16 +302,6 @@ public sealed class AsyncValueTaskBoxingAnalyzer : DiagnosticAnalyzer
             unwrapped = member.Expression;
         }
 
-        ITypeSymbol? type = model.GetTypeInfo(unwrapped, cancellationToken).Type;
-        return type is not null && IsValueTaskType(type);
+        return SymbolEqualityComparer.Default.Equals(model.GetTypeInfo(unwrapped, cancellationToken).Type, returnType);
     }
-
-    private static bool IsValueTaskType(ITypeSymbol type)
-        => type is INamedTypeSymbol { Name: "ValueTask", ContainingNamespace: { Name: "Tasks" } tasks }
-            && tasks.ContainingNamespace is { Name: "Threading" } threading
-            && threading.ContainingNamespace is { Name: "System" } system
-            && system.ContainingNamespace.IsGlobalNamespace;
-
-    private static bool IsNonGenericValueTask(ITypeSymbol type)
-        => IsValueTaskType(type) && type is INamedTypeSymbol { IsGenericType: false };
 }

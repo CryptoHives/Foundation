@@ -194,6 +194,7 @@ Allocation-free async synchronization primitives backed by pooled `IValueTaskSou
 **Async primitives (`src/Threading/Async/Pooled/`):**
 - `AsyncLock` — async exclusive lock (not reentrant), `using (await _lock.LockAsync())` pattern
 - `AsyncKeyedLock<TKey>` — per-key exclusive lock; distinct keys never block each other
+- `AsyncReentrantLock` — reentrant async lock, one `AsyncLock` per nesting depth (experimental, `CHTEXP001`); allocates per acquisition, `LockLeafAsync` for innermost regions
 - `AsyncReaderWriterLock`
 - `AsyncSemaphore`
 - `AsyncAutoResetEvent`, `AsyncManualResetEvent`
@@ -227,8 +228,9 @@ Diagnostics:
 | CHT010 | Warning | ValueTask captured in lambda/closure |
 | CHT011 | Warning | `async` method only forwards an awaited ValueTask; return it directly |
 | CHT012 | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
+| CHT013 | Warning | `async` method returns an `AsyncReentrantLock` releaser (hides the hold; nested acquisition deadlocks) |
 
-CHT004 and CHT006 were removed; their IDs are not reused. When adding or removing a rule, record it in `AnalyzerReleases.Unshipped.md`. The project targets `netstandard2.0` only and suppresses RS1007/RS1038 on purpose (see its `.csproj`). Tests derive from `AnalyzerTestBase<TAnalyzer>` and mark expected locations with `{|#0:code|}`.
+`ValueTaskMisuseAnalyzer` tracks CHT001/CHT010 as data flow over each function's `ControlFlowGraph` (lambdas and local functions get their own graph; a consumed outer variable is a capture). Resolve task types through `ValueTaskTypes` once per compilation rather than comparing names. CHT004 and CHT006 were removed; their IDs are not reused. When adding or removing a rule, record it in `AnalyzerReleases.Unshipped.md`. The project targets `netstandard2.0` only and suppresses RS1007/RS1038 on purpose (see its `.csproj`). Tests derive from `AnalyzerTestBase<TAnalyzer>` and mark expected locations with `{|#0:code|}`.
 
 ### `CryptoHives.Foundation.Memory`
 

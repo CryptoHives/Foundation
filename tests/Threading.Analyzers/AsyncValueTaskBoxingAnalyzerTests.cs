@@ -329,4 +329,98 @@ public class TestClass
 }";
         await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
     }
+
+    [Test]
+    public async Task EarlyReturnBeforeTheForwardedAwaitReportsNothing()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> InnerAsync() => default;
+
+    public async ValueTask<int> OuterAsync(bool cached)
+    {
+        if (cached)
+        {
+            return 1;
+        }
+
+        return await InnerAsync().ConfigureAwait(false);
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AwaitForeachBeforeTheForwardedAwaitReportsNothing()
+    {
+        string code = @"
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> InnerAsync() => default;
+
+    private IAsyncEnumerable<int> ItemsAsync() => null;
+
+    public async ValueTask<int> OuterAsync()
+    {
+        await foreach (int item in ItemsAsync())
+        {
+        }
+
+        return await InnerAsync().ConfigureAwait(false);
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ForwardingThroughAnImplicitConversionReportsNothing()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> InnerAsync() => default;
+
+    public async ValueTask<long> OuterAsync() => await InnerAsync().ConfigureAwait(false);
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WorkAfterTheEnclosingTryReportsNothing()
+    {
+        string code = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask InnerAsync() => default;
+
+    private void Cleanup() { }
+
+    private void After() { }
+
+    public async ValueTask OuterAsync()
+    {
+        try
+        {
+            await InnerAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            Cleanup();
+        }
+
+        After();
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
 }

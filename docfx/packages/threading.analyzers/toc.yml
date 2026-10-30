@@ -22,3 +22,5 @@
       href: CHT011.md
     - name: CHT012 - async wrapper boxes state machine
       href: CHT012.md
+    - name: CHT013 - Releaser returned from async method
+      href: CHT013.md
