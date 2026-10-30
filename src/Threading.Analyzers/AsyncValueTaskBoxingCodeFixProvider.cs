@@ -42,7 +42,7 @@ public sealed class AsyncValueTaskBoxingCodeFixProvider : CodeFixProvider
     private const string PoolingBuilder = "PoolingAsyncValueTaskMethodBuilder";
 
     /// <inheritdoc/>
-    public override ImmutableArray<string> FixableDiagnosticIds =>
+    public override ImmutableArray<string> FixableDiagnosticIds { get; } =
         ImmutableArray.Create(
             DiagnosticIds.RedundantAsyncForwarding,
             DiagnosticIds.AsyncWrapperBoxesStateMachine);
@@ -54,48 +54,45 @@ public sealed class AsyncValueTaskBoxingCodeFixProvider : CodeFixProvider
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
         SyntaxNode? root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root is null)
-        {
-            return;
-        }
-
-        Diagnostic diagnostic = context.Diagnostics.First();
-        SyntaxNode node = root.FindNode(diagnostic.Location.SourceSpan);
-
-        SyntaxNode? declaration = node.FirstAncestorOrSelf<MethodDeclarationSyntax>() as SyntaxNode
-            ?? node.FirstAncestorOrSelf<LocalFunctionStatementSyntax>();
-
-        if (declaration is null)
-        {
-            return;
-        }
-
-        if (diagnostic.Id == DiagnosticIds.RedundantAsyncForwarding)
-        {
-            context.RegisterCodeFix(
-                CodeAction.Create(
-                    title: "Remove async and return the ValueTask directly",
-                    createChangedDocument: ct => RemoveAsyncForwardingAsync(context.Document, declaration, ct),
-                    equivalenceKey: nameof(DiagnosticIds.RedundantAsyncForwarding)),
-                diagnostic);
-
-            return;
-        }
-
-        // CHT012. Only worth offering where the builder exists - it is .NET 6+, and on older targets the
-        // attribute would simply fail to compile.
         SemanticModel? model = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
-        if (model is null || !HasPoolingBuilder(model.Compilation))
+        if (root is null || model is null)
         {
             return;
         }
 
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Pool the state machine box (helps only when suspensions do not overlap)",
-                createChangedDocument: ct => ApplyPoolingBuilderAsync(context.Document, declaration, ct),
-                equivalenceKey: nameof(DiagnosticIds.AsyncWrapperBoxesStateMachine)),
-            diagnostic);
+        foreach (Diagnostic diagnostic in context.Diagnostics)
+        {
+            // The nearest one: a local function's diagnostic belongs to it, not to its enclosing method.
+            SyntaxNode? declaration = root.FindNode(diagnostic.Location.SourceSpan)
+                .AncestorsAndSelf()
+                .FirstOrDefault(n => n is MethodDeclarationSyntax or LocalFunctionStatementSyntax);
+
+            if (declaration is null)
+            {
+                continue;
+            }
+
+            if (diagnostic.Id == DiagnosticIds.RedundantAsyncForwarding)
+            {
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        title: "Remove async and return the ValueTask directly",
+                        createChangedDocument: ct => RemoveAsyncForwardingAsync(context.Document, declaration, ct),
+                        equivalenceKey: nameof(DiagnosticIds.RedundantAsyncForwarding)),
+                    diagnostic);
+            }
+            else if (HasPoolingBuilder(model.Compilation))
+            {
+                // CHT012. Only worth offering where the builder exists - it is .NET 6+, and on older
+                // targets the attribute would simply fail to compile.
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        title: "Pool the state machine box (helps only when suspensions do not overlap)",
+                        createChangedDocument: ct => ApplyPoolingBuilderAsync(context.Document, declaration, ct),
+                        equivalenceKey: nameof(DiagnosticIds.AsyncWrapperBoxesStateMachine)),
+                    diagnostic);
+            }
+        }
     }
 
     private static bool HasPoolingBuilder(Compilation compilation)
@@ -247,6 +244,12 @@ public sealed class AsyncValueTaskBoxingCodeFixProvider : CodeFixProvider
     private static LocalFunctionStatementSyntax? RewriteLocalFunction(LocalFunctionStatementSyntax local)
     {
         SyntaxTokenList modifiers = RemoveAsyncModifier(local.Modifiers);
+
+        // With no modifier left to carry the indentation, the return type starts the declaration.
+        if (modifiers.Count == 0 && local.Modifiers.Count > 0)
+        {
+            local = local.WithReturnType(local.ReturnType.WithLeadingTrivia(local.Modifiers[0].LeadingTrivia));
+        }
 
         if (local.ExpressionBody is not null)
         {

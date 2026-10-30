@@ -1828,7 +1828,7 @@ public class AsyncReaderWriterLockTests
             runContinuationAsynchronously: RunContinuationAsynchronously,
             pool: pool);
 
-#pragma warning disable VSTHRD110
+#pragma warning disable VSTHRD110, CHT008
         Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.UpgradeableReaderLockAsync(TimeSpan.FromMilliseconds(-2), ct));
         Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.ReaderLockAsync(TimeSpan.FromMilliseconds(-2), ct));
         Assert.Throws<ArgumentOutOfRangeException>(() => rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(-2), ct));
@@ -1836,7 +1836,7 @@ public class AsyncReaderWriterLockTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
             await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(-2), ct).ConfigureAwait(false)).ConfigureAwait(false);
         using var writerlock = await upgr.UpgradeToWriterLockAsync(TimeSpan.FromMilliseconds(100), ct).ConfigureAwait(false);
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test, CancelAfter(CancelAfterMS)]

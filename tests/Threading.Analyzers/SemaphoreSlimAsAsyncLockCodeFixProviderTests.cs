@@ -22,7 +22,19 @@ public class SemaphoreSlimAsAsyncLockCodeFixProviderTests
     private const string AsyncLockStub = @"
 namespace CryptoHives.Foundation.Threading.Async.Pooled
 {
-    public sealed class AsyncLock { }
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+
+    public sealed class AsyncLock
+    {
+        public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default) => default;
+
+        public readonly struct Releaser : IDisposable
+        {
+            public void Dispose() { }
+        }
+    }
 }
 ";
 
@@ -51,6 +63,148 @@ public class TestClass
             source,
             fixedSource,
             Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock).WithLocation(1).WithArguments("_sem"))
+            .ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task WaitAndReleasePairsBecomeUsingBlocks()
+    {
+        string source = @"
+using System.Threading;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private readonly SemaphoreSlim _sem = {|#0:new SemaphoreSlim(1, 1)|};
+
+    public async Task RunAsync(CancellationToken ct)
+    {
+        await _sem.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            Work();
+        }
+        finally
+        {
+            _sem.Release();
+        }
+    }
+
+    public async Task RunAgainAsync()
+    {
+        await _sem.WaitAsync();
+        try
+        {
+            Work();
+        }
+        finally
+        {
+            _sem.Release();
+        }
+    }
+
+    private void Work() { }
+}" + AsyncLockStub;
+
+        string fixedSource = @"
+using System.Threading;
+using System.Threading.Tasks;
+using CryptoHives.Foundation.Threading.Async.Pooled;
+
+public class TestClass
+{
+    private readonly AsyncLock _sem = new AsyncLock();
+
+    public async Task RunAsync(CancellationToken ct)
+    {
+        using (await _sem.LockAsync(ct).ConfigureAwait(false))
+        {
+            Work();
+        }
+    }
+
+    public async Task RunAgainAsync()
+    {
+        using (await _sem.LockAsync())
+        {
+            Work();
+        }
+    }
+
+    private void Work() { }
+}" + AsyncLockStub;
+
+        await VerifyCodeFixAsync(
+            source,
+            fixedSource,
+            Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock).WithLocation(0).WithArguments("_sem"))
+            .ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task ConstructorAssignmentChangesTheFieldType()
+    {
+        string source = @"
+using System.Threading;
+
+public class TestClass
+{
+    private readonly SemaphoreSlim _sem;
+
+    public TestClass()
+    {
+        _sem = {|#0:new SemaphoreSlim(1, 1)|};
+    }
+}" + AsyncLockStub;
+
+        string fixedSource = @"
+using System.Threading;
+using CryptoHives.Foundation.Threading.Async.Pooled;
+
+public class TestClass
+{
+    private readonly AsyncLock _sem;
+
+    public TestClass()
+    {
+        _sem = new AsyncLock();
+    }
+}" + AsyncLockStub;
+
+        await VerifyCodeFixAsync(
+            source,
+            fixedSource,
+            Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock).WithLocation(0).WithArguments("_sem"))
+            .ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task SynchronousWaitOffersNoFix()
+    {
+        string source = @"
+using System.Threading;
+
+public class TestClass
+{
+    private readonly SemaphoreSlim _sem = {|#0:new SemaphoreSlim(1, 1)|};
+
+    public void Run()
+    {
+        _sem.Wait();
+        try
+        {
+        }
+        finally
+        {
+            _sem.Release();
+        }
+    }
+}" + AsyncLockStub;
+
+        await VerifyCodeFixAsync(
+            source,
+            source,
+            Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock).WithLocation(0).WithArguments("_sem"))
             .ConfigureAwait(false);
     }
 }

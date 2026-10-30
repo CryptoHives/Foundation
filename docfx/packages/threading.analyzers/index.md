@@ -122,6 +122,7 @@ The analyzer package includes automatic code fixes for most diagnostics:
 | CHT010 | Convert to AsTask() at declaration, Use Preserve() |
 | CHT011 | Remove async and return the ValueTask directly |
 | CHT012 | Pool the state machine box (offered only on .NET 6+; a partial mitigation) |
+| CHT013 | None; return the ValueTask from LockAsync directly (the CHT011 fix does this when it applies) |
 
 ## The Preserve() Method
 
@@ -167,7 +168,10 @@ dotnet_diagnostic.CHT007.severity = warning
 dotnet_diagnostic.CHT003.severity = none
 ```
 
-## See Also
+## Relation to CA2012
+
+The .NET SDK's [CA2012](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2012) covers part of the same ground as CHT001, CHT005 and CHT008: a `ValueTask` consumed twice, its result read before it is known to be complete, or one that is ignored. With both enabled, the same line can be reported by each, so keep whichever you prefer for those cases. The other rules have no CA2012 counterpart.
+
 
 - [CryptoHives.Foundation.Threading Package](../threading/index.md)
 - [ValueTask Best Practices](https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/)

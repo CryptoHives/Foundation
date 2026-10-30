@@ -7,35 +7,26 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.FlowAnalysis;
+using Microsoft.CodeAnalysis.Operations;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 /// <summary>
 /// Analyzer that detects common ValueTask misuse patterns.
 /// </summary>
+/// <remarks>
+/// Consumption (CHT001) and capture (CHT010) are tracked as data flow over each function's control flow
+/// graph, so a ValueTask consumed once on each of two branches is fine while one consumed once inside a
+/// loop is not. The remaining rules look at single operations or declarations.
+/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
 {
-#if DEBUG
-    /// <summary>
-    /// Set to true and rebuild to launch debugger when analyzer initializes.
-    /// This allows attaching to the analyzer during Visual Studio or build execution.
-    /// </summary>
-    /// <remarks>
-    /// Debug steps:
-    /// 1. Set this to true
-    /// 2. Rebuild the analyzer
-    /// 3. Open target project in Visual Studio or run dotnet build
-    /// 4. Debugger prompt will appear - attach with the analyzer solution
-    /// </remarks>
-    private const bool LaunchDebuggerOnInitialize = false;
-#endif
-
-    /// <inheritdoc/>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
+    private static readonly ImmutableArray<DiagnosticDescriptor> s_supportedDiagnostics = ImmutableArray.Create(
         DiagnosticDescriptors.MultipleAwait,
         DiagnosticDescriptors.BlockingGetResult,
         DiagnosticDescriptors.StoredInField,
@@ -45,6 +36,9 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
         DiagnosticDescriptors.CapturedInClosure);
 
     /// <inheritdoc/>
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => s_supportedDiagnostics;
+
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         if (context is null)
@@ -52,814 +46,835 @@ public sealed class ValueTaskMisuseAnalyzer : DiagnosticAnalyzer
             throw new ArgumentNullException(nameof(context));
         }
 
-#if DEBUG
-        // Launch debugger if constant is set to true (for troubleshooting analyzer issues)
-        if (LaunchDebuggerOnInitialize && !Debugger.IsAttached)
-        {
-            Debugger.Launch();
-        }
-
-        // Log analyzer initialization to debug output (visible in Output window with DebugView)
-        Debug.WriteLine($"[ValueTaskMisuseAnalyzer] Initialize called at {DateTime.Now:HH:mm:ss.fff}");
-#endif
-
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterSyntaxNodeAction(AnalyzeMethodBody, SyntaxKind.MethodDeclaration);
-        context.RegisterSyntaxNodeAction(AnalyzeLocalFunction, SyntaxKind.LocalFunctionStatement);
-        context.RegisterSyntaxNodeAction(AnalyzeLambda, SyntaxKind.ParenthesizedLambdaExpression);
-        context.RegisterSyntaxNodeAction(AnalyzeLambda, SyntaxKind.SimpleLambdaExpression);
-        context.RegisterSyntaxNodeAction(AnalyzeFieldDeclaration, SyntaxKind.FieldDeclaration);
-        context.RegisterSyntaxNodeAction(AnalyzePropertyDeclaration, SyntaxKind.PropertyDeclaration);
+        context.RegisterCompilationStartAction(start => {
+            ValueTaskTypes? types = ValueTaskTypes.Create(start.Compilation);
+            if (types is null)
+            {
+                return;
+            }
+
+            start.RegisterSyntaxNodeAction(c => AnalyzeField(c, types), SyntaxKind.FieldDeclaration);
+            start.RegisterSymbolAction(c => AnalyzeProperty(c, types), SymbolKind.Property);
+            start.RegisterOperationAction(c => AnalyzeExternalFieldAssignment(c, types), OperationKind.SimpleAssignment);
+            start.RegisterOperationAction(c => AnalyzeGetResult(c, types), OperationKind.Invocation);
+            start.RegisterOperationAction(c => AnalyzeResult(c, types), OperationKind.PropertyReference);
+            start.RegisterOperationAction(c => AnalyzeExpressionStatement(c, types), OperationKind.ExpressionStatement);
+            start.RegisterOperationBlockAction(c => AnalyzeConsumption(c, types));
+            start.RegisterSyntaxNodeAction(c => AnalyzeLocalDeclaration(c, types), SyntaxKind.LocalDeclarationStatement);
+        });
     }
 
-    private static void AnalyzeMethodBody(SyntaxNodeAnalysisContext context)
+    // ── CHT003: ValueTask stored in a field or auto-property ──────────────────
+
+    private static void AnalyzeField(SyntaxNodeAnalysisContext context, ValueTaskTypes types)
     {
-        var methodDeclaration = (MethodDeclarationSyntax)context.Node;
-        if (methodDeclaration.Body is null && methodDeclaration.ExpressionBody is null)
+        var declaration = (FieldDeclarationSyntax)context.Node;
+        if (!types.IsValueTask(context.SemanticModel.GetTypeInfo(declaration.Declaration.Type, context.CancellationToken).Type))
         {
             return;
         }
 
-        SemanticModel semanticModel = context.SemanticModel;
-        var tracker = new ValueTaskUsageTracker(context, semanticModel);
+        bool isReadOnly = declaration.Modifiers.Any(SyntaxKind.ReadOnlyKeyword);
 
-        if (methodDeclaration.Body is not null)
+        foreach (VariableDeclaratorSyntax declarator in declaration.Declaration.Variables)
         {
-            tracker.AnalyzeBlock(methodDeclaration.Body);
-        }
-        else if (methodDeclaration.ExpressionBody is not null)
-        {
-            tracker.AnalyzeExpression(methodDeclaration.ExpressionBody.Expression);
+            // A completed value is safe to consume any number of times, so a readonly field holding one
+            // is a cache, not a hazard.
+            if (isReadOnly && declarator.Initializer is not null &&
+                IsReusableValueTask(context.SemanticModel, declarator.Initializer.Value, context.CancellationToken))
+            {
+                continue;
+            }
+
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.StoredInField, declarator.GetLocation(), declarator.Identifier.Text));
         }
     }
 
-    private static void AnalyzeLocalFunction(SyntaxNodeAnalysisContext context)
+    private static void AnalyzeProperty(SymbolAnalysisContext context, ValueTaskTypes types)
     {
-        var localFunction = (LocalFunctionStatementSyntax)context.Node;
-        if (localFunction.Body is null && localFunction.ExpressionBody is null)
+        var property = (IPropertySymbol)context.Symbol;
+        if (property.IsAbstract || property.ContainingType.TypeKind == TypeKind.Interface || !types.IsValueTask(property.Type))
         {
             return;
         }
 
-        SemanticModel semanticModel = context.SemanticModel;
-        var tracker = new ValueTaskUsageTracker(context, semanticModel);
-
-        if (localFunction.Body is not null)
+        foreach (SyntaxReference reference in property.DeclaringSyntaxReferences)
         {
-            tracker.AnalyzeBlock(localFunction.Body);
-        }
-        else if (localFunction.ExpressionBody is not null)
-        {
-            tracker.AnalyzeExpression(localFunction.ExpressionBody.Expression);
-        }
-    }
-
-    private static void AnalyzeLambda(SyntaxNodeAnalysisContext context)
-    {
-        ExpressionSyntax? body = null;
-        BlockSyntax? block = null;
-
-        if (context.Node is ParenthesizedLambdaExpressionSyntax parenthesizedLambda)
-        {
-            if (parenthesizedLambda.Block is not null)
+            if (reference.GetSyntax(context.CancellationToken) is PropertyDeclarationSyntax { AccessorList: { } accessors } declaration &&
+                accessors.Accessors.Any(a => a.IsKind(SyntaxKind.GetAccessorDeclaration) && IsAuto(a)) &&
+                accessors.Accessors.Any(a => a.Kind() is SyntaxKind.SetAccessorDeclaration or SyntaxKind.InitAccessorDeclaration && IsAuto(a)))
             {
-                block = parenthesizedLambda.Block;
-            }
-            else if (parenthesizedLambda.ExpressionBody is not null)
-            {
-                body = parenthesizedLambda.ExpressionBody;
-            }
-        }
-        else if (context.Node is SimpleLambdaExpressionSyntax simpleLambda)
-        {
-            if (simpleLambda.Block is not null)
-            {
-                block = simpleLambda.Block;
-            }
-            else if (simpleLambda.ExpressionBody is not null)
-            {
-                body = simpleLambda.ExpressionBody;
+                context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.StoredInField, declaration.GetLocation(), property.Name));
             }
         }
 
-        if (block is null && body is null)
-        {
-            return;
-        }
-
-        SemanticModel semanticModel = context.SemanticModel;
-
-        // For lambdas, we need to detect captured ValueTask variables from outer scopes
-        // Any usage of such captured variables is potentially unsafe since:
-        // 1. The lambda could be invoked multiple times
-        // 2. The variable may have been consumed before the lambda executes
-        var tracker = new ValueTaskUsageTracker(context, semanticModel, isClosure: true);
-
-        if (block is not null)
-        {
-            tracker.AnalyzeBlock(block);
-        }
-        else if (body is not null)
-        {
-            tracker.AnalyzeExpression(body);
-        }
-    }
-
-    private static void AnalyzeFieldDeclaration(SyntaxNodeAnalysisContext context)
-    {
-        var fieldDeclaration = (FieldDeclarationSyntax)context.Node;
-        SemanticModel semanticModel = context.SemanticModel;
-
-        foreach (VariableDeclaratorSyntax variable in fieldDeclaration.Declaration.Variables)
-        {
-            TypeInfo typeInfo = semanticModel.GetTypeInfo(fieldDeclaration.Declaration.Type, context.CancellationToken);
-
-            // Use IsValueTaskType which already excludes arrays
-            if (IsValueTaskType(typeInfo.Type))
-            {
-                var diagnostic = Diagnostic.Create(
-                    DiagnosticDescriptors.StoredInField,
-                    variable.GetLocation(),
-                    variable.Identifier.Text);
-                context.ReportDiagnostic(diagnostic);
-            }
-        }
-    }
-
-    private static void AnalyzePropertyDeclaration(SyntaxNodeAnalysisContext context)
-    {
-        var propertyDeclaration = (PropertyDeclarationSyntax)context.Node;
-        SemanticModel semanticModel = context.SemanticModel;
-
-        // Only check auto-properties with backing fields
-        if (propertyDeclaration.AccessorList is null)
-        {
-            return;
-        }
-
-        bool hasGetter = false;
-        bool hasSetter = false;
-        foreach (AccessorDeclarationSyntax accessor in propertyDeclaration.AccessorList.Accessors)
-        {
-            if (accessor.Kind() == SyntaxKind.GetAccessorDeclaration && accessor.Body is null && accessor.ExpressionBody is null)
-            {
-                hasGetter = true;
-            }
-            if (accessor.Kind() == SyntaxKind.SetAccessorDeclaration && accessor.Body is null && accessor.ExpressionBody is null)
-            {
-                hasSetter = true;
-            }
-        }
-
-        if (hasGetter && hasSetter)
-        {
-            TypeInfo typeInfo = semanticModel.GetTypeInfo(propertyDeclaration.Type, context.CancellationToken);
-
-            // Use IsValueTaskType which already excludes arrays
-            if (IsValueTaskType(typeInfo.Type))
-            {
-                var diagnostic = Diagnostic.Create(
-                    DiagnosticDescriptors.StoredInField,
-                    propertyDeclaration.GetLocation(),
-                    propertyDeclaration.Identifier.Text);
-                context.ReportDiagnostic(diagnostic);
-            }
-        }
-    }
-
-    private static bool IsValueTaskType(ITypeSymbol? type)
-    {
-        if (type is null)
-        {
-            return false;
-        }
-
-        // Arrays of ValueTask are allowed - they are used to collect multiple pending operations
-        // before awaiting them sequentially (e.g., in benchmarks or batch processing scenarios)
-        if (type is IArrayTypeSymbol)
-        {
-            return false;
-        }
-
-        string typeName = type.ToDisplayString();
-        return typeName == "System.Threading.Tasks.ValueTask" ||
-               typeName.StartsWith("System.Threading.Tasks.ValueTask<", StringComparison.Ordinal);
+        static bool IsAuto(AccessorDeclarationSyntax accessor) => accessor.Body is null && accessor.ExpressionBody is null;
     }
 
     /// <summary>
-    /// Tracks ValueTask usage within a scope to detect multiple consumption.
+    /// A field declared in this compilation is reported at its declaration; one declared elsewhere can
+    /// only be reported where a ValueTask is stored into it.
     /// </summary>
-    private sealed class ValueTaskUsageTracker
+    private static void AnalyzeExternalFieldAssignment(OperationAnalysisContext context, ValueTaskTypes types)
     {
-        private readonly SyntaxNodeAnalysisContext _context;
-        private readonly SemanticModel _semanticModel;
-        private readonly Dictionary<ISymbol, ValueTaskUsage> _usages;
-        private readonly HashSet<ISymbol> _preservedVariables;
-        private readonly bool _isClosure;
-
-        public ValueTaskUsageTracker(SyntaxNodeAnalysisContext context, SemanticModel semanticModel, bool isClosure = false)
+        var assignment = (ISimpleAssignmentOperation)context.Operation;
+        if (assignment.Target is IFieldReferenceOperation { Field: { DeclaringSyntaxReferences.Length: 0 } field } &&
+            types.IsValueTask(WithoutConversions(assignment.Value).Type))
         {
-            _context = context;
-            _semanticModel = semanticModel;
-            _usages = new Dictionary<ISymbol, ValueTaskUsage>(SymbolEqualityComparer.Default);
-            _preservedVariables = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
-            _isClosure = isClosure;
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.StoredInField, assignment.Syntax.GetLocation(), field.Name));
+        }
+    }
+
+    // ── CHT002: GetAwaiter().GetResult() ─────────────────────────────────────
+
+    private static void AnalyzeGetResult(OperationAnalysisContext context, ValueTaskTypes types)
+    {
+        var invocation = (IInvocationOperation)context.Operation;
+        if (invocation.TargetMethod.Name != "GetResult" ||
+            WithoutConversions(invocation.Instance) is not IInvocationOperation { TargetMethod.Name: "GetAwaiter", Instance: { } awaitable })
+        {
+            return;
         }
 
-        public void AnalyzeBlock(BlockSyntax block)
+        IOperation valueTask = WithoutConversions(awaitable);
+        if (types.IsConfiguredValueTask(valueTask.Type) &&
+            valueTask is IInvocationOperation { TargetMethod.Name: "ConfigureAwait", Instance: { } configured })
         {
-            foreach (StatementSyntax statement in block.Statements)
+            valueTask = WithoutConversions(configured);
+        }
+
+        if (!types.IsValueTask(valueTask.Type) ||
+            IsPreserveCall(valueTask) ||
+            IsPreservedLocal(valueTask, context.CancellationToken) ||
+            IsGuardedByCompletionCheck(invocation.SemanticModel!, invocation.Syntax, valueTask.Syntax, context.CancellationToken))
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(
+            DiagnosticDescriptors.BlockingGetResult,
+            invocation.Syntax.GetLocation(),
+            GetExpressionName(valueTask.Syntax)));
+    }
+
+    // ── CHT005: .Result ───────────────────────────────────────────────────────
+
+    private static void AnalyzeResult(OperationAnalysisContext context, ValueTaskTypes types)
+    {
+        var reference = (IPropertyReferenceOperation)context.Operation;
+        if (reference.Property.Name != "Result" || reference.Instance is not { } instance || !types.IsValueTask(instance.Type))
+        {
+            return;
+        }
+
+        // Safe in the completing branch of a guard:
+        //   if (vt.IsCompletedSuccessfully) { _ = vt.Result; }
+        //   vt.IsCompletedSuccessfully ? vt.Result : fallback
+        if (IsGuardedByCompletionCheck(reference.SemanticModel!, reference.Syntax, instance.Syntax, context.CancellationToken))
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(
+            DiagnosticDescriptors.DirectResultAccess,
+            reference.Syntax.GetLocation(),
+            GetExpressionName(instance.Syntax)));
+    }
+
+    // ── CHT008: ValueTask result dropped ──────────────────────────────────────
+
+    /// <summary>
+    /// A call whose ValueTask is the whole statement, including the implicit statement of an
+    /// expression-bodied lambda or member that returns nothing.
+    /// </summary>
+    private static void AnalyzeExpressionStatement(OperationAnalysisContext context, ValueTaskTypes types)
+    {
+        var statement = (IExpressionStatementOperation)context.Operation;
+        if (statement.Operation is IInvocationOperation invocation && types.IsValueTask(invocation.Type))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                DiagnosticDescriptors.NotConsumed,
+                invocation.Syntax.GetLocation(),
+                GetExpressionName(invocation.Syntax)));
+        }
+    }
+
+    // ── CHT001 / CHT010: consumption data flow ───────────────────────────────
+
+    private static void AnalyzeConsumption(OperationBlockAnalysisContext context, ValueTaskTypes types)
+    {
+        var reported = new HashSet<Location>();
+        var roots = new HashSet<IOperation>();
+
+        foreach (IOperation block in context.OperationBlocks)
+        {
+            IOperation root = block;
+            while (root.Parent is not null)
             {
-                AnalyzeStatement(statement);
+                root = root.Parent;
+            }
+
+            if (!roots.Add(root))
+            {
+                continue;
+            }
+
+            ControlFlowGraph? graph = root switch {
+                IMethodBodyOperation body => ControlFlowGraph.Create(body, context.CancellationToken),
+                IConstructorBodyOperation body => ControlFlowGraph.Create(body, context.CancellationToken),
+                IBlockOperation body => ControlFlowGraph.Create(body, context.CancellationToken),
+                IFieldInitializerOperation initializer => ControlFlowGraph.Create(initializer, context.CancellationToken),
+                IPropertyInitializerOperation initializer => ControlFlowGraph.Create(initializer, context.CancellationToken),
+                _ => null,
+            };
+
+            if (graph is not null)
+            {
+                AnalyzeGraph(context, types, graph, context.OwningSymbol, reported);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Runs the consumption flow over <paramref name="graph"/>, then over the graph of every lambda and
+    /// local function inside it, each of which owns its own locals and captures the rest.
+    /// </summary>
+    private static void AnalyzeGraph(
+        OperationBlockAnalysisContext context,
+        ValueTaskTypes types,
+        ControlFlowGraph graph,
+        ISymbol owner,
+        HashSet<Location> reported)
+    {
+        new ConsumptionFlow(context, types, graph, owner, reported).Run();
+
+        foreach (BasicBlock block in graph.Blocks)
+        {
+            foreach (IOperation operation in OperationsOf(block))
+            {
+                foreach (IFlowAnonymousFunctionOperation function in operation.DescendantsAndSelf().OfType<IFlowAnonymousFunctionOperation>())
+                {
+                    AnalyzeGraph(context, types, graph.GetAnonymousFunctionControlFlowGraph(function, context.CancellationToken), function.Symbol, reported);
+                }
             }
         }
 
-        public void AnalyzeExpression(ExpressionSyntax expression)
+        foreach (IMethodSymbol localFunction in graph.LocalFunctions)
         {
-            AnalyzeExpressionRecursive(expression, isConsumed: true);
+            AnalyzeGraph(context, types, graph.GetLocalFunctionControlFlowGraph(localFunction, context.CancellationToken), localFunction, reported);
+        }
+    }
+
+    private static IEnumerable<IOperation> OperationsOf(BasicBlock block)
+        => block.BranchValue is null ? block.Operations : block.Operations.Append(block.BranchValue);
+
+    /// <summary>
+    /// Forward data flow of how often each ValueTask local or parameter has been consumed on the way to
+    /// each point. Counts merge by taking the higher, so a second consumption on any one path is
+    /// reported, and loops run to a fixpoint, so a consumption inside a loop of a value assigned outside
+    /// it is a second one on the next iteration.
+    /// </summary>
+    private sealed class ConsumptionFlow
+    {
+        /// <summary>The value was produced by <c>Preserve()</c> and may be consumed any number of times.</summary>
+        private const int Preserved = -1;
+
+        private readonly OperationBlockAnalysisContext _context;
+        private readonly ValueTaskTypes _types;
+        private readonly ControlFlowGraph _graph;
+        private readonly ISymbol _owner;
+        private readonly HashSet<Location> _reported;
+        private readonly Dictionary<ISymbol, int>?[] _in;
+        private readonly Dictionary<int, List<int>> _handlersByTryBlock = new Dictionary<int, List<int>>();
+        private readonly Dictionary<ControlFlowRegion, Dictionary<ISymbol, int>> _finallyExits = new Dictionary<ControlFlowRegion, Dictionary<ISymbol, int>>();
+        private readonly Dictionary<ControlFlowRegion, List<int>> _destinationsThroughFinally = new Dictionary<ControlFlowRegion, List<int>>();
+        private readonly Dictionary<CaptureId, List<IOperation>> _captures = new Dictionary<CaptureId, List<IOperation>>();
+        private bool _report;
+
+        public ConsumptionFlow(OperationBlockAnalysisContext context, ValueTaskTypes types, ControlFlowGraph graph, ISymbol owner, HashSet<Location> reported)
+        {
+            _context = context;
+            _types = types;
+            _graph = graph;
+            _owner = owner;
+            _reported = reported;
+            _in = new Dictionary<ISymbol, int>?[graph.Blocks.Length];
         }
 
-        private void AnalyzeStatement(StatementSyntax statement)
+        public void Run()
         {
-            switch (statement)
+            IndexHandlers(_graph.Root);
+            IndexCaptures();
+
+            var initial = new Dictionary<ISymbol, int>(SymbolEqualityComparer.Default);
+            if (_owner is IMethodSymbol method)
             {
-                case LocalDeclarationStatementSyntax localDeclaration:
-                    AnalyzeLocalDeclaration(localDeclaration);
-                    break;
-                case ExpressionStatementSyntax expressionStatement:
-                    AnalyzeExpressionStatement(expressionStatement);
-                    break;
-                case ReturnStatementSyntax returnStatement when returnStatement.Expression is not null:
-                    AnalyzeExpressionRecursive(returnStatement.Expression, isConsumed: true);
-                    break;
-                case IfStatementSyntax ifStatement:
-                    AnalyzeIfStatement(ifStatement);
-                    break;
-                case WhileStatementSyntax whileStatement:
-                    AnalyzeExpressionRecursive(whileStatement.Condition, isConsumed: true);
-                    AnalyzeStatement(whileStatement.Statement);
-                    break;
-                case ForEachStatementSyntax forEachStatement:
-                    AnalyzeExpressionRecursive(forEachStatement.Expression, isConsumed: true);
-                    AnalyzeStatement(forEachStatement.Statement);
-                    break;
-                case BlockSyntax block:
-                    AnalyzeBlock(block);
-                    break;
-                case UsingStatementSyntax usingStatement:
-                    if (usingStatement.Declaration is not null)
+                foreach (IParameterSymbol parameter in method.Parameters)
+                {
+                    if (_types.IsValueTask(parameter.Type))
                     {
-                        foreach (VariableDeclaratorSyntax variable in usingStatement.Declaration.Variables)
+                        initial[parameter] = 0;
+                    }
+                }
+            }
+
+            _in[0] = initial;
+            var pending = new Queue<int>();
+            var queued = new bool[_graph.Blocks.Length];
+            Enqueue(pending, queued, 0);
+
+            while (pending.Count > 0)
+            {
+                int ordinal = pending.Dequeue();
+                queued[ordinal] = false;
+                BasicBlock block = _graph.Blocks[ordinal];
+
+                Dictionary<ISymbol, int> state = Copy(_in[ordinal]);
+                Transfer(block, state);
+
+                foreach (int destination in Successors(block, state))
+                {
+                    if (MergeInto(destination, state))
+                    {
+                        Enqueue(pending, queued, destination);
+                    }
+                }
+
+                // An exception can leave a try block at any point, so its handlers see every state the
+                // block passes through.
+                if (_handlersByTryBlock.TryGetValue(ordinal, out List<int>? handlers))
+                {
+                    foreach (int handler in handlers)
+                    {
+                        bool changed = MergeInto(handler, _in[ordinal]!);
+                        changed |= MergeInto(handler, state);
+                        if (changed)
                         {
-                            if (variable.Initializer is not null)
+                            Enqueue(pending, queued, handler);
+                        }
+                    }
+                }
+
+                if (block.FallThroughSuccessor is { Semantics: ControlFlowBranchSemantics.StructuredExceptionHandling } &&
+                    block.EnclosingRegion.Kind == ControlFlowRegionKind.Finally)
+                {
+                    ControlFlowRegion finallyRegion = block.EnclosingRegion;
+                    if (Merge(GetOrAdd(_finallyExits, finallyRegion), state) &&
+                        _destinationsThroughFinally.TryGetValue(finallyRegion, out List<int>? destinations))
+                    {
+                        foreach (int destination in destinations)
+                        {
+                            if (MergeInto(destination, state))
                             {
-                                AnalyzeExpressionRecursive(variable.Initializer.Value, isConsumed: true);
+                                Enqueue(pending, queued, destination);
                             }
                         }
                     }
-                    if (usingStatement.Expression is not null)
-                    {
-                        AnalyzeExpressionRecursive(usingStatement.Expression, isConsumed: true);
-                    }
-                    if (usingStatement.Statement is not null)
-                    {
-                        AnalyzeStatement(usingStatement.Statement);
-                    }
-                    break;
-                case TryStatementSyntax tryStatement:
-                    AnalyzeBlock(tryStatement.Block);
-                    foreach (CatchClauseSyntax catchClause in tryStatement.Catches)
-                    {
-                        AnalyzeBlock(catchClause.Block);
-                    }
-                    if (tryStatement.Finally is not null)
-                    {
-                        AnalyzeBlock(tryStatement.Finally.Block);
-                    }
-                    break;
-                case ForStatementSyntax forStatement:
-                    if (forStatement.Declaration is not null)
-                    {
-                        foreach (VariableDeclaratorSyntax variable in forStatement.Declaration.Variables.Where(v => v.Initializer is not null))
-                        {
-                            AnalyzeExpressionRecursive(variable.Initializer!.Value, isConsumed: false);
-                        }
-                    }
-                    if (forStatement.Condition is not null)
-                    {
-                        AnalyzeExpressionRecursive(forStatement.Condition, isConsumed: true);
-                    }
-                    AnalyzeStatement(forStatement.Statement);
-                    break;
-                case DoStatementSyntax doStatement:
-                    AnalyzeStatement(doStatement.Statement);
-                    AnalyzeExpressionRecursive(doStatement.Condition, isConsumed: true);
-                    break;
-                case SwitchStatementSyntax switchStatement:
-                    AnalyzeExpressionRecursive(switchStatement.Expression, isConsumed: true);
-                    foreach (SwitchSectionSyntax section in switchStatement.Sections)
-                    {
-                        foreach (StatementSyntax sectionStatement in section.Statements)
-                        {
-                            AnalyzeStatement(sectionStatement);
-                        }
-                    }
-                    break;
-                case LockStatementSyntax lockStatement:
-                    AnalyzeExpressionRecursive(lockStatement.Expression, isConsumed: true);
-                    AnalyzeStatement(lockStatement.Statement);
-                    break;
+                }
+            }
+
+            // With the fixpoint reached, replay every block once more and report what it consumes twice.
+            _report = true;
+            for (int ordinal = 0; ordinal < _graph.Blocks.Length; ordinal++)
+            {
+                if (_in[ordinal] is { } entry && _graph.Blocks[ordinal].IsReachable)
+                {
+                    Transfer(_graph.Blocks[ordinal], Copy(entry));
+                }
             }
         }
 
-        private void AnalyzeLocalDeclaration(LocalDeclarationStatementSyntax localDeclaration)
+        private static void Enqueue(Queue<int> pending, bool[] queued, int ordinal)
         {
-            foreach (VariableDeclaratorSyntax variable in localDeclaration.Declaration.Variables)
+            if (!queued[ordinal])
             {
-                if (variable.Initializer is null)
+                queued[ordinal] = true;
+                pending.Enqueue(ordinal);
+            }
+        }
+
+        private static Dictionary<ISymbol, int> Copy(Dictionary<ISymbol, int>? state)
+            => state is null
+                ? new Dictionary<ISymbol, int>(SymbolEqualityComparer.Default)
+                : new Dictionary<ISymbol, int>(state, SymbolEqualityComparer.Default);
+
+        private static TValue GetOrAdd<TValue>(Dictionary<ControlFlowRegion, TValue> map, ControlFlowRegion region)
+            where TValue : new()
+        {
+            if (!map.TryGetValue(region, out TValue? value))
+            {
+                value = new TValue();
+                map[region] = value;
+            }
+
+            return value;
+        }
+
+        private bool MergeInto(int ordinal, Dictionary<ISymbol, int> state)
+        {
+            if (_in[ordinal] is null)
+            {
+                _in[ordinal] = Copy(state);
+                return true;
+            }
+
+            return Merge(_in[ordinal]!, state);
+        }
+
+        /// <summary>
+        /// Raises each count in <paramref name="target"/> to the one in <paramref name="source"/>.
+        /// </summary>
+        private static bool Merge(Dictionary<ISymbol, int> target, Dictionary<ISymbol, int> source)
+        {
+            bool changed = false;
+            foreach (KeyValuePair<ISymbol, int> entry in source)
+            {
+                if (!target.TryGetValue(entry.Key, out int count) || entry.Value > count)
+                {
+                    target[entry.Key] = entry.Value;
+                    changed = true;
+                }
+            }
+
+            return changed;
+        }
+
+        /// <summary>
+        /// The blocks control reaches next. A branch that leaves through <c>finally</c> blocks also
+        /// carries whatever those blocks consume, now and as their exit state grows.
+        /// </summary>
+        private IEnumerable<int> Successors(BasicBlock block, Dictionary<ISymbol, int> state)
+        {
+            foreach (ControlFlowBranch? branch in new[] { block.FallThroughSuccessor, block.ConditionalSuccessor })
+            {
+                if (branch?.Destination is not { } destination)
                 {
                     continue;
                 }
 
-                TypeInfo typeInfo = _semanticModel.GetTypeInfo(variable.Initializer.Value, _context.CancellationToken);
-
-                // Track ValueTask variables for multiple consumption detection
-                if (IsValueTaskType(typeInfo.Type))
+                foreach (ControlFlowRegion finallyRegion in branch.FinallyRegions)
                 {
-                    ISymbol? symbol = _semanticModel.GetDeclaredSymbol(variable, _context.CancellationToken);
-                    if (symbol is not null)
+                    List<int> destinations = GetOrAdd(_destinationsThroughFinally, finallyRegion);
+                    if (!destinations.Contains(destination.Ordinal))
                     {
-                        // A Preserve()d ValueTask may be awaited any number of times.
-                        if (IsPreserveCall(variable.Initializer.Value))
-                        {
-                            _preservedVariables.Add(symbol);
-                            // Track the source ValueTask as consumed by Preserve()
-                            TrackPreserveSourceUsage(variable.Initializer.Value);
-                            // Don't analyze the initializer further to avoid double-counting
-                            continue;
-                        }
-                        else
-                        {
-                            _usages[symbol] = new ValueTaskUsage();
-                        }
+                        destinations.Add(destination.Ordinal);
                     }
 
-                    // NOTE: this is unreachable as written, and deliberately left that way for now. The
-                    // enclosing check inspects the type of the initializer, but the initializer here is
-                    // the result of AsTask(), which is a Task and never a ValueTask, so the two
-                    // conditions are mutually exclusive and CHT007 never fires.
-                    //
-                    // Simply hoisting it out of the enclosing check is not the fix. Doing so was tried
-                    // and makes the rule fire on every `Task t = valueTask.AsTask()` local - the ordinary
-                    // conversion idiom - including the code CHT001's own code fix generates, so the two
-                    // rules then contradict each other. It also exposes CHT007's code fix producing
-                    // malformed source ("ValueTask<int>vt = ..."). Making this rule real needs it
-                    // narrowed to what its documentation actually describes - a Task stored, other
-                    // statements run, and only then awaited - plus a working fix. See the analyzer
-                    // backlog rather than un-guarding this in place.
-                    if (variable.Initializer.Value is InvocationExpressionSyntax invocation &&
-                        IsAsTaskCall(invocation))
+                    if (_finallyExits.TryGetValue(finallyRegion, out Dictionary<ISymbol, int>? exit))
                     {
-                        var diagnostic = Diagnostic.Create(
-                            DiagnosticDescriptors.AsTaskStoredBeforeSignal,
-                            variable.GetLocation());
-                        _context.ReportDiagnostic(diagnostic);
+                        Merge(state, exit);
                     }
                 }
 
-                // Always analyze the initializer expression for other patterns
-                AnalyzeExpressionRecursive(variable.Initializer.Value, isConsumed: false);
+                yield return destination.Ordinal;
             }
-        }
-
-        private void AnalyzeExpressionStatement(ExpressionStatementSyntax expressionStatement)
-        {
-            ExpressionSyntax expression = expressionStatement.Expression;
-
-            // Check for discarded ValueTask
-            if (expression is InvocationExpressionSyntax invocation)
-            {
-                TypeInfo typeInfo = _semanticModel.GetTypeInfo(invocation, _context.CancellationToken);
-                if (IsValueTaskType(typeInfo.Type))
-                {
-                    // ValueTask returned but not awaited or stored
-                    var diagnostic = Diagnostic.Create(
-                        DiagnosticDescriptors.NotConsumed,
-                        invocation.GetLocation(),
-                        GetExpressionName(invocation));
-                    _context.ReportDiagnostic(diagnostic);
-                }
-            }
-
-            AnalyzeExpressionRecursive(expression, isConsumed: expression is AwaitExpressionSyntax);
-        }
-
-        private void AnalyzeIfStatement(IfStatementSyntax ifStatement)
-        {
-            AnalyzeExpressionRecursive(ifStatement.Condition, isConsumed: true);
-            AnalyzeStatement(ifStatement.Statement);
-            if (ifStatement.Else is not null)
-            {
-                AnalyzeStatement(ifStatement.Else.Statement);
-            }
-        }
-
-        private void AnalyzeExpressionRecursive(ExpressionSyntax expression, bool isConsumed)
-        {
-            switch (expression)
-            {
-                case AwaitExpressionSyntax awaitExpression:
-                    AnalyzeAwaitExpression(awaitExpression);
-                    break;
-
-                case InvocationExpressionSyntax invocation:
-                    AnalyzeInvocation(invocation);
-                    break;
-
-                case MemberAccessExpressionSyntax memberAccess:
-                    AnalyzeMemberAccess(memberAccess);
-                    break;
-
-                case IdentifierNameSyntax identifier:
-                    if (isConsumed)
-                    {
-                        TrackUsage(identifier);
-                    }
-                    break;
-
-                case AssignmentExpressionSyntax assignment:
-                    AnalyzeExpressionRecursive(assignment.Right, isConsumed: false);
-                    if (assignment.Left is MemberAccessExpressionSyntax fieldAccess)
-                    {
-                        SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(fieldAccess, _context.CancellationToken);
-                        if (symbolInfo.Symbol is IFieldSymbol fieldSymbol)
-                        {
-                            TypeInfo rightTypeInfo = _semanticModel.GetTypeInfo(assignment.Right, _context.CancellationToken);
-                            if (IsValueTaskType(rightTypeInfo.Type))
-                            {
-                                var diagnostic = Diagnostic.Create(
-                                    DiagnosticDescriptors.StoredInField,
-                                    assignment.GetLocation(),
-                                    fieldSymbol.Name);
-                                _context.ReportDiagnostic(diagnostic);
-                            }
-                        }
-                    }
-                    break;
-
-                case ConditionalExpressionSyntax conditional:
-                    AnalyzeExpressionRecursive(conditional.Condition, isConsumed: true);
-                    AnalyzeExpressionRecursive(conditional.WhenTrue, isConsumed);
-                    AnalyzeExpressionRecursive(conditional.WhenFalse, isConsumed);
-                    break;
-
-                case ParenthesizedExpressionSyntax parenthesized:
-                    AnalyzeExpressionRecursive(parenthesized.Expression, isConsumed);
-                    break;
-            }
-        }
-
-        private void AnalyzeAwaitExpression(AwaitExpressionSyntax awaitExpression)
-        {
-            ExpressionSyntax operand = awaitExpression.Expression;
-
-            // Track direct await of variable
-            if (operand is IdentifierNameSyntax identifier)
-            {
-                TrackUsage(identifier);
-            }
-            // Track await of configured value task
-            else if (operand is InvocationExpressionSyntax configureAwait &&
-                     configureAwait.Expression is MemberAccessExpressionSyntax memberAccess &&
-                     memberAccess.Name.Identifier.Text == "ConfigureAwait")
-            {
-                if (memberAccess.Expression is IdentifierNameSyntax configuredIdentifier)
-                {
-                    TrackUsage(configuredIdentifier);
-                }
-                else
-                {
-                    AnalyzeExpressionRecursive(memberAccess.Expression, isConsumed: true);
-                }
-            }
-            else
-            {
-                AnalyzeExpressionRecursive(operand, isConsumed: true);
-            }
-        }
-
-        private void AnalyzeInvocation(InvocationExpressionSyntax invocation)
-        {
-            // Check for GetAwaiter().GetResult() pattern
-            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
-            {
-                if (memberAccess.Name.Identifier.Text == "GetResult" &&
-                    memberAccess.Expression is InvocationExpressionSyntax getAwaiterCall &&
-                    getAwaiterCall.Expression is MemberAccessExpressionSyntax getAwaiterAccess &&
-                    getAwaiterAccess.Name.Identifier.Text == "GetAwaiter")
-                {
-                    TypeInfo typeInfo = _semanticModel.GetTypeInfo(getAwaiterAccess.Expression, _context.CancellationToken);
-                    if (IsValueTaskType(typeInfo.Type))
-                    {
-                        // Don't warn if the ValueTask was preserved (safe to call GetResult on preserved ValueTask)
-                        // This includes both stored preserved variables and inline Preserve() calls.
-                        // Also safe when the call is guarded by an IsCompletedSuccessfully/IsCompleted check
-                        // on the same variable (the task is already done so GetResult() cannot block).
-                        if (!IsPreservedVariable(getAwaiterAccess.Expression) &&
-                            !IsPreserveCall(getAwaiterAccess.Expression) &&
-                            !IsGuardedByCompletionCheck(invocation, getAwaiterAccess.Expression))
-                        {
-                            var diagnostic = Diagnostic.Create(
-                                DiagnosticDescriptors.BlockingGetResult,
-                                invocation.GetLocation(),
-                                GetExpressionName(getAwaiterAccess.Expression));
-                            _context.ReportDiagnostic(diagnostic);
-                        }
-
-                        TrackUsageFromExpression(getAwaiterAccess.Expression);
-                    }
-                }
-
-                // Check for AsTask() call
-                if (IsAsTaskCall(invocation))
-                {
-                    ExpressionSyntax baseExpression = memberAccess.Expression;
-                    TypeInfo typeInfo = _semanticModel.GetTypeInfo(baseExpression, _context.CancellationToken);
-                    if (IsValueTaskType(typeInfo.Type))
-                    {
-                        TrackUsageFromExpression(baseExpression);
-                    }
-                }
-
-                // Check for Preserve() call - track source usage
-                if (IsPreserveCall(invocation))
-                {
-                    ExpressionSyntax baseExpression = memberAccess.Expression;
-                    TypeInfo typeInfo = _semanticModel.GetTypeInfo(baseExpression, _context.CancellationToken);
-                    if (IsValueTaskType(typeInfo.Type))
-                    {
-                        TrackUsageFromExpression(baseExpression);
-                    }
-                }
-            }
-
-            // Recursively analyze arguments
-            foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments)
-            {
-                AnalyzeExpressionRecursive(argument.Expression, isConsumed: false);
-            }
-        }
-
-        private void AnalyzeMemberAccess(MemberAccessExpressionSyntax memberAccess)
-        {
-            // Check for direct .Result access
-            if (memberAccess.Name.Identifier.Text == "Result")
-            {
-                TypeInfo typeInfo = _semanticModel.GetTypeInfo(memberAccess.Expression, _context.CancellationToken);
-                if (IsValueTaskType(typeInfo.Type))
-                {
-                    // Safe when the access is in the completing branch of a guard:
-                    //   if (vt.IsCompletedSuccessfully) { _ = vt.Result; }
-                    //   vt.IsCompletedSuccessfully ? vt.Result : fallback
-                    if (!IsGuardedByCompletionCheck(memberAccess, memberAccess.Expression))
-                    {
-                        var diagnostic = Diagnostic.Create(
-                            DiagnosticDescriptors.DirectResultAccess,
-                            memberAccess.GetLocation(),
-                            GetExpressionName(memberAccess.Expression));
-                        _context.ReportDiagnostic(diagnostic);
-                    }
-
-                    TrackUsageFromExpression(memberAccess.Expression);
-                }
-            }
-
-            AnalyzeExpressionRecursive(memberAccess.Expression, isConsumed: false);
-        }
-
-        private void TrackUsage(IdentifierNameSyntax identifier)
-        {
-            SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(identifier, _context.CancellationToken);
-            if (symbolInfo.Symbol is null)
-            {
-                return;
-            }
-
-            TypeInfo typeInfo = _semanticModel.GetTypeInfo(identifier, _context.CancellationToken);
-            if (!IsValueTaskType(typeInfo.Type))
-            {
-                return;
-            }
-
-            // If this variable holds a preserved ValueTask, it's safe to use multiple times
-            if (_preservedVariables.Contains(symbolInfo.Symbol))
-            {
-                return;
-            }
-
-            // In a closure (lambda/local function), any usage of a captured ValueTask variable
-            // from an outer scope is potentially unsafe because:
-            // 1. The closure might be invoked multiple times
-            // 2. The ValueTask may have been consumed before the closure executes
-            // Not declared in this scope, so captured from an enclosing one.
-            if (_isClosure && !_usages.ContainsKey(symbolInfo.Symbol))
-            {
-                if (IsCapturedPreservedVariable(symbolInfo.Symbol))
-                {
-                    return;
-                }
-
-                // This is a captured variable from outer scope - flag it as potential misuse
-                var diagnostic = Diagnostic.Create(
-                    DiagnosticDescriptors.CapturedInClosure,
-                    identifier.GetLocation(),
-                    identifier.Identifier.Text);
-                _context.ReportDiagnostic(diagnostic);
-                return;
-            }
-
-            if (_usages.TryGetValue(symbolInfo.Symbol, out ValueTaskUsage? usage))
-            {
-                usage.UsageCount++;
-                if (usage.UsageCount > 1)
-                {
-                    var diagnostic = Diagnostic.Create(
-                        DiagnosticDescriptors.MultipleAwait,
-                        identifier.GetLocation(),
-                        identifier.Identifier.Text);
-                    _context.ReportDiagnostic(diagnostic);
-                }
-            }
-        }
-
-        private bool IsCapturedPreservedVariable(ISymbol symbol)
-        {
-            if (symbol is ILocalSymbol localSymbol)
-            {
-                foreach (var syntaxReference in localSymbol.DeclaringSyntaxReferences)
-                {
-                    var syntax = syntaxReference.GetSyntax(_context.CancellationToken);
-                    if (syntax is VariableDeclaratorSyntax variableDeclarator &&
-                        variableDeclarator.Initializer is not null)
-                    {
-                        if (IsPreserveCall(variableDeclarator.Initializer.Value))
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        private void TrackUsageFromExpression(ExpressionSyntax expression)
-        {
-            if (expression is IdentifierNameSyntax identifier)
-            {
-                TrackUsage(identifier);
-            }
-        }
-
-        private void TrackPreserveSourceUsage(ExpressionSyntax preserveCall)
-        {
-            // preserveCall is the Preserve() invocation, we need to find the source ValueTask
-            if (preserveCall is InvocationExpressionSyntax invocation &&
-                invocation.Expression is MemberAccessExpressionSyntax memberAccess)
-            {
-                TrackUsageFromExpression(memberAccess.Expression);
-            }
-        }
-
-        private bool IsPreservedVariable(ExpressionSyntax expression)
-        {
-            if (expression is IdentifierNameSyntax identifier)
-            {
-                SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(identifier, _context.CancellationToken);
-                if (symbolInfo.Symbol is not null)
-                {
-                    return _preservedVariables.Contains(symbolInfo.Symbol);
-                }
-            }
-            return false;
         }
 
         /// <summary>
-        /// Returns true when <paramref name="startNode"/> is textually enclosed in a guarded branch
-        /// that guarantees the ValueTask identified by <paramref name="valueTaskExpression"/> is already
-        /// complete.  Two guard shapes are recognised:
-        /// <list type="bullet">
-        ///   <item><c>if (vt.IsCompletedSuccessfully) { /* startNode here */ }</c> – then-branch of an if</item>
-        ///   <item><c>vt.IsCompletedSuccessfully ? /* startNode here */ : …</c> – WhenTrue of a ternary</item>
-        /// </list>
-        /// The else/WhenFalse branches are never considered guarded.
+        /// Maps each block of a try region to the first block of each of its handlers, which control
+        /// reaches by an exception rather than by a branch.
         /// </summary>
-        private bool IsGuardedByCompletionCheck(SyntaxNode startNode, ExpressionSyntax valueTaskExpression)
+        private void IndexHandlers(ControlFlowRegion region)
         {
-            if (valueTaskExpression is not IdentifierNameSyntax identifier)
+            if (region.Kind is ControlFlowRegionKind.TryAndCatch or ControlFlowRegionKind.TryAndFinally)
             {
-                return false;
+                ControlFlowRegion tryRegion = region.NestedRegions[0];
+                for (int handler = 1; handler < region.NestedRegions.Length; handler++)
+                {
+                    int entry = region.NestedRegions[handler].FirstBlockOrdinal;
+                    for (int ordinal = tryRegion.FirstBlockOrdinal; ordinal <= tryRegion.LastBlockOrdinal; ordinal++)
+                    {
+                        if (!_handlersByTryBlock.TryGetValue(ordinal, out List<int>? handlers))
+                        {
+                            handlers = new List<int>();
+                            _handlersByTryBlock[ordinal] = handlers;
+                        }
+
+                        handlers.Add(entry);
+                    }
+                }
             }
 
-            SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(identifier, _context.CancellationToken);
-            if (symbolInfo.Symbol is null)
+            foreach (ControlFlowRegion nested in region.NestedRegions)
             {
-                return false;
+                IndexHandlers(nested);
+            }
+        }
+
+        /// <summary>
+        /// Maps each flow capture to the values the branches leading to it store, so <c>c ? vt : other</c>
+        /// consumes <c>vt</c> where the result is consumed.
+        /// </summary>
+        private void IndexCaptures()
+        {
+            foreach (BasicBlock block in _graph.Blocks)
+            {
+                foreach (IFlowCaptureOperation capture in block.Operations.SelectMany(o => o.DescendantsAndSelf()).OfType<IFlowCaptureOperation>())
+                {
+                    if (!_captures.TryGetValue(capture.Id, out List<IOperation>? values))
+                    {
+                        values = new List<IOperation>();
+                        _captures[capture.Id] = values;
+                    }
+
+                    values.Add(WithoutConversions(capture.Value));
+                }
+            }
+        }
+
+        private void Transfer(BasicBlock block, Dictionary<ISymbol, int> state)
+        {
+            foreach (IOperation operation in block.Operations)
+            {
+                Visit(operation, state);
             }
 
-            SyntaxNode? child = startNode;
-            SyntaxNode? node = startNode.Parent;
-            while (node is not null)
+            if (block.BranchValue is { } branchValue)
             {
-                // if (vt.IsCompletedSuccessfully) { … } — only the then-branch (Statement), not else
-                if (node is IfStatementSyntax ifStatement &&
-                    child == ifStatement.Statement &&
-                    IsCompletionPropertyCheck(ifStatement.Condition, symbolInfo.Symbol))
-                {
-                    return true;
-                }
+                Visit(branchValue, state);
 
-                // vt.IsCompletedSuccessfully ? … : … — only the WhenTrue branch, not WhenFalse
-                if (node is ConditionalExpressionSyntax conditional &&
-                    child == conditional.WhenTrue &&
-                    IsCompletionPropertyCheck(conditional.Condition, symbolInfo.Symbol))
+                // `return vt;` hands the ValueTask on, which is a consumption here.
+                if (block.FallThroughSuccessor?.Semantics == ControlFlowBranchSemantics.Return)
                 {
-                    return true;
+                    Consume(WithoutConversions(branchValue), state);
                 }
+            }
+        }
 
-                // Do not cross method/lambda/local-function boundaries
-                if (node is MethodDeclarationSyntax or LocalFunctionStatementSyntax or
-                    ParenthesizedLambdaExpressionSyntax or SimpleLambdaExpressionSyntax)
-                {
+        /// <summary>
+        /// Visits operands before the operation that uses them, matching evaluation order.
+        /// </summary>
+        private void Visit(IOperation operation, Dictionary<ISymbol, int> state)
+        {
+            foreach (IOperation child in operation.ChildOperations)
+            {
+                Visit(child, state);
+            }
+
+            switch (operation)
+            {
+                case IAwaitOperation awaitOperation:
+                    IOperation awaited = WithoutConversions(awaitOperation.Operation);
+                    if (awaited is IInvocationOperation { TargetMethod.Name: "ConfigureAwait", Instance: { } configured })
+                    {
+                        awaited = WithoutConversions(configured);
+                    }
+
+                    Consume(awaited, state);
                     break;
-                }
 
-                child = node;
-                node = node.Parent;
+                case IInvocationOperation { TargetMethod.Name: "AsTask" or "Preserve" or "GetAwaiter", Instance: { } instance }:
+                    Consume(WithoutConversions(instance), state);
+                    break;
+
+                case IPropertyReferenceOperation { Property.Name: "Result", Instance: { } instance }:
+                    Consume(WithoutConversions(instance), state);
+                    break;
+
+                case ISimpleAssignmentOperation assignment when TrackedSymbol(assignment.Target) is { } assigned:
+                    state[assigned] = IsPreserveCall(WithoutConversions(assignment.Value)) ? Preserved : 0;
+                    break;
+
+                case IArgumentOperation { Parameter.RefKind: RefKind.Out or RefKind.Ref } argument when TrackedSymbol(argument.Value) is { } passed:
+                    state[passed] = 0;
+                    break;
             }
-
-            return false;
         }
 
-        private bool IsCompletionPropertyCheck(ExpressionSyntax condition, ISymbol valueTaskSymbol)
+        /// <summary>
+        /// The ValueTask local or parameter <paramref name="operation"/> refers to, owned or captured.
+        /// </summary>
+        private ISymbol? TrackedSymbol(IOperation operation)
         {
-            // Unwrap parentheses
-            while (condition is ParenthesizedExpressionSyntax p)
-            {
-                condition = p.Expression;
-            }
+            ISymbol? symbol = operation switch {
+                ILocalReferenceOperation local => local.Local,
+                IParameterReferenceOperation parameter => parameter.Parameter,
+                _ => null,
+            };
 
-            if (condition is MemberAccessExpressionSyntax memberAccess)
+            return symbol is not null && _types.IsValueTask(operation.Type) ? symbol : null;
+        }
+
+        private void Consume(IOperation operation, Dictionary<ISymbol, int> state)
+        {
+            if (operation is IFlowCaptureReferenceOperation reference)
             {
-                string propName = memberAccess.Name.Identifier.Text;
-                if (propName is "IsCompletedSuccessfully" or "IsCompleted")
+                if (_captures.TryGetValue(reference.Id, out List<IOperation>? values))
                 {
-                    SymbolInfo symbolInfo = _semanticModel.GetSymbolInfo(memberAccess.Expression, _context.CancellationToken);
-                    return SymbolEqualityComparer.Default.Equals(symbolInfo.Symbol, valueTaskSymbol);
+                    foreach (IOperation value in values)
+                    {
+                        Consume(value, state);
+                    }
                 }
+
+                return;
             }
 
-            return false;
+            if (TrackedSymbol(operation) is not { } symbol)
+            {
+                return;
+            }
+
+            // Declared outside this lambda or local function: whether it was consumed before the closure
+            // runs, or by an earlier run of it, is out of sight here.
+            if (!SymbolEqualityComparer.Default.Equals(symbol.ContainingSymbol, _owner))
+            {
+                if (!IsPreservedLocal(operation, _context.CancellationToken))
+                {
+                    Report(DiagnosticDescriptors.CapturedInClosure, operation, symbol);
+                }
+
+                return;
+            }
+
+            state.TryGetValue(symbol, out int count);
+            if (count == Preserved)
+            {
+                return;
+            }
+
+            if (count >= 1)
+            {
+                Report(DiagnosticDescriptors.MultipleAwait, operation, symbol);
+            }
+
+            state[symbol] = Math.Min(count + 1, 2);
         }
 
-        private static bool IsAsTaskCall(InvocationExpressionSyntax invocation)
+        private void Report(DiagnosticDescriptor descriptor, IOperation operation, ISymbol symbol)
         {
-            return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                   memberAccess.Name.Identifier.Text == "AsTask" &&
-                   invocation.ArgumentList.Arguments.Count == 0;
-        }
-
-        private static bool IsPreserveCall(ExpressionSyntax expression)
-        {
-            return expression is InvocationExpressionSyntax invocation &&
-                   invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                   memberAccess.Name.Identifier.Text == "Preserve" &&
-                   invocation.ArgumentList.Arguments.Count == 0;
-        }
-
-        private static string GetExpressionName(ExpressionSyntax expression)
-        {
-            return expression switch {
-                IdentifierNameSyntax identifier => identifier.Identifier.Text,
-                InvocationExpressionSyntax invocation => GetInvocationName(invocation),
-                MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-                _ => expression.ToString()
-            };
-        }
-
-        private static string GetInvocationName(InvocationExpressionSyntax invocation)
-        {
-            return invocation.Expression switch {
-                IdentifierNameSyntax identifier => identifier.Identifier.Text + "()",
-                MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text + "()",
-                _ => invocation.ToString()
-            };
-        }
-
-        private sealed class ValueTaskUsage
-        {
-            public int UsageCount { get; set; }
+            Location location = operation.Syntax.GetLocation();
+            if (_report && _reported.Add(location))
+            {
+                _context.ReportDiagnostic(Diagnostic.Create(descriptor, location, symbol.Name));
+            }
         }
     }
+
+    // ── CHT007: AsTask() stored, other work, then awaited ─────────────────────
+
+    /// <summary>
+    /// Reports CHT007 for <c>Task t = vt.AsTask();</c> whose only use is a single <c>await t</c> that
+    /// comes after other statements in the same block. A Task consumed more than once is the ordinary
+    /// conversion idiom, and the one CHT001's own fix produces, so it is left alone.
+    /// </summary>
+    private static void AnalyzeLocalDeclaration(SyntaxNodeAnalysisContext context, ValueTaskTypes types)
+    {
+        var declaration = (LocalDeclarationStatementSyntax)context.Node;
+        if (declaration.Parent is not BlockSyntax block)
+        {
+            return;
+        }
+
+        foreach (VariableDeclaratorSyntax variable in declaration.Declaration.Variables)
+        {
+            if (IsAsTaskAwaitedLater(context.SemanticModel, types, block, declaration, variable, context.CancellationToken))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.AsTaskStoredBeforeSignal, variable.GetLocation()));
+            }
+        }
+    }
+
+    private static bool IsAsTaskAwaitedLater(
+        SemanticModel model,
+        ValueTaskTypes types,
+        BlockSyntax block,
+        LocalDeclarationStatementSyntax declaration,
+        VariableDeclaratorSyntax variable,
+        CancellationToken cancellationToken)
+    {
+        if (variable.Initializer?.Value is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "AsTask" } asTask, ArgumentList.Arguments.Count: 0 } ||
+            !types.IsValueTask(model.GetTypeInfo(asTask.Expression, cancellationToken).Type) ||
+            model.GetDeclaredSymbol(variable, cancellationToken) is not { } local)
+        {
+            return false;
+        }
+
+        string name = variable.Identifier.Text;
+        IdentifierNameSyntax? only = null;
+        foreach (IdentifierNameSyntax identifier in block.DescendantNodes().OfType<IdentifierNameSyntax>())
+        {
+            if (identifier.Identifier.Text != name ||
+                !SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(identifier, cancellationToken).Symbol, local))
+            {
+                continue;
+            }
+
+            if (only is not null)
+            {
+                return false;
+            }
+
+            only = identifier;
+        }
+
+        if (only is null)
+        {
+            return false;
+        }
+
+        SyntaxNode awaited = only;
+        if (only.Parent is MemberAccessExpressionSyntax { Name.Identifier.Text: "ConfigureAwait" } configure &&
+            configure.Expression == only &&
+            configure.Parent is InvocationExpressionSyntax configureCall)
+        {
+            awaited = configureCall;
+        }
+
+        if (awaited.Parent is not AwaitExpressionSyntax await)
+        {
+            return false;
+        }
+
+        StatementSyntax? awaitStatement = null;
+        for (SyntaxNode? node = await.Parent; node is not null && node != block; node = node.Parent)
+        {
+            if (node is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax)
+            {
+                return false;
+            }
+
+            if (node is StatementSyntax statement && statement.Parent == block)
+            {
+                awaitStatement = statement;
+            }
+        }
+
+        return awaitStatement is not null &&
+            block.Statements.IndexOf(awaitStatement) - block.Statements.IndexOf(declaration) >= 2;
+    }
+
+    // ── Shared helpers ────────────────────────────────────────────────────────
+
+    private static IOperation WithoutConversions(IOperation? operation)
+    {
+        while (operation is IConversionOperation conversion)
+        {
+            operation = conversion.Operand;
+        }
+
+        return operation!;
+    }
+
+    private static bool IsPreserveCall(IOperation operation)
+        => operation is IInvocationOperation { TargetMethod.Name: "Preserve", Arguments.Length: 0, Instance: not null };
+
+    /// <summary>
+    /// Whether <paramref name="operation"/> reads a local declared with a <c>Preserve()</c> initializer,
+    /// which may be consumed any number of times wherever it is read.
+    /// </summary>
+    private static bool IsPreservedLocal(IOperation operation, CancellationToken cancellationToken)
+    {
+        if (operation is not ILocalReferenceOperation { Local: { } local })
+        {
+            return false;
+        }
+
+        foreach (SyntaxReference reference in local.DeclaringSyntaxReferences)
+        {
+            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax {
+                Initializer.Value: InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "Preserve" }, ArgumentList.Arguments.Count: 0 }
+            })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="expression"/> produces a ValueTask that is already complete and not backed
+    /// by an <c>IValueTaskSource</c>: <c>default</c>, <c>CompletedTask</c>, <c>FromResult</c>, or a
+    /// constructor taking a result or a <c>Task</c>.
+    /// </summary>
+    private static bool IsReusableValueTask(SemanticModel model, ExpressionSyntax expression, CancellationToken cancellationToken)
+    {
+        switch (expression)
+        {
+            case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.DefaultLiteralExpression):
+            case DefaultExpressionSyntax:
+                return true;
+
+            case MemberAccessExpressionSyntax { Name.Identifier.Text: "CompletedTask" }:
+            case InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "FromResult" } }:
+                return true;
+
+            case BaseObjectCreationExpressionSyntax creation when creation.ArgumentList is { Arguments.Count: 1 } arguments:
+                ITypeSymbol? argumentType = model.GetTypeInfo(arguments.Arguments[0].Expression, cancellationToken).Type;
+                return argumentType is not null &&
+                    argumentType.Name != "IValueTaskSource" &&
+                    !argumentType.AllInterfaces.Any(i => i.Name == "IValueTaskSource");
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Returns true when <paramref name="startNode"/> is textually enclosed in a guarded branch
+    /// that guarantees the ValueTask identified by <paramref name="valueTaskExpression"/> is already
+    /// complete.  Two guard shapes are recognised:
+    /// <list type="bullet">
+    ///   <item><c>if (vt.IsCompletedSuccessfully) { /* startNode here */ }</c> – then-branch of an if</item>
+    ///   <item><c>vt.IsCompletedSuccessfully ? /* startNode here */ : …</c> – WhenTrue of a ternary</item>
+    /// </list>
+    /// The else/WhenFalse branches are never considered guarded.
+    /// </summary>
+    private static bool IsGuardedByCompletionCheck(SemanticModel model, SyntaxNode startNode, SyntaxNode valueTaskExpression, CancellationToken cancellationToken)
+    {
+        if (valueTaskExpression is not IdentifierNameSyntax identifier ||
+            model.GetSymbolInfo(identifier, cancellationToken).Symbol is not { } symbol)
+        {
+            return false;
+        }
+
+        SyntaxNode? child = startNode;
+        for (SyntaxNode? node = startNode.Parent; node is not null; child = node, node = node.Parent)
+        {
+            if (node is IfStatementSyntax ifStatement &&
+                child == ifStatement.Statement &&
+                IsCompletionPropertyCheck(model, ifStatement.Condition, symbol, cancellationToken))
+            {
+                return true;
+            }
+
+            if (node is ConditionalExpressionSyntax conditional &&
+                child == conditional.WhenTrue &&
+                IsCompletionPropertyCheck(model, conditional.Condition, symbol, cancellationToken))
+            {
+                return true;
+            }
+
+            if (node is MemberDeclarationSyntax or LocalFunctionStatementSyntax or AnonymousFunctionExpressionSyntax)
+            {
+                break;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsCompletionPropertyCheck(SemanticModel model, ExpressionSyntax condition, ISymbol valueTaskSymbol, CancellationToken cancellationToken)
+    {
+        while (condition is ParenthesizedExpressionSyntax parenthesized)
+        {
+            condition = parenthesized.Expression;
+        }
+
+        return condition is MemberAccessExpressionSyntax { Name.Identifier.Text: "IsCompletedSuccessfully" or "IsCompleted" } memberAccess &&
+            SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(memberAccess.Expression, cancellationToken).Symbol, valueTaskSymbol);
+    }
+
+    private static string GetExpressionName(SyntaxNode expression)
+        => expression switch {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            InvocationExpressionSyntax { Expression: IdentifierNameSyntax identifier } => identifier.Identifier.Text + "()",
+            InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax memberAccess } => memberAccess.Name.Identifier.Text + "()",
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+            _ => expression.ToString()
+        };
 }

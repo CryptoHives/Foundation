@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System;
 using System.Collections.Immutable;
+using System.Linq;
 
 /// <summary>
 /// Detects <see langword="async"/> methods, local functions and lambdas that return an
@@ -18,14 +19,13 @@ using System.Collections.Immutable;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
 {
-    private const string LockNamespace = "CryptoHives.Foundation.Threading.Async.Pooled";
-    private const string LockTypeName = "AsyncReentrantLock";
-    private const string ReleaserTypeName = "Releaser";
-    private const string TasksNamespace = "System.Threading.Tasks";
+    private const string LockFullName = "CryptoHives.Foundation.Threading.Async.Pooled.AsyncReentrantLock";
+
+    private static readonly ImmutableArray<DiagnosticDescriptor> s_supportedDiagnostics =
+        ImmutableArray.Create(DiagnosticDescriptors.AsyncReentrantReleaserReturnedFromAsync);
 
     /// <inheritdoc/>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(DiagnosticDescriptors.AsyncReentrantReleaserReturnedFromAsync);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => s_supportedDiagnostics;
 
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
@@ -38,16 +38,46 @@ public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
-        context.RegisterSyntaxNodeAction(AnalyzeLocalFunction, SyntaxKind.LocalFunctionStatement);
-        context.RegisterSyntaxNodeAction(
-            AnalyzeAnonymousFunction,
-            SyntaxKind.ParenthesizedLambdaExpression,
-            SyntaxKind.SimpleLambdaExpression,
-            SyntaxKind.AnonymousMethodExpression);
+        context.RegisterCompilationStartAction(start => {
+            ValueTaskTypes? types = ValueTaskTypes.Create(start.Compilation);
+            INamedTypeSymbol? releaser = start.Compilation.GetTypeByMetadataName(LockFullName)?.GetTypeMembers("Releaser").FirstOrDefault();
+            if (types is null || releaser is null)
+            {
+                return;
+            }
+
+            var target = new Target(types, releaser);
+            start.RegisterSyntaxNodeAction(c => AnalyzeMethod(c, target), SyntaxKind.MethodDeclaration);
+            start.RegisterSyntaxNodeAction(c => AnalyzeLocalFunction(c, target), SyntaxKind.LocalFunctionStatement);
+            start.RegisterSyntaxNodeAction(
+                c => AnalyzeAnonymousFunction(c, target),
+                SyntaxKind.ParenthesizedLambdaExpression,
+                SyntaxKind.SimpleLambdaExpression,
+                SyntaxKind.AnonymousMethodExpression);
+        });
     }
 
-    private static void AnalyzeMethod(SyntaxNodeAnalysisContext context)
+    /// <summary>
+    /// <c>Task&lt;Releaser&gt;</c> and <c>ValueTask&lt;Releaser&gt;</c> of this compilation.
+    /// </summary>
+    private sealed class Target
+    {
+        private readonly ValueTaskTypes _types;
+        private readonly INamedTypeSymbol _releaser;
+
+        public Target(ValueTaskTypes types, INamedTypeSymbol releaser)
+        {
+            _types = types;
+            _releaser = releaser;
+        }
+
+        public bool Matches(ITypeSymbol returnType)
+            => returnType is INamedTypeSymbol { TypeArguments.Length: 1 } task &&
+                (_types.IsTask(task) || _types.IsValueTask(task)) &&
+                SymbolEqualityComparer.Default.Equals(task.TypeArguments[0], _releaser);
+    }
+
+    private static void AnalyzeMethod(SyntaxNodeAnalysisContext context, Target target)
     {
         var method = (MethodDeclarationSyntax)context.Node;
         if (!method.Modifiers.Any(SyntaxKind.AsyncKeyword))
@@ -57,11 +87,11 @@ public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
 
         if (context.SemanticModel.GetDeclaredSymbol(method, context.CancellationToken) is IMethodSymbol symbol)
         {
-            Report(context, symbol, method.Identifier.GetLocation(), method.Identifier.Text);
+            Report(context, target, symbol, method.Identifier.GetLocation(), method.Identifier.Text);
         }
     }
 
-    private static void AnalyzeLocalFunction(SyntaxNodeAnalysisContext context)
+    private static void AnalyzeLocalFunction(SyntaxNodeAnalysisContext context, Target target)
     {
         var local = (LocalFunctionStatementSyntax)context.Node;
         if (!local.Modifiers.Any(SyntaxKind.AsyncKeyword))
@@ -71,11 +101,11 @@ public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
 
         if (context.SemanticModel.GetDeclaredSymbol(local, context.CancellationToken) is IMethodSymbol symbol)
         {
-            Report(context, symbol, local.Identifier.GetLocation(), local.Identifier.Text);
+            Report(context, target, symbol, local.Identifier.GetLocation(), local.Identifier.Text);
         }
     }
 
-    private static void AnalyzeAnonymousFunction(SyntaxNodeAnalysisContext context)
+    private static void AnalyzeAnonymousFunction(SyntaxNodeAnalysisContext context, Target target)
     {
         var function = (AnonymousFunctionExpressionSyntax)context.Node;
         if (!function.AsyncKeyword.IsKind(SyntaxKind.AsyncKeyword))
@@ -85,35 +115,18 @@ public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
 
         if (context.SemanticModel.GetSymbolInfo(function, context.CancellationToken).Symbol is IMethodSymbol symbol)
         {
-            Report(context, symbol, function.AsyncKeyword.GetLocation(), "async lambda");
+            Report(context, target, symbol, function.AsyncKeyword.GetLocation(), "async lambda");
         }
     }
 
-    private static void Report(SyntaxNodeAnalysisContext context, IMethodSymbol method, Location location, string name)
+    private static void Report(SyntaxNodeAnalysisContext context, Target target, IMethodSymbol method, Location location, string name)
     {
-        if (!ReturnsReleaserTask(method.ReturnType))
+        if (target.Matches(method.ReturnType))
         {
-            return;
+            context.ReportDiagnostic(Diagnostic.Create(
+                DiagnosticDescriptors.AsyncReentrantReleaserReturnedFromAsync,
+                location,
+                name));
         }
-
-        context.ReportDiagnostic(Diagnostic.Create(
-            DiagnosticDescriptors.AsyncReentrantReleaserReturnedFromAsync,
-            location,
-            name));
-    }
-
-    private static bool ReturnsReleaserTask(ITypeSymbol returnType)
-    {
-        if (returnType is not INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } task ||
-            task.Name is not ("Task" or "ValueTask") ||
-            task.ContainingNamespace?.ToDisplayString() != TasksNamespace)
-        {
-            return false;
-        }
-
-        return task.TypeArguments[0] is INamedTypeSymbol {
-            Name: ReleaserTypeName,
-            ContainingType: { Name: LockTypeName, ContainingType: null } lockType
-        } && lockType.ContainingNamespace?.ToDisplayString() == LockNamespace;
     }
 }

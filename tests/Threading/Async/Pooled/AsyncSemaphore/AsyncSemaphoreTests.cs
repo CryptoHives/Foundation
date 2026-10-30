@@ -296,9 +296,9 @@ public class AsyncSemaphoreTests
     {
         var semaphore = new AsyncSemaphore(1);
 
-#pragma warning disable VSTHRD110
+#pragma warning disable VSTHRD110, CHT008
         Assert.Throws<ArgumentOutOfRangeException>(() => semaphore.WaitAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test]

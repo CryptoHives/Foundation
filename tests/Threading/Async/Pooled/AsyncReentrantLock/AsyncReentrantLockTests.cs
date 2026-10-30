@@ -123,9 +123,9 @@ public class AsyncReentrantLockTests
             releasers.Add(await mutex.LockAsync().ConfigureAwait(false));
         }
 
-#pragma warning disable VSTHRD110, CA2012 // the call throws before returning a ValueTask
+#pragma warning disable VSTHRD110, CA2012, CHT008 // the call throws before returning a ValueTask
         Assert.Throws<InvalidOperationException>(() => mutex.LockAsync());
-#pragma warning restore VSTHRD110, CA2012
+#pragma warning restore VSTHRD110, CA2012, CHT008
 
         using (Assert.EnterMultipleScope())
         {
@@ -317,6 +317,73 @@ public class AsyncReentrantLockTests
         {
             Assert.That(overlap, Is.Zero);
             Assert.That(parentDepth, Is.EqualTo(2));
+        }
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task OperationAwaitingItsChildStaysAtomicWhileTheChildRunsConcurrently()
+    {
+        // The challenge in the discussion of https://itnext.io/reentrant-recursive-async-lock-is-impossible-in-c-e9593f4aa38a:
+        // keep the operation atomic and its child concurrent, by awaiting the child inside the hold and
+        // re-acquiring around the parent's own resource access.
+        var mutex = new AsyncReentrantLock();
+        var operationStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var childHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var childRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int resourceInside = 0;
+        int overlaps = 0;
+        int operationFinished = 0;
+        int outsiderSawFinished = -1;
+
+        void EnterResource()
+        {
+            if (Interlocked.Increment(ref resourceInside) > 1) Interlocked.Increment(ref overlaps);
+        }
+
+        Task operation = Task.Run(async () => {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                Task child = Task.Run(async () => {
+                    using (await mutex.LockAsync().ConfigureAwait(false))
+                    {
+                        EnterResource();
+                        childHolds.SetResult(true);
+                        await childRelease.Task.ConfigureAwait(false);
+                        Interlocked.Decrement(ref resourceInside);
+                    }
+                });
+
+                await childHolds.Task.ConfigureAwait(false);
+                operationStarted.SetResult(true);
+
+                using (await mutex.LockAsync().ConfigureAwait(false))
+                {
+                    EnterResource();
+                    Interlocked.Decrement(ref resourceInside);
+                }
+
+                await child.ConfigureAwait(false);
+                Volatile.Write(ref operationFinished, 1);
+            }
+        });
+
+        await operationStarted.Task.ConfigureAwait(false);
+
+        Task<AsyncReentrantLock.Releaser> outsider = Task.Run(() => mutex.LockAsync().AsTask());
+        await AsyncAssert.NeverCompletesAsync(outsider, 100).ConfigureAwait(false);
+
+        childRelease.SetResult(true);
+        using (await outsider.ConfigureAwait(false))
+        {
+            outsiderSawFinished = Volatile.Read(ref operationFinished);
+        }
+
+        await operation.ConfigureAwait(false);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(overlaps, Is.Zero, "the parent's resource access overlapped its child");
+            Assert.That(outsiderSawFinished, Is.EqualTo(1), "an outside caller got in before the operation finished");
         }
     }
 
@@ -514,9 +581,9 @@ public class AsyncReentrantLockTests
     {
         var mutex = new AsyncReentrantLock();
 
-#pragma warning disable VSTHRD110, CA2012 // the call throws before returning a ValueTask
+#pragma warning disable VSTHRD110, CA2012, CHT008 // the call throws before returning a ValueTask
         Assert.Throws<ArgumentOutOfRangeException>(() => mutex.LockAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110, CA2012
+#pragma warning restore VSTHRD110, CA2012, CHT008
     }
 
     [Test, CancelAfter(5000)]
@@ -1073,9 +1140,9 @@ public class AsyncReentrantLockTests
             releasers.Add(await mutex.LockAsync().ConfigureAwait(false));
         }
 
-#pragma warning disable VSTHRD110, CA2012 // the call throws before returning a ValueTask
+#pragma warning disable VSTHRD110, CA2012, CHT008 // the call throws before returning a ValueTask
         Assert.Throws<InvalidOperationException>(() => mutex.LockLeafAsync());
-#pragma warning restore VSTHRD110, CA2012
+#pragma warning restore VSTHRD110, CA2012, CHT008
 
         for (int i = releasers.Count - 1; i >= 0; i--)
         {

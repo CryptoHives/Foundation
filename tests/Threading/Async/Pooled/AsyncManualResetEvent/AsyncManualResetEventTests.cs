@@ -492,9 +492,9 @@ public class AsyncManualResetEventTests
         using var pool = new TestObjectPool<bool>();
         var ev = new AsyncManualResetEvent(pool: pool);
 
-#pragma warning disable VSTHRD110
+#pragma warning disable VSTHRD110, CHT008
         Assert.Throws<ArgumentOutOfRangeException>(() => ev.WaitAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test]
