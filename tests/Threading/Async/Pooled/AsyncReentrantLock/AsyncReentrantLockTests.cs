@@ -214,6 +214,99 @@ public class AsyncReentrantLockTests
     }
 
     [Test, CancelAfter(5000)]
+    public async Task NestedTaskRunSiblingsReenterWithMutualExclusion()
+    {
+        // Adapted from the README sample of https://github.com/matthew-a-thomas/cs-reentrant-async-lock
+        var mutex = new AsyncReentrantLock();
+        int raceCondition = 0;
+
+        await using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            await Task.WhenAll(
+                Task.Run(async () => {
+                    await using (await mutex.LockAsync().ConfigureAwait(false))
+                    {
+                        raceCondition++;
+                    }
+                }),
+                Task.Run(async () => {
+                    await using (await mutex.LockAsync().ConfigureAwait(false))
+                    {
+                        raceCondition++;
+                    }
+                })).ConfigureAwait(false);
+        }
+
+        Assert.That(raceCondition, Is.EqualTo(2));
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task SiblingsReadModifyWriteAcrossAnAwaitLosesNoUpdate()
+    {
+        // Exclusion must span the whole hold, not just the code between awaits.
+        const int Siblings = 8;
+        var mutex = new AsyncReentrantLock();
+        int counter = 0;
+
+        async Task IncrementAsync()
+        {
+            using (await mutex.LockAsync().ConfigureAwait(false))
+            {
+                int read = counter;
+                await Task.Yield();
+                counter = read + 1;
+            }
+        }
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            var siblings = new Task[Siblings];
+            for (int i = 0; i < Siblings; i++)
+            {
+                siblings[i] = Task.Run(IncrementAsync);
+            }
+
+            await Task.WhenAll(siblings).ConfigureAwait(false);
+        }
+
+        Assert.That(counter, Is.EqualTo(Siblings));
+    }
+
+    [Test, CancelAfter(5000)]
+    public async Task SiblingWaitingOnAnotherSiblingInsideTheLockDeadlocks()
+    {
+        var mutex = new AsyncReentrantLock();
+        var firstHolds = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool firstSawSecond = false;
+
+        using (await mutex.LockAsync().ConfigureAwait(false))
+        {
+            Task first = Task.Run(async () => {
+                using (await mutex.LockAsync().ConfigureAwait(false))
+                {
+                    firstHolds.SetResult(true);
+                    firstSawSecond = await Task.WhenAny(secondEntered.Task, Task.Delay(200)).ConfigureAwait(false) == secondEntered.Task;
+                }
+            });
+
+            await firstHolds.Task.ConfigureAwait(false);
+
+            Task second = Task.Run(async () => {
+                using (await mutex.LockAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false))
+                {
+                    secondEntered.SetResult(true);
+                }
+            });
+
+            await Assert.ThrowsAsync<TimeoutException>(async () => await second.ConfigureAwait(false)).ConfigureAwait(false);
+            await first.ConfigureAwait(false);
+        }
+
+        Assert.That(firstSawSecond, Is.False);
+    }
+
+    [Test, CancelAfter(5000)]
     public async Task ConcurrentSiblingsSeeOnlyTheirOwnDepth()
     {
         const int Siblings = 4;
