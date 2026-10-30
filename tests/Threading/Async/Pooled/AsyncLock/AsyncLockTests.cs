@@ -533,9 +533,9 @@ public class AsyncLockTests
         var mutex = new AsyncLock(pool: pool);
 
 #pragma warning disable VSTHRD110
-#pragma warning disable CA2012
+#pragma warning disable CA2012, CHT008
         Assert.Throws<ArgumentOutOfRangeException>(() => mutex.LockAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore CA2012
+#pragma warning restore CA2012, CHT008
 #pragma warning restore VSTHRD110
 
         Assert.That(mutex.InternalWaiterInUse, Is.False);

@@ -109,6 +109,8 @@ There is no `TryLock` and no synchronous API.
 
 ## Pitfalls
 
+A started child task and its parent are peers: both run code under the same hold. So either take the lock around every access to the protected state rather than relying on an outer hold, or don't take the lock in child tasks that are still running when the parent touches that state.
+
 ### Don't wrap `LockAsync` in an `async` method
 
 Depth is tracked through `ExecutionContext`. When an `async` method returns, any `AsyncLocal` value it set is discarded, so a wrapper like the one below takes the lock but hides the hold from its caller. The caller's next nested acquisition then deadlocks:

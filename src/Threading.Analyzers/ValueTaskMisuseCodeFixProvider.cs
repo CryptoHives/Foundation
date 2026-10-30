@@ -8,6 +8,8 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Simplification;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
@@ -17,12 +19,17 @@ using System.Threading.Tasks;
 /// <summary>
 /// Provides code fixes for ValueTask misuse patterns detected by <see cref="ValueTaskMisuseAnalyzer"/>.
 /// </summary>
+/// <remarks>
+/// A fix is only offered where it produces code that compiles: an <c>await</c> only inside an
+/// <see langword="async"/> function, and a type change only where every use of the declaration can be
+/// rewritten with it.
+/// </remarks>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ValueTaskMisuseCodeFixProvider))]
 [Shared]
 public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
 {
     /// <inheritdoc/>
-    public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(
+    public override ImmutableArray<string> FixableDiagnosticIds { get; } = ImmutableArray.Create(
         DiagnosticIds.MultipleAwait,
         DiagnosticIds.BlockingGetResult,
         DiagnosticIds.StoredInField,
@@ -36,650 +43,432 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
     /// <inheritdoc/>
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root is null)
+        SyntaxNode? root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+        SemanticModel? model = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
+        if (root is null || model is null)
         {
             return;
         }
 
-        var diagnostic = context.Diagnostics.First();
-        var diagnosticSpan = diagnostic.Location.SourceSpan;
-        var node = root.FindNode(diagnosticSpan);
+        foreach (Diagnostic diagnostic in context.Diagnostics)
+        {
+            RegisterFixes(context, model, root.FindNode(diagnostic.Location.SourceSpan), diagnostic);
+        }
+    }
+
+    private static void RegisterFixes(CodeFixContext context, SemanticModel model, SyntaxNode node, Diagnostic diagnostic)
+    {
+        bool inAsync = IsInAsyncFunction(node);
 
         switch (diagnostic.Id)
         {
             case DiagnosticIds.MultipleAwait:
-                RegisterMultipleAwaitFixes(context, node, diagnostic);
+                RegisterMultipleAwaitFixes(context, model, node, diagnostic);
                 break;
 
             case DiagnosticIds.BlockingGetResult:
-                RegisterBlockingGetResultFixes(context, node, diagnostic);
+                if (inAsync)
+                {
+                    Register(context, diagnostic, "Convert to await", "ConvertToAwait",
+                        c => ConvertGetResultToAwaitAsync(context.Document, node, c));
+                }
+
+                Register(context, diagnostic, "Use AsTask() before GetAwaiter().GetResult()", "WrapWithAsTask",
+                    c => WrapWithAsTaskAsync(context.Document, node, c));
                 break;
 
             case DiagnosticIds.StoredInField:
-                RegisterStoredInFieldFixes(context, node, diagnostic);
+                if (CanChangeFieldType(model, node, context.CancellationToken))
+                {
+                    Register(context, diagnostic, "Change type to Task and use AsTask()", "ChangeToTask",
+                        c => ChangeFieldTypeToTaskAsync(context.Document, node, c));
+                }
+
                 break;
 
             case DiagnosticIds.DirectResultAccess:
-                RegisterDirectResultAccessFixes(context, node, diagnostic);
+                if (inAsync)
+                {
+                    Register(context, diagnostic, "Convert to await", "ConvertResultToAwait",
+                        c => ConvertResultToAwaitAsync(context.Document, node, c));
+                }
+
+                Register(context, diagnostic, "Use AsTask().Result", "UseAsTaskResult",
+                    c => UseAsTaskResultAsync(context.Document, node, c));
                 break;
 
             case DiagnosticIds.AsTaskStoredBeforeSignal:
-                RegisterAsTaskStoredFixes(context, node, diagnostic);
+                if (node is VariableDeclaratorSyntax { Parent: VariableDeclarationSyntax declaration } &&
+                    (declaration.Type.IsVar || declaration.Variables.Count == 1))
+                {
+                    Register(context, diagnostic, "Await ValueTask directly for better performance", "AwaitDirectly",
+                        c => ConvertStoredAsTaskToDirectAwaitAsync(context.Document, node, c));
+                }
+
                 break;
 
             case DiagnosticIds.NotConsumed:
-                RegisterNotConsumedFixes(context, node, diagnostic);
+                if (inAsync)
+                {
+                    Register(context, diagnostic, "Add await", "AddAwait",
+                        c => AddAwaitAsync(context.Document, node, c));
+                }
+
+                Register(context, diagnostic, "Explicitly discard with _ =", "AddDiscard",
+                    c => AddDiscardAsync(context.Document, node, c));
                 break;
         }
     }
 
-    private static void RegisterMultipleAwaitFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
+    private static void Register(
+        CodeFixContext context,
+        Diagnostic diagnostic,
+        string title,
+        string equivalenceKey,
+        System.Func<CancellationToken, Task<Document>> createChangedDocument)
+        => context.RegisterCodeFix(CodeAction.Create(title, createChangedDocument, equivalenceKey), diagnostic);
+
+    private static void RegisterMultipleAwaitFixes(CodeFixContext context, SemanticModel model, SyntaxNode node, Diagnostic diagnostic)
     {
-        // Fix 1: Convert to AsTask() at declaration
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Convert to AsTask() at declaration",
-                createChangedDocument: c => ConvertToAsTaskAtDeclarationAsync(context.Document, node, c),
-                equivalenceKey: "ConvertToAsTask"),
-            diagnostic);
-
-        // Fix 2: Use Preserve() extension method
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Use Preserve() for safe consumption",
-                createChangedDocument: c => UsePreserveAsync(context.Document, node, c),
-                equivalenceKey: "UsePreserve"),
-            diagnostic);
-    }
-
-    private static void RegisterBlockingGetResultFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
-    {
-        // Fix 1: Convert to await
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Convert to await",
-                createChangedDocument: c => ConvertGetResultToAwaitAsync(context.Document, node, c),
-                equivalenceKey: "ConvertToAwait"),
-            diagnostic);
-
-        // Fix 2: Use AsTask().GetAwaiter().GetResult() if blocking is necessary
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Use AsTask() before GetAwaiter().GetResult()",
-                createChangedDocument: c => WrapWithAsTaskAsync(context.Document, node, c),
-                equivalenceKey: "WrapWithAsTask"),
-            diagnostic);
-    }
-
-    private static void RegisterStoredInFieldFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
-    {
-        // Fix: Change field type to Task
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Change type to Task and use AsTask()",
-                createChangedDocument: c => ChangeFieldTypeToTaskAsync(context.Document, node, c),
-                equivalenceKey: "ChangeToTask"),
-            diagnostic);
-    }
-
-    private static void RegisterDirectResultAccessFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
-    {
-        // Fix 1: Convert to await
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Convert to await",
-                createChangedDocument: c => ConvertResultToAwaitAsync(context.Document, node, c),
-                equivalenceKey: "ConvertResultToAwait"),
-            diagnostic);
-
-        // Fix 2: Use AsTask().Result
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Use AsTask().Result",
-                createChangedDocument: c => UseAsTaskResultAsync(context.Document, node, c),
-                equivalenceKey: "UseAsTaskResult"),
-            diagnostic);
-    }
-
-    private static void RegisterAsTaskStoredFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
-    {
-        // Fix: Await ValueTask directly
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Await ValueTask directly for better performance",
-                createChangedDocument: c => ConvertStoredAsTaskToDirectAwaitAsync(context.Document, node, c),
-                equivalenceKey: "AwaitDirectly"),
-            diagnostic);
-    }
-
-    private static void RegisterNotConsumedFixes(CodeFixContext context, SyntaxNode node, Diagnostic diagnostic)
-    {
-        // Fix 1: Add await
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Add await",
-                createChangedDocument: c => AddAwaitAsync(context.Document, node, c),
-                equivalenceKey: "AddAwait"),
-            diagnostic);
-
-        // Fix 2: Discard with _ =
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Explicitly discard with _ =",
-                createChangedDocument: c => AddDiscardAsync(context.Document, node, c),
-                equivalenceKey: "AddDiscard"),
-            diagnostic);
-    }
-
-
-    private static async Task<Document> ConvertToAsTaskAtDeclarationAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
-    {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        VariableDeclaratorSyntax? declarator = FindLocalDeclarator(model, node, context.CancellationToken);
+        if (declarator?.Initializer is null || declarator.Parent is not VariableDeclarationSyntax declaration)
         {
-            return document;
+            return;
         }
 
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (semanticModel is null)
+        // Retyping the declaration would retype every declarator in it, so it is only done for one.
+        if (declaration.Type.IsVar || declaration.Variables.Count == 1)
         {
-            return document;
+            Register(context, diagnostic, "Convert to AsTask() at declaration", "ConvertToAsTask",
+                c => ConvertToAsTaskAtDeclarationAsync(context.Document, declarator, c));
         }
 
-        // Find the variable declaration
-        var identifier = node as IdentifierNameSyntax ?? node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-        if (identifier is null)
+        Register(context, diagnostic, "Use Preserve() for safe consumption", "UsePreserve",
+            c => UsePreserveAsync(context.Document, declarator, c));
+    }
+
+    /// <summary>
+    /// Whether the nearest enclosing function is <see langword="async"/>, so an <c>await</c> may be
+    /// introduced at <paramref name="node"/>.
+    /// </summary>
+    private static bool IsInAsyncFunction(SyntaxNode node)
+    {
+        foreach (SyntaxNode ancestor in node.AncestorsAndSelf())
         {
-            return document;
+            switch (ancestor)
+            {
+                case AnonymousFunctionExpressionSyntax function:
+                    return function.AsyncKeyword.IsKind(SyntaxKind.AsyncKeyword);
+                case LocalFunctionStatementSyntax local:
+                    return local.Modifiers.Any(SyntaxKind.AsyncKeyword);
+                case MethodDeclarationSyntax method:
+                    return method.Modifiers.Any(SyntaxKind.AsyncKeyword);
+                case MemberDeclarationSyntax:
+                    return false;
+            }
         }
 
-        var symbolInfo = semanticModel.GetSymbolInfo(identifier, cancellationToken);
-        if (symbolInfo.Symbol is not ILocalSymbol localSymbol)
+        return false;
+    }
+
+    private static VariableDeclaratorSyntax? FindLocalDeclarator(SemanticModel model, SyntaxNode node, CancellationToken cancellationToken)
+    {
+        IdentifierNameSyntax? identifier = node as IdentifierNameSyntax
+            ?? node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
+        if (identifier is null || model.GetSymbolInfo(identifier, cancellationToken).Symbol is not ILocalSymbol local)
         {
-            return document;
+            return null;
         }
 
-        var syntaxReference = localSymbol.DeclaringSyntaxReferences.FirstOrDefault();
-        if (syntaxReference is null)
-        {
-            return document;
-        }
+        return local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) as VariableDeclaratorSyntax;
+    }
 
-        var declaringSyntax = await syntaxReference.GetSyntaxAsync(cancellationToken).ConfigureAwait(false);
-        if (declaringSyntax is not VariableDeclaratorSyntax variableDeclarator ||
-            variableDeclarator.Initializer is null)
-        {
-            return document;
-        }
-
-        // Add .AsTask() to the initializer
-        var newInitializer = SyntaxFactory.InvocationExpression(
+    /// <summary>
+    /// <c>expression.Name()</c>, parenthesizing the receiver where precedence needs it; the simplifier
+    /// removes parentheses that turn out to be unnecessary.
+    /// </summary>
+    private static InvocationExpressionSyntax Call(ExpressionSyntax receiver, string name)
+        => SyntaxFactory.InvocationExpression(
             SyntaxFactory.MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                variableDeclarator.Initializer.Value,
-                SyntaxFactory.IdentifierName("AsTask")));
+                Parenthesize(receiver.WithoutTrivia()),
+                SyntaxFactory.IdentifierName(name)))
+            .WithTriviaFrom(receiver);
 
-        var newVariableDeclarator = variableDeclarator.WithInitializer(
-            variableDeclarator.Initializer.WithValue(newInitializer));
+    private static ExpressionSyntax Parenthesize(ExpressionSyntax expression)
+        => SyntaxFactory.ParenthesizedExpression(expression).WithAdditionalAnnotations(Simplifier.Annotation);
 
-        // Also change the type to Task if it's explicit
-        if (variableDeclarator.Parent is VariableDeclarationSyntax declaration &&
-            declaration.Type is not null &&
-            !declaration.Type.IsVar)
+    /// <summary>
+    /// The shortest spelling of <paramref name="type"/> at <paramref name="position"/>, carrying the trivia
+    /// of the type it replaces.
+    /// </summary>
+    private static TypeSyntax MinimalType(ITypeSymbol type, SemanticModel model, int position, TypeSyntax replacing)
+        => SyntaxFactory.ParseTypeName(type.ToMinimalDisplayString(model, position)).WithTriviaFrom(replacing);
+
+    /// <summary>
+    /// <c>Task</c> for <c>ValueTask</c> and <c>Task&lt;T&gt;</c> for <c>ValueTask&lt;T&gt;</c>.
+    /// </summary>
+    private static ITypeSymbol? TaskTypeFor(ITypeSymbol? valueTaskType, Compilation compilation)
+    {
+        if (valueTaskType is not INamedTypeSymbol named)
         {
-            var typeInfo = semanticModel.GetTypeInfo(variableDeclarator.Initializer.Value, cancellationToken);
-            TypeSyntax newType;
-            if (typeInfo.Type is INamedTypeSymbol namedType && namedType.IsGenericType)
-            {
-                var typeArg = namedType.TypeArguments.First();
-                newType = SyntaxFactory.GenericName("Task")
-                    .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
-                        SyntaxFactory.SingletonSeparatedList(
-                            SyntaxFactory.ParseTypeName(typeArg.ToDisplayString()))));
-            }
-            else
-            {
-                newType = SyntaxFactory.ParseTypeName("Task");
-            }
-
-            var newDeclaration = declaration.WithType(newType).WithVariables(
-                SyntaxFactory.SingletonSeparatedList(newVariableDeclarator));
-
-            root = root.ReplaceNode(declaration, newDeclaration);
-        }
-        else
-        {
-            root = root.ReplaceNode(variableDeclarator, newVariableDeclarator);
+            return null;
         }
 
-        return document.WithSyntaxRoot(root);
+        if (!named.IsGenericType)
+        {
+            return compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+        }
+
+        return compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")?.Construct(named.TypeArguments[0]);
     }
 
-    private static async Task<Document> UsePreserveAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
+    private static async Task<Document> ConvertToAsTaskAtDeclarationAsync(Document document, VariableDeclaratorSyntax declarator, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        SemanticModel? model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null || model is null || declarator.Initializer is null ||
+            declarator.Parent is not VariableDeclarationSyntax declaration)
         {
             return document;
         }
 
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (semanticModel is null)
+        VariableDeclaratorSyntax newDeclarator = declarator.WithInitializer(
+            declarator.Initializer.WithValue(Call(declarator.Initializer.Value, "AsTask")));
+
+        if (declaration.Type.IsVar)
+        {
+            return document.WithSyntaxRoot(root.ReplaceNode(declarator, newDeclarator));
+        }
+
+        ITypeSymbol? taskType = TaskTypeFor(model.GetTypeInfo(declaration.Type, cancellationToken).Type, model.Compilation);
+        if (taskType is null)
         {
             return document;
         }
 
-        // Find the variable declaration
-        var identifier = node as IdentifierNameSyntax ?? node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-        if (identifier is null)
+        VariableDeclarationSyntax newDeclaration = declaration
+            .WithType(MinimalType(taskType, model, declaration.SpanStart, declaration.Type))
+            .WithVariables(SyntaxFactory.SingletonSeparatedList(newDeclarator));
+
+        return document.WithSyntaxRoot(root.ReplaceNode(declaration, newDeclaration));
+    }
+
+    private static async Task<Document> UsePreserveAsync(Document document, VariableDeclaratorSyntax declarator, CancellationToken cancellationToken)
+    {
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null || declarator.Initializer is null)
         {
             return document;
         }
 
-        var symbolInfo = semanticModel.GetSymbolInfo(identifier, cancellationToken);
-        if (symbolInfo.Symbol is not ILocalSymbol localSymbol)
-        {
-            return document;
-        }
+        VariableDeclaratorSyntax newDeclarator = declarator.WithInitializer(
+            declarator.Initializer.WithValue(Call(declarator.Initializer.Value, "Preserve")));
 
-        var syntaxReference = localSymbol.DeclaringSyntaxReferences.FirstOrDefault();
-        if (syntaxReference is null)
-        {
-            return document;
-        }
-
-        var declaringSyntax = await syntaxReference.GetSyntaxAsync(cancellationToken).ConfigureAwait(false);
-        if (declaringSyntax is not VariableDeclaratorSyntax variableDeclarator ||
-            variableDeclarator.Initializer is null)
-        {
-            return document;
-        }
-
-        // Add .Preserve() to the initializer
-        var newInitializer = SyntaxFactory.InvocationExpression(
-            SyntaxFactory.MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                variableDeclarator.Initializer.Value,
-                SyntaxFactory.IdentifierName("Preserve")));
-
-        var newVariableDeclarator = variableDeclarator.WithInitializer(
-            variableDeclarator.Initializer.WithValue(newInitializer));
-
-        root = root.ReplaceNode(variableDeclarator, newVariableDeclarator);
-        return document.WithSyntaxRoot(root);
+        return document.WithSyntaxRoot(root.ReplaceNode(declarator, newDeclarator));
     }
 
     private static async Task<Document> ConvertGetResultToAwaitAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null || FindGetResultCall(node) is not (InvocationExpressionSyntax invocation, MemberAccessExpressionSyntax getAwaiterAccess))
         {
             return document;
         }
 
-        // Find the GetAwaiter().GetResult() invocation
-        var invocation = node.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
-        if (invocation?.Expression is not MemberAccessExpressionSyntax memberAccess ||
-            memberAccess.Name.Identifier.Text != "GetResult")
-        {
-            return document;
-        }
+        ExpressionSyntax awaitExpression = Parenthesize(SyntaxFactory.AwaitExpression(getAwaiterAccess.Expression.WithoutTrivia()))
+            .WithTriviaFrom(invocation);
 
-        if (memberAccess.Expression is not InvocationExpressionSyntax getAwaiterCall ||
-            getAwaiterCall.Expression is not MemberAccessExpressionSyntax getAwaiterAccess)
-        {
-            return document;
-        }
-
-        var awaitExpression = SyntaxFactory.AwaitExpression(getAwaiterAccess.Expression)
-            .WithLeadingTrivia(invocation.GetLeadingTrivia())
-            .WithTrailingTrivia(invocation.GetTrailingTrivia());
-
-        root = root.ReplaceNode(invocation, awaitExpression);
-        return document.WithSyntaxRoot(root);
+        return document.WithSyntaxRoot(root.ReplaceNode(invocation, awaitExpression));
     }
 
     private static async Task<Document> WrapWithAsTaskAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null || FindGetResultCall(node) is not (InvocationExpressionSyntax, MemberAccessExpressionSyntax getAwaiterAccess))
         {
             return document;
         }
 
-        // Find the GetAwaiter().GetResult() invocation
-        var invocation = node.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
-        if (invocation?.Expression is not MemberAccessExpressionSyntax memberAccess ||
-            memberAccess.Name.Identifier.Text != "GetResult")
-        {
-            return document;
+        // Task has its own ConfigureAwait, so a configured ValueTask converts before the call.
+        ExpressionSyntax valueTask = getAwaiterAccess.Expression is InvocationExpressionSyntax {
+            Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "ConfigureAwait" } configure
         }
+            ? configure.Expression
+            : getAwaiterAccess.Expression;
 
-        if (memberAccess.Expression is not InvocationExpressionSyntax getAwaiterCall ||
-            getAwaiterCall.Expression is not MemberAccessExpressionSyntax getAwaiterAccess)
-        {
-            return document;
-        }
-
-        // Wrap the ValueTask with AsTask()
-        var asTaskCall = SyntaxFactory.InvocationExpression(
-            SyntaxFactory.MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                getAwaiterAccess.Expression,
-                SyntaxFactory.IdentifierName("AsTask")));
-
-        var newGetAwaiterAccess = getAwaiterAccess.WithExpression(asTaskCall);
-        var newGetAwaiterCall = getAwaiterCall.WithExpression(newGetAwaiterAccess);
-        var newMemberAccess = memberAccess.WithExpression(newGetAwaiterCall);
-        var newInvocation = invocation.WithExpression(newMemberAccess);
-
-        root = root.ReplaceNode(invocation, newInvocation);
-        return document.WithSyntaxRoot(root);
+        return document.WithSyntaxRoot(root.ReplaceNode(valueTask, Call(valueTask, "AsTask")));
     }
+
+    /// <summary>
+    /// The <c>x.GetAwaiter().GetResult()</c> call at or around <paramref name="node"/>, with the
+    /// <c>x.GetAwaiter</c> member access whose receiver is the ValueTask.
+    /// </summary>
+    private static (InvocationExpressionSyntax Invocation, MemberAccessExpressionSyntax GetAwaiterAccess)? FindGetResultCall(SyntaxNode node)
+    {
+        InvocationExpressionSyntax? invocation = node.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+        if (invocation?.Expression is MemberAccessExpressionSyntax { Name.Identifier.Text: "GetResult" } getResult &&
+            getResult.Expression is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax getAwaiterAccess })
+        {
+            return (invocation, getAwaiterAccess);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The field fix changes the declared type and every assignment to the field, so it is only offered
+    /// where all of them are in this document: a private field of a type declared in one part, declared
+    /// on its own.
+    /// </summary>
+    private static bool CanChangeFieldType(SemanticModel model, SyntaxNode node, CancellationToken cancellationToken)
+        => node is VariableDeclaratorSyntax { Parent: VariableDeclarationSyntax { Variables.Count: 1, Parent: FieldDeclarationSyntax } } declarator &&
+            model.GetDeclaredSymbol(declarator, cancellationToken) is IFieldSymbol { DeclaredAccessibility: Accessibility.Private } field &&
+            field.ContainingType.DeclaringSyntaxReferences.Length == 1;
 
     private static async Task<Document> ChangeFieldTypeToTaskAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        SemanticModel? model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null || model is null ||
+            node is not VariableDeclaratorSyntax { Parent: VariableDeclarationSyntax declaration } declarator ||
+            model.GetDeclaredSymbol(declarator, cancellationToken) is not IFieldSymbol field)
         {
             return document;
         }
 
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (semanticModel is null)
+        ITypeSymbol? taskType = TaskTypeFor(field.Type, model.Compilation);
+        if (taskType is null)
         {
             return document;
         }
 
-        // Handle field declaration
-        if (node is VariableDeclaratorSyntax variableDeclarator &&
-            variableDeclarator.Parent is VariableDeclarationSyntax declaration &&
-            declaration.Parent is FieldDeclarationSyntax)
+        // Every ValueTask stored into the field now has to be converted on the way in.
+        var converted = new List<SyntaxNode>();
+        if (declarator.Initializer is not null)
         {
-            var typeInfo = semanticModel.GetTypeInfo(declaration.Type, cancellationToken);
-            TypeSyntax newType;
+            converted.Add(declarator.Initializer.Value);
+        }
 
-            if (typeInfo.Type is INamedTypeSymbol namedType && namedType.IsGenericType)
+        foreach (AssignmentExpressionSyntax assignment in root.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+        {
+            if (assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) &&
+                SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(assignment.Left, cancellationToken).Symbol, field))
             {
-                var typeArg = namedType.TypeArguments.First();
-                newType = SyntaxFactory.GenericName("Task")
-                    .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
-                        SyntaxFactory.SingletonSeparatedList(
-                            SyntaxFactory.ParseTypeName(typeArg.ToDisplayString()))));
+                converted.Add(assignment.Right);
             }
-            else
-            {
-                newType = SyntaxFactory.ParseTypeName("Task");
-            }
-
-            var newDeclaration = declaration.WithType(newType);
-            root = root.ReplaceNode(declaration, newDeclaration);
-            return document.WithSyntaxRoot(root);
         }
 
-        return document;
-    }
+        TypeSyntax newType = MinimalType(taskType, model, declaration.SpanStart, declaration.Type);
 
-    private static async Task<Document> StoreAsTaskResultAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
-    {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
-        {
-            return document;
-        }
+        SyntaxNode newRoot = root.ReplaceNodes(
+            converted.Append(declaration.Type),
+            (original, rewritten) => original == declaration.Type
+                ? newType
+                : Call((ExpressionSyntax)rewritten, "AsTask"));
 
-        // Find the identifier that represents the second AsTask() usage
-        var identifier = node as IdentifierNameSyntax ?? node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().FirstOrDefault();
-        if (identifier is null)
-        {
-            return document;
-        }
-
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (semanticModel is null)
-        {
-            return document;
-        }
-
-        var symbolInfo = semanticModel.GetSymbolInfo(identifier, cancellationToken);
-        if (symbolInfo.Symbol is not ILocalSymbol localSymbol)
-        {
-            return document;
-        }
-
-        // Find the variable declaration and add .AsTask() to the initializer, storing it as Task
-        var syntaxReference = localSymbol.DeclaringSyntaxReferences.FirstOrDefault();
-        if (syntaxReference is null)
-        {
-            return document;
-        }
-
-        var declaringSyntax = await syntaxReference.GetSyntaxAsync(cancellationToken).ConfigureAwait(false);
-        if (declaringSyntax is not VariableDeclaratorSyntax variableDeclarator ||
-            variableDeclarator.Initializer is null)
-        {
-            return document;
-        }
-
-        // Add .AsTask() to the initializer
-        var newInitializer = SyntaxFactory.InvocationExpression(
-            SyntaxFactory.MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                variableDeclarator.Initializer.Value,
-                SyntaxFactory.IdentifierName("AsTask")));
-
-        var newVariableDeclarator = variableDeclarator.WithInitializer(
-            variableDeclarator.Initializer.WithValue(newInitializer));
-
-        // Change the type to Task if it's explicit
-        if (variableDeclarator.Parent is VariableDeclarationSyntax declaration &&
-            declaration.Type is not null &&
-            !declaration.Type.IsVar)
-        {
-            var typeInfo = semanticModel.GetTypeInfo(variableDeclarator.Initializer.Value, cancellationToken);
-            TypeSyntax newType;
-            if (typeInfo.Type is INamedTypeSymbol namedType && namedType.IsGenericType)
-            {
-                var typeArg = namedType.TypeArguments.First();
-                newType = SyntaxFactory.GenericName("Task")
-                    .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
-                        SyntaxFactory.SingletonSeparatedList(
-                            SyntaxFactory.ParseTypeName(typeArg.ToDisplayString()))));
-            }
-            else
-            {
-                newType = SyntaxFactory.ParseTypeName("Task");
-            }
-
-            var newDeclaration = declaration.WithType(newType).WithVariables(
-                SyntaxFactory.SingletonSeparatedList(newVariableDeclarator));
-
-            root = root.ReplaceNode(declaration, newDeclaration);
-        }
-        else
-        {
-            root = root.ReplaceNode(variableDeclarator, newVariableDeclarator);
-        }
-
-        return document.WithSyntaxRoot(root);
+        return document.WithSyntaxRoot(newRoot);
     }
 
     private static async Task<Document> ConvertResultToAwaitAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
-        {
-            return document;
-        }
-
-        var memberAccess = node.AncestorsAndSelf().OfType<MemberAccessExpressionSyntax>()
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        MemberAccessExpressionSyntax? memberAccess = node.AncestorsAndSelf().OfType<MemberAccessExpressionSyntax>()
             .FirstOrDefault(m => m.Name.Identifier.Text == "Result");
-
-        if (memberAccess is null)
+        if (root is null || memberAccess is null)
         {
             return document;
         }
 
-        var awaitExpression = SyntaxFactory.AwaitExpression(memberAccess.Expression)
-            .WithLeadingTrivia(memberAccess.GetLeadingTrivia())
-            .WithTrailingTrivia(memberAccess.GetTrailingTrivia());
+        ExpressionSyntax awaitExpression = Parenthesize(SyntaxFactory.AwaitExpression(memberAccess.Expression.WithoutTrivia()))
+            .WithTriviaFrom(memberAccess);
 
-        root = root.ReplaceNode(memberAccess, awaitExpression);
-        return document.WithSyntaxRoot(root);
+        return document.WithSyntaxRoot(root.ReplaceNode(memberAccess, awaitExpression));
     }
 
     private static async Task<Document> UseAsTaskResultAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
-        {
-            return document;
-        }
-
-        var memberAccess = node.AncestorsAndSelf().OfType<MemberAccessExpressionSyntax>()
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        MemberAccessExpressionSyntax? memberAccess = node.AncestorsAndSelf().OfType<MemberAccessExpressionSyntax>()
             .FirstOrDefault(m => m.Name.Identifier.Text == "Result");
-
-        if (memberAccess is null)
+        if (root is null || memberAccess is null)
         {
             return document;
         }
 
-        // Wrap with AsTask()
-        var asTaskCall = SyntaxFactory.InvocationExpression(
-            SyntaxFactory.MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                memberAccess.Expression,
-                SyntaxFactory.IdentifierName("AsTask")));
-
-        var newMemberAccess = SyntaxFactory.MemberAccessExpression(
-            SyntaxKind.SimpleMemberAccessExpression,
-            asTaskCall,
-            SyntaxFactory.IdentifierName("Result"));
-
-        root = root.ReplaceNode(memberAccess, newMemberAccess);
-        return document.WithSyntaxRoot(root);
+        return document.WithSyntaxRoot(root.ReplaceNode(
+            memberAccess.Expression,
+            Call(memberAccess.Expression, "AsTask")));
     }
 
     private static async Task<Document> ConvertStoredAsTaskToDirectAwaitAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        SemanticModel? model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null || model is null ||
+            node is not VariableDeclaratorSyntax { Parent: VariableDeclarationSyntax declaration } declarator ||
+            declarator.Initializer?.Value is not InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax asTask })
         {
             return document;
         }
 
-        // Find the variable declaration with AsTask()
-        var variableDeclarator = node.AncestorsAndSelf().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
-        if (variableDeclarator?.Initializer?.Value is InvocationExpressionSyntax invocation &&
-            invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-            memberAccess.Name.Identifier.Text == "AsTask")
+        VariableDeclaratorSyntax newDeclarator = declarator.WithInitializer(
+            declarator.Initializer.WithValue(asTask.Expression.WithTriviaFrom(declarator.Initializer.Value)));
+
+        if (declaration.Type.IsVar)
         {
-            // Remove the AsTask() call
-            var newInitializer = variableDeclarator.Initializer.WithValue(memberAccess.Expression);
-            var newDeclarator = variableDeclarator.WithInitializer(newInitializer);
-
-            // Update type to ValueTask if explicit
-            if (variableDeclarator.Parent is VariableDeclarationSyntax declaration &&
-                !declaration.Type.IsVar)
-            {
-                var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-                if (semanticModel is not null)
-                {
-                    var typeInfo = semanticModel.GetTypeInfo(memberAccess.Expression, cancellationToken);
-                    if (typeInfo.Type is not null)
-                    {
-                        var newType = SyntaxFactory.ParseTypeName(typeInfo.Type.ToDisplayString());
-                        var newDeclaration = declaration.WithType(newType).WithVariables(
-                            SyntaxFactory.SingletonSeparatedList(newDeclarator));
-                        root = root.ReplaceNode(declaration, newDeclaration);
-                        return document.WithSyntaxRoot(root);
-                    }
-                }
-            }
-
-            root = root.ReplaceNode(variableDeclarator, newDeclarator);
-            return document.WithSyntaxRoot(root);
+            return document.WithSyntaxRoot(root.ReplaceNode(declarator, newDeclarator));
         }
 
-        return document;
+        ITypeSymbol? valueTaskType = model.GetTypeInfo(asTask.Expression, cancellationToken).Type;
+        if (valueTaskType is null)
+        {
+            return document;
+        }
+
+        VariableDeclarationSyntax newDeclaration = declaration
+            .WithType(MinimalType(valueTaskType, model, declaration.SpanStart, declaration.Type))
+            .WithVariables(SyntaxFactory.SingletonSeparatedList(newDeclarator));
+
+        return document.WithSyntaxRoot(root.ReplaceNode(declaration, newDeclaration));
     }
 
     private static async Task<Document> AddAwaitAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        InvocationExpressionSyntax? invocation = node as InvocationExpressionSyntax
+            ?? node.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+        if (root is null || invocation is null)
         {
             return document;
         }
 
-        var invocation = node as InvocationExpressionSyntax ??
-                         node.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+        AwaitExpressionSyntax awaitExpression = SyntaxFactory.AwaitExpression(invocation.WithoutTrivia())
+            .WithTriviaFrom(invocation);
 
-        if (invocation is null)
-        {
-            return document;
-        }
-
-        var awaitExpression = SyntaxFactory.AwaitExpression(invocation)
-            .WithLeadingTrivia(invocation.GetLeadingTrivia())
-            .WithTrailingTrivia(invocation.GetTrailingTrivia());
-
-        root = root.ReplaceNode(invocation, awaitExpression);
-        return document.WithSyntaxRoot(root);
+        return document.WithSyntaxRoot(root.ReplaceNode(invocation, awaitExpression));
     }
 
+    /// <summary>
+    /// <c>_ = Call()</c> in place of the call, which works the same as a statement and as the body of an
+    /// expression-bodied lambda or member.
+    /// </summary>
     private static async Task<Document> AddDiscardAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
+        SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        InvocationExpressionSyntax? invocation = node as InvocationExpressionSyntax
+            ?? node.AncestorsAndSelf().OfType<InvocationExpressionSyntax>().FirstOrDefault();
+        if (root is null || invocation is null)
         {
             return document;
         }
 
-        var expressionStatement = node.AncestorsAndSelf().OfType<ExpressionStatementSyntax>().FirstOrDefault();
-        if (expressionStatement is null)
-        {
-            return document;
-        }
+        AssignmentExpressionSyntax discardAssignment = SyntaxFactory.AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                SyntaxFactory.IdentifierName("_"),
+                invocation.WithoutTrivia())
+            .WithTriviaFrom(invocation);
 
-        // Create: _ = expression;
-        var discardAssignment = SyntaxFactory.AssignmentExpression(
-            SyntaxKind.SimpleAssignmentExpression,
-            SyntaxFactory.IdentifierName("_"),
-            expressionStatement.Expression);
-
-        var newStatement = SyntaxFactory.ExpressionStatement(discardAssignment)
-            .WithLeadingTrivia(expressionStatement.GetLeadingTrivia())
-            .WithTrailingTrivia(expressionStatement.GetTrailingTrivia());
-
-        root = root.ReplaceNode(expressionStatement, newStatement);
-        return document.WithSyntaxRoot(root);
-    }
-
-    private static async Task<Document> WrapArgumentWithAsTaskAsync(Document document, SyntaxNode node, CancellationToken cancellationToken)
-    {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root is null)
-        {
-            return document;
-        }
-
-        var argument = node.AncestorsAndSelf().OfType<ArgumentSyntax>().FirstOrDefault();
-        if (argument is null)
-        {
-            return document;
-        }
-
-        // Wrap the argument expression with .AsTask()
-        var asTaskCall = SyntaxFactory.InvocationExpression(
-            SyntaxFactory.MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                argument.Expression,
-                SyntaxFactory.IdentifierName("AsTask")));
-
-        var newArgument = argument.WithExpression(asTaskCall);
-        root = root.ReplaceNode(argument, newArgument);
-        return document.WithSyntaxRoot(root);
+        return document.WithSyntaxRoot(root.ReplaceNode(invocation, discardAssignment));
     }
 }

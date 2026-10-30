@@ -353,9 +353,9 @@ public class AsyncCountdownEventTests
     {
         var countdown = new AsyncCountdownEvent(1);
 
-#pragma warning disable VSTHRD110
+#pragma warning disable VSTHRD110, CHT008
         Assert.Throws<ArgumentOutOfRangeException>(() => countdown.WaitAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test]
