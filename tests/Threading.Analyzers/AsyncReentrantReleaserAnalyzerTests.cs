@@ -28,6 +28,8 @@ namespace CryptoHives.Foundation.Threading.Async.Pooled
         }
 
         public ValueTask<Releaser> LockAsync() => default;
+
+        public ValueTask<Releaser> LockLeafAsync() => default;
     }
 
     public sealed class AsyncLock
@@ -163,6 +165,50 @@ namespace App
     }
 }";
         await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AsyncMethodReturningLeafReleaserNoDiagnostic()
+    {
+        string code = Stubs + @"
+namespace App
+{
+    using System.Threading.Tasks;
+    using CryptoHives.Foundation.Threading.Async.Pooled;
+
+    public class Worker
+    {
+        private readonly AsyncReentrantLock _lock = new AsyncReentrantLock();
+
+        public async ValueTask<AsyncReentrantLock.Releaser> EnterLeafAsync()
+            => await _lock.LockLeafAsync().ConfigureAwait(false);
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task AsyncMethodChoosingLockOrLeafReportsDiagnostic()
+    {
+        string code = Stubs + @"
+namespace App
+{
+    using System.Threading.Tasks;
+    using CryptoHives.Foundation.Threading.Async.Pooled;
+
+    public class Worker
+    {
+        private readonly AsyncReentrantLock _lock = new AsyncReentrantLock();
+
+        public async ValueTask<AsyncReentrantLock.Releaser> {|#0:EnterAsync|}(bool leaf)
+            => leaf ? await _lock.LockLeafAsync() : await _lock.LockAsync();
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.AsyncReentrantReleaserReturnedFromAsync)
+            .WithLocation(0)
+            .WithArguments("EnterAsync");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
     }
 
     [Test]

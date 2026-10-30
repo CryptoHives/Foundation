@@ -195,7 +195,7 @@ public sealed class ValueTaskMisuseCodeFixProvider : CodeFixProvider
                 SyntaxFactory.IdentifierName(name)))
             .WithTriviaFrom(receiver);
 
-    private static ExpressionSyntax Parenthesize(ExpressionSyntax expression)
+    private static ParenthesizedExpressionSyntax Parenthesize(ExpressionSyntax expression)
         => SyntaxFactory.ParenthesizedExpression(expression).WithAdditionalAnnotations(Simplifier.Annotation);
 
     /// <summary>

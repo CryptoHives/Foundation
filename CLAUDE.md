@@ -194,6 +194,7 @@ Allocation-free async synchronization primitives backed by pooled `IValueTaskSou
 **Async primitives (`src/Threading/Async/Pooled/`):**
 - `AsyncLock` — async exclusive lock (not reentrant), `using (await _lock.LockAsync())` pattern
 - `AsyncKeyedLock<TKey>` — per-key exclusive lock; distinct keys never block each other
+- `AsyncReentrantLock` — reentrant async lock, one `AsyncLock` per nesting depth (experimental, `CHTEXP001`); allocates per acquisition, `LockLeafAsync` for innermost regions
 - `AsyncReaderWriterLock`
 - `AsyncSemaphore`
 - `AsyncAutoResetEvent`, `AsyncManualResetEvent`

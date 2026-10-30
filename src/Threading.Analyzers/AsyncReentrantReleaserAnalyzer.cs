@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 
 /// <summary>
 /// Detects <see langword="async"/> methods, local functions and lambdas that return an
@@ -75,6 +76,36 @@ public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
             => returnType is INamedTypeSymbol { TypeArguments.Length: 1 } task &&
                 (_types.IsTask(task) || _types.IsValueTask(task)) &&
                 SymbolEqualityComparer.Default.Equals(task.TypeArguments[0], _releaser);
+
+        /// <summary>
+        /// Whether <paramref name="function"/> acquires only through <c>LockLeafAsync</c>, which records no
+        /// hold, so wrapping it in <see langword="async"/> hides nothing from the caller.
+        /// </summary>
+        public bool AcquiresOnlyLeaf(SyntaxNode function, SemanticModel model, CancellationToken cancellationToken)
+        {
+            bool leaf = false;
+            foreach (InvocationExpressionSyntax invocation in function
+                .DescendantNodes(node => node == function || node is not (AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax))
+                .OfType<InvocationExpressionSyntax>())
+            {
+                if (model.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol method ||
+                    !SymbolEqualityComparer.Default.Equals(method.ContainingType, _releaser.ContainingType))
+                {
+                    continue;
+                }
+
+                switch (method.Name)
+                {
+                    case "LockLeafAsync":
+                        leaf = true;
+                        break;
+                    case "LockAsync":
+                        return false;
+                }
+            }
+
+            return leaf;
+        }
     }
 
     private static void AnalyzeMethod(SyntaxNodeAnalysisContext context, Target target)
@@ -87,7 +118,7 @@ public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
 
         if (context.SemanticModel.GetDeclaredSymbol(method, context.CancellationToken) is IMethodSymbol symbol)
         {
-            Report(context, target, symbol, method.Identifier.GetLocation(), method.Identifier.Text);
+            Report(context, target, symbol, method, method.Identifier.GetLocation(), method.Identifier.Text);
         }
     }
 
@@ -101,7 +132,7 @@ public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
 
         if (context.SemanticModel.GetDeclaredSymbol(local, context.CancellationToken) is IMethodSymbol symbol)
         {
-            Report(context, target, symbol, local.Identifier.GetLocation(), local.Identifier.Text);
+            Report(context, target, symbol, local, local.Identifier.GetLocation(), local.Identifier.Text);
         }
     }
 
@@ -115,13 +146,13 @@ public sealed class AsyncReentrantReleaserAnalyzer : DiagnosticAnalyzer
 
         if (context.SemanticModel.GetSymbolInfo(function, context.CancellationToken).Symbol is IMethodSymbol symbol)
         {
-            Report(context, target, symbol, function.AsyncKeyword.GetLocation(), "async lambda");
+            Report(context, target, symbol, function, function.AsyncKeyword.GetLocation(), "async lambda");
         }
     }
 
-    private static void Report(SyntaxNodeAnalysisContext context, Target target, IMethodSymbol method, Location location, string name)
+    private static void Report(SyntaxNodeAnalysisContext context, Target target, IMethodSymbol method, SyntaxNode function, Location location, string name)
     {
-        if (target.Matches(method.ReturnType))
+        if (target.Matches(method.ReturnType) && !target.AcquiresOnlyLeaf(function, context.SemanticModel, context.CancellationToken))
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 DiagnosticDescriptors.AsyncReentrantReleaserReturnedFromAsync,
