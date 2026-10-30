@@ -150,13 +150,15 @@ public sealed class AsyncReentrantLock
         private readonly DepthLock _depthLock;
         private readonly AmbientState? _stateBeforeAcquisition;
         private readonly int _depth;
+        private readonly bool _leaf;
 
-        internal Releaser(AsyncReentrantLock owner, DepthLock depthLock, AmbientState? stateBeforeAcquisition, int depth)
+        internal Releaser(AsyncReentrantLock owner, DepthLock depthLock, AmbientState? stateBeforeAcquisition, int depth, bool leaf)
         {
             _owner = owner;
             _depthLock = depthLock;
             _stateBeforeAcquisition = stateBeforeAcquisition;
             _depth = depth;
+            _leaf = leaf;
         }
 
         /// <inheritdoc/>
@@ -171,6 +173,13 @@ public sealed class AsyncReentrantLock
 #else
                 return;
 #endif
+            }
+
+            // A leaf published no claim, so nothing can be nested under it and it never left its level pending.
+            if (_leaf)
+            {
+                _owner.Free(_depthLock, _depth);
+                return;
             }
 
             _owner._ambient.Value = _stateBeforeAcquisition;
@@ -231,7 +240,7 @@ public sealed class AsyncReentrantLock
     /// Thrown when the call would nest deeper than the maximum depth set at construction.
     /// </exception>
     public ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default)
-        => Acquire(Timeout.InfiniteTimeSpan, cancellationToken);
+        => Acquire(Timeout.InfiniteTimeSpan, leaf: false, cancellationToken);
 
     /// <summary>
     /// Asynchronously acquires the lock, or throws if it cannot be acquired before the timeout elapses.
@@ -258,11 +267,66 @@ public sealed class AsyncReentrantLock
     {
         if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
 
-        return Acquire(timeout, cancellationToken);
+        return Acquire(timeout, leaf: false, cancellationToken);
     }
 
-    // Must stay non-async, like both callers: the slot write has to land in the caller's ExecutionContext.
-    private ValueTask<Releaser> Acquire(TimeSpan timeout, CancellationToken cancellationToken)
+    /// <summary>
+    /// Asynchronously acquires the lock at the same depth as <see cref="LockAsync(CancellationToken)"/>, but
+    /// without recording the hold for further nesting, which makes it cheaper.
+    /// </summary>
+    /// <remarks>
+    /// Use it only for innermost regions that never call back into this lock: a <see cref="LockAsync(CancellationToken)"/>
+    /// or <see cref="LockLeafAsync(CancellationToken)"/> call made inside the hold deadlocks, as with <see cref="AsyncLock"/>.
+    /// </remarks>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired. Dispose the
+    /// returned releaser to release the lock.
+    /// </returns>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the call would nest deeper than the maximum depth set at construction.
+    /// </exception>
+    public ValueTask<Releaser> LockLeafAsync(CancellationToken cancellationToken = default)
+        => Acquire(Timeout.InfiniteTimeSpan, leaf: true, cancellationToken);
+
+    /// <summary>
+    /// Asynchronously acquires the lock like <see cref="LockLeafAsync(CancellationToken)"/>, or throws if it
+    /// cannot be acquired before the timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// Use it only for innermost regions that never call back into this lock: a <see cref="LockAsync(CancellationToken)"/>
+    /// or <see cref="LockLeafAsync(CancellationToken)"/> call made inside the hold deadlocks, as with <see cref="AsyncLock"/>.
+    /// </remarks>
+    /// <param name="timeout">
+    /// The maximum time to wait. Use <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token used to cancel the wait.</param>
+    /// <returns>
+    /// A <see cref="ValueTask{Releaser}"/> that completes when the lock is acquired. Dispose the
+    /// returned releaser to release the lock.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="timeout"/> is negative and not equal to <see cref="Timeout.InfiniteTimeSpan"/>.
+    /// </exception>
+    /// <exception cref="TimeoutException">Thrown when the timeout elapses before the lock can be acquired.</exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when <paramref name="cancellationToken"/> is cancelled before the lock can be acquired.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the call would nest deeper than the maximum depth set at construction.
+    /// </exception>
+    public ValueTask<Releaser> LockLeafAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        return Acquire(timeout, leaf: true, cancellationToken);
+    }
+
+    // Must stay non-async, like all callers: the slot write has to land in the caller's ExecutionContext.
+    private ValueTask<Releaser> Acquire(TimeSpan timeout, bool leaf, CancellationToken cancellationToken)
     {
         AmbientState? inherited = _ambient.Value;
         Claim? top = inherited?.Top;
@@ -272,10 +336,14 @@ public sealed class AsyncReentrantLock
             throw new InvalidOperationException($"Nesting exceeds the maximum depth of {_maxDepthLocksCapacity} for this AsyncReentrantLock.");
         }
 
-        var state = new AmbientState(top);
+        AmbientState? state = null;
+        if (!leaf)
+        {
+            state = new AmbientState(top);
 
-        // safe, _ambient is AsyncLocal, it only modifies the current execution context
-        _ambient.Value = state;
+            // safe, _ambient is AsyncLocal, it only modifies the current execution context
+            _ambient.Value = state;
+        }
 
         while (true)
         {
@@ -290,7 +358,7 @@ public sealed class AsyncReentrantLock
             _ = pending.GetAwaiter().GetResult();
             if (TryCommit(depthLock, depth, top, state))
             {
-                return new ValueTask<Releaser>(new Releaser(this, depthLock, inherited, depth));
+                return new ValueTask<Releaser>(new Releaser(this, depthLock, inherited, depth, leaf));
             }
 
             Free(depthLock, depth);
@@ -303,7 +371,7 @@ public sealed class AsyncReentrantLock
         DepthLock depthLock,
         int depth,
         Claim? top,
-        AmbientState state,
+        AmbientState? state,
         AmbientState? inherited,
         TimeSpan timeout,
         CancellationToken cancellationToken)
@@ -313,7 +381,7 @@ public sealed class AsyncReentrantLock
             await pending.ConfigureAwait(false);
             if (TryCommit(depthLock, depth, top, state))
             {
-                return new Releaser(this, depthLock, inherited, depth);
+                return new Releaser(this, depthLock, inherited, depth, leaf: state is null);
             }
 
             Free(depthLock, depth);
@@ -370,9 +438,9 @@ public sealed class AsyncReentrantLock
 
     /// <summary>
     /// Publishes the hold at <paramref name="depth"/> if the claim it nests under is still held,
-    /// rechecked now that the level is taken.
+    /// rechecked now that the level is taken. A leaf passes no state and publishes nothing.
     /// </summary>
-    private bool TryCommit(DepthLock depthLock, int depth, Claim? top, AmbientState state)
+    private bool TryCommit(DepthLock depthLock, int depth, Claim? top, AmbientState? state)
     {
         Claim? parent = top;
         while (parent is not null && parent.Depth >= depth)
@@ -385,7 +453,10 @@ public sealed class AsyncReentrantLock
             return false;
         }
 
-        state.Top = new Claim(depth, depthLock.Generation, parent);
+        if (state is not null)
+        {
+            state.Top = new Claim(depth, depthLock.Generation, parent);
+        }
 
         return true;
     }

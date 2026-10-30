@@ -53,15 +53,17 @@ public class AsyncReentrantLockNestedDepthBenchmark
     [GlobalSetup]
     public void GlobalSetup() => _reentrantLock = new();
 
-    private async Task RecurseAsync(int remaining)
+    private async Task RecurseAsync(int remaining, bool leafInnermost)
     {
-        using (await _reentrantLock.LockAsync().ConfigureAwait(false))
+        using (leafInnermost && remaining == 1
+            ? await _reentrantLock.LockLeafAsync().ConfigureAwait(false)
+            : await _reentrantLock.LockAsync().ConfigureAwait(false))
         {
             unchecked { _counter++; }
 
             if (remaining > 1)
             {
-                await RecurseAsync(remaining - 1).ConfigureAwait(false);
+                await RecurseAsync(remaining - 1, leafInnermost).ConfigureAwait(false);
             }
         }
     }
@@ -72,5 +74,13 @@ public class AsyncReentrantLockNestedDepthBenchmark
     [Test]
     [Benchmark]
     [BenchmarkCategory("NestedDepth", "AsyncReentrantLock")]
-    public Task NestedReentrantAcquireAsync() => RecurseAsync(Depth);
+    public Task NestedReentrantAcquireAsync() => RecurseAsync(Depth, leafInnermost: false);
+
+    /// <summary>
+    /// Benchmark for the same nesting with the innermost level acquired as a leaf.
+    /// </summary>
+    [Test]
+    [Benchmark]
+    [BenchmarkCategory("NestedDepth", "AsyncReentrantLock")]
+    public Task NestedReentrantLeafInnermostAcquireAsync() => RecurseAsync(Depth, leafInnermost: true);
 }
