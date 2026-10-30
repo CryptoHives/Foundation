@@ -715,9 +715,9 @@ public class AsyncAutoResetEventTests
     {
         var ev = new AsyncAutoResetEvent();
 
-#pragma warning disable VSTHRD110 // Observe the awaitable result
+#pragma warning disable VSTHRD110, CHT008 // Observe the awaitable result
         Assert.Throws<ArgumentOutOfRangeException>(() => ev.WaitAsync(TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test]

@@ -459,9 +459,9 @@ public class AsyncExchangeTests
     {
         var ex = new AsyncExchange<int>();
 
-#pragma warning disable VSTHRD110 // Observe the awaitable result
+#pragma warning disable VSTHRD110, CHT008 // Observe the awaitable result
         Assert.Throws<ArgumentOutOfRangeException>(() => ex.ExchangeAsync(1, TimeSpan.FromMilliseconds(-2)));
-#pragma warning restore VSTHRD110
+#pragma warning restore VSTHRD110, CHT008
     }
 
     [Test, CancelAfter(3000)]

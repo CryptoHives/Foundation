@@ -59,4 +59,9 @@ public static class DiagnosticIds
     /// <c>async</c> ValueTask wrapper boxes a state machine whenever it suspends.
     /// </summary>
     public const string AsyncWrapperBoxesStateMachine = "CHT012";
+
+    /// <summary>
+    /// <c>async</c> method returns an <c>AsyncReentrantLock</c> releaser, hiding the hold from its caller.
+    /// </summary>
+    public const string AsyncReentrantReleaserReturnedFromAsync = "CHT013";
 }

@@ -21,6 +21,7 @@ Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
 |-------|-------------|
 | [AsyncLock](https://cryptohives.github.io/Foundation/packages/threading/asynclock.html) | Pooled async mutual exclusion lock
 | [AsyncKeyedLock&lt;TKey&gt;](https://cryptohives.github.io/Foundation/packages/threading/asynckeyedlock.html) | Pooled per-key async exclusive lock (different keys never block each other)
+| [AsyncReentrantLock](https://cryptohives.github.io/Foundation/packages/threading/asyncreentrantlock.html) | Async exclusive lock that a nested call on the same flow can re-acquire (experimental, opt in with `CHTEXP001`)
 | [AsyncAutoResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncautoresetevent.html) | Pooled async auto-reset event (one waiter per signal)
 | [AsyncManualResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncmanualresetevent.html) | Pooled async manual-reset event (all waiters per signal)
 | [AsyncSemaphore](https://cryptohives.github.io/Foundation/packages/threading/asyncsemaphore.html) | Pooled async semaphore with configurable permit count
@@ -30,7 +31,7 @@ Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
 | [AsyncConditionVariable](https://cryptohives.github.io/Foundation/packages/threading/asyncconditionvariable.html) | Pooled async condition variable (wait until a condition guarded by an `AsyncLock` holds)
 | [AsyncExchange&lt;T&gt;](https://cryptohives.github.io/Foundation/packages/threading/asyncexchange.html) | Pooled two-party rendezvous that swaps a value between two tasks
 
-All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>`, which keeps per-operation allocations out of high-throughput code paths.
+All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>`, which keeps per-operation allocations out of high-throughput code paths. The exception is the experimental `AsyncReentrantLock`, which allocates on every acquisition to track reentrancy through an `AsyncLocal`.
 
 ### Pooling Support Classes
 

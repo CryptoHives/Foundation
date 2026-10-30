@@ -14,6 +14,27 @@ using System.Threading.Tasks;
 [Parallelizable(ParallelScope.All)]
 public class SemaphoreSlimAsAsyncLockAnalyzerTests : AnalyzerTestBase<SemaphoreSlimAsAsyncLockAnalyzer>
 {
+    // The rule suggests AsyncLock, so it only reports where the compilation can see it.
+    private const string AsyncLockStub = @"
+namespace CryptoHives.Foundation.Threading.Async.Pooled
+{
+    public sealed class AsyncLock { }
+}
+";
+
+    [Test]
+    public async Task NoDiagnosticWhereAsyncLockIsUnavailable()
+    {
+        string code = @"
+using System.Threading;
+
+public class TestClass
+{
+    private readonly SemaphoreSlim _sem = new SemaphoreSlim(1, 1);
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
     // ── Positive cases (diagnostic expected) ──────────────────────────────────
 
     [Test]
@@ -25,7 +46,7 @@ using System.Threading;
 public class TestClass
 {
     private readonly SemaphoreSlim {|#0:_sem|} = {|#1:new SemaphoreSlim(1, 1)|};
-}";
+}" + AsyncLockStub;
         DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock)
             .WithLocation(1)
             .WithArguments("_sem");
@@ -45,7 +66,7 @@ public class TestClass
     {
         SemaphoreSlim sem = {|#0:new SemaphoreSlim(1, 1)|};
     }
-}";
+}" + AsyncLockStub;
         DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock)
             .WithLocation(0)
             .WithArguments("sem");
@@ -65,7 +86,7 @@ public class TestClass
     {
         var sem = {|#0:new SemaphoreSlim(1, 1)|};
     }
-}";
+}" + AsyncLockStub;
         DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock)
             .WithLocation(0)
             .WithArguments("sem");
@@ -83,7 +104,7 @@ public class TestClass
     {
         System.Threading.SemaphoreSlim sem = {|#0:new System.Threading.SemaphoreSlim(1, 1)|};
     }
-}";
+}" + AsyncLockStub;
         DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock)
             .WithLocation(0)
             .WithArguments("sem");
@@ -105,7 +126,7 @@ public class TestClass
     {
         _sem = {|#0:new SemaphoreSlim(1, 1)|};
     }
-}";
+}" + AsyncLockStub;
         DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock)
             .WithLocation(0)
             .WithArguments("_sem");
@@ -122,7 +143,7 @@ using System.Threading;
 public class TestClass
 {
     private readonly SemaphoreSlim _sem = {|#0:new(1, 1)|};
-}";
+}" + AsyncLockStub;
         DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock)
             .WithLocation(0)
             .WithArguments("_sem");
@@ -140,7 +161,7 @@ public class TestClass
 {
     private const int One = 1;
     private readonly SemaphoreSlim _sem = {|#0:new SemaphoreSlim(One, One)|};
-}";
+}" + AsyncLockStub;
         DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.SemaphoreSlimAsAsyncLock)
             .WithLocation(0)
             .WithArguments("_sem");

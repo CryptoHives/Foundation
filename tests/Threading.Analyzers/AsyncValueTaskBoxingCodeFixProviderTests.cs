@@ -44,6 +44,44 @@ public class TestClass
     }
 
     [Test]
+    public async Task FixesLocalFunctionForwarderRatherThanItsMethod()
+    {
+        string source = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> InnerAsync() => default;
+
+    public ValueTask<int> OuterAsync()
+    {
+        return LocalAsync();
+
+        async ValueTask<int> {|#0:LocalAsync|}() => await InnerAsync().ConfigureAwait(false);
+    }
+}";
+        string fixedSource = @"
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    private ValueTask<int> InnerAsync() => default;
+
+    public ValueTask<int> OuterAsync()
+    {
+        return LocalAsync();
+
+        ValueTask<int> LocalAsync() => InnerAsync();
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.RedundantAsyncForwarding)
+            .WithLocation(0)
+            .WithArguments("LocalAsync");
+
+        await VerifyCodeFixAsync(source, fixedSource, expected).ConfigureAwait(false);
+    }
+
+    [Test]
     public async Task FixesBlockBodiedForwarder()
     {
         string source = @"

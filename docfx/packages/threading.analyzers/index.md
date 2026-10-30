@@ -1,6 +1,6 @@
 ---
 title: Threading.Analyzers Package
-_description: CryptoHives.Foundation.Threading.Analyzers — Roslyn analyzers and code fixes (CHT001–CHT012) that catch ValueTask misuse at compile time. Ships separately from the Threading package.
+_description: CryptoHives.Foundation.Threading.Analyzers — Roslyn analyzers and code fixes (CHT001–CHT013) that catch ValueTask misuse at compile time. Ships separately from the Threading package.
 ---
 
 # CryptoHives.Foundation.Threading.Analyzers
@@ -35,6 +35,7 @@ Or add to your project file:
 | [CHT010](CHT010.md) | Warning | ValueTask captured in lambda/closure |
 | [CHT011](CHT011.md) | Warning | `async` method only forwards an awaited ValueTask |
 | [CHT012](CHT012.md) | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
+| [CHT013](CHT013.md) | Warning | `async` method returns an `AsyncReentrantLock` releaser, hiding the hold from its caller |
 
 ## Quick Reference
 
@@ -121,6 +122,7 @@ The analyzer package includes automatic code fixes for most diagnostics:
 | CHT010 | Convert to AsTask() at declaration, Use Preserve() |
 | CHT011 | Remove async and return the ValueTask directly |
 | CHT012 | Pool the state machine box (offered only on .NET 6+; a partial mitigation) |
+| CHT013 | None; return the ValueTask from LockAsync directly (the CHT011 fix does this when it applies) |
 
 ## The Preserve() Method
 
@@ -166,7 +168,10 @@ dotnet_diagnostic.CHT007.severity = warning
 dotnet_diagnostic.CHT003.severity = none
 ```
 
-## See Also
+## Relation to CA2012
+
+The .NET SDK's [CA2012](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2012) covers part of the same ground as CHT001, CHT005 and CHT008: a `ValueTask` consumed twice, its result read before it is known to be complete, or one that is ignored. With both enabled, the same line can be reported by each, so keep whichever you prefer for those cases. The other rules have no CA2012 counterpart.
+
 
 - [CryptoHives.Foundation.Threading Package](../threading/index.md)
 - [ValueTask Best Practices](https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/)
