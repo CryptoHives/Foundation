@@ -31,7 +31,7 @@ Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
 | [AsyncConditionVariable](https://cryptohives.github.io/Foundation/packages/threading/asyncconditionvariable.html) | Pooled async condition variable (wait until a condition guarded by an `AsyncLock` holds)
 | [AsyncExchange&lt;T&gt;](https://cryptohives.github.io/Foundation/packages/threading/asyncexchange.html) | Pooled two-party rendezvous that swaps a value between two tasks
 
-All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>`, which keeps per-operation allocations out of high-throughput code paths.
+All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>`, which keeps per-operation allocations out of high-throughput code paths. The exception is the experimental `AsyncReentrantLock`, which allocates on every acquisition to track reentrancy through an `AsyncLocal`.
 
 ### Pooling Support Classes
 

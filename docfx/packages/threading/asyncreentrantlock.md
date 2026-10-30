@@ -4,7 +4,7 @@ An async exclusive lock that a nested call on the same logical async flow can re
 
 **Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncReentrantLock)
 
-> **Experimental.** The type ships in the package but is marked `[Experimental("CHTEXP001")]` on .NET 8 and later, so using it is a compile error until you opt in with `#pragma warning disable CHTEXP001` or `<NoWarn>$(NoWarn);CHTEXP001</NoWarn>`. It works and is tested, but it has not had the allocation and pooling work the other primitives have had, and its API may change. Prefer [`AsyncLock`](asynclock.md) wherever the locked region can be narrowed, or released before calling out.
+> **Experimental.** The type ships in the package but is marked `[Experimental("CHTEXP001")]` on .NET 8 and later, so using it is a compile error until you opt in with `#pragma warning disable CHTEXP001` or `<NoWarn>$(NoWarn);CHTEXP001</NoWarn>`. It works and is tested, but unlike the other primitives it allocates on every acquisition (see [Performance and memory](#performance-and-memory)), and its API may change. Prefer [`AsyncLock`](asynclock.md) wherever the locked region can be narrowed, or released before calling out.
 
 ## Overview
 
@@ -43,22 +43,68 @@ public async Task RebalanceAsync(CancellationToken ct)
 `AsyncReentrantLock` never skips an acquisition. It keeps **one real `AsyncLock` per nesting depth**, and an `AsyncLocal` records which depths the calling flow holds:
 
 ```
-flow A (top level)  →  holds nothing  →  takes depth 0
-  └─ nested call    →  holds 0        →  takes depth 1
-       └─ nested    →  holds 0, 1     →  takes depth 2
+ depth   gen   held by          waiting
+ ┌─────┬─────┬──────────┐
+ │  0  │  7  │ A        │ ◀──── B       unrelated caller: still excluded
+ │  1  │  3  │ A.1      │ ◀──── A.2     sibling of A.1: serializes
+ │  2  │  1  │ A.1.1    │
+ │  3  │  0  │ (free)   │
+ └─────┴─────┴──────────┘
+   one AsyncLock per depth
 
-flow B (unrelated)  →  holds nothing  →  waits for depth 0   ← still excluded
+ A.1.1's AsyncLocal claims:   (2, gen 1) → (1, gen 3) → (0, gen 7)
 ```
 
 A flow can only reach depth `N` while an ancestor holds depth `N - 1`. Depth 0 is a single exclusive lock, so only one tree of nested calls is active at a time. **Siblings still serialize**: if a holder runs `await Task.WhenAll(NestedA(), NestedB())` and both re-acquire, both target depth 1 and serialize on it.
+
+```
+ time ──────────────────────────────────────────────────────▶        depth
+ A       ██████████████████████████████████████┤                       0
+ A.1        ████████┤                                                  1
+ A.2        ░░░░░░░░███████████████┤                                   1
+ A.2.1                 ███████┤                                        2
+ B       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█████████┤             0
+
+ █ holds   ░ waits   ┤ releases
+```
 
 ### Holders that have gone away
 
 Each depth has a generation number, which is bumped when the holder disposes its releaser. A flow remembers the generation of every depth it nested under. Before acquiring, it looks for the deepest of them that is still held and nests one above it. If none is, for example in a fire-and-forget `Task.Run` child whose parent has already returned, it acquires depth 0 like any top-level caller. Once it holds the depth, it checks again that the depth it nested under is still held, and if that holder released during the wait, it gives the depth back and retries.
 
+```
+ LockAsync()                            Releaser.Dispose() at depth d
+   │                                      │
+   ├─ deepest live claim (d, g)?          ├─ gen[d]++: claims on d go stale
+   │    a claim is live while depth d     ├─ restore the flow's AsyncLocal
+   │    is taken and its gen is still g   │
+   │      found → target d + 1            └─ depth d + 1 taken?
+   │      none  → target 0                      no  → free d, then each depth
+   │                                                  below whose holder already
+   ├─ await depth[target]                             released
+   │                                            yes → leave d taken; the last
+   ├─ parent claim still live?                        one out above frees it
+   │      no  → free target, retry
+   │      yes → push (target, gen)
+   │
+   └─ return Releaser
+```
+
 ### The lock stays held while nested holders run
 
 Disposing a releaser ends the hold at once for the parent's flow, which no longer counts as holding the lock. Calls already nested under it keep their place and can nest further. The depth itself, though, stays taken while any call nested under it still holds the next depth, and the last one out frees it. A chain of such releases unwinds together. So a fire-and-forget child that is inside the lock when its parent leaves finishes as part of the parent's hold, and nobody from outside gets in until it is done.
+
+```
+ time ──────────────────────────────────────────────────────▶        depth
+ A       █████████████┤ released; depth 0 stays taken                  0
+ F          ███████████████████████┤ frees 1, then 0                   1
+ B         ░░░░░░░░░░░░░░░░░░░░░░░░░██████████┤                        0
+ G                       ░░░░░░░░░░░░░░░░░░░░░░█████┤                  0
+
+ F  fire-and-forget child of A, inside the lock before A released
+ G  fire-and-forget child of A that asks after A released: its claim is
+    stale, so it queues at depth 0 like any outside caller
+```
 
 ## Constructor
 
@@ -176,9 +222,39 @@ A nested holder runs alongside its parent's own code, which holds only the outer
 
 Each depth reached creates one internal lock that lives as long as the instance does. Recursion under the lock grows that table up to the maximum depth set at construction (32 by default), after which `LockAsync` throws `InvalidOperationException`.
 
-## Performance
+## Performance and memory
 
-Each acquisition reads and writes an `AsyncLocal`, allocates two small objects and checks that the depth it nests under is still held, on top of the underlying `AsyncLock` acquisition. A contended acquisition also allocates an async state machine. `LockLeafAsync` skips the `AsyncLocal` write and both allocations, so use it at innermost call sites that don't nest further. `AsyncReentrantLockBenchmark` measures the uncontended overhead against `AsyncLock`, and `AsyncReentrantLockNestedDepthBenchmark` measures cost against nesting depth.
+`AsyncReentrantLock` is **not allocation-free**, unlike the other primitives in this package. The waiter queue underneath is still the pooled `AsyncLock`. The cost comes from tracking reentrancy through an `AsyncLocal`, which no pooling can remove: the flow has to carry a new value to every call nested inside it.
+
+### What an acquisition allocates
+
+| Path | `LockAsync` | `LockLeafAsync` | `AsyncLock` |
+|------|-------------|-----------------|-------------|
+| Uncontended | Two small objects (the flow's state and its claim), plus a new `ExecutionContext` when the acquisition writes the `AsyncLocal`, and usually another when the release restores it | Nothing | Nothing |
+| Contended | As above, plus an async state machine | An async state machine | Nothing (pooled waiter) |
+| Contended with a timeout | As above, plus a timer | As above, plus a timer | A timer |
+| The parent releases during the wait | Another pass through the queue | Another pass through the queue | Not applicable |
+
+The cost of an `AsyncLocal` write depends on the runtime and on how many other `AsyncLocal` values the flow already carries.
+
+### Time
+
+Besides the `AsyncLock` acquisition, every call reads the `AsyncLocal`, walks the flow's claims to the deepest one still held, and rechecks that claim once it holds the depth. Release checks whether the next depth is still taken. These are a few reads and interlocked operations, and the walk is usually one step long. It grows only when the flow carries claims whose holders have released.
+
+If nothing else in the flow uses `AsyncLocal`, the first acquisition gives it a non-default `ExecutionContext`. Every `await`, `Task.Run` and timer inside the hold then captures and restores that context, which the runtime otherwise skips.
+
+### Memory
+
+- **The depth table only grows.** Each depth reached keeps one `AsyncLock` for the lifetime of the instance, up to the maximum depth. See [Depths are never reclaimed](#depths-are-never-reclaimed).
+- **Captured contexts keep claims alive.** A timer, a cancellation callback or a long-running task started inside the hold captures the `ExecutionContext`, and with it the flow's state and claim chain. These are a few small objects, and they don't keep the lock held, but they live until that capture is released.
+
+### Choosing
+
+- On hot paths, prefer [`AsyncLock`](asynclock.md): take it once at the public entry point and call private methods that assume it is held, rather than re-acquiring in each layer.
+- Use `LockLeafAsync` for innermost regions that never call back into the lock. When uncontended it costs what `AsyncLock` costs.
+- Keep `AsyncReentrantLock` for code where reentrancy can't be designed out, such as ported `lock` code, callbacks into the locked API or recursion.
+
+`AsyncReentrantLockBenchmark` measures the uncontended overhead against `AsyncLock`, and `AsyncReentrantLockNestedDepthBenchmark` measures cost against nesting depth.
 
 ## See Also
 
