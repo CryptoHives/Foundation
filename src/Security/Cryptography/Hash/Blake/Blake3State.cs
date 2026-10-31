@@ -1272,14 +1272,14 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             m, (uint)lastLen, startFlag | FlagChunkEnd | FlagRoot);
 
         // Root output block 0's low eight words are the whole digest.
-        BinarySpans.WriteUInt32LittleEndian(destination, cv0);
-        BinarySpans.WriteUInt32LittleEndian(destination + 4, cv1);
-        BinarySpans.WriteUInt32LittleEndian(destination + 8, cv2);
-        BinarySpans.WriteUInt32LittleEndian(destination + 12, cv3);
-        BinarySpans.WriteUInt32LittleEndian(destination + 16, cv4);
-        BinarySpans.WriteUInt32LittleEndian(destination + 20, cv5);
-        BinarySpans.WriteUInt32LittleEndian(destination + 24, cv6);
-        BinarySpans.WriteUInt32LittleEndian(destination + 28, cv7);
+        BinaryStore.WriteUInt32LittleEndian(destination, cv0);
+        BinaryStore.WriteUInt32LittleEndian(destination + 4, cv1);
+        BinaryStore.WriteUInt32LittleEndian(destination + 8, cv2);
+        BinaryStore.WriteUInt32LittleEndian(destination + 12, cv3);
+        BinaryStore.WriteUInt32LittleEndian(destination + 16, cv4);
+        BinaryStore.WriteUInt32LittleEndian(destination + 20, cv5);
+        BinaryStore.WriteUInt32LittleEndian(destination + 24, cv6);
+        BinaryStore.WriteUInt32LittleEndian(destination + 28, cv7);
     }
 
     /// <summary>
