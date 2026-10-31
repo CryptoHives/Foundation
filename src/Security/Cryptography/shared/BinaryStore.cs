@@ -10,11 +10,11 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 /// <summary>
-/// Writes the leading bytes of a word's encoding to a short final block, the counterpart of
-/// <see cref="BinaryLoad"/>.
+/// Writes a word's encoding to memory: in full, or only its leading bytes for a short final
+/// block, the counterpart of <see cref="BinaryLoad"/>.
 /// </summary>
 /// <remarks>
-/// No method writes any byte at or past <c>destination + length</c>, so a zero length
+/// No truncated write touches any byte at or past <c>destination + length</c>, so a zero length
 /// dereferences nothing and a null destination is legal.
 /// </remarks>
 internal static class BinaryStore
@@ -293,6 +293,36 @@ internal static class BinaryStore
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     public static unsafe void WriteUInt64PairBigEndianTruncated(ulong first, ulong second, byte* destination, int length) =>
         WriteUInt64PairBigEndianTruncated(first, second, ref Unsafe.AsRef<byte>(destination), length);
+
+    // ================================================================
+    // Full-width pointer writes
+    // ================================================================
+
+    /// <summary>
+    /// Writes a single <see cref="UInt32"/> to a byte pointer in little-endian order.
+    /// </summary>
+    /// <param name="destination">The destination bytes (must be at least 4 bytes).</param>
+    /// <param name="value">The word to write.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void WriteUInt32LittleEndian(byte* destination, uint value)
+    {
+        Unsafe.WriteUnaligned(
+            destination,
+            BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
+    }
+
+    /// <summary>
+    /// Writes a single <see cref="UInt64"/> to a byte pointer in little-endian order.
+    /// </summary>
+    /// <param name="destination">The destination bytes (must be at least 8 bytes).</param>
+    /// <param name="value">The word to write.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public static unsafe void WriteUInt64LittleEndian(byte* destination, ulong value)
+    {
+        Unsafe.WriteUnaligned(
+            destination,
+            BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
+    }
 
     // ================================================================
     // Piece writers — every write this class performs goes through one of
