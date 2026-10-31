@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -572,7 +573,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
                         while (length - offset >= Avx512BatchSizeBytes)
                         {
-                            CompressChunks16Avx512(srcPtr + offset, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+                            CompressChunks16Avx512(srcPtr + offset, Avx512ChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx512BatchSizeBytes == length;
 
@@ -609,9 +610,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // No partial batch here: a 1..15 chunk tail falls through to the AVX2
-                    // branch. Running the 16-wide kernel on a short tail wastes most of its
-                    // lanes and showed no improvement outside measurement uncertainty.
+                    // Partial batch: 9..15 chunks in a single 16-lane pass. Up to 8 chunks fall
+                    // through to the AVX2 branch, where the 8-lane kernels cover them.
+                    if (length - offset >= (Avx2ChunksPerBatch + 1) * ChunkSizeBytes)
+                    {
+                        offset += CommitPartialBatchAvx512(core, srcPtr, offset, length, batchCvs);
+                    }
                 }
 
                 // Helps to not JIT this branch if unsupported
@@ -669,8 +673,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     }
 
                     // Partial batch: 2..7 chunks in a single 8-lane pass, so anything from
-                    // 3 up costs the same. Counters may be unaligned here, so CVs commit
-                    // per-chunk.
+                    // 3 up costs the same.
                     if (length - offset >= 2 * ChunkSizeBytes)
                     {
                         offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs);
@@ -1081,11 +1084,26 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// In-place merges (<paramref name="destination"/> == <paramref name="children"/>)
     /// are safe since both compress paths finish reading before writing.
     /// </remarks>
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void ComputeParentCv(uint* children, uint* key, uint* destination)
     {
         uint flags = _baseFlags | FlagParent;
+#if NET8_0_OR_GREATER
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            CompressParentSsse3(key, children, destination, flags);
+            return;
+        }
+#endif
+
+        ComputeParentCvPortable(children, key, destination, flags);
+    }
+
+    // Kept out of line: its staging buffer would otherwise put a stack cookie on every caller.
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private void ComputeParentCvPortable(uint* children, uint* key, uint* destination, uint flags)
+    {
         uint* cv = stackalloc uint[KeySizeWords];
         Unsafe.CopyBlock(cv, key, KeySizeBytes);
         CompressWordBlock(cv, children, BlockSizeBytes, 0, flags);
@@ -1134,6 +1152,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     // Single-block work has no independent work to spread across NEON's lanes, and
     // row-vectorizing it measured slower than scalar, so the NEON tier uses scalar here.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     private void CompressBlock(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
@@ -1150,6 +1169,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
     // See CompressBlock — same reasoning applies here.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     private void CompressBlocks(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
@@ -1252,14 +1272,14 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             m, (uint)lastLen, startFlag | FlagChunkEnd | FlagRoot);
 
         // Root output block 0's low eight words are the whole digest.
-        BinarySpans.WriteUInt32LittleEndian(destination, cv0);
-        BinarySpans.WriteUInt32LittleEndian(destination + 4, cv1);
-        BinarySpans.WriteUInt32LittleEndian(destination + 8, cv2);
-        BinarySpans.WriteUInt32LittleEndian(destination + 12, cv3);
-        BinarySpans.WriteUInt32LittleEndian(destination + 16, cv4);
-        BinarySpans.WriteUInt32LittleEndian(destination + 20, cv5);
-        BinarySpans.WriteUInt32LittleEndian(destination + 24, cv6);
-        BinarySpans.WriteUInt32LittleEndian(destination + 28, cv7);
+        BinaryStore.WriteUInt32LittleEndian(destination, cv0);
+        BinaryStore.WriteUInt32LittleEndian(destination + 4, cv1);
+        BinaryStore.WriteUInt32LittleEndian(destination + 8, cv2);
+        BinaryStore.WriteUInt32LittleEndian(destination + 12, cv3);
+        BinaryStore.WriteUInt32LittleEndian(destination + 16, cv4);
+        BinaryStore.WriteUInt32LittleEndian(destination + 20, cv5);
+        BinaryStore.WriteUInt32LittleEndian(destination + 24, cv6);
+        BinaryStore.WriteUInt32LittleEndian(destination + 28, cv7);
     }
 
     /// <summary>

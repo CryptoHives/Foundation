@@ -5,6 +5,7 @@ namespace Cryptography.Tests;
 
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 
@@ -22,7 +23,7 @@ public class BinaryOperationsTests
 
     public static TestCaseData[] CounterStarts()
     {
-        var cases = new System.Collections.Generic.List<TestCaseData>();
+        var cases = new List<TestCaseData>();
         foreach (int length in CounterLengths)
         {
             // 0x00.., 0x00..FE, 0x00..FF, 0xFF.., and a carry that stops mid-way: ..01 FF FF FF FF.
@@ -42,7 +43,10 @@ public class BinaryOperationsTests
         return cases.ToArray();
     }
 
-    /// <summary>Builds a counter whose leading bytes are <paramref name="head"/> and whose last four (or fewer) bytes are <paramref name="tail"/>.</summary>
+    /// <summary>
+    /// Builds a counter whose leading bytes are <paramref name="head"/> and whose
+    /// last four (or fewer) bytes are <paramref name="tail"/>.
+    /// </summary>
     private static byte[] Filled(int length, byte head, byte tail)
     {
         byte[] bytes = new byte[length];
