@@ -31,7 +31,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "A ValueTask may only be consumed once. Awaiting it, calling AsTask(), calling Preserve() or calling GetAwaiter().GetResult() each consume it, and doing any two of those to the same instance - in any combination - can cause undefined behavior or InvalidOperationException, because a ValueTask backed by a pooled IValueTaskSource may have been recycled in between. Convert once with .AsTask() and reuse the resulting Task, or use .Preserve() to make the ValueTask safe to consume repeatedly.",
         helpLinkUri: HelpLinkBase + "CHT001.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT002: ValueTask.GetAwaiter().GetResult() used (blocking).
@@ -45,7 +45,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Calling GetAwaiter().GetResult() on a ValueTask is undefined behavior when backed by IValueTaskSource. Use await instead, or convert to Task first with .AsTask().GetAwaiter().GetResult() if blocking is absolutely necessary.",
         helpLinkUri: HelpLinkBase + "CHT002.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT003: ValueTask stored in field.
@@ -59,7 +59,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Storing a ValueTask in a field increases the risk of consuming it multiple times, which causes undefined behavior. Consider storing the result of .AsTask() or .Preserve() instead.",
         helpLinkUri: HelpLinkBase + "CHT003.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT005: ValueTask.Result accessed directly.
@@ -73,7 +73,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Accessing .Result directly on a ValueTask is undefined behavior when the ValueTask is backed by IValueTaskSource. Use await or convert to Task first.",
         helpLinkUri: HelpLinkBase + "CHT005.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT007: ValueTask.AsTask() stored before signaling.
@@ -87,7 +87,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "When RunContinuationsAsynchronously is true (default), storing the result of AsTask() before the underlying operation signals completion forces asynchronous scheduling, causing severe performance degradation. Await the ValueTask directly for optimal performance.",
         helpLinkUri: HelpLinkBase + "CHT007.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT008: ValueTask not consumed.
@@ -101,7 +101,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "A ValueTask should always be awaited or converted to Task. When backed by pooled IValueTaskSource, not consuming it may leak pooled objects.",
         helpLinkUri: HelpLinkBase + "CHT008.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT009: SemaphoreSlim(1, 1) used as an async lock.
@@ -115,7 +115,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "SemaphoreSlim(1, 1) is commonly used as an async-compatible exclusive lock, but CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock is purpose-built for this pattern: it uses pooled ValueTask sources to eliminate per-wait allocations and provides a deterministic Releaser struct that works with using declarations.",
         helpLinkUri: HelpLinkBase + "CHT009.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT010: ValueTask captured in lambda/closure.
@@ -129,7 +129,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Capturing a ValueTask in a lambda or local function is potentially unsafe because the lambda might be invoked multiple times, or the ValueTask may be consumed by other code before the lambda executes. If you need to use the result multiple times, convert it to a Task using .AsTask() or use .Preserve() to safely capture it for multiple consumes.",
         helpLinkUri: HelpLinkBase + "CHT010.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT011: async method only forwards an awaited ValueTask.
@@ -143,7 +143,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "An async method compiles to a state machine, and its builder boxes that state machine onto the heap the first time the method suspends. When the method does nothing but await one ValueTask and return the result, that machinery buys nothing: returning the inner ValueTask directly is equivalent and removes the allocation. The synchronous fast path benefits too, because the builder costs setup work even when it never suspends. Note that the exception behaviour changes subtly - an argument validated inside the method would now throw synchronously instead of surfacing on the returned ValueTask - so split validation into a non-async wrapper if callers depend on it.",
         helpLinkUri: HelpLinkBase + "CHT011.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT012: async ValueTask wrapper boxes a state machine on every suspension.
@@ -157,7 +157,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "This method awaits exactly one ValueTask and returns it, but the await is wrapped in cleanup (try/catch, try/finally or using) that keeps the async machinery load-bearing. The cost is real but conditional: a call that completes synchronously allocates nothing, while every call that actually suspends boxes a state machine onto the heap - so this is a contended-path cost that an uncontended benchmark will not show. Consider whether the cleanup can be relocated to the awaited operation's own completion and failure paths, which allows the inner ValueTask to be returned directly. Applying [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))] to the method is a lower-effort alternative that pools the box, but it only helps when boxes are reused in sequence - it cannot reduce peak live objects, so it does little when many waiters suspend at the same time. Measure before choosing. If the cleanup genuinely requires the await boundary, suppress this diagnostic with a comment explaining why.",
         helpLinkUri: HelpLinkBase + "CHT012.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 
     /// <summary>
     /// CHT013: async method returns an AsyncReentrantLock releaser.
@@ -171,5 +171,5 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "AsyncReentrantLock records each hold in an AsyncLocal. An async method runs in its own ExecutionContext, so the hold it acquires is invisible to the caller that receives the releaser: the caller holds the lock, but the lock does not see it as nested, and the caller's next LockAsync waits for a lock it already holds. Return the ValueTask from LockAsync directly from a non-async method, or acquire the lock in the caller.",
         helpLinkUri: HelpLinkBase + "CHT013.html",
-        customTags: WellKnownDiagnosticTags.CustomSeverityConfigurable);
+        customTags: System.Array.Empty<string>());
 }
