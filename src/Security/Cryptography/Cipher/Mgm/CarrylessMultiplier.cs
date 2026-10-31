@@ -50,7 +50,7 @@ internal readonly struct CarrylessMultiplier
     /// Computes the 128-bit carry-less product of <paramref name="a"/> and <paramref name="b"/>.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     public void Multiply(ulong a, ulong b, out ulong hi, out ulong lo)
     {
 #if NET8_0_OR_GREATER

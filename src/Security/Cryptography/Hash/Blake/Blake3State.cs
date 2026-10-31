@@ -1152,7 +1152,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     // Single-block work has no independent work to spread across NEON's lanes, and
     // row-vectorizing it measured slower than scalar, so the NEON tier uses scalar here.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     private void CompressBlock(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
@@ -1169,7 +1169,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
     // See CompressBlock — same reasoning applies here.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     private void CompressBlocks(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER

@@ -368,7 +368,7 @@ public abstract class AesGcmSiv : IAeadCipher
     }
 #endif
 
-    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     private int ExpandKey(ReadOnlySpan<byte> key, Span<uint> roundKeys)
     {
 #if NET8_0_OR_GREATER
@@ -386,7 +386,7 @@ public abstract class AesGcmSiv : IAeadCipher
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     private void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<uint> roundKeys, int rounds)
     {
 #if NET8_0_OR_GREATER
