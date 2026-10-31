@@ -7,6 +7,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -81,6 +82,8 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialAvx2(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
+        Debug.Assert(chunkCount < Avx2ChunksPerBatch, "the partial kernel compresses less than eight chunks");
+
         CounterVectors256(baseCounter, out var counterLow, out var counterHigh);
         var blockLenVec = Vector256.Create((uint)BlockSizeBytes);
 
@@ -487,7 +490,7 @@ internal unsafe partial struct Blake3State
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
     /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
     /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
-    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
+    /// <param name="batchCvs">The caller's 64-CV scratch buffer.</param>
     /// <returns>The number of bytes consumed.</returns>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private int CommitPartialBatchAvx2(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
@@ -515,8 +518,87 @@ internal unsafe partial struct Blake3State
                 srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
         }
 
-        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
+        CommitPartialBatchCvsAvx2(core, batchCvs, fullChunks, drainsRemainingInput);
         return fullChunks * ChunkSizeBytes;
+    }
+
+    // Each tree level of a partial batch gets its own region of the batch buffer, so a subtree
+    // root left unpaired on one level is not overwritten by the next level's wide pass.
+    private const int PartialBatchLevelStrideWords = Avx512ChunksPerBatch * KeySizeWords;
+
+    /// <summary>
+    /// Commits the CVs of a 2-15 chunk partial batch as the aligned subtrees the binary digits
+    /// of <paramref name="chunkCount"/> describe, reducing all of them together with one wide
+    /// parent pass per tree level instead of merging chunk by chunk.
+    /// </summary>
+    /// <remarks>
+    /// Needs <c>_chunkCounter</c> to be a multiple of 8; otherwise the CVs commit per chunk.
+    /// A drained input holds back its smallest subtree as pending, or the right half of a
+    /// lone one, since <see cref="FinalizeRoot"/> needs a left sibling on the stack.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="batchCvs">The chunk CVs in their first 16 slots, in the caller's 64-CV scratch buffer.</param>
+    /// <param name="chunkCount">Number of chunk CVs, 2..15.</param>
+    /// <param name="drainsRemainingInput">Whether the batch ends exactly at the end of the input.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private void CommitPartialBatchCvsAvx2(Blake3State* core, uint* batchCvs, int chunkCount, bool drainsRemainingInput)
+    {
+        Debug.Assert(chunkCount >= 2 && chunkCount < Avx512ChunksPerBatch, "a partial batch has 2..15 chunks");
+
+        if ((_chunkCounter & (Avx2ChunksPerBatch - 1)) != 0)
+        {
+            CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? chunkCount - 1 : chunkCount, drainsRemainingInput);
+            return;
+        }
+
+        int topLevel = BitOperations.Log2((uint)chunkCount);
+        bool deferHalf = drainsRemainingInput && BitOperations.IsPow2(chunkCount);
+        int levels = deferHalf ? topLevel - 1 : topLevel;
+
+        // Level k holds chunkCount >> k complete nodes; node j covers chunks [j·2^k, (j+1)·2^k).
+        uint* children = batchCvs;
+        for (int k = 1; k <= levels; k++)
+        {
+            uint* parents = batchCvs + (k * PartialBatchLevelStrideWords);
+            if ((chunkCount >> k) == 1)
+            {
+                ComputeParentCv(children, core->_keyWords, parents);
+            }
+            else
+            {
+                CompressParents8Avx2(children, core->_keyWords, parents, _baseFlags);
+            }
+
+            children = parents;
+        }
+
+        if (deferHalf)
+        {
+            DeferRightHalf(core, children, levels);
+            return;
+        }
+
+        // The subtree for bit k of chunkCount is the last complete node on level k.
+        int pendingLevel = drainsRemainingInput ? BitOperations.TrailingZeroCount(chunkCount) : -1;
+        for (int k = topLevel; k >= 0; k--)
+        {
+            if ((chunkCount & (1 << k)) == 0)
+            {
+                continue;
+            }
+
+            uint* root = batchCvs + (k * PartialBatchLevelStrideWords) + (((chunkCount >> k) - 1) * KeySizeWords);
+            if (k == pendingLevel)
+            {
+                Unsafe.CopyBlock(core->_pendingCv, root, KeySizeBytes);
+                _pendingLevel = k;
+                _hasPendingCv = true;
+                return;
+            }
+
+            PushSubtreeCv(core, root, k);
+            _chunkCounter += 1UL << k;
+        }
     }
 
     /// <summary>

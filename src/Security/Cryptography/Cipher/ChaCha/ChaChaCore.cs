@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -118,6 +119,7 @@ internal readonly partial struct ChaChaCore
     /// <param name="input">The input data.</param>
     /// <param name="output">The output buffer (must be same size as input).</param>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
     public readonly void Transform(
         ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint counter,
         ReadOnlySpan<byte> input, Span<byte> output)

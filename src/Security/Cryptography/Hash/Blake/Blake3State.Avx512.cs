@@ -96,6 +96,7 @@ internal unsafe partial struct Blake3State
             {
                 CompressChunks16Avx512(
                     srcPtr + offset,
+                    Avx512ChunksPerBatch,
                     core->_keyWords,
                     batchCvs + b * Avx512ChunksPerBatch * KeySizeWords,
                     _chunkCounter + (ulong)(b * Avx512ChunksPerBatch),
@@ -120,17 +121,18 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Compresses exactly 16 independent, full (1024-byte) chunks with the 16-way kernel,
-    /// writing their 16 chaining values to <paramref name="outCvs"/> (128 words, chunk-major).
+    /// Compresses <paramref name="chunkCount"/> (9..16) independent, full (1024-byte) chunks with
+    /// the 16-way kernel, writing their chaining values to <paramref name="outCvs"/> (chunk-major).
     /// </summary>
     /// <remarks>
     /// The 16-lane counterpart of <see cref="CompressChunks8Avx2"/>: each block's sixteen
     /// rows are read straight from the chunks by the transpose rather than staged in
-    /// <c>m</c> first. A 1..15 chunk tail never comes here; see <c>Append</c>.
+    /// <c>m</c> first. Surplus lanes compress zero rows, so no load leaves the input.
+    /// All 16 CV slots are written; those past <paramref name="chunkCount"/> are garbage.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void CompressChunks16Avx512(byte* source, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
+    private static void CompressChunks16Avx512(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
         byte* scratch = stackalloc byte[Avx512ScratchBytes];
         Vector512<uint>* m = Avx512Scratch(scratch);
@@ -153,7 +155,7 @@ internal unsafe partial struct Blake3State
 
         for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
-            Transpose16x16Into(blockBase, ChunkSizeBytes, m);
+            Transpose16x16Into(blockBase, ChunkSizeBytes, chunkCount, m);
 
             CompressVector512(cv, m, counters, flags);
 
@@ -161,13 +163,36 @@ internal unsafe partial struct Blake3State
             blockBase += BlockSizeBytes;
         }
 
-        // Rows 8..15 of the transpose are whatever cv is followed by (the counters and
-        // unused scratch); only the low eight words of each output row are stored.
-        Transpose16x16Into((byte*)cv, sizeof(Vector512<uint>), m);
-        for (int chunkIdx = 0; chunkIdx < Avx512ChunksPerBatch; chunkIdx++)
-        {
-            Avx.Store(outCvs + chunkIdx * KeySizeWords, m[chunkIdx].GetLower());
-        }
+        UntransposeCvs8x16(cv, outCvs);
+    }
+
+    /// <summary>
+    /// Compresses the 9-15 chunk tail left by the 16-chunk batch loop in one 16-lane pass and
+    /// commits its CVs, returning the bytes consumed.
+    /// </summary>
+    /// <remarks>
+    /// One 16-lane pass costs less than the 8-chunk batch plus the 8-lane partial pass that
+    /// otherwise covers this range. Shorter tails stay with the AVX2 branch.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">The caller's 64-CV scratch buffer.</param>
+    /// <returns>The number of bytes consumed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CommitPartialBatchAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        int fullChunks = (length - offset) / ChunkSizeBytes;
+        Debug.Assert(fullChunks > Avx2ChunksPerBatch && fullChunks < Avx512ChunksPerBatch,
+            "the 16-chunk batch loop leaves 9..15 chunks here");
+        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
+
+        CompressChunks16Avx512(
+            srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+
+        CommitPartialBatchCvsAvx2(core, batchCvs, fullChunks, drainsRemainingInput);
+        return fullChunks * ChunkSizeBytes;
     }
 
     // m (16 vectors), then cv (8) and the two counter vectors padded out to 16 rows, since
@@ -468,14 +493,61 @@ internal unsafe partial struct Blake3State
 
         // m[w] holds word w of all 16 blocks; transposed, row j is all 16 words of
         // block j - a whole 64-byte output block, stored straight into dst.
-        Transpose16x16Into((byte*)m, sizeof(Vector512<uint>), (Vector512<uint>*)dst);
+        Transpose16x16Into((byte*)m, sizeof(Vector512<uint>), Avx512ChunksPerBatch, (Vector512<uint>*)dst);
     }
 
+    /// <summary>
+    /// Un-transposes the eight CV rows of the 16-way kernel, where <paramref name="cv"/>[w]
+    /// holds word <c>w</c> of all 16 chunks, into 16 chunk-major CVs at <paramref name="outCvs"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void UntransposeCvs8x16(Vector512<uint>* cv, uint* outCvs)
+    {
+        var ab0 = Avx512F.UnpackLow(cv[0], cv[1]);
+        var ab2 = Avx512F.UnpackHigh(cv[0], cv[1]);
+        var cd0 = Avx512F.UnpackLow(cv[2], cv[3]);
+        var cd2 = Avx512F.UnpackHigh(cv[2], cv[3]);
+        var ef0 = Avx512F.UnpackLow(cv[4], cv[5]);
+        var ef2 = Avx512F.UnpackHigh(cv[4], cv[5]);
+        var gh0 = Avx512F.UnpackLow(cv[6], cv[7]);
+        var gh2 = Avx512F.UnpackHigh(cv[6], cv[7]);
 
+        // Lane L of abcdN carries words 0..3 of chunk 4L+N, lane L of efghN words 4..7.
+        var abcd0 = Avx512F.UnpackLow(ab0.AsUInt64(), cd0.AsUInt64());
+        var abcd1 = Avx512F.UnpackHigh(ab0.AsUInt64(), cd0.AsUInt64());
+        var abcd2 = Avx512F.UnpackLow(ab2.AsUInt64(), cd2.AsUInt64());
+        var abcd3 = Avx512F.UnpackHigh(ab2.AsUInt64(), cd2.AsUInt64());
+        var efgh0 = Avx512F.UnpackLow(ef0.AsUInt64(), gh0.AsUInt64());
+        var efgh1 = Avx512F.UnpackHigh(ef0.AsUInt64(), gh0.AsUInt64());
+        var efgh2 = Avx512F.UnpackLow(ef2.AsUInt64(), gh2.AsUInt64());
+        var efgh3 = Avx512F.UnpackHigh(ef2.AsUInt64(), gh2.AsUInt64());
+
+        // Pair lane L of abcdN with lane L of efghN: lanes 0 and 1 give chunks N and 4+N,
+        // lanes 2 and 3 give chunks 8+N and 12+N.
+        var lowLanes = Vector512.Create(0ul, 1, 8, 9, 2, 3, 10, 11);
+        var highLanes = Vector512.Create(4ul, 5, 12, 13, 6, 7, 14, 15);
+        StoreCvPair(Avx512F.PermuteVar8x64x2(abcd0, lowLanes, efgh0), outCvs, 0);
+        StoreCvPair(Avx512F.PermuteVar8x64x2(abcd1, lowLanes, efgh1), outCvs, 1);
+        StoreCvPair(Avx512F.PermuteVar8x64x2(abcd2, lowLanes, efgh2), outCvs, 2);
+        StoreCvPair(Avx512F.PermuteVar8x64x2(abcd3, lowLanes, efgh3), outCvs, 3);
+        StoreCvPair(Avx512F.PermuteVar8x64x2(abcd0, highLanes, efgh0), outCvs, 8);
+        StoreCvPair(Avx512F.PermuteVar8x64x2(abcd1, highLanes, efgh1), outCvs, 9);
+        StoreCvPair(Avx512F.PermuteVar8x64x2(abcd2, highLanes, efgh2), outCvs, 10);
+        StoreCvPair(Avx512F.PermuteVar8x64x2(abcd3, highLanes, efgh3), outCvs, 11);
+    }
+
+    // The low half is the CV of chunk n, the high half that of chunk n + 4.
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void StoreCvPair(Vector512<ulong> pair, uint* outCvs, int n)
+    {
+        Avx.Store(outCvs + (n * KeySizeWords), pair.AsUInt32().GetLower());
+        Avx.Store(outCvs + ((n + 4) * KeySizeWords), pair.AsUInt32().GetUpper());
+    }
 
     /// <summary>
     /// 16×16 transpose of 32-bit words: row <c>j</c> is the 16 words at
-    /// <paramref name="rows"/> + <c>j</c>·<paramref name="stride"/>; on output
+    /// <paramref name="rows"/> + <c>j</c>·<paramref name="stride"/> for <c>j</c> &lt; <paramref name="rowCount"/>,
+    /// and zero beyond; on output
     /// <paramref name="dst"/>[w] holds word <c>w</c> of all 16 rows (lane <c>j</c> = row <c>j</c>).
     /// All rows are loaded before anything is stored, so <paramref name="dst"/> may
     /// overlap the rows.
@@ -490,8 +562,10 @@ internal unsafe partial struct Blake3State
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void Transpose16x16Into(byte* rows, int stride, Vector512<uint>* dst)
+    private static void Transpose16x16Into(byte* rows, nint stride, int rowCount, Vector512<uint>* dst)
     {
+        Debug.Assert(rowCount > 8 && rowCount <= Avx512ChunksPerBatch);
+
         // NoInlining: the flat single-assignment body needs ~48 vector locals, past the
         // inliner's cap, and the caller keeps no ZMM state live across the call. A staged
         // variant would inline but chains through memory, which stalls on hardware that
@@ -506,13 +580,58 @@ internal unsafe partial struct Blake3State
         var g = Avx512F.LoadVector512((uint*)(rows + (6 * stride)));
         var h = Avx512F.LoadVector512((uint*)(rows + (7 * stride)));
         var i = Avx512F.LoadVector512((uint*)(rows + (8 * stride)));
-        var j = Avx512F.LoadVector512((uint*)(rows + (9 * stride)));
-        var k = Avx512F.LoadVector512((uint*)(rows + (10 * stride)));
-        var l = Avx512F.LoadVector512((uint*)(rows + (11 * stride)));
-        var m = Avx512F.LoadVector512((uint*)(rows + (12 * stride)));
-        var n = Avx512F.LoadVector512((uint*)(rows + (13 * stride)));
-        var o = Avx512F.LoadVector512((uint*)(rows + (14 * stride)));
-        var p = Avx512F.LoadVector512((uint*)(rows + (15 * stride)));
+
+        Vector512<uint> j, k, l, m, n, o, p;
+        if (rowCount > 9)
+        {
+            j = Avx512F.LoadVector512((uint*)(rows + (9 * stride)));
+            if (rowCount > 10)
+            {
+                k = Avx512F.LoadVector512((uint*)(rows + (10 * stride)));
+                if (rowCount > 11)
+                {
+                    l = Avx512F.LoadVector512((uint*)(rows + (11 * stride)));
+                    if (rowCount > 12)
+                    {
+                        m = Avx512F.LoadVector512((uint*)(rows + (12 * stride)));
+                        if (rowCount > 13)
+                        {
+                            n = Avx512F.LoadVector512((uint*)(rows + (13 * stride)));
+                            if (rowCount > 14)
+                            {
+                                o = Avx512F.LoadVector512((uint*)(rows + (14 * stride)));
+                                if (rowCount > 15)
+                                {
+                                    p = Avx512F.LoadVector512((uint*)(rows + (15 * stride)));
+                                    goto fifteen;
+                                }
+                                goto fourteen;
+                            }
+                            goto thirteen;
+                        }
+                        goto twelve;
+                    }
+                    goto eleven;
+                }
+                goto ten;
+            }
+            goto nine;
+        }
+
+        j = Vector512<uint>.Zero;
+    nine:
+        k = Vector512<uint>.Zero;
+    ten:
+        l = Vector512<uint>.Zero;
+    eleven:
+        m = Vector512<uint>.Zero;
+    twelve:
+        n = Vector512<uint>.Zero;
+    thirteen:
+        o = Vector512<uint>.Zero;
+    fourteen:
+        p = Vector512<uint>.Zero;
+    fifteen:
 
         // Interleave 32-bit words of row pairs: lane L of ab0 carries
         // [a,b][col 4L..4L+1], of ab2 carries [a,b][col 4L+2..4L+3].

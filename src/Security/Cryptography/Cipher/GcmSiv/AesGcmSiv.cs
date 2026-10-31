@@ -5,6 +5,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using OS = System.Security.Cryptography;
@@ -53,7 +54,7 @@ public abstract class AesGcmSiv : IAeadCipher
     /// <param name="key">The 16- or 32-byte key-generating key.</param>
     private protected AesGcmSiv(SimdSupport simdSupport, ReadOnlySpan<byte> key)
     {
-        if (key.Length != 16 && key.Length != 32)
+        if (key.Length is not 16 and not 32)
             throw new ArgumentException("Key must be 16 or 32 bytes.", nameof(key));
 
         simdSupport = simdSupport.WithImplicit() & SimdSupport;
@@ -294,7 +295,7 @@ public abstract class AesGcmSiv : IAeadCipher
 #if NET8_0_OR_GREATER
         if ((AesCoreAesNi.IsSupported || AesCoreArm.IsSupported) && _useAes)
         {
-            offset = CtrBlocks4(counter, input, output, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), rounds);
+            offset = AesGcmSiv.CtrBlocks4(counter, input, output, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), rounds);
         }
 #endif
 
@@ -324,7 +325,7 @@ public abstract class AesGcmSiv : IAeadCipher
     /// </summary>
     /// <returns>The number of bytes processed; <paramref name="counter"/> is advanced past them.</returns>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private int CtrBlocks4(
+    private static int CtrBlocks4(
         Span<byte> counter, ReadOnlySpan<byte> input, Span<byte> output,
         ReadOnlySpan<Vector128<byte>> roundKeys, int rounds)
     {
@@ -367,6 +368,7 @@ public abstract class AesGcmSiv : IAeadCipher
     }
 #endif
 
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
     private int ExpandKey(ReadOnlySpan<byte> key, Span<uint> roundKeys)
     {
 #if NET8_0_OR_GREATER
@@ -384,6 +386,7 @@ public abstract class AesGcmSiv : IAeadCipher
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
     private void EncryptBlock(ReadOnlySpan<byte> input, Span<byte> output, ReadOnlySpan<uint> roundKeys, int rounds)
     {
 #if NET8_0_OR_GREATER

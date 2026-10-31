@@ -138,6 +138,28 @@ internal unsafe partial struct Blake3State
         Sse2.Store(cv + 4, row1);
     }
 
+    /// <summary>
+    /// Compresses one parent node: the key seeds the state and the two child CVs at
+    /// <paramref name="children"/> are the message block, so no staging copy is needed.
+    /// </summary>
+    /// <remarks>
+    /// The output is stored only after the rounds have read the whole block, so
+    /// <paramref name="destination"/> may be <paramref name="children"/>.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void CompressParentSsse3(uint* key, uint* children, uint* destination, uint flags)
+    {
+        var row0 = Sse2.LoadVector128(key);
+        var row1 = Sse2.LoadVector128(key + 4);
+        var row2 = IVLow;
+        var row3 = Vector128.Create(0u, 0u, (uint)BlockSizeBytes, flags);
+
+        GRounds128(children, ref row0, ref row1, ref row2, ref row3);
+
+        Sse2.Store(destination, Sse2.Xor(row0, row2));
+        Sse2.Store(destination + 4, Sse2.Xor(row1, row3));
+    }
+
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressBlocksSsse3(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {

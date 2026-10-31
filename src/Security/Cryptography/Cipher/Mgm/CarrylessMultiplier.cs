@@ -4,6 +4,7 @@
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 #if NET8_0_OR_GREATER
 using System.Runtime.Intrinsics;
@@ -49,6 +50,7 @@ internal readonly struct CarrylessMultiplier
     /// Computes the 128-bit carry-less product of <paramref name="a"/> and <paramref name="b"/>.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "TFM conditioned build hides member access.")]
     public void Multiply(ulong a, ulong b, out ulong hi, out ulong lo)
     {
 #if NET8_0_OR_GREATER

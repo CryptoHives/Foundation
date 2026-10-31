@@ -157,7 +157,7 @@ internal static class CamelliaCore
     /// <exception cref="ArgumentException">The key length is invalid.</exception>
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<ulong> subkeys)
     {
-        if (key.Length != 16 && key.Length != 24 && key.Length != 32)
+        if (key.Length is not 16 and not 24 and not 32)
             throw new ArgumentException("Key must be 16, 24, or 32 bytes.", nameof(key));
 
         ulong klh = BinaryPrimitives.ReadUInt64BigEndian(key);
