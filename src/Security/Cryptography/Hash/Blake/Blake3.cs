@@ -199,9 +199,9 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
     /// <remarks>
     /// Rents a pooled instance and takes the dedicated one-shot path — the same path
-    /// <see cref="TryComputeHash"/> takes on a freshly initialized instance — so the
-    /// entire call, small inputs included, skips the incremental chunk-buffer
-    /// bookkeeping the streaming surface needs.
+    /// <see cref="TryComputeHash"/> takes on a freshly initialized instance — which for
+    /// inputs of at most one chunk skips the incremental chunk-buffer bookkeeping the
+    /// streaming surface needs.
     /// </remarks>
     public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
     {
@@ -224,9 +224,9 @@ public sealed class Blake3 : HashAlgorithm, IExtendableOutput
     /// <returns>A new byte array containing the BLAKE3 hash.</returns>
     /// <remarks>
     /// Rents a pooled instance and takes the dedicated one-shot path — the same path
-    /// <see cref="TryComputeHash"/> takes on a freshly initialized instance — so the
-    /// entire call, small inputs included, skips the incremental chunk-buffer
-    /// bookkeeping the streaming surface needs.
+    /// <see cref="TryComputeHash"/> takes on a freshly initialized instance — which for
+    /// inputs of at most one chunk skips the incremental chunk-buffer bookkeeping the
+    /// streaming surface needs.
     /// </remarks>
     public static byte[] HashData(ReadOnlySpan<byte> source)
     {

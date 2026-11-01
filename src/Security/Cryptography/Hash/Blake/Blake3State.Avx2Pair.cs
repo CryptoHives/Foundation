@@ -30,7 +30,8 @@ using System.Runtime.Intrinsics.X86;
 /// <para>
 /// A transposed kernel is the wrong shape below five chunks: it spends a full vector's
 /// worth of rounds plus a transpose whatever the count, so three chunks cost what seven do.
-/// Two chunks run one chain here and three or four run two chains side by side.
+/// Two chunks run one chain here, and three or four run two chains side by side where the
+/// 32-register file allows it; without it they take the 8-lane kernel.
 /// </para>
 /// </remarks>
 internal unsafe partial struct Blake3State
@@ -55,8 +56,7 @@ internal unsafe partial struct Blake3State
     /// chaining values to <paramref name="outCvs"/> (16 words, chunk-major).
     /// </summary>
     /// <param name="source">The two chunks, contiguous: chunk A at offset 0, chunk B at 1024.</param>
-    /// <param name="chunkCount">Always 2; present so this matches the tier-kernel function-pointer
-    /// signature the per-tier <c>CommitPartialBatch*</c> helpers and each tier's <c>CompressSubtreeGroups*</c> dispatch through.</param>
+    /// <param name="chunkCount">Always 2; present so this matches the signature of the other chunk kernels.</param>
     /// <param name="key">The 8-word key/IV words for this hash.</param>
     /// <param name="outCvs">Receives two 8-word CVs, chunk-major.</param>
     /// <param name="baseCounter">Chunk counter of chunk A; chunk B is <paramref name="baseCounter"/> + 1.</param>

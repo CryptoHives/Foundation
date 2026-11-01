@@ -195,9 +195,8 @@ internal unsafe partial struct Blake3State
         return fullChunks * ChunkSizeBytes;
     }
 
-    // m (16 vectors), then cv (8) and the two counter vectors padded out to 16 rows, since
-    // the CV un-transpose reads 16 rows starting at cv; plus slack for 64-byte alignment.
-    private const int Avx512ScratchBytes = (2 * BlockSizeWords * 64) + 63;
+    // m (16 vectors), then cv (8) and the two counter vectors; plus slack for 64-byte alignment.
+    private const int Avx512ScratchBytes = ((BlockSizeWords + KeySizeWords + Avx512CounterVectors) * 64) + 63;
 
     // Every vector in the scratch area is read as a 512-bit memory operand by the rounds;
     // aligned to 64 bytes none of those reads can span two cache lines.
@@ -670,8 +669,8 @@ internal unsafe partial struct Blake3State
         var mnop2 = Avx512F.UnpackLow(mn2.AsUInt64(), op2.AsUInt64()).AsUInt32();
         var mnop3 = Avx512F.UnpackHigh(mn2.AsUInt64(), op2.AsUInt64()).AsUInt32();
 
-        // First 128-bit lane recombine: lane L of abcdefghN carries
-        // [a..h][col 8L+N] (0x88 keeps even source lanes, 0xDD odd).
+        // First 128-bit lane recombine: abcdefghN holds column N in lanes 0 and 2 (a..d, e..h)
+        // and column N+8 in lanes 1 and 3 (0x88 keeps even source lanes, 0xDD odd).
         var abcdefgh0 = Avx512F.Shuffle4x128(abcd0, efgh0, 0x88);
         var abcdefgh1 = Avx512F.Shuffle4x128(abcd1, efgh1, 0x88);
         var abcdefgh2 = Avx512F.Shuffle4x128(abcd2, efgh2, 0x88);

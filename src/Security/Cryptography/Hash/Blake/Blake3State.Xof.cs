@@ -99,7 +99,7 @@ internal unsafe partial struct Blake3State
         if (_cvStackDepth == 0 && _chunkCounter == 0)
         {
             // Single chunk case — source is the incremental chunk buffer,
-            // rather than the caller's own source span (see SaveChunkAsRootFromSource).
+            // rather than the caller's own source span (see TryHashOneShotSingleChunk).
             SaveChunkAsRoot(core, core->_chunkBuffer, _chunkBufferLength);
         }
         else
@@ -290,7 +290,7 @@ internal unsafe partial struct Blake3State
             // 8-wide kernel for what is left, then the tail. The AVX-512 pass only
             // takes whole groups of 16 - a short group would gain nothing, since an
             // over-wide batch costs the same as a full one and the 8-wide kernel
-            // below already handles 2..15 in one call.
+            // below handles the rest, a short tail included.
             if (Avx512F.IsSupported && (_simdSupport & SimdSupport.Avx512F) != 0)
             {
                 while (remaining >= Avx512ChunksPerBatch)

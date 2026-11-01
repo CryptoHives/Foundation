@@ -157,7 +157,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private uint _rootFlags;
 
 #if NET8_0_OR_GREATER
-    // Chaining value for a chunk that a bulk SIMD batch computed but couldn't yet
+    // Chaining value of a chunk or subtree that a bulk SIMD batch computed but couldn't yet
     // commit to the tree — unknown at the time whether it's the true last
     // chunk (see FinalizeRoot). Distinct from _cv, the in-progress accumulator
     // for a chunk still being buffered byte-by-byte.
@@ -672,8 +672,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // Partial batch: 2..7 chunks in a single 8-lane pass, so anything from
-                    // 3 up costs the same.
+                    // Partial batch: 2..7 chunks, by the pair, two-chain or 8-lane kernel
+                    // (see CommitPartialBatchAvx2).
                     if (length - offset >= 2 * ChunkSizeBytes)
                     {
                         offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs);
@@ -685,7 +685,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                 {
                     // SSSE3 4-chunk batches.
                     //
-                    // Unlike AVX2 and NEON this tier reduces four CVs per subtree
+                    // Like NEON and unlike AVX2, this tier reduces four CVs per subtree
                     // rather than eight, using CompressParents4Ssse3 — the 8-lane
                     // reduce needs Vector256 and is unavailable here.
                     if (length - offset >= Ssse3BatchSizeBytes)
@@ -997,7 +997,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void FinalizeChunk(Blake3State* core, uint* destination)
     {
-        // Compute last block boundary via integer math, same as SaveChunkAsRootFromSource.
+        // Compute last block boundary via integer math, same as SaveChunkAsRoot.
         int lastBlockOffset = (_chunkBufferLength <= BlockSizeBytes) ? 0
             : (_chunkBufferLength - 1) / BlockSizeBytes * BlockSizeBytes;
         int lastBlockLen = _chunkBufferLength - lastBlockOffset;
@@ -1008,7 +1008,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             flags |= FlagChunkStart;
         }
 
-        // All blocks except the last: batched into a single CompressBlock call
+        // All blocks except the last: batched into a single CompressBlocks call
         // (same chunk counter for every block — only the flags differ across
         // blocks of the same chunk) — one load/store of the running CV instead
         // of one per block.
@@ -1184,7 +1184,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
     }
 
-    // [SkipLocalsInit]: v0..v7 are fully assigned from cv below before any read.
+    // [SkipLocalsInit]: m is fully written from the block before each compression.
     // v0..v15 are named locals rather than a stackalloc'd array, passed by ref
     // into a force-inlined Compress: named locals only avoid the array's
     // memory traffic if Compress is actually inlined, since byref params to a
