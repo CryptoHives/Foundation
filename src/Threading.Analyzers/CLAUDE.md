@@ -1,0 +1,3 @@
+# Threading.Analyzers
+
+`ValueTaskMisuseAnalyzer` tracks CHT001/CHT010 as data flow over each function's `ControlFlowGraph` (lambdas and local functions get their own graph; a consumed outer variable is a capture). Resolve task types through `ValueTaskTypes` once per compilation rather than comparing names. CHT004 and CHT006 were removed; their IDs are not reused. When adding or removing a rule, record it in `AnalyzerReleases.Unshipped.md`. The project targets `netstandard2.0` only and suppresses RS1007/RS1038 on purpose (see its `.csproj`). Tests derive from `AnalyzerTestBase<TAnalyzer>` and mark expected locations with `{|#0:code|}`.
