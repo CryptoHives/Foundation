@@ -1,6 +1,8 @@
-# Cryptography — PQC, key formats and platform notes
-
-Loaded when working under `src/Security/Cryptography/` or `tests/Security/Cryptography/`.
+---
+paths:
+  - "src/Security/Cryptography/**"
+  - "tests/Security/Cryptography/**"
+---
 
 **KEM (`src/Security/Cryptography/Kem/`):**
 - `IKem` — low-level stateless span-based KEM interface; `MLKem512`/`MLKem768`/`MLKem1024` implement it

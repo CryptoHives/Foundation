@@ -82,7 +82,7 @@ user's.
 
 ### `CryptoHives.Foundation.Security.Cryptography`
 
-Self-contained managed implementations of cryptographic algorithms — no OS/hardware dependency for correctness, but hardware intrinsics are used for performance where available (AES-NI, ARM Crypto, AVX2, NEON, SSE/SSSE3). All implementations extend the `System.Security.Cryptography` base types for drop-in compatibility. PQC (ML-KEM, ML-DSA, SLH-DSA), key formats and pre-hash detail is in `src/Security/Cryptography/CLAUDE.md`.
+Self-contained managed implementations of cryptographic algorithms — no OS/hardware dependency for correctness, but hardware intrinsics are used for performance where available (AES-NI, ARM Crypto, AVX2, NEON, SSE/SSSE3). All implementations extend the `System.Security.Cryptography` base types for drop-in compatibility. PQC (ML-KEM, ML-DSA, SLH-DSA), key formats and pre-hash detail is in `.claude/rules/cryptography.md`.
 
 - `RandomNumberGenerator` (`Rng/`) — wraps the platform generator to give a span-based `Fill` on every TFM; all randomness the library draws itself (keys/IVs, PKCS#8 salt/IV, ISO 10126 padding, PQC seeds below net8) goes through it. Wraps rather than derives from the in-box type, and shares its name (CS0104 for consumers importing both)
 - **This package declares nothing outside its own namespace; `grep -rn "^namespace System" src/` must stay empty.** No public member takes a password or returns a plaintext private key as a `string`
@@ -92,7 +92,7 @@ Self-contained managed implementations of cryptographic algorithms — no OS/har
 
 Allocation-free async synchronization primitives backed by pooled `IValueTaskSource<T>` implementations. Designed to return `ValueTask` instead of `Task` for the hot path. All lock waiters link into `WaiterQueue<T>` without heap allocation per waiter; contended waiters allocate a timer only when a timeout is specified. `AsyncReentrantLock` is experimental (`CHTEXP001`) and allocates per acquisition; `AsyncConditionVariable` signals are not stored.
 
-The Roslyn analyzers (`CryptoHives.Foundation.Threading.Analyzers`, added separately) have notes in `src/Threading.Analyzers/CLAUDE.md`.
+The Roslyn analyzers (`CryptoHives.Foundation.Threading.Analyzers`, added separately) have notes in `.claude/rules/threading-analyzers.md`.
 
 ### `CryptoHives.Foundation.Memory`
 
