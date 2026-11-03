@@ -81,6 +81,8 @@ $packageConfigurations = @{
             @{ Source = "AsyncReaderWriterLockWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-writer.md" }
             @{ Source = "AsyncConditionVariableProducerConsumerBenchmark-report.md"; Target = "asyncconditionvariable-producerconsumer.md" }
             @{ Source = "AsyncExchangeRendezvousBenchmark-report.md"; Target = "asyncexchange-rendezvous.md" }
+            @{ Source = "AsyncReentrantLockBenchmark-report.md"; Target = "asyncreentrantlock-single.md" }
+            @{ Source = "AsyncReentrantLockNestedDepthBenchmark-report.md"; Target = "asyncreentrantlock-nesteddepth.md" }
         )
     }
 
@@ -201,6 +203,9 @@ $packageConfigurations = @{
             @{ Source = "AesCbc128Benchmark-report.md"; Target = "aes-cbc-128.md" }
             @{ Source = "AesCbc256Benchmark-report.md"; Target = "aes-cbc-256.md" }
 
+            # Cipher benchmarks - AES key wrap (KW and KWP). The "aes-key-wrap" prefix files it under Cipher.
+            @{ Source = "AesKeyWrapBenchmark-report.md"; Target = "aes-key-wrap.md" }
+
             # Cipher benchmarks - ChaCha20
             @{ Source = "ChaCha20Benchmark-report.md"; Target = "chacha20.md" }
 
@@ -286,6 +291,10 @@ $packageConfigurations = @{
             @{ Source = "SlhDsaKeyGenBenchmark-report.md"; Target = "slh-dsa-keygen.md" }
             @{ Source = "SlhDsaBenchmark-report.md"; Target = "slh-dsa-ops.md" }
         )
+        # Reports that are deliberately not published; the unmapped-report warning skips them.
+        Excluded  = @(
+            "MLKemInternalsBenchmark-report.md"
+        )
     }
 }
 
@@ -319,6 +328,7 @@ foreach ($name in 'SourceDir', 'DestDir') {
 }
 
 $benchmarkMappings = $selectedConfig.Files
+$deliberatelyUnpublished = @($selectedConfig.Excluded)
 
 Write-Host ""
 Write-Host "========================================"
@@ -813,7 +823,7 @@ $unmapped = @()
 if (Test-Path $SourceDir) {
     $mappedSources = @($benchmarkMappings | ForEach-Object { $_.Source })
     $unmapped = @(Get-ChildItem -Path $SourceDir -Filter "*-report.md" -File |
-        Where-Object { $mappedSources -notcontains $_.Name } |
+        Where-Object { $mappedSources -notcontains $_.Name -and $deliberatelyUnpublished -notcontains $_.Name } |
         Select-Object -ExpandProperty Name |
         Sort-Object)
 }

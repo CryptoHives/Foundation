@@ -838,6 +838,13 @@ try {
     $runStart = Get-Date
     $proc = Start-Process -FilePath $dotnetPath -ArgumentList $dotnetArgs -NoNewWindow -PassThru
 
+    # macOS idle-sleeps an unattended host mid-run; the measurements resume on wake but
+    # land on a CPU that is still ramping back up. -w ties the assertion to the run.
+    if ($IsMacOS) {
+        Start-Process -FilePath "/usr/bin/caffeinate" -ArgumentList @("-i", "-s", "-m", "-w", "$($proc.Id)") -NoNewWindow | Out-Null
+        Write-Host "Preventing system sleep for the duration of the run (caffeinate)." -ForegroundColor DarkGray
+    }
+
     if ($TimeoutMinutes -gt 0) {
         $timeout = [TimeSpan]::FromMinutes($TimeoutMinutes)
         if (-not $proc.WaitForExit([int]$timeout.TotalMilliseconds)) {

@@ -59,7 +59,7 @@ public class AsyncReentrantLockBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Single", "AsyncReentrantLock")]
+    [BenchmarkCategory("Single", "Reentrant")]
     public async Task LockUnlockReentrantSingleAsync()
     {
         using (await _reentrantLock.LockAsync().ConfigureAwait(false))
@@ -73,7 +73,7 @@ public class AsyncReentrantLockBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("Single", "AsyncReentrantLock")]
+    [BenchmarkCategory("Single", "Leaf")]
     public async Task LockUnlockLeafSingleAsync()
     {
         using (await _reentrantLock.LockLeafAsync().ConfigureAwait(false))
