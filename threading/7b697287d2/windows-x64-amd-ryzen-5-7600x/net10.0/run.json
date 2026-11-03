@@ -1,0 +1,28 @@
+{
+  "codeCommit": "7b697287d2c74d48155be28e7d2fa2f5b5a94fe3",
+  "recordedAt": "2026-11-03T08:59:11Z",
+  "package": "threading",
+  "platform": "windows-x64-amd-ryzen-5-7600x",
+  "framework": "net10.0",
+  "packagesFramework": "net10.0",
+  "packagesSource": "project.assets.json",
+  "packages": {
+    "AsyncKeyedLock": "8.1.2",
+    "AsyncUtilities": "1.1.1",
+    "BenchmarkDotNet": "0.15.8",
+    "coverlet.collector": "10.1.0",
+    "Dao.IndividualLock": "3.1.1",
+    "DotNext.Threading": "6.10.0",
+    "KeyedSemaphores": "6.1.0",
+    "Microsoft.NET.Test.Sdk": "18.11.0",
+    "Microsoft.VisualStudio.Threading": "18.12.1",
+    "NeoSmart.AsyncLock": "3.3.0-preview1",
+    "Nerdbank.GitVersioning": "3.10.94",
+    "Nito.AsyncEx": "5.1.2",
+    "NUnit": "5.0.0",
+    "NUnit.Analyzers": "4.15.0",
+    "NUnit.Console": "3.22.0",
+    "NUnit3TestAdapter": "6.3.1",
+    "ProtoPromise": "3.5.2"
+  }
+}
