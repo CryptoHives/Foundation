@@ -73,7 +73,7 @@ public class AsyncReentrantLockNestedDepthBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("NestedDepth", "AsyncReentrantLock")]
+    [BenchmarkCategory("NestedDepth", "Reentrant")]
     public Task NestedReentrantAcquireAsync() => RecurseAsync(Depth, leafInnermost: false);
 
     /// <summary>
@@ -81,6 +81,6 @@ public class AsyncReentrantLockNestedDepthBenchmark
     /// </summary>
     [Test]
     [Benchmark]
-    [BenchmarkCategory("NestedDepth", "AsyncReentrantLock")]
+    [BenchmarkCategory("NestedDepth", "Leaf")]
     public Task NestedReentrantLeafInnermostAcquireAsync() => RecurseAsync(Depth, leafInnermost: true);
 }
