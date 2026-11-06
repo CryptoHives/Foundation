@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+#pragma warning disable IDE1006 // Naming rule violation - standard cryptographic constant names per RFC
+
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;

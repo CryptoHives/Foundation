@@ -7,6 +7,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -16,7 +17,7 @@ using System.Runtime.Intrinsics.X86;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Unlike the SSSE3 path, which vectorizes the four words of a
+/// Unlike the SSSE3 single-block path, which vectorizes the four words of a
 /// *single* chunk's compression state across one 128-bit register, this file
 /// vectorizes *across 8 independent chunks* at once: each of the 16 compression
 /// state words becomes its own <see cref="Vector256{UInt32}"/>, where lane <c>j</c>
@@ -45,6 +46,12 @@ internal unsafe partial struct Blake3State
     /// </summary>
     internal const int Avx2BatchLevel = 3;
 
+    /// <summary>
+    /// Number of rows allocated for the AVX2 CompressVector256 message buffer,
+    /// including three additional rows beyond <c>BlockSizeWords</c>.
+    /// </summary>
+    private const int MessageBufferRows = BlockSizeWords + 3;
+
     // Lane i carries counter baseCounter + i, split into low and high halves. The high half comes
     // from the low half's carry rather than a branch, so no lane count appears in the arithmetic.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -68,19 +75,20 @@ internal unsafe partial struct Blake3State
 
 
     /// <summary>
-    /// Compresses <paramref name="chunkCount"/> (2..8) independent, full
-    /// (1024-byte) chunks with the 8-way kernel by ignoring the surplus lanes
+    /// Compresses <paramref name="chunkCount"/> (3..7) independent, full
+    /// (1024-byte) chunks with the 8-way kernel by ignoring the surplus lanes.
     /// </summary>
     /// <remarks>
-    /// One 8-way pass costs about as much as 1.5 chunks on the single-lane
-    /// SSSE3 path, so this wins from 2 real chunks upward — it turns the
-    /// 2–8 full-chunk range (which the 8-chunk batch loop can't touch) from
-    /// per-chunk serial compression into a single kernel call.
+    /// Covers the part of the 8-chunk batch loop's tail that the pair and two-chain kernels
+    /// do not take; see <see cref="CommitPartialBatchAvx2"/>.
     /// </remarks>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialAvx2(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
+        Debug.Assert(chunkCount > Avx2PairChunksPerBatch && chunkCount < Avx2ChunksPerBatch,
+            "the partial kernel compresses three to seven chunks");
+
         CounterVectors256(baseCounter, out var counterLow, out var counterHigh);
         var blockLenVec = Vector256.Create((uint)BlockSizeBytes);
 
@@ -96,7 +104,7 @@ internal unsafe partial struct Blake3State
         var v7 = Vector256.Create(key[7]);
 
         uint flags = baseFlags | FlagChunkStart;
-        var m = stackalloc Vector256<uint>[BlockSizeWords];
+        var m = stackalloc Vector256<uint>[MessageBufferRows];
         byte* blockBase = source;
         for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
@@ -181,7 +189,7 @@ internal unsafe partial struct Blake3State
         var v7 = Vector256.Create(key[7]);
 
         uint flags = baseFlags | FlagChunkStart;
-        var m = stackalloc Vector256<uint>[BlockSizeWords];
+        Vector256<uint>* m = stackalloc Vector256<uint>[MessageBufferRows];
         byte* blockBase = source;
         for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
@@ -216,10 +224,21 @@ internal unsafe partial struct Blake3State
             var v14 = blockLenVec;
             var v15 = Vector256.Create(flags);
 
-            CompressVector256Stepped(
-                ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
-                ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
-                m);
+            // With AVX512VL, four G's can be stepped in parallel in the larger SIMD register file.
+            if (Avx512F.VL.IsSupported)
+            {
+                CompressVector256Stepped(
+                    ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+                    ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+                    m);
+            }
+            else
+            {
+                CompressVector256(
+                    ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+                    ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+                    m);
+            }
 
             v0 = Avx2.Xor(v0, v8);
             v1 = Avx2.Xor(v1, v9);
@@ -236,8 +255,7 @@ internal unsafe partial struct Blake3State
 
         // Un-transpose straight into the caller's buffer: after the transpose
         // element j is chunk j's 8-word CV, and Vector256<uint> is exactly
-        // those 8 words, so dst[j] lands at outCvs + j*8 — the same addresses
-        // the old per-chunk store loop wrote, without staging through m.
+        // those 8 words, so dst[j] lands at outCvs + j*8 without staging through m.
         Transpose8x8Into(v0, v1, v2, v3, v4, v5, v6, v7, (Vector256<uint>*)outCvs);
     }
 
@@ -284,7 +302,7 @@ internal unsafe partial struct Blake3State
 
         // No transpose-in: every lane compresses the same message, so each of
         // the 16 words is simply broadcast rather than gathered per-lane.
-        var m = stackalloc Vector256<uint>[BlockSizeWords];
+        Vector256<uint>* m = stackalloc Vector256<uint>[MessageBufferRows];
         for (int w = 0; w < BlockSizeWords; w++)
         {
             m[w] = Vector256.Create(rootBlock[w]);
@@ -362,7 +380,7 @@ internal unsafe partial struct Blake3State
         // directly rather than being staged into m and read back: the pointer-form
         // Transpose8x8 would store 8 vectors and immediately reload them, which is
         // 16 memory round-trips this can simply skip.
-        var m = stackalloc Vector256<uint>[BlockSizeWords];
+        Vector256<uint>* m = stackalloc Vector256<uint>[MessageBufferRows];
 
         Transpose8x8Into(
             Avx.LoadVector256(childCvs + 0 * ParentStrideWords),
@@ -487,7 +505,7 @@ internal unsafe partial struct Blake3State
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
     /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
     /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
-    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
+    /// <param name="batchCvs">The caller's 64-CV scratch buffer.</param>
     /// <returns>The number of bytes consumed.</returns>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private int CommitPartialBatchAvx2(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
@@ -515,8 +533,87 @@ internal unsafe partial struct Blake3State
                 srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
         }
 
-        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
+        CommitPartialBatchCvsAvx2(core, batchCvs, fullChunks, drainsRemainingInput);
         return fullChunks * ChunkSizeBytes;
+    }
+
+    // Each tree level of a partial batch gets its own region of the batch buffer, so a subtree
+    // root left unpaired on one level is not overwritten by the next level's wide pass.
+    private const int PartialBatchLevelStrideWords = Avx512ChunksPerBatch * KeySizeWords;
+
+    /// <summary>
+    /// Commits the CVs of a 2-15 chunk partial batch as the aligned subtrees the binary digits
+    /// of <paramref name="chunkCount"/> describe, reducing all of them together with one wide
+    /// parent pass per tree level instead of merging chunk by chunk.
+    /// </summary>
+    /// <remarks>
+    /// Needs <c>_chunkCounter</c> to be a multiple of 8; otherwise the CVs commit per chunk.
+    /// A drained input holds back its smallest subtree as pending, or the right half of a
+    /// lone one, since <see cref="FinalizeRoot"/> needs a left sibling on the stack.
+    /// </remarks>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="batchCvs">The chunk CVs in their first 16 slots, in the caller's 64-CV scratch buffer.</param>
+    /// <param name="chunkCount">Number of chunk CVs, 2..15.</param>
+    /// <param name="drainsRemainingInput">Whether the batch ends exactly at the end of the input.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private void CommitPartialBatchCvsAvx2(Blake3State* core, uint* batchCvs, int chunkCount, bool drainsRemainingInput)
+    {
+        Debug.Assert(chunkCount >= 2 && chunkCount < Avx512ChunksPerBatch, "a partial batch has 2..15 chunks");
+
+        if ((_chunkCounter & (Avx2ChunksPerBatch - 1)) != 0)
+        {
+            CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? chunkCount - 1 : chunkCount, drainsRemainingInput);
+            return;
+        }
+
+        int topLevel = BitOperations.Log2((uint)chunkCount);
+        bool deferHalf = drainsRemainingInput && BitOperations.IsPow2(chunkCount);
+        int levels = deferHalf ? topLevel - 1 : topLevel;
+
+        // Level k holds chunkCount >> k complete nodes; node j covers chunks [j·2^k, (j+1)·2^k).
+        uint* children = batchCvs;
+        for (int k = 1; k <= levels; k++)
+        {
+            uint* parents = batchCvs + (k * PartialBatchLevelStrideWords);
+            if ((chunkCount >> k) == 1)
+            {
+                ComputeParentCv(children, core->_keyWords, parents);
+            }
+            else
+            {
+                CompressParents8Avx2(children, core->_keyWords, parents, _baseFlags);
+            }
+
+            children = parents;
+        }
+
+        if (deferHalf)
+        {
+            DeferRightHalf(core, children, levels);
+            return;
+        }
+
+        // The subtree for bit k of chunkCount is the last complete node on level k.
+        int pendingLevel = drainsRemainingInput ? BitOperations.TrailingZeroCount(chunkCount) : -1;
+        for (int k = topLevel; k >= 0; k--)
+        {
+            if ((chunkCount & (1 << k)) == 0)
+            {
+                continue;
+            }
+
+            uint* root = batchCvs + (k * PartialBatchLevelStrideWords) + (((chunkCount >> k) - 1) * KeySizeWords);
+            if (k == pendingLevel)
+            {
+                Unsafe.CopyBlock(core->_pendingCv, root, KeySizeBytes);
+                _pendingLevel = k;
+                _hasPendingCv = true;
+                return;
+            }
+
+            PushSubtreeCv(core, root, k);
+            _chunkCounter += 1UL << k;
+        }
     }
 
     /// <summary>
@@ -553,6 +650,9 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ReduceChunkCvsToHalvesAvx2(uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
+        Debug.Assert(chunkCount is Avx2ChunksPerBatch or Avx512ChunksPerBatch or ChunksPerSubtreeGroup,
+            "reduces one 8- or 16-chunk batch or one 64-chunk subtree group");
+
         // Full-width levels: every 8-parent group is fully populated.
         while (chunkCount >= 16)
         {
@@ -569,7 +669,7 @@ internal unsafe partial struct Blake3State
         CompressParents8Avx2(cvs, key, cvs, baseFlags);        // 4 -> 2 (upper 6 lanes ignored)
     }
 
-    // Mirrors Blake3State.Compress(uint*, uint*) exactly (same message schedule,
+    // Mirrors Blake3State.Compress exactly (same message schedule,
     // same G-function groupings), with every uint word replaced by a
     // Vector256<uint> holding that word's value for 8 independent chunks.
     // The 16 state words are ref parameters (not an array) and the method is
@@ -578,8 +678,7 @@ internal unsafe partial struct Blake3State
     //
     // Message words are read into locals up front. Reading m[..] at each GVec instead -
     // which is what the 128-bit compressor does - measurably regresses this width on both
-    // register files: there are no temporaries competing for the YMM registers here, so it
-    // frees nothing and only adds loads.
+    // register files.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void CompressVector256(
         ref Vector256<uint> v0, ref Vector256<uint> v1, ref Vector256<uint> v2, ref Vector256<uint> v3,
@@ -592,6 +691,17 @@ internal unsafe partial struct Blake3State
         var m4 = m[4]; var m5 = m[5]; var m6 = m[6]; var m7 = m[7];
         var m8 = m[8]; var m9 = m[9]; var m10 = m[10]; var m11 = m[11];
         var m12 = m[12]; var m13 = m[13]; var m14 = m[14]; var m15 = m[15];
+
+        // Without vprold the 12- and 7-bit rotates need a scratch register beyond the 16 state
+        // words. v1..v3 only ever enter G as 'a', so they wait in m between their G's instead.
+        ref Vector256<uint> v1Out = ref v1;
+        ref Vector256<uint> v2Out = ref v2;
+        ref Vector256<uint> v3Out = ref v3;
+        if (!Avx512F.VL.IsSupported)
+        {
+            m[16] = v1; m[17] = v2; m[18] = v3;
+            v1 = ref m[16]; v2 = ref m[17]; v3 = ref m[18];
+        }
 
         // Round 1
         GVec(ref v0, ref v4, ref v8, ref v12, m0, m1);
@@ -662,6 +772,11 @@ internal unsafe partial struct Blake3State
         GVec(ref v1, ref v6, ref v11, ref v12, m2, m12);
         GVec(ref v2, ref v7, ref v8, ref v13, m3, m4);
         GVec(ref v3, ref v4, ref v9, ref v14, m7, m13);
+
+        if (!Avx512F.VL.IsSupported)
+        {
+            v1Out = v1; v2Out = v2; v3Out = v3;
+        }
     }
 
     // CompressVector256 with each half-round's four G's advanced one step at a time. The JIT
@@ -857,12 +972,16 @@ internal unsafe partial struct Blake3State
         ref Vector256<uint> c, ref Vector256<uint> d,
         Vector256<uint> mx, Vector256<uint> my)
     {
-        a = Avx2.Add(Avx2.Add(a, mx), b);
-        d = RotateRight16(Avx2.Xor(d, a));
+        // Each half stores 'a' right after its xor into 'd'to free a register
+        // for the rotate that follows.
+        var t = Avx2.Add(Avx2.Add(a, mx), b);
+        d = RotateRight16(Avx2.Xor(d, t));
+        a = t;
         c = Avx2.Add(c, d);
         b = RotateRight12(Avx2.Xor(b, c));
-        a = Avx2.Add(Avx2.Add(a, my), b);
-        d = RotateRight8(Avx2.Xor(d, a));
+        t = Avx2.Add(Avx2.Add(a, my), b);
+        d = RotateRight8(Avx2.Xor(d, t));
+        a = t;
         c = Avx2.Add(c, d);
         b = RotateRight7(Avx2.Xor(b, c));
     }

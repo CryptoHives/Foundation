@@ -183,7 +183,6 @@ internal static class Polyval
     private static Vector128<ulong> Dot(Vector128<ulong> a, Vector128<ulong> b)
     {
         Vector128<ulong> poly = Vector128.Create(1UL, 0xc200000000000000UL);
-
         Vector128<ulong> lo = Pclmulqdq.CarrylessMultiply(a, b, 0x00);
         Vector128<ulong> hi = Pclmulqdq.CarrylessMultiply(a, b, 0x11);
         Vector128<ulong> mid = Sse2.Xor(

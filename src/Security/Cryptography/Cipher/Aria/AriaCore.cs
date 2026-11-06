@@ -1,6 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+#pragma warning disable IDE1006 // Naming rule violation - cryptographic constant names per RFC 5794
+
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
@@ -138,7 +140,9 @@ internal static class AriaCore
         kr.Clear();
         key.Slice(0, 16).CopyTo(kl);
         if (key.Length > 16)
+        {
             key.Slice(16, Math.Min(key.Length - 16, 16)).CopyTo(kr);
+        }
 
         // W0 = KL
         Span<byte> w0 = stackalloc byte[16];
