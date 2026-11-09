@@ -1,0 +1,29 @@
+{
+  "codeCommit": "7b697287d2c74d48155be28e7d2fa2f5b5a94fe3",
+  "recordedAt": "2026-11-09T04:05:51Z",
+  "package": "cryptography",
+  "platform": "windows-x64-intel-xeon-e-2136",
+  "framework": "net10.0",
+  "packagesFramework": "net10.0",
+  "packagesSource": "project.assets.json",
+  "packages": {
+    "BenchmarkDotNet": "0.15.8",
+    "Blake3": "3.0.2",
+    "Blake3.Managed": "1.10.0",
+    "Blake3.Native": "3.0.2",
+    "BouncyCastle.Cryptography": "2.7.0",
+    "coverlet.collector": "10.1.0",
+    "HashifyNET": "7.1.1",
+    "Konscious.Security.Cryptography.Blake2": "1.1.1",
+    "KyberNET": "1.0.3",
+    "Microsoft.NET.Test.Sdk": "18.11.0",
+    "NaCl.Core": "2.2.0",
+    "Nerdbank.GitVersioning": "3.10.94",
+    "NUnit": "5.0.0",
+    "NUnit.Analyzers": "4.15.0",
+    "NUnit.Console": "3.22.0",
+    "NUnit3TestAdapter": "6.3.1",
+    "OpenGost.Security.Cryptography": "0.3.0",
+    "SauceControl.Blake2Fast": "2.0.0"
+  }
+}
