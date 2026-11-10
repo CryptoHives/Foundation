@@ -1,33 +1,33 @@
 ﻿| Description                                           | TestDataSize | Mean           | Error       | StdDev      | Code Size | Allocated |
 |------------------------------------------------------ |------------- |---------------:|------------:|------------:|----------:|----------:|
-| Decrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 128B         |       388.8 ns |     0.50 ns |     0.42 ns |     310 B |         - |
-| Decrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 128B         |     1,957.4 ns |     3.77 ns |     3.34 ns |     310 B |         - |
-| Decrypt · AES-256-GCM-SIV (BouncyCastle)              | 128B         |     2,814.4 ns |     7.20 ns |     6.38 ns |     310 B |    3408 B |
+| Decrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 128B         |       526.8 ns |     0.47 ns |     0.42 ns |     310 B |         - |
+| Decrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 128B         |     2,641.4 ns |     9.87 ns |     9.23 ns |     310 B |         - |
+| Decrypt · AES-256-GCM-SIV (BouncyCastle)              | 128B         |     3,876.5 ns |    26.99 ns |    22.54 ns |     310 B |    3408 B |
 |                                                       |              |                |             |             |           |           |
-| Encrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 128B         |       321.9 ns |     0.74 ns |     0.66 ns |     390 B |         - |
-| Encrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 128B         |     1,841.3 ns |     4.70 ns |     4.40 ns |     387 B |         - |
-| Encrypt · AES-256-GCM-SIV (BouncyCastle)              | 128B         |     2,723.0 ns |     5.51 ns |     4.89 ns |     387 B |    2960 B |
+| Encrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 128B         |       433.7 ns |     0.29 ns |     0.27 ns |     390 B |         - |
+| Encrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 128B         |     2,517.9 ns |    17.42 ns |    16.30 ns |     387 B |         - |
+| Encrypt · AES-256-GCM-SIV (BouncyCastle)              | 128B         |     3,631.3 ns |     6.34 ns |     5.93 ns |     390 B |    2960 B |
 |                                                       |              |                |             |             |           |           |
-| Decrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 1KB          |     1,152.7 ns |     2.23 ns |     2.09 ns |     310 B |         - |
-| Decrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 1KB          |     9,445.9 ns |    26.20 ns |    23.22 ns |     310 B |         - |
-| Decrypt · AES-256-GCM-SIV (BouncyCastle)              | 1KB          |    11,851.2 ns |    23.63 ns |    20.95 ns |     310 B |    7832 B |
+| Decrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 1KB          |     1,562.0 ns |     1.83 ns |     1.71 ns |     310 B |         - |
+| Decrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 1KB          |    12,459.4 ns |    39.13 ns |    32.67 ns |     310 B |         - |
+| Decrypt · AES-256-GCM-SIV (BouncyCastle)              | 1KB          |    16,277.9 ns |    31.55 ns |    26.34 ns |     310 B |    7832 B |
 |                                                       |              |                |             |             |           |           |
-| Encrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 1KB          |     1,087.1 ns |     2.36 ns |     2.21 ns |     390 B |         - |
-| Encrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 1KB          |     9,094.6 ns |    17.87 ns |    16.72 ns |     387 B |         - |
-| Encrypt · AES-256-GCM-SIV (BouncyCastle)              | 1KB          |    11,156.9 ns |    38.60 ns |    36.11 ns |     387 B |    3728 B |
+| Encrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 1KB          |     1,470.4 ns |     1.81 ns |     1.69 ns |     390 B |         - |
+| Encrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 1KB          |    12,291.8 ns |    33.08 ns |    29.33 ns |     387 B |         - |
+| Encrypt · AES-256-GCM-SIV (BouncyCastle)              | 1KB          |    15,077.6 ns |    31.30 ns |    29.27 ns |     387 B |    3728 B |
 |                                                       |              |                |             |             |           |           |
-| Decrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 8KB          |     7,230.8 ns |    17.68 ns |    16.54 ns |     310 B |         - |
-| Decrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 8KB          |    65,936.5 ns |   676.82 ns |   565.17 ns |     310 B |         - |
-| Decrypt · AES-256-GCM-SIV (BouncyCastle)              | 8KB          |    84,401.9 ns |   224.78 ns |   210.26 ns |     310 B |   43744 B |
+| Decrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 8KB          |     9,783.0 ns |    19.55 ns |    18.29 ns |     310 B |         - |
+| Decrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 8KB          |    89,798.8 ns |   588.93 ns |   550.88 ns |     310 B |         - |
+| Decrypt · AES-256-GCM-SIV (BouncyCastle)              | 8KB          |   113,613.8 ns |   203.18 ns |   190.05 ns |     310 B |   43744 B |
 |                                                       |              |                |             |             |           |           |
-| Encrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 8KB          |     7,169.0 ns |    15.19 ns |    14.21 ns |     387 B |         - |
-| Encrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 8KB          |    66,142.9 ns |   146.56 ns |   129.92 ns |     387 B |         - |
-| Encrypt · AES-256-GCM-SIV (BouncyCastle)              | 8KB          |    78,879.3 ns |   170.85 ns |   151.45 ns |     387 B |   10896 B |
+| Encrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 8KB          |     9,700.6 ns |     9.04 ns |     8.46 ns |     387 B |         - |
+| Encrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 8KB          |    92,922.0 ns |   354.74 ns |   331.82 ns |     387 B |         - |
+| Encrypt · AES-256-GCM-SIV (BouncyCastle)              | 8KB          |   108,467.9 ns |   201.73 ns |   188.69 ns |     387 B |   10896 B |
 |                                                       |              |                |             |             |           |           |
-| Decrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 128KB        |   111,614.5 ns |   157.42 ns |   131.45 ns |     310 B |         - |
-| Decrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 128KB        | 1,045,296.7 ns | 3,333.63 ns | 2,955.17 ns |     310 B |         - |
-| Decrypt · AES-256-GCM-SIV (BouncyCastle)              | 128KB        | 1,474,004.3 ns | 4,558.64 ns | 4,041.11 ns |     310 B |  658352 B |
+| Decrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 128KB        |   151,135.8 ns |   261.43 ns |   244.54 ns |     310 B |         - |
+| Decrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 128KB        | 1,423,446.7 ns | 6,414.99 ns | 6,000.59 ns |     310 B |         - |
+| Decrypt · AES-256-GCM-SIV (BouncyCastle)              | 128KB        | 1,993,388.2 ns | 5,775.56 ns | 5,402.46 ns |     310 B |  658350 B |
 |                                                       |              |                |             |             |           |           |
-| Encrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 128KB        |   111,642.8 ns |   216.88 ns |   192.26 ns |     387 B |         - |
-| Encrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 128KB        | 1,005,448.4 ns | 2,987.02 ns | 2,794.06 ns |     387 B |         - |
-| Encrypt · AES-256-GCM-SIV (BouncyCastle)              | 128KB        | 1,281,120.0 ns | 2,620.41 ns | 2,322.92 ns |     387 B |  133804 B |
+| Encrypt · AES-256-GCM-SIV (CryptoHives-AES-NI+PClMul) | 128KB        |   151,168.9 ns |   143.25 ns |   134.00 ns |     387 B |         - |
+| Encrypt · AES-256-GCM-SIV (CryptoHives-Scalar)        | 128KB        | 1,405,936.4 ns | 6,294.65 ns | 5,580.05 ns |     387 B |         - |
+| Encrypt · AES-256-GCM-SIV (BouncyCastle)              | 128KB        | 1,732,064.4 ns | 1,283.60 ns | 1,071.87 ns |     387 B |  133804 B |

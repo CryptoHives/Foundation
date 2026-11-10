@@ -1,25 +1,25 @@
 ﻿| Description                                   | TestDataSize | Mean         | Error      | StdDev     | Code Size | Allocated |
 |---------------------------------------------- |------------- |-------------:|-----------:|-----------:|----------:|----------:|
-| Decrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 128B         |     4.230 μs |  0.0133 μs |  0.0118 μs |     310 B |         - |
-| Decrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 128B         |     4.841 μs |  0.0739 μs |  0.0692 μs |     310 B |         - |
+| Decrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 128B         |     5.488 μs |  0.0054 μs |  0.0045 μs |     310 B |         - |
+| Decrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 128B         |     6.342 μs |  0.0063 μs |  0.0059 μs |     310 B |         - |
 |                                               |              |              |            |            |           |           |
-| Encrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 128B         |     4.083 μs |  0.0562 μs |  0.0526 μs |     390 B |         - |
-| Encrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 128B         |     4.754 μs |  0.0553 μs |  0.0517 μs |     387 B |         - |
+| Encrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 128B         |     5.341 μs |  0.0034 μs |  0.0030 μs |     387 B |         - |
+| Encrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 128B         |     6.197 μs |  0.0058 μs |  0.0048 μs |     387 B |         - |
 |                                               |              |              |            |            |           |           |
-| Decrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 1KB          |    25.661 μs |  0.3060 μs |  0.2862 μs |     310 B |         - |
-| Decrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 1KB          |    26.231 μs |  0.3919 μs |  0.3666 μs |     310 B |         - |
+| Decrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 1KB          |    33.698 μs |  0.0233 μs |  0.0194 μs |     310 B |         - |
+| Decrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 1KB          |    39.055 μs |  0.0310 μs |  0.0290 μs |     310 B |         - |
 |                                               |              |              |            |            |           |           |
-| Encrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 1KB          |    25.518 μs |  0.4122 μs |  0.3856 μs |     387 B |         - |
-| Encrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 1KB          |    29.800 μs |  0.3566 μs |  0.3336 μs |     387 B |         - |
+| Encrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 1KB          |    33.549 μs |  0.0314 μs |  0.0294 μs |     387 B |         - |
+| Encrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 1KB          |    39.056 μs |  0.0364 μs |  0.0340 μs |     387 B |         - |
 |                                               |              |              |            |            |           |           |
-| Decrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 8KB          |   170.361 μs |  3.1972 μs |  2.9907 μs |     310 B |         - |
-| Decrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 8KB          |   198.885 μs |  3.2769 μs |  3.0652 μs |     310 B |         - |
+| Decrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 8KB          |   259.930 μs |  0.1949 μs |  0.1628 μs |     310 B |         - |
+| Decrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 8KB          |   269.323 μs |  3.7158 μs |  3.2940 μs |     310 B |         - |
 |                                               |              |              |            |            |           |           |
-| Encrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 8KB          |   197.496 μs |  2.2627 μs |  2.1165 μs |     387 B |         - |
-| Encrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 8KB          |   228.275 μs |  3.3784 μs |  3.1602 μs |     387 B |         - |
+| Encrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 8KB          |   262.352 μs |  1.1038 μs |  1.0325 μs |     387 B |         - |
+| Encrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 8KB          |   301.417 μs |  0.2050 μs |  0.1918 μs |     387 B |         - |
 |                                               |              |              |            |            |           |           |
-| Decrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 128KB        | 2,650.688 μs | 26.4929 μs | 24.7815 μs |     310 B |         - |
-| Decrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 128KB        | 3,273.020 μs | 45.8287 μs | 42.8682 μs |     310 B |         - |
+| Decrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 128KB        | 3,461.519 μs |  2.5639 μs |  2.2729 μs |     310 B |         - |
+| Decrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 128KB        | 4,270.914 μs | 23.2181 μs | 21.7182 μs |     310 B |         - |
 |                                               |              |              |            |            |           |           |
-| Encrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 128KB        | 3,132.030 μs | 45.9753 μs | 43.0053 μs |     387 B |         - |
-| Encrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 128KB        | 3,637.557 μs | 49.9119 μs | 46.6877 μs |     387 B |         - |
+| Encrypt · Kuznyechik-MGM (CryptoHives-PClMul) | 128KB        | 4,119.390 μs |  2.2744 μs |  2.0162 μs |     390 B |         - |
+| Encrypt · Kuznyechik-MGM (CryptoHives-Scalar) | 128KB        | 4,765.984 μs |  3.0579 μs |  2.8604 μs |     390 B |         - |

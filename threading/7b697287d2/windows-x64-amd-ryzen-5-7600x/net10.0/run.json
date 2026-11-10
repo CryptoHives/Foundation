@@ -24,5 +24,6 @@
     "NUnit.Console": "3.22.0",
     "NUnit3TestAdapter": "6.3.1",
     "ProtoPromise": "3.5.2"
-  }
+  },
+  "comment": "High performance plan, max processor state 99% (boost off, base clock 4.7 GHz)"
 }

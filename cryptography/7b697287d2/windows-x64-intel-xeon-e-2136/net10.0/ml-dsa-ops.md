@@ -1,76 +1,76 @@
-﻿| Description                                           | Mean      | Error     | StdDev    | Allocated |
-|------------------------------------------------------ |----------:|----------:|----------:|----------:|
-| Sign · ML-DSA-44 · CryptoHives                        | 302.01 μs |  5.864 μs |  6.517 μs |   92996 B |
-| Sign · ML-DSA-44 · CryptoHives-Stateless              | 304.34 μs |  3.781 μs |  3.536 μs |   92509 B |
-| Sign · ML-DSA-44 · BouncyCastle                       | 371.57 μs |  6.959 μs |  7.446 μs |  105796 B |
-| Sign · ML-DSA-44 · OS                                 | 421.98 μs |  7.617 μs | 10.678 μs |         - |
-|                                                       |           |           |           |           |
-| Sign · ML-DSA-65 · CryptoHives                        | 475.15 μs |  7.624 μs |  7.488 μs |  138568 B |
-| Sign · ML-DSA-65 · CryptoHives-Stateless              | 480.46 μs |  9.208 μs | 10.962 μs |  139024 B |
-| Sign · ML-DSA-65 · BouncyCastle                       | 624.95 μs | 10.548 μs |  9.867 μs |  170271 B |
-| Sign · ML-DSA-65 · OS                                 | 664.36 μs | 12.836 μs | 14.267 μs |         - |
-|                                                       |           |           |           |           |
-| Sign · ML-DSA-87 · CryptoHives-Stateless              | 590.18 μs | 11.476 μs | 11.785 μs |  200281 B |
-| Sign · ML-DSA-87 · CryptoHives                        | 591.11 μs |  9.914 μs |  9.273 μs |  199062 B |
-| Sign · ML-DSA-87 · BouncyCastle                       | 725.33 μs | 10.116 μs |  8.967 μs |  241765 B |
-| Sign · ML-DSA-87 · OS                                 | 725.51 μs | 13.651 μs | 14.018 μs |         - |
-|                                                       |           |           |           |           |
-| Sign (pre-hash) · ML-DSA-44 · CryptoHives             | 289.65 μs |  3.195 μs |  2.833 μs |   92870 B |
-| Sign (pre-hash) · ML-DSA-44 · CryptoHives-Stateless   | 293.62 μs |  5.371 μs |  5.024 μs |   93253 B |
-| Sign (pre-hash) · ML-DSA-44 · BouncyCastle            | 382.44 μs |  5.804 μs |  5.429 μs |  106531 B |
-| Sign (pre-hash) · ML-DSA-44 · OS                      | 416.31 μs |  8.197 μs |  8.050 μs |         - |
-|                                                       |           |           |           |           |
-| Sign (pre-hash) · ML-DSA-65 · CryptoHives-Stateless   | 470.56 μs |  3.422 μs |  3.033 μs |  139161 B |
-| Sign (pre-hash) · ML-DSA-65 · CryptoHives             | 474.05 μs |  7.303 μs |  6.831 μs |  139863 B |
-| Sign (pre-hash) · ML-DSA-65 · BouncyCastle            | 640.29 μs | 12.668 μs | 17.758 μs |  170531 B |
-| Sign (pre-hash) · ML-DSA-65 · OS                      | 667.05 μs | 13.278 μs | 15.291 μs |         - |
-|                                                       |           |           |           |           |
-| Sign (pre-hash) · ML-DSA-87 · CryptoHives-Stateless   | 582.98 μs |  6.932 μs |  5.788 μs |  199708 B |
-| Sign (pre-hash) · ML-DSA-87 · CryptoHives             | 590.35 μs | 10.566 μs |  9.883 μs |  199387 B |
-| Sign (pre-hash) · ML-DSA-87 · OS                      | 722.06 μs | 13.886 μs | 14.858 μs |         - |
-| Sign (pre-hash) · ML-DSA-87 · BouncyCastle            | 735.34 μs | 13.806 μs | 12.914 μs |  244400 B |
-|                                                       |           |           |           |           |
-| Verify · ML-DSA-44 · OS                               |  55.52 μs |  0.091 μs |  0.085 μs |         - |
-| Verify · ML-DSA-44 · CryptoHives                      |  85.73 μs |  0.176 μs |  0.147 μs |   50488 B |
-| Verify · ML-DSA-44 · CryptoHives-Stateless            |  85.95 μs |  0.380 μs |  0.337 μs |   50488 B |
-| Verify · ML-DSA-44 · BouncyCastle                     |  96.61 μs |  0.212 μs |  0.198 μs |   56992 B |
-|                                                       |           |           |           |           |
-| Verify · ML-DSA-65 · OS                               |  75.99 μs |  0.153 μs |  0.135 μs |         - |
-| Verify · ML-DSA-65 · CryptoHives-Stateless            | 139.27 μs |  0.436 μs |  0.408 μs |   81448 B |
-| Verify · ML-DSA-65 · CryptoHives                      | 139.68 μs |  0.253 μs |  0.224 μs |   81448 B |
-| Verify · ML-DSA-65 · BouncyCastle                     | 156.36 μs |  0.427 μs |  0.400 μs |   95040 B |
-|                                                       |           |           |           |           |
-| Verify · ML-DSA-87 · OS                               | 106.79 μs |  0.128 μs |  0.114 μs |         - |
-| Verify · ML-DSA-87 · CryptoHives                      | 230.12 μs |  0.415 μs |  0.368 μs |  132056 B |
-| Verify · ML-DSA-87 · CryptoHives-Stateless            | 230.22 μs |  0.313 μs |  0.261 μs |  132056 B |
-| Verify · ML-DSA-87 · BouncyCastle                     | 258.39 μs |  0.820 μs |  0.767 μs |  158544 B |
-|                                                       |           |           |           |           |
-| Verify (pre-hash) · ML-DSA-44 · OS                    |  54.16 μs |  0.714 μs |  0.668 μs |         - |
-| Verify (pre-hash) · ML-DSA-44 · CryptoHives           |  83.77 μs |  0.121 μs |  0.107 μs |   50824 B |
-| Verify (pre-hash) · ML-DSA-44 · CryptoHives-Stateless |  83.78 μs |  0.194 μs |  0.181 μs |   50824 B |
-| Verify (pre-hash) · ML-DSA-44 · BouncyCastle          |  97.18 μs |  0.238 μs |  0.223 μs |   57416 B |
-|                                                       |           |           |           |           |
-| Verify (pre-hash) · ML-DSA-65 · OS                    |  75.15 μs |  1.309 μs |  1.225 μs |         - |
-| Verify (pre-hash) · ML-DSA-65 · CryptoHives           | 141.17 μs |  2.412 μs |  2.256 μs |   81784 B |
-| Verify (pre-hash) · ML-DSA-65 · CryptoHives-Stateless | 141.43 μs |  2.485 μs |  2.324 μs |   81784 B |
-| Verify (pre-hash) · ML-DSA-65 · BouncyCastle          | 163.07 μs |  2.909 μs |  2.721 μs |   95464 B |
-|                                                       |           |           |           |           |
-| Verify (pre-hash) · ML-DSA-87 · OS                    | 107.38 μs |  1.516 μs |  1.418 μs |         - |
-| Verify (pre-hash) · ML-DSA-87 · CryptoHives           | 234.95 μs |  3.494 μs |  3.268 μs |  132392 B |
-| Verify (pre-hash) · ML-DSA-87 · CryptoHives-Stateless | 235.45 μs |  3.074 μs |  2.875 μs |  132392 B |
-| Verify (pre-hash) · ML-DSA-87 · BouncyCastle          | 269.66 μs |  4.125 μs |  3.858 μs |  158968 B |
-|                                                       |           |           |           |           |
-| Verify (invalid) · ML-DSA-44 · OS                     |  57.43 μs |  0.743 μs |  0.695 μs |         - |
-| Verify (invalid) · ML-DSA-44 · CryptoHives            |  88.10 μs |  1.528 μs |  1.430 μs |   50488 B |
-| Verify (invalid) · ML-DSA-44 · CryptoHives-Stateless  |  88.20 μs |  1.498 μs |  1.401 μs |   50488 B |
-| Verify (invalid) · ML-DSA-44 · BouncyCastle           |  99.40 μs |  1.905 μs |  1.871 μs |   56992 B |
-|                                                       |           |           |           |           |
-| Verify (invalid) · ML-DSA-65 · OS                     |  76.13 μs |  0.111 μs |  0.104 μs |         - |
-| Verify (invalid) · ML-DSA-65 · CryptoHives-Stateless  | 142.17 μs |  2.741 μs |  2.815 μs |   81448 B |
-| Verify (invalid) · ML-DSA-65 · CryptoHives            | 144.72 μs |  0.962 μs |  0.900 μs |   81448 B |
-| Verify (invalid) · ML-DSA-65 · BouncyCastle           | 159.22 μs |  0.177 μs |  0.157 μs |   95040 B |
-|                                                       |           |           |           |           |
-| Verify (invalid) · ML-DSA-87 · OS                     | 110.68 μs |  1.375 μs |  1.219 μs |         - |
-| Verify (invalid) · ML-DSA-87 · CryptoHives            | 237.77 μs |  3.210 μs |  3.003 μs |  132056 B |
-| Verify (invalid) · ML-DSA-87 · CryptoHives-Stateless  | 237.97 μs |  4.156 μs |  3.888 μs |  132056 B |
-| Verify (invalid) · ML-DSA-87 · BouncyCastle           | 267.72 μs |  4.072 μs |  3.809 μs |  158544 B |
+﻿| Description                                           | Mean        | Error     | StdDev    | Allocated |
+|------------------------------------------------------ |------------:|----------:|----------:|----------:|
+| Sign · ML-DSA-44 · CryptoHives-Stateless              |   396.76 μs |  6.852 μs |  6.074 μs |   92697 B |
+| Sign · ML-DSA-44 · CryptoHives                        |   399.47 μs |  4.323 μs |  4.043 μs |   92892 B |
+| Sign · ML-DSA-44 · BouncyCastle                       |   513.50 μs | 10.060 μs | 11.182 μs |  107484 B |
+| Sign · ML-DSA-44 · OS                                 |   585.29 μs | 11.512 μs | 16.510 μs |         - |
+|                                                       |             |           |           |           |
+| Sign · ML-DSA-65 · CryptoHives-Stateless              |   639.99 μs | 12.397 μs | 11.596 μs |  139895 B |
+| Sign · ML-DSA-65 · CryptoHives                        |   644.42 μs | 12.816 μs | 13.713 μs |  139020 B |
+| Sign · ML-DSA-65 · BouncyCastle                       |   798.61 μs | 11.638 μs | 10.886 μs |  170271 B |
+| Sign · ML-DSA-65 · OS                                 |   902.49 μs | 17.667 μs | 19.637 μs |         - |
+|                                                       |             |           |           |           |
+| Sign · ML-DSA-87 · CryptoHives-Stateless              |   797.97 μs | 10.930 μs | 10.224 μs |  200430 B |
+| Sign · ML-DSA-87 · CryptoHives                        |   803.42 μs | 15.742 μs | 14.725 μs |  200951 B |
+| Sign · ML-DSA-87 · OS                                 |   979.74 μs | 19.460 μs | 32.513 μs |         - |
+| Sign · ML-DSA-87 · BouncyCastle                       | 1,023.22 μs | 20.009 μs | 20.548 μs |  241599 B |
+|                                                       |             |           |           |           |
+| Sign (pre-hash) · ML-DSA-44 · CryptoHives             |   390.82 μs |  6.304 μs |  5.588 μs |   92912 B |
+| Sign (pre-hash) · ML-DSA-44 · CryptoHives-Stateless   |   393.89 μs |  4.785 μs |  4.476 μs |   93171 B |
+| Sign (pre-hash) · ML-DSA-44 · BouncyCastle            |   524.80 μs |  6.746 μs |  6.310 μs |  107364 B |
+| Sign (pre-hash) · ML-DSA-44 · OS                      |   568.79 μs | 11.224 μs | 13.361 μs |         - |
+|                                                       |             |           |           |           |
+| Sign (pre-hash) · ML-DSA-65 · CryptoHives             |   639.01 μs | 12.758 μs | 12.530 μs |  139351 B |
+| Sign (pre-hash) · ML-DSA-65 · CryptoHives-Stateless   |   647.65 μs | 11.677 μs | 10.923 μs |  140366 B |
+| Sign (pre-hash) · ML-DSA-65 · BouncyCastle            |   794.71 μs | 13.459 μs | 12.589 μs |  172086 B |
+| Sign (pre-hash) · ML-DSA-65 · OS                      |   890.13 μs | 17.221 μs | 17.685 μs |         - |
+|                                                       |             |           |           |           |
+| Sign (pre-hash) · ML-DSA-87 · CryptoHives             |   794.18 μs | 14.808 μs | 13.851 μs |  200877 B |
+| Sign (pre-hash) · ML-DSA-87 · CryptoHives-Stateless   |   798.60 μs | 13.567 μs | 12.691 μs |  200805 B |
+| Sign (pre-hash) · ML-DSA-87 · OS                      |   972.73 μs | 18.851 μs | 28.215 μs |         - |
+| Sign (pre-hash) · ML-DSA-87 · BouncyCastle            | 1,057.40 μs | 20.691 μs | 29.006 μs |  241810 B |
+|                                                       |             |           |           |           |
+| Verify · ML-DSA-44 · OS                               |    75.25 μs |  0.227 μs |  0.201 μs |         - |
+| Verify · ML-DSA-44 · CryptoHives                      |   116.14 μs |  0.348 μs |  0.308 μs |   50488 B |
+| Verify · ML-DSA-44 · CryptoHives-Stateless            |   116.18 μs |  0.413 μs |  0.366 μs |   50488 B |
+| Verify · ML-DSA-44 · BouncyCastle                     |   131.25 μs |  0.489 μs |  0.457 μs |   56992 B |
+|                                                       |             |           |           |           |
+| Verify · ML-DSA-65 · OS                               |   103.41 μs |  0.348 μs |  0.309 μs |         - |
+| Verify · ML-DSA-65 · CryptoHives                      |   188.12 μs |  0.322 μs |  0.301 μs |   81448 B |
+| Verify · ML-DSA-65 · CryptoHives-Stateless            |   188.42 μs |  0.278 μs |  0.260 μs |   81448 B |
+| Verify · ML-DSA-65 · BouncyCastle                     |   212.62 μs |  0.210 μs |  0.196 μs |   95040 B |
+|                                                       |             |           |           |           |
+| Verify · ML-DSA-87 · OS                               |   144.69 μs |  0.214 μs |  0.201 μs |         - |
+| Verify · ML-DSA-87 · CryptoHives-Stateless            |   311.87 μs |  0.349 μs |  0.291 μs |  132056 B |
+| Verify · ML-DSA-87 · CryptoHives                      |   312.03 μs |  0.588 μs |  0.550 μs |  132056 B |
+| Verify · ML-DSA-87 · BouncyCastle                     |   356.69 μs |  0.565 μs |  0.529 μs |  158544 B |
+|                                                       |             |           |           |           |
+| Verify (pre-hash) · ML-DSA-44 · OS                    |    72.24 μs |  1.100 μs |  1.029 μs |         - |
+| Verify (pre-hash) · ML-DSA-44 · CryptoHives-Stateless |   113.56 μs |  0.140 μs |  0.124 μs |   50824 B |
+| Verify (pre-hash) · ML-DSA-44 · CryptoHives           |   113.56 μs |  0.237 μs |  0.210 μs |   50824 B |
+| Verify (pre-hash) · ML-DSA-44 · BouncyCastle          |   133.63 μs |  0.187 μs |  0.175 μs |   57416 B |
+|                                                       |             |           |           |           |
+| Verify (pre-hash) · ML-DSA-65 · OS                    |    99.66 μs |  0.618 μs |  0.578 μs |         - |
+| Verify (pre-hash) · ML-DSA-65 · CryptoHives-Stateless |   186.01 μs |  0.288 μs |  0.269 μs |   81784 B |
+| Verify (pre-hash) · ML-DSA-65 · CryptoHives           |   186.36 μs |  0.532 μs |  0.472 μs |   81784 B |
+| Verify (pre-hash) · ML-DSA-65 · BouncyCastle          |   214.12 μs |  0.261 μs |  0.232 μs |   95464 B |
+|                                                       |             |           |           |           |
+| Verify (pre-hash) · ML-DSA-87 · OS                    |   143.34 μs |  0.338 μs |  0.282 μs |         - |
+| Verify (pre-hash) · ML-DSA-87 · CryptoHives           |   309.44 μs |  0.598 μs |  0.560 μs |  132392 B |
+| Verify (pre-hash) · ML-DSA-87 · CryptoHives-Stateless |   309.84 μs |  0.569 μs |  0.532 μs |  132392 B |
+| Verify (pre-hash) · ML-DSA-87 · BouncyCastle          |   356.76 μs |  0.750 μs |  0.701 μs |  158968 B |
+|                                                       |             |           |           |           |
+| Verify (invalid) · ML-DSA-44 · OS                     |    76.35 μs |  1.187 μs |  1.111 μs |         - |
+| Verify (invalid) · ML-DSA-44 · CryptoHives            |   116.37 μs |  0.246 μs |  0.230 μs |   50488 B |
+| Verify (invalid) · ML-DSA-44 · CryptoHives-Stateless  |   116.43 μs |  0.243 μs |  0.228 μs |   50488 B |
+| Verify (invalid) · ML-DSA-44 · BouncyCastle           |   131.12 μs |  0.263 μs |  0.233 μs |   56992 B |
+|                                                       |             |           |           |           |
+| Verify (invalid) · ML-DSA-65 · OS                     |   103.49 μs |  0.858 μs |  0.803 μs |         - |
+| Verify (invalid) · ML-DSA-65 · CryptoHives-Stateless  |   188.29 μs |  0.162 μs |  0.144 μs |   81448 B |
+| Verify (invalid) · ML-DSA-65 · CryptoHives            |   188.89 μs |  0.229 μs |  0.214 μs |   81448 B |
+| Verify (invalid) · ML-DSA-65 · BouncyCastle           |   214.59 μs |  0.279 μs |  0.247 μs |   95040 B |
+|                                                       |             |           |           |           |
+| Verify (invalid) · ML-DSA-87 · OS                     |   144.97 μs |  0.399 μs |  0.373 μs |         - |
+| Verify (invalid) · ML-DSA-87 · CryptoHives-Stateless  |   311.90 μs |  0.332 μs |  0.294 μs |  132056 B |
+| Verify (invalid) · ML-DSA-87 · CryptoHives            |   312.27 μs |  0.696 μs |  0.617 μs |  132056 B |
+| Verify (invalid) · ML-DSA-87 · BouncyCastle           |   355.31 μs |  0.556 μs |  0.520 μs |  158544 B |

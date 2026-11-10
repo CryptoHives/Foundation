@@ -1,33 +1,33 @@
-﻿| Description                             | TestDataSize | Mean         | Error      | StdDev     | Code Size | Allocated |
-|---------------------------------------- |------------- |-------------:|-----------:|-----------:|----------:|----------:|
-| Decrypt · SEED-GCM (CryptoHives-PClMul) | 128B         |     1.609 μs |  0.0251 μs |  0.0235 μs |     310 B |         - |
-| Decrypt · SEED-GCM (BouncyCastle)       | 128B         |     2.182 μs |  0.0291 μs |  0.0272 μs |     310 B |     944 B |
-| Decrypt · SEED-GCM (CryptoHives-Scalar) | 128B         |     2.412 μs |  0.0307 μs |  0.0287 μs |     310 B |         - |
-|                                         |              |              |            |            |           |           |
-| Encrypt · SEED-GCM (CryptoHives-PClMul) | 128B         |     1.545 μs |  0.0221 μs |  0.0207 μs |     387 B |         - |
-| Encrypt · SEED-GCM (BouncyCastle)       | 128B         |     2.023 μs |  0.0282 μs |  0.0264 μs |     390 B |     928 B |
-| Encrypt · SEED-GCM (CryptoHives-Scalar) | 128B         |     2.333 μs |  0.0328 μs |  0.0307 μs |     387 B |         - |
-|                                         |              |              |            |            |           |           |
-| Decrypt · SEED-GCM (CryptoHives-PClMul) | 1KB          |    10.841 μs |  0.0659 μs |  0.0584 μs |     310 B |         - |
-| Decrypt · SEED-GCM (BouncyCastle)       | 1KB          |    11.699 μs |  0.1827 μs |  0.1709 μs |     310 B |     944 B |
-| Decrypt · SEED-GCM (CryptoHives-Scalar) | 1KB          |    16.251 μs |  0.3021 μs |  0.2826 μs |     310 B |         - |
-|                                         |              |              |            |            |           |           |
-| Encrypt · SEED-GCM (CryptoHives-PClMul) | 1KB          |    10.691 μs |  0.1525 μs |  0.1427 μs |     387 B |         - |
-| Encrypt · SEED-GCM (BouncyCastle)       | 1KB          |    11.592 μs |  0.1346 μs |  0.1259 μs |     390 B |     928 B |
-| Encrypt · SEED-GCM (CryptoHives-Scalar) | 1KB          |    16.306 μs |  0.1123 μs |  0.1051 μs |     387 B |         - |
-|                                         |              |              |            |            |           |           |
-| Decrypt · SEED-GCM (CryptoHives-PClMul) | 8KB          |    84.322 μs |  1.1242 μs |  1.0515 μs |     310 B |         - |
-| Decrypt · SEED-GCM (BouncyCastle)       | 8KB          |    87.889 μs |  1.5581 μs |  1.4575 μs |     310 B |     944 B |
-| Decrypt · SEED-GCM (CryptoHives-Scalar) | 8KB          |   127.254 μs |  2.1172 μs |  1.9804 μs |     310 B |         - |
-|                                         |              |              |            |            |           |           |
-| Encrypt · SEED-GCM (CryptoHives-PClMul) | 8KB          |    83.954 μs |  1.1827 μs |  1.1063 μs |     387 B |         - |
-| Encrypt · SEED-GCM (BouncyCastle)       | 8KB          |    87.967 μs |  1.4924 μs |  1.3960 μs |     387 B |     928 B |
-| Encrypt · SEED-GCM (CryptoHives-Scalar) | 8KB          |   127.095 μs |  2.0750 μs |  1.9410 μs |     387 B |         - |
-|                                         |              |              |            |            |           |           |
-| Decrypt · SEED-GCM (CryptoHives-PClMul) | 128KB        | 1,351.080 μs | 16.2787 μs | 15.2271 μs |     310 B |         - |
-| Decrypt · SEED-GCM (BouncyCastle)       | 128KB        | 1,396.575 μs | 18.1938 μs | 17.0185 μs |     310 B |     944 B |
-| Decrypt · SEED-GCM (CryptoHives-Scalar) | 128KB        | 2,036.365 μs | 31.0960 μs | 29.0872 μs |     310 B |         - |
-|                                         |              |              |            |            |           |           |
-| Encrypt · SEED-GCM (CryptoHives-PClMul) | 128KB        | 1,345.337 μs | 23.7765 μs | 22.2405 μs |     387 B |         - |
-| Encrypt · SEED-GCM (BouncyCastle)       | 128KB        | 1,396.061 μs | 22.3336 μs | 20.8908 μs |     387 B |     928 B |
-| Encrypt · SEED-GCM (CryptoHives-Scalar) | 128KB        | 2,038.030 μs | 32.9311 μs | 30.8038 μs |     387 B |         - |
+﻿| Description                             | TestDataSize | Mean         | Error     | StdDev    | Code Size | Allocated |
+|---------------------------------------- |------------- |-------------:|----------:|----------:|----------:|----------:|
+| Decrypt · SEED-GCM (CryptoHives-PClMul) | 128B         |     2.107 μs | 0.0015 μs | 0.0014 μs |     310 B |         - |
+| Decrypt · SEED-GCM (BouncyCastle)       | 128B         |     2.846 μs | 0.0010 μs | 0.0008 μs |     310 B |     944 B |
+| Decrypt · SEED-GCM (CryptoHives-Scalar) | 128B         |     3.146 μs | 0.0023 μs | 0.0021 μs |     310 B |         - |
+|                                         |              |              |           |           |           |           |
+| Encrypt · SEED-GCM (CryptoHives-PClMul) | 128B         |     2.015 μs | 0.0014 μs | 0.0013 μs |     387 B |         - |
+| Encrypt · SEED-GCM (BouncyCastle)       | 128B         |     2.656 μs | 0.0030 μs | 0.0027 μs |     390 B |     928 B |
+| Encrypt · SEED-GCM (CryptoHives-Scalar) | 128B         |     3.060 μs | 0.0045 μs | 0.0042 μs |     387 B |         - |
+|                                         |              |              |           |           |           |           |
+| Decrypt · SEED-GCM (CryptoHives-PClMul) | 1KB          |    14.139 μs | 0.0050 μs | 0.0047 μs |     310 B |         - |
+| Decrypt · SEED-GCM (BouncyCastle)       | 1KB          |    15.391 μs | 0.0085 μs | 0.0075 μs |     310 B |     944 B |
+| Decrypt · SEED-GCM (CryptoHives-Scalar) | 1KB          |    21.432 μs | 0.1022 μs | 0.0906 μs |     310 B |         - |
+|                                         |              |              |           |           |           |           |
+| Encrypt · SEED-GCM (CryptoHives-PClMul) | 1KB          |    14.037 μs | 0.0037 μs | 0.0035 μs |     387 B |         - |
+| Encrypt · SEED-GCM (BouncyCastle)       | 1KB          |    15.218 μs | 0.0077 μs | 0.0069 μs |     387 B |     928 B |
+| Encrypt · SEED-GCM (CryptoHives-Scalar) | 1KB          |    21.297 μs | 0.0301 μs | 0.0281 μs |     387 B |         - |
+|                                         |              |              |           |           |           |           |
+| Decrypt · SEED-GCM (CryptoHives-PClMul) | 8KB          |   110.513 μs | 0.0365 μs | 0.0341 μs |     310 B |         - |
+| Decrypt · SEED-GCM (BouncyCastle)       | 8KB          |   115.662 μs | 0.0721 μs | 0.0639 μs |     310 B |     944 B |
+| Decrypt · SEED-GCM (CryptoHives-Scalar) | 8KB          |   168.108 μs | 1.0056 μs | 0.8914 μs |     310 B |         - |
+|                                         |              |              |           |           |           |           |
+| Encrypt · SEED-GCM (CryptoHives-PClMul) | 8KB          |   110.311 μs | 0.0607 μs | 0.0568 μs |     387 B |         - |
+| Encrypt · SEED-GCM (BouncyCastle)       | 8KB          |   115.638 μs | 0.0483 μs | 0.0428 μs |     387 B |     928 B |
+| Encrypt · SEED-GCM (CryptoHives-Scalar) | 8KB          |   167.204 μs | 0.1013 μs | 0.0846 μs |     387 B |         - |
+|                                         |              |              |           |           |           |           |
+| Decrypt · SEED-GCM (CryptoHives-PClMul) | 128KB        | 1,770.317 μs | 0.5748 μs | 0.5376 μs |     310 B |         - |
+| Decrypt · SEED-GCM (BouncyCastle)       | 128KB        | 1,832.919 μs | 0.3393 μs | 0.3174 μs |     310 B |     944 B |
+| Decrypt · SEED-GCM (CryptoHives-Scalar) | 128KB        | 2,678.846 μs | 5.1092 μs | 4.7792 μs |     310 B |         - |
+|                                         |              |              |           |           |           |           |
+| Encrypt · SEED-GCM (CryptoHives-PClMul) | 128KB        | 1,774.019 μs | 0.9092 μs | 0.8060 μs |     387 B |         - |
+| Encrypt · SEED-GCM (BouncyCastle)       | 128KB        | 1,834.409 μs | 0.3480 μs | 0.3255 μs |     387 B |     928 B |
+| Encrypt · SEED-GCM (CryptoHives-Scalar) | 128KB        | 2,682.119 μs | 3.8526 μs | 3.2171 μs |     387 B |         - |

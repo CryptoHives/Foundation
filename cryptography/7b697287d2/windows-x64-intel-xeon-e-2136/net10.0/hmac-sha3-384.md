@@ -1,19 +1,19 @@
 ﻿| Description                                     | TestDataSize | Mean       | Error     | StdDev    | Code Size | Allocated |
 |------------------------------------------------ |------------- |-----------:|----------:|----------:|----------:|----------:|
-| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 128B         |   1.300 μs | 0.0024 μs | 0.0022 μs |   7,016 B |         - |
-| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 128B         |   1.567 μs | 0.0021 μs | 0.0019 μs |   1,458 B |         - |
+| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 128B         |   1.764 μs | 0.0016 μs | 0.0015 μs |   6,426 B |         - |
+| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 128B         |   2.135 μs | 0.0077 μs | 0.0068 μs |   1,458 B |         - |
 |                                                 |              |            |           |           |           |           |
-| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 137B         |   1.331 μs | 0.0245 μs | 0.0229 μs |   6,426 B |         - |
-| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 137B         |   1.571 μs | 0.0022 μs | 0.0020 μs |   1,458 B |         - |
+| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 137B         |   1.763 μs | 0.0008 μs | 0.0006 μs |   6,432 B |         - |
+| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 137B         |   2.124 μs | 0.0057 μs | 0.0054 μs |   1,458 B |         - |
 |                                                 |              |            |           |           |           |           |
-| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 1KB          |   4.022 μs | 0.0141 μs | 0.0132 μs |   1,458 B |         - |
-| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 1KB          |   4.561 μs | 0.0066 μs | 0.0055 μs |   6,957 B |         - |
+| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 1KB          |   5.394 μs | 0.0094 μs | 0.0083 μs |   1,458 B |         - |
+| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 1KB          |   6.168 μs | 0.0032 μs | 0.0030 μs |   6,967 B |         - |
 |                                                 |              |            |           |           |           |           |
-| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 1025B        |   4.006 μs | 0.0101 μs | 0.0094 μs |   1,458 B |         - |
-| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 1025B        |   4.558 μs | 0.0131 μs | 0.0122 μs |   6,965 B |         - |
+| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 1025B        |   5.429 μs | 0.0069 μs | 0.0065 μs |   1,458 B |         - |
+| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 1025B        |   6.196 μs | 0.0059 μs | 0.0049 μs |   6,967 B |         - |
 |                                                 |              |            |           |           |           |           |
-| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 8KB          |  24.456 μs | 0.1146 μs | 0.1016 μs |   1,458 B |         - |
-| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 8KB          |  32.451 μs | 0.0745 μs | 0.0660 μs |   6,971 B |         - |
+| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 8KB          |  33.042 μs | 0.0472 μs | 0.0418 μs |   1,458 B |         - |
+| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 8KB          |  43.956 μs | 0.0355 μs | 0.0314 μs |   6,964 B |         - |
 |                                                 |              |            |           |           |           |           |
-| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 128KB        | 373.407 μs | 0.8293 μs | 0.7757 μs |   1,458 B |         - |
-| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 128KB        | 509.657 μs | 1.6419 μs | 1.3711 μs |   6,963 B |         - |
+| ComputeMac · HMAC-SHA3-384 · CryptoHives-Scalar | 128KB        | 506.162 μs | 0.7847 μs | 0.6956 μs |   1,458 B |         - |
+| ComputeMac · HMAC-SHA3-384 · BouncyCastle       | 128KB        | 689.341 μs | 0.3158 μs | 0.2637 μs |   6,963 B |         - |

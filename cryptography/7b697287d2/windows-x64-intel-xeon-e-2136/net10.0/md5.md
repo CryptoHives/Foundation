@@ -1,25 +1,25 @@
 ﻿| Description                               | TestDataSize | Mean         | Error     | StdDev    | Code Size | Allocated |
 |------------------------------------------ |------------- |-------------:|----------:|----------:|----------:|----------:|
-| TryComputeHash · MD5 · CryptoHives-Scalar | 128B         |     354.6 ns |   0.94 ns |   0.88 ns |   2,791 B |         - |
-| TryComputeHash · MD5 · OS Native          | 128B         |     377.9 ns |   1.41 ns |   1.32 ns |   4,450 B |         - |
-| TryComputeHash · MD5 · BouncyCastle       | 128B         |     469.4 ns |   1.54 ns |   1.44 ns |   5,118 B |         - |
+| TryComputeHash · MD5 · CryptoHives-Scalar | 128B         |     471.1 ns |   0.58 ns |   0.52 ns |   2,791 B |         - |
+| TryComputeHash · MD5 · OS Native          | 128B         |     503.3 ns |   0.29 ns |   0.27 ns |   4,450 B |         - |
+| TryComputeHash · MD5 · BouncyCastle       | 128B         |     628.2 ns |   1.32 ns |   1.23 ns |   5,118 B |         - |
 |                                           |              |              |           |           |           |           |
-| TryComputeHash · MD5 · CryptoHives-Scalar | 137B         |     353.4 ns |   1.36 ns |   1.27 ns |   2,779 B |         - |
-| TryComputeHash · MD5 · OS Native          | 137B         |     380.7 ns |   1.09 ns |   0.91 ns |   4,450 B |         - |
-| TryComputeHash · MD5 · BouncyCastle       | 137B         |     481.9 ns |   2.42 ns |   2.27 ns |   5,117 B |         - |
+| TryComputeHash · MD5 · CryptoHives-Scalar | 137B         |     474.0 ns |   1.65 ns |   1.54 ns |   2,779 B |         - |
+| TryComputeHash · MD5 · OS Native          | 137B         |     503.7 ns |   0.24 ns |   0.23 ns |   4,450 B |         - |
+| TryComputeHash · MD5 · BouncyCastle       | 137B         |     642.1 ns |   0.89 ns |   0.74 ns |   5,117 B |         - |
 |                                           |              |              |           |           |           |           |
-| TryComputeHash · MD5 · OS Native          | 1KB          |   1,778.5 ns |   4.03 ns |   3.77 ns |   4,450 B |         - |
-| TryComputeHash · MD5 · CryptoHives-Scalar | 1KB          |   2,031.2 ns |   8.65 ns |   8.09 ns |   2,791 B |         - |
-| TryComputeHash · MD5 · BouncyCastle       | 1KB          |   2,656.6 ns |   9.32 ns |   8.72 ns |   5,118 B |         - |
+| TryComputeHash · MD5 · OS Native          | 1KB          |   2,360.8 ns |   0.85 ns |   0.80 ns |   4,450 B |         - |
+| TryComputeHash · MD5 · CryptoHives-Scalar | 1KB          |   2,689.7 ns |   2.91 ns |   2.72 ns |   2,791 B |         - |
+| TryComputeHash · MD5 · BouncyCastle       | 1KB          |   3,496.2 ns |   2.89 ns |   2.57 ns |   5,134 B |         - |
 |                                           |              |              |           |           |           |           |
-| TryComputeHash · MD5 · OS Native          | 1025B        |   1,779.3 ns |   4.25 ns |   3.98 ns |   4,450 B |         - |
-| TryComputeHash · MD5 · CryptoHives-Scalar | 1025B        |   2,025.1 ns |   9.39 ns |   8.79 ns |   2,784 B |         - |
-| TryComputeHash · MD5 · BouncyCastle       | 1025B        |   2,628.0 ns |  10.06 ns |   9.41 ns |   5,122 B |         - |
+| TryComputeHash · MD5 · OS Native          | 1025B        |   2,365.5 ns |   1.63 ns |   1.52 ns |   4,450 B |         - |
+| TryComputeHash · MD5 · CryptoHives-Scalar | 1025B        |   2,682.1 ns |   3.69 ns |   3.27 ns |   2,784 B |         - |
+| TryComputeHash · MD5 · BouncyCastle       | 1025B        |   3,496.2 ns |   7.56 ns |   6.70 ns |   5,122 B |         - |
 |                                           |              |              |           |           |           |           |
-| TryComputeHash · MD5 · OS Native          | 8KB          |  12,680.7 ns |  44.49 ns |  37.15 ns |   4,450 B |         - |
-| TryComputeHash · MD5 · CryptoHives-Scalar | 8KB          |  14,853.1 ns |  30.95 ns |  28.95 ns |   2,791 B |         - |
-| TryComputeHash · MD5 · BouncyCastle       | 8KB          |  19,684.5 ns |  62.58 ns |  58.53 ns |   4,971 B |         - |
+| TryComputeHash · MD5 · OS Native          | 8KB          |  16,915.4 ns |   4.54 ns |   3.79 ns |   4,450 B |         - |
+| TryComputeHash · MD5 · CryptoHives-Scalar | 8KB          |  19,858.3 ns |  19.04 ns |  16.88 ns |   2,791 B |         - |
+| TryComputeHash · MD5 · BouncyCastle       | 8KB          |  26,079.1 ns |  29.00 ns |  25.71 ns |   5,144 B |         - |
 |                                           |              |              |           |           |           |           |
-| TryComputeHash · MD5 · OS Native          | 128KB        | 199,784.5 ns | 651.22 ns | 577.29 ns |   4,450 B |         - |
-| TryComputeHash · MD5 · CryptoHives-Scalar | 128KB        | 235,284.3 ns | 645.49 ns | 603.79 ns |   2,801 B |         - |
-| TryComputeHash · MD5 · BouncyCastle       | 128KB        | 308,823.6 ns | 831.36 ns | 736.98 ns |   5,093 B |         - |
+| TryComputeHash · MD5 · OS Native          | 128KB        | 266,377.2 ns | 131.24 ns | 122.76 ns |   4,527 B |         - |
+| TryComputeHash · MD5 · CryptoHives-Scalar | 128KB        | 316,000.6 ns | 265.01 ns | 247.89 ns |   2,801 B |         - |
+| TryComputeHash · MD5 · BouncyCastle       | 128KB        | 411,965.8 ns | 460.20 ns | 430.47 ns |   5,093 B |         - |

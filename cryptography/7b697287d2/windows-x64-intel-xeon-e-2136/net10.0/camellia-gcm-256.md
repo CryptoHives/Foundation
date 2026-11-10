@@ -1,33 +1,33 @@
-﻿| Description                                     | TestDataSize | Mean         | Error      | StdDev     | Code Size | Allocated |
-|------------------------------------------------ |------------- |-------------:|-----------:|-----------:|----------:|----------:|
-| Decrypt · Camellia-256-GCM (CryptoHives-PClMul) | 128B         |     1.417 μs |  0.0123 μs |  0.0115 μs |     310 B |         - |
-| Decrypt · Camellia-256-GCM (BouncyCastle)       | 128B         |     2.095 μs |  0.0141 μs |  0.0132 μs |     310 B |    1440 B |
-| Decrypt · Camellia-256-GCM (CryptoHives-Scalar) | 128B         |     2.225 μs |  0.0237 μs |  0.0222 μs |     310 B |         - |
-|                                                 |              |              |            |            |           |           |
-| Encrypt · Camellia-256-GCM (CryptoHives-PClMul) | 128B         |     1.302 μs |  0.0073 μs |  0.0068 μs |     390 B |         - |
-| Encrypt · Camellia-256-GCM (BouncyCastle)       | 128B         |     1.919 μs |  0.0094 μs |  0.0088 μs |     390 B |    1424 B |
-| Encrypt · Camellia-256-GCM (CryptoHives-Scalar) | 128B         |     2.091 μs |  0.0036 μs |  0.0034 μs |     387 B |         - |
-|                                                 |              |              |            |            |           |           |
-| Decrypt · Camellia-256-GCM (CryptoHives-PClMul) | 1KB          |     9.400 μs |  0.0762 μs |  0.0712 μs |     310 B |         - |
-| Decrypt · Camellia-256-GCM (BouncyCastle)       | 1KB          |    10.927 μs |  0.1106 μs |  0.1035 μs |     310 B |    3680 B |
-| Decrypt · Camellia-256-GCM (CryptoHives-Scalar) | 1KB          |    14.904 μs |  0.1343 μs |  0.1256 μs |     310 B |         - |
-|                                                 |              |              |            |            |           |           |
-| Encrypt · Camellia-256-GCM (CryptoHives-PClMul) | 1KB          |     9.103 μs |  0.0284 μs |  0.0237 μs |     387 B |         - |
-| Encrypt · Camellia-256-GCM (BouncyCastle)       | 1KB          |    10.632 μs |  0.0953 μs |  0.0795 μs |     387 B |    3664 B |
-| Encrypt · Camellia-256-GCM (CryptoHives-Scalar) | 1KB          |    14.582 μs |  0.0365 μs |  0.0341 μs |     390 B |         - |
-|                                                 |              |              |            |            |           |           |
-| Decrypt · Camellia-256-GCM (CryptoHives-PClMul) | 8KB          |    73.315 μs |  0.6948 μs |  0.6499 μs |     310 B |         - |
-| Decrypt · Camellia-256-GCM (BouncyCastle)       | 8KB          |    82.290 μs |  0.7525 μs |  0.7039 μs |     310 B |   21600 B |
-| Decrypt · Camellia-256-GCM (CryptoHives-Scalar) | 8KB          |   117.659 μs |  0.8562 μs |  0.7590 μs |     310 B |         - |
-|                                                 |              |              |            |            |           |           |
-| Encrypt · Camellia-256-GCM (CryptoHives-PClMul) | 8KB          |    71.564 μs |  0.2912 μs |  0.2724 μs |     387 B |         - |
-| Encrypt · Camellia-256-GCM (BouncyCastle)       | 8KB          |    80.117 μs |  0.2316 μs |  0.2167 μs |     387 B |   21584 B |
-| Encrypt · Camellia-256-GCM (CryptoHives-Scalar) | 8KB          |   114.481 μs |  0.5961 μs |  0.5284 μs |     387 B |         - |
-|                                                 |              |              |            |            |           |           |
-| Decrypt · Camellia-256-GCM (CryptoHives-PClMul) | 128KB        | 1,166.325 μs | 10.5684 μs |  9.8857 μs |     310 B |         - |
-| Decrypt · Camellia-256-GCM (BouncyCastle)       | 128KB        | 1,284.681 μs | 13.8206 μs | 12.9278 μs |     310 B |  328800 B |
-| Decrypt · Camellia-256-GCM (CryptoHives-Scalar) | 128KB        | 1,873.172 μs | 16.6248 μs | 15.5509 μs |     310 B |         - |
-|                                                 |              |              |            |            |           |           |
-| Encrypt · Camellia-256-GCM (CryptoHives-PClMul) | 128KB        | 1,167.265 μs | 12.4813 μs | 11.6750 μs |     387 B |         - |
-| Encrypt · Camellia-256-GCM (BouncyCastle)       | 128KB        | 1,297.627 μs | 14.6033 μs | 13.6600 μs |     387 B |  328784 B |
-| Encrypt · Camellia-256-GCM (CryptoHives-Scalar) | 128KB        | 1,882.738 μs | 17.5088 μs | 16.3777 μs |     387 B |         - |
+﻿| Description                                     | TestDataSize | Mean         | Error     | StdDev    | Code Size | Allocated |
+|------------------------------------------------ |------------- |-------------:|----------:|----------:|----------:|----------:|
+| Decrypt · Camellia-256-GCM (CryptoHives-PClMul) | 128B         |     1.830 μs | 0.0008 μs | 0.0007 μs |     310 B |         - |
+| Decrypt · Camellia-256-GCM (BouncyCastle)       | 128B         |     2.741 μs | 0.0053 μs | 0.0049 μs |     310 B |    1440 B |
+| Decrypt · Camellia-256-GCM (CryptoHives-Scalar) | 128B         |     2.876 μs | 0.0090 μs | 0.0080 μs |     310 B |         - |
+|                                                 |              |              |           |           |           |           |
+| Encrypt · Camellia-256-GCM (CryptoHives-PClMul) | 128B         |     1.736 μs | 0.0013 μs | 0.0012 μs |     390 B |         - |
+| Encrypt · Camellia-256-GCM (BouncyCastle)       | 128B         |     2.540 μs | 0.0039 μs | 0.0037 μs |     387 B |    1424 B |
+| Encrypt · Camellia-256-GCM (CryptoHives-Scalar) | 128B         |     2.803 μs | 0.0055 μs | 0.0046 μs |     387 B |         - |
+|                                                 |              |              |           |           |           |           |
+| Decrypt · Camellia-256-GCM (CryptoHives-PClMul) | 1KB          |    12.277 μs | 0.0161 μs | 0.0151 μs |     310 B |         - |
+| Decrypt · Camellia-256-GCM (BouncyCastle)       | 1KB          |    14.280 μs | 0.0196 μs | 0.0183 μs |     310 B |    3680 B |
+| Decrypt · Camellia-256-GCM (CryptoHives-Scalar) | 1KB          |    19.736 μs | 0.0308 μs | 0.0273 μs |     310 B |         - |
+|                                                 |              |              |           |           |           |           |
+| Encrypt · Camellia-256-GCM (CryptoHives-PClMul) | 1KB          |    12.110 μs | 0.0090 μs | 0.0080 μs |     387 B |         - |
+| Encrypt · Camellia-256-GCM (BouncyCastle)       | 1KB          |    14.136 μs | 0.0121 μs | 0.0107 μs |     387 B |    3664 B |
+| Encrypt · Camellia-256-GCM (CryptoHives-Scalar) | 1KB          |    19.354 μs | 0.0366 μs | 0.0324 μs |     387 B |         - |
+|                                                 |              |              |           |           |           |           |
+| Decrypt · Camellia-256-GCM (CryptoHives-PClMul) | 8KB          |    97.144 μs | 0.0669 μs | 0.0559 μs |     310 B |         - |
+| Decrypt · Camellia-256-GCM (BouncyCastle)       | 8KB          |   107.187 μs | 0.1188 μs | 0.1111 μs |     310 B |   21600 B |
+| Decrypt · Camellia-256-GCM (CryptoHives-Scalar) | 8KB          |   152.180 μs | 0.2415 μs | 0.2141 μs |     310 B |         - |
+|                                                 |              |              |           |           |           |           |
+| Encrypt · Camellia-256-GCM (CryptoHives-PClMul) | 8KB          |    94.881 μs | 0.0735 μs | 0.0688 μs |     387 B |         - |
+| Encrypt · Camellia-256-GCM (BouncyCastle)       | 8KB          |   106.645 μs | 0.0849 μs | 0.0663 μs |     387 B |   21584 B |
+| Encrypt · Camellia-256-GCM (CryptoHives-Scalar) | 8KB          |   152.482 μs | 0.6616 μs | 0.5865 μs |     387 B |         - |
+|                                                 |              |              |           |           |           |           |
+| Decrypt · Camellia-256-GCM (CryptoHives-PClMul) | 128KB        | 1,541.363 μs | 1.9873 μs | 1.8589 μs |     310 B |         - |
+| Decrypt · Camellia-256-GCM (BouncyCastle)       | 128KB        | 1,681.356 μs | 2.6697 μs | 2.4972 μs |     310 B |  328800 B |
+| Decrypt · Camellia-256-GCM (CryptoHives-Scalar) | 128KB        | 2,438.214 μs | 7.9115 μs | 7.4004 μs |     310 B |         - |
+|                                                 |              |              |           |           |           |           |
+| Encrypt · Camellia-256-GCM (CryptoHives-PClMul) | 128KB        | 1,557.808 μs | 1.1483 μs | 1.0179 μs |     387 B |         - |
+| Encrypt · Camellia-256-GCM (BouncyCastle)       | 128KB        | 1,684.929 μs | 2.3552 μs | 2.2031 μs |     387 B |  328784 B |
+| Encrypt · Camellia-256-GCM (CryptoHives-Scalar) | 128KB        | 2,432.172 μs | 5.5685 μs | 4.9363 μs |     387 B |         - |

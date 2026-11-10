@@ -12,4 +12,6 @@ Method=TryComputeHash  Job=.NET 10.0  Affinity=010101010000
 Runtime=.NET 10.0  Toolchain=net10.0
 ```
 
+Run settings: High performance plan, max processor state 99% (boost off, base clock 4.7 GHz)
+
 > **Note:** Results are machine-specific and may vary between systems. Run benchmarks locally for your specific hardware.

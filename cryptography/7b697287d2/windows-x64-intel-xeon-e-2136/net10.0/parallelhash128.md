@@ -1,19 +1,19 @@
-﻿| Description                                           | TestDataSize | Mean       | Error     | StdDev    | Code Size | Allocated |
-|------------------------------------------------------ |------------- |-----------:|----------:|----------:|----------:|----------:|
-| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 128B         |   1.044 μs | 0.0035 μs | 0.0033 μs |  10,135 B |         - |
-| TryComputeHash · ParallelHash128 · BouncyCastle       | 128B         |  37.314 μs | 0.6513 μs | 0.6092 μs |  13,117 B |     128 B |
-|                                                       |              |            |           |           |           |           |
-| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 137B         |   1.043 μs | 0.0026 μs | 0.0024 μs |  10,135 B |         - |
-| TryComputeHash · ParallelHash128 · BouncyCastle       | 137B         |  37.535 μs | 0.5370 μs | 0.5023 μs |  13,129 B |     128 B |
-|                                                       |              |            |           |           |           |           |
-| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 1KB          |   2.935 μs | 0.0110 μs | 0.0103 μs |  10,138 B |         - |
-| TryComputeHash · ParallelHash128 · BouncyCastle       | 1KB          |  40.683 μs | 0.3982 μs | 0.3530 μs |  13,158 B |     128 B |
-|                                                       |              |            |           |           |           |           |
-| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 1025B        |   2.953 μs | 0.0245 μs | 0.0217 μs |  10,138 B |         - |
-| TryComputeHash · ParallelHash128 · BouncyCastle       | 1025B        |  41.114 μs | 0.4711 μs | 0.4176 μs |  13,150 B |     128 B |
-|                                                       |              |            |           |           |           |           |
-| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 8KB          |  15.728 μs | 0.0379 μs | 0.0317 μs |  10,139 B |         - |
-| TryComputeHash · ParallelHash128 · BouncyCastle       | 8KB          |  68.607 μs | 0.4534 μs | 0.3786 μs |  14,305 B |     128 B |
-|                                                       |              |            |           |           |           |           |
-| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 128KB        | 238.376 μs | 0.7800 μs | 0.7296 μs |  10,129 B |         - |
-| TryComputeHash · ParallelHash128 · BouncyCastle       | 128KB        | 514.054 μs | 1.5122 μs | 1.4146 μs |  14,986 B |     128 B |
+﻿| Description                                           | TestDataSize | Mean       | Error     | StdDev    | Median     | Code Size | Allocated |
+|------------------------------------------------------ |------------- |-----------:|----------:|----------:|-----------:|----------:|----------:|
+| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 128B         |   1.408 μs | 0.0027 μs | 0.0025 μs |   1.407 μs |  10,135 B |         - |
+| TryComputeHash · ParallelHash128 · BouncyCastle       | 128B         |  49.879 μs | 0.4525 μs | 0.4011 μs |  49.675 μs |  13,123 B |     128 B |
+|                                                       |              |            |           |           |            |           |           |
+| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 137B         |   1.393 μs | 0.0012 μs | 0.0011 μs |   1.392 μs |  10,135 B |         - |
+| TryComputeHash · ParallelHash128 · BouncyCastle       | 137B         |  50.215 μs | 0.7102 μs | 0.6643 μs |  49.772 μs |  13,125 B |     128 B |
+|                                                       |              |            |           |           |            |           |           |
+| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 1KB          |   3.905 μs | 0.0017 μs | 0.0014 μs |   3.905 μs |  10,138 B |         - |
+| TryComputeHash · ParallelHash128 · BouncyCastle       | 1KB          |  55.594 μs | 1.0621 μs | 1.0907 μs |  54.807 μs |  13,164 B |     128 B |
+|                                                       |              |            |           |           |            |           |           |
+| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 1025B        |   3.909 μs | 0.0040 μs | 0.0036 μs |   3.908 μs |  10,138 B |         - |
+| TryComputeHash · ParallelHash128 · BouncyCastle       | 1025B        |  55.260 μs | 0.6823 μs | 0.6382 μs |  54.885 μs |  13,164 B |     128 B |
+|                                                       |              |            |           |           |            |           |           |
+| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 8KB          |  20.950 μs | 0.0220 μs | 0.0184 μs |  20.949 μs |  10,139 B |         - |
+| TryComputeHash · ParallelHash128 · BouncyCastle       | 8KB          |  89.012 μs | 0.5622 μs | 0.5259 μs |  88.748 μs |  14,296 B |     128 B |
+|                                                       |              |            |           |           |            |           |           |
+| TryComputeHash · ParallelHash128 · CryptoHives-Scalar | 128KB        | 317.539 μs | 0.3575 μs | 0.3169 μs | 317.432 μs |  10,129 B |         - |
+| TryComputeHash · ParallelHash128 · BouncyCastle       | 128KB        | 683.183 μs | 0.9551 μs | 0.8466 μs | 683.119 μs |  14,986 B |     128 B |

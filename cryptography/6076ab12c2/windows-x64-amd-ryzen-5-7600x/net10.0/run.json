@@ -26,5 +26,6 @@
                      "NUnit3TestAdapter":  "6.3.0",
                      "OpenGost.Security.Cryptography":  "0.3.0",
                      "SauceControl.Blake2Fast":  "2.0.0"
-                 }
+                 },
+  "comment": "High performance plan, max processor state 99% (boost off, base clock 4.7 GHz)"
 }
