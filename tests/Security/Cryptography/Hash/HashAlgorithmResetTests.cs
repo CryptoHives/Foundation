@@ -31,6 +31,7 @@ using System.Text;
 /// </para>
 /// </remarks>
 [TestFixture]
+[Parallelizable(ParallelScope.All)]
 public class HashAlgorithmResetTests
 {
     private static readonly byte[] Abc = Encoding.ASCII.GetBytes("abc");

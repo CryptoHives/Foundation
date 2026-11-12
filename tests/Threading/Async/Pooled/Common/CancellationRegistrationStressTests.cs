@@ -30,7 +30,7 @@ using Threading.Tests.Pools;
 /// </para>
 /// </remarks>
 [TestFixture]
-[Parallelizable(ParallelScope.Self)]
+[Parallelizable(ParallelScope.All)]
 public class CancellationRegistrationStressTests
 {
     private const int Iterations = 1000;

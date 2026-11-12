@@ -14,6 +14,7 @@ using OS = System.Security.Cryptography;
 /// algorithm type for every implementation.
 /// </summary>
 [TestFixture]
+[Parallelizable(ParallelScope.All)]
 public class HashAlgorithmAdapterTests
 {
     private static readonly int[] Sizes = [0, 1, 63, 64, 65, 1000, 8192, 100000];
