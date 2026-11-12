@@ -7,6 +7,7 @@ using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using CH = CryptoHives.Foundation.Security.Cryptography;
@@ -561,6 +562,55 @@ public class Blake3Tests
         avx512.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
         Assert.That(avx512.Hash, Is.EqualTo(scalar.Hash), $"AVX-512 streaming mismatch at {inputLength} bytes / {writeSize}-byte writes");
+    }
+
+    private static IEnumerable<int> OneShotTrailingPartialChunkLengths()
+    {
+        int[] tails = [1, 64, 65, 128, 500, 784, 1023];
+        foreach (int prefixChunks in new[] { 0, 16 })
+        {
+            for (int chunks = 1; chunks <= 16; chunks++)
+            {
+                foreach (int tail in tails)
+                {
+                    yield return ((prefixChunks + chunks) * 1024) + tail;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Cross-validates one-shot hashing of an input that ends in a partial chunk, which the
+    /// SIMD tiers compress in a lane of the last batch, against the scalar reference.
+    /// </summary>
+    /// <param name="inputLength">The length of the input.</param>
+    [TestCaseSource(nameof(OneShotTrailingPartialChunkLengths))]
+    public void OneShotTrailingPartialChunkMatchesScalarReference(int inputLength)
+    {
+        byte[] input = GenerateTestInput(inputLength);
+
+        foreach (int outputBytes in new[] { 32, 100 })
+        {
+            using var scalar = Blake3.Create(CH.SimdSupport.None, outputBytes);
+            byte[] expected = new byte[outputBytes];
+            Assert.That(scalar.TryComputeHash(input, expected, out _), Is.True);
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                using var avx2 = Blake3.Create(CH.SimdSupport.Avx2, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(avx2.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"AVX2 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                using var avx512 = Blake3.Create(CH.SimdSupport.Avx512F | CH.SimdSupport.Avx2, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(avx512.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"AVX-512 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
+        }
     }
 
     /// <summary>

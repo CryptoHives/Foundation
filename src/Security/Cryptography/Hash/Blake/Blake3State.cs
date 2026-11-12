@@ -448,7 +448,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             return true;
         }
 
-        Append(source);
+        Append(source, true);
         return TryGetCurrentHash(destination, out bytesWritten);
     }
 
@@ -514,14 +514,28 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public void Append(ReadOnlySpan<byte> source)
+    {
+        Append(source, false);
+    }
+
+    /// <summary>
+    /// Absorbs <paramref name="source"/>, optionally as the last input of the hash.
+    /// </summary>
     /// <remarks>
     /// <c>SkipLocalsInit</c> because the SIMD kernels fully overwrite the <c>batchCvs</c>
     /// stack buffer before the commit loops read it; <c>AggressiveOptimization</c> because
     /// the batch-loop scaffolding would otherwise run under quick-JIT on early calls.
     /// </remarks>
+    /// <param name="source">The bytes to absorb.</param>
+    /// <param name="isFinal">
+    /// Whether no further input follows, which lets a trailing partial chunk be compressed
+    /// in a lane of the last SIMD batch instead of block by block.
+    /// </param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Append(ReadOnlySpan<byte> source)
+    private void Append(ReadOnlySpan<byte> source, bool isFinal)
     {
         fixed (Blake3State* core = &this)
         fixed (byte* srcPtr = source)
@@ -614,7 +628,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // through to the AVX2 branch, where the 8-lane kernels cover them.
                     if (length - offset >= (Avx2ChunksPerBatch + 1) * ChunkSizeBytes)
                     {
-                        offset += CommitPartialBatchAvx512(core, srcPtr, offset, length, batchCvs);
+                        offset += CommitPartialBatchAvx512(core, srcPtr, offset, length, batchCvs, isFinal);
                     }
                 }
 
@@ -676,7 +690,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // (see CommitPartialBatchAvx2).
                     if (length - offset >= 2 * ChunkSizeBytes)
                     {
-                        offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs);
+                        offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs, isFinal);
                     }
                 }
 
@@ -990,6 +1004,29 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         _hasPendingCv = false;
 #endif
     }
+
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Compresses the last block of a trailing partial chunk whose preceding blocks a SIMD
+    /// pass already folded into <paramref name="cv"/>, and stores the chunk's CV.
+    /// </summary>
+    /// <param name="tail">The last block's bytes.</param>
+    /// <param name="length">Number of bytes at <paramref name="tail"/>, 1..64.</param>
+    /// <param name="cv">The chaining value after the preceding blocks; overwritten.</param>
+    /// <param name="counter">The chunk's index.</param>
+    /// <param name="destination">Receives the chunk's CV.</param>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void FinishTailChunk(byte* tail, int length, uint* cv, ulong counter, uint* destination)
+    {
+        byte* block = stackalloc byte[BlockSizeBytes];
+        Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
+        Unsafe.CopyBlockUnaligned(ref *block, ref *tail, (uint)length);
+
+        CompressBlock(cv, block, (uint)length, counter, _baseFlags | FlagChunkEnd);
+        Unsafe.CopyBlock(destination, cv, KeySizeBytes);
+    }
+#endif
 
     // [SkipLocalsInit]: the block buffer is zeroed per chunk by localsinit but only
     // needed as padding for a partial last block — zeroed explicitly there instead.

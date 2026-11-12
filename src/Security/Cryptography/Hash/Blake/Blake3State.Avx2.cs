@@ -74,17 +74,32 @@ internal unsafe partial struct Blake3State
     }
 
 
+    // Fewest complete tail blocks for which the 8-lane pass beats the two-chain kernel plus a
+    // serial tail, when the tail rides in a lane (see CommitPartialBatchAvx2).
+    private const int MinTailBlocksOverTwoChain = 8;
+
     /// <summary>
     /// Compresses <paramref name="chunkCount"/> (3..7) independent, full
     /// (1024-byte) chunks with the 8-way kernel by ignoring the surplus lanes.
     /// </summary>
     /// <remarks>
     /// Covers the part of the 8-chunk batch loop's tail that the pair and two-chain kernels
-    /// do not take; see <see cref="CommitPartialBatchAvx2"/>.
+    /// do not take; see <see cref="CommitPartialBatchAvx2"/>. With <paramref name="tailBlocks"/>
+    /// above zero, a trailing partial chunk takes the next lane for its complete blocks and
+    /// its chaining value after them goes to <paramref name="tailCv"/>.
     /// </remarks>
+    /// <param name="source">The full chunks, followed directly by the partial chunk if any.</param>
+    /// <param name="chunkCount">Number of full chunks.</param>
+    /// <param name="key">The 8-word key/IV words for this hash.</param>
+    /// <param name="outCvs">Receives the full chunks' CVs.</param>
+    /// <param name="baseCounter">Index of the first chunk.</param>
+    /// <param name="baseFlags">Mode flags for the chunk compressions.</param>
+    /// <param name="tailBlocks">Complete blocks of the partial chunk, or 0 for none.</param>
+    /// <param name="tailCv">Receives the partial chunk's CV after its complete blocks (8 words); unused when <paramref name="tailBlocks"/> is 0.</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private static void CompressChunksPartialAvx2(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
+    private static void CompressChunksPartialAvx2(
+        byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags, int tailBlocks = 0, uint* tailCv = null)
     {
         Debug.Assert(chunkCount > Avx2PairChunksPerBatch && chunkCount < Avx2ChunksPerBatch,
             "the partial kernel compresses three to seven chunks");
@@ -108,7 +123,8 @@ internal unsafe partial struct Blake3State
         byte* blockBase = source;
         for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
-            for (int j = 0; j < chunkCount; j++)
+            int lanes = blockIdx < tailBlocks ? chunkCount + 1 : chunkCount;
+            for (int j = 0; j < lanes; j++)
             {
                 m[j] = Avx.LoadVector256((uint*)(blockBase + j * ChunkSizeBytes));
                 m[j + 8] = Avx.LoadVector256((uint*)(blockBase + j * ChunkSizeBytes + (BlockSizeBytes / 2)));
@@ -137,6 +153,24 @@ internal unsafe partial struct Blake3State
             v5 = Avx2.Xor(v5, v13);
             v6 = Avx2.Xor(v6, v14);
             v7 = Avx2.Xor(v7, v15);
+
+            if (blockIdx == tailBlocks - 1)
+            {
+                // m is free until the next block's loads.
+                uint* snapshot = (uint*)m;
+                Avx.Store(snapshot, v0);
+                Avx.Store(snapshot + 8, v1);
+                Avx.Store(snapshot + 16, v2);
+                Avx.Store(snapshot + 24, v3);
+                Avx.Store(snapshot + 32, v4);
+                Avx.Store(snapshot + 40, v5);
+                Avx.Store(snapshot + 48, v6);
+                Avx.Store(snapshot + 56, v7);
+                for (int w = 0; w < KeySizeWords; w++)
+                {
+                    tailCv[w] = snapshot[(w * 8) + chunkCount];
+                }
+            }
 
             blockBase += BlockSizeBytes;
             flags = blockIdx >= BlocksPerChunk - 2 ? baseFlags | FlagChunkEnd : baseFlags;
@@ -506,14 +540,43 @@ internal unsafe partial struct Blake3State
     /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
     /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
     /// <param name="batchCvs">The caller's 64-CV scratch buffer.</param>
+    /// <param name="isFinal">Whether no input follows this call.</param>
     /// <returns>The number of bytes consumed.</returns>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private int CommitPartialBatchAvx2(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    private int CommitPartialBatchAvx2(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs, bool isFinal)
     {
-        int fullChunks = (length - offset) / ChunkSizeBytes;
+        int remaining = length - offset;
+        int fullChunks = remaining / ChunkSizeBytes;
         Debug.Assert(fullChunks >= Avx2PairChunksPerBatch && fullChunks < Avx2ChunksPerBatch,
             "the 8-chunk batch loop leaves 2..7 chunks here");
-        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
+
+        int tailBytes = remaining - (fullChunks * ChunkSizeBytes);
+        if (isFinal && fullChunks > Avx2PairChunksPerBatch && tailBytes > BlockSizeBytes)
+        {
+            int tailBlocks = (tailBytes - 1) / BlockSizeBytes;
+
+            // The two-chain kernel is cheaper than the 8-lane pass, so a short tail does not
+            // repay switching to it.
+            if (fullChunks > Avx2PairX2ChunksPerBatch || !Avx512F.VL.IsSupported || tailBlocks >= MinTailBlocksOverTwoChain)
+            {
+                byte* tail = srcPtr + offset + (fullChunks * ChunkSizeBytes);
+                uint* tailCv = stackalloc uint[KeySizeWords];
+
+                CompressChunksPartialAvx2(
+                    srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags, tailBlocks, tailCv);
+                FinishTailChunk(
+                    tail + (tailBlocks * BlockSizeBytes),
+                    tailBytes - (tailBlocks * BlockSizeBytes),
+                    tailCv,
+                    _chunkCounter + (ulong)fullChunks,
+                    batchCvs + (fullChunks * KeySizeWords));
+
+                CommitPartialBatchCvsAvx2(core, batchCvs, fullChunks + 1, true);
+                return remaining;
+            }
+        }
+
+        bool drainsRemainingInput = tailBytes == 0;
 
         if (fullChunks == Avx2PairChunksPerBatch)
         {
@@ -542,7 +605,7 @@ internal unsafe partial struct Blake3State
     private const int PartialBatchLevelStrideWords = Avx512ChunksPerBatch * KeySizeWords;
 
     /// <summary>
-    /// Commits the CVs of a 2-15 chunk partial batch as the aligned subtrees the binary digits
+    /// Commits the CVs of a 2-16 chunk partial batch as the aligned subtrees the binary digits
     /// of <paramref name="chunkCount"/> describe, reducing all of them together with one wide
     /// parent pass per tree level instead of merging chunk by chunk.
     /// </summary>
@@ -553,12 +616,12 @@ internal unsafe partial struct Blake3State
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="batchCvs">The chunk CVs in their first 16 slots, in the caller's 64-CV scratch buffer.</param>
-    /// <param name="chunkCount">Number of chunk CVs, 2..15.</param>
+    /// <param name="chunkCount">Number of chunk CVs, 2..16.</param>
     /// <param name="drainsRemainingInput">Whether the batch ends exactly at the end of the input.</param>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void CommitPartialBatchCvsAvx2(Blake3State* core, uint* batchCvs, int chunkCount, bool drainsRemainingInput)
     {
-        Debug.Assert(chunkCount >= 2 && chunkCount < Avx512ChunksPerBatch, "a partial batch has 2..15 chunks");
+        Debug.Assert(chunkCount >= 2 && chunkCount <= Avx512ChunksPerBatch, "a partial batch has 2..16 chunks");
 
         if ((_chunkCounter & (Avx2ChunksPerBatch - 1)) != 0)
         {

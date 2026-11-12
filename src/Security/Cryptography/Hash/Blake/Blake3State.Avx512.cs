@@ -172,27 +172,118 @@ internal unsafe partial struct Blake3State
     /// </summary>
     /// <remarks>
     /// One 16-lane pass costs less than the 8-chunk batch plus the 8-lane partial pass that
-    /// otherwise covers this range. Shorter tails stay with the AVX2 branch.
+    /// otherwise covers this range. Shorter tails stay with the AVX2 branch. When the input is
+    /// final, a trailing partial chunk of more than one block rides in the next lane.
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
     /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
     /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
     /// <param name="batchCvs">The caller's 64-CV scratch buffer.</param>
+    /// <param name="isFinal">Whether no input follows this call.</param>
     /// <returns>The number of bytes consumed.</returns>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private int CommitPartialBatchAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    private int CommitPartialBatchAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs, bool isFinal)
     {
-        int fullChunks = (length - offset) / ChunkSizeBytes;
+        int remaining = length - offset;
+        int fullChunks = remaining / ChunkSizeBytes;
         Debug.Assert(fullChunks > Avx2ChunksPerBatch && fullChunks < Avx512ChunksPerBatch,
             "the 16-chunk batch loop leaves 9..15 chunks here");
-        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
+
+        int tailBytes = remaining - (fullChunks * ChunkSizeBytes);
+        if (isFinal && tailBytes > BlockSizeBytes)
+        {
+            int tailBlocks = (tailBytes - 1) / BlockSizeBytes;
+            byte* tail = srcPtr + offset + (fullChunks * ChunkSizeBytes);
+            uint* tailCv = stackalloc uint[KeySizeWords];
+
+            CompressChunks16TailAvx512(
+                srcPtr + offset, fullChunks, tailBlocks, core->_keyWords, batchCvs, tailCv, _chunkCounter, _baseFlags);
+            FinishTailChunk(
+                tail + (tailBlocks * BlockSizeBytes),
+                tailBytes - (tailBlocks * BlockSizeBytes),
+                tailCv,
+                _chunkCounter + (ulong)fullChunks,
+                batchCvs + (fullChunks * KeySizeWords));
+
+            CommitPartialBatchCvsAvx2(core, batchCvs, fullChunks + 1, true);
+            return remaining;
+        }
+
+        bool drainsRemainingInput = tailBytes == 0;
 
         CompressChunks16Avx512(
             srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
         CommitPartialBatchCvsAvx2(core, batchCvs, fullChunks, drainsRemainingInput);
         return fullChunks * ChunkSizeBytes;
+    }
+
+    /// <summary>
+    /// <see cref="CompressChunks16Avx512"/> for <paramref name="chunkCount"/> full chunks plus a
+    /// trailing partial chunk in the next lane, whose first <paramref name="tailBlocks"/> blocks
+    /// are complete.
+    /// </summary>
+    /// <remarks>
+    /// The partial chunk's lane takes part only while its blocks are complete, then reads zero
+    /// rows, so no load leaves the input. Its chaining value is captured after the last
+    /// complete block; the caller folds in the final, shorter block.
+    /// </remarks>
+    /// <param name="source">The full chunks, followed directly by the partial chunk.</param>
+    /// <param name="chunkCount">Number of full chunks, 9..15.</param>
+    /// <param name="tailBlocks">Complete blocks of the partial chunk, 1..15.</param>
+    /// <param name="key">The 8-word key/IV words for this hash.</param>
+    /// <param name="outCvs">Receives the full chunks' CVs; slots from <paramref name="chunkCount"/> on are garbage.</param>
+    /// <param name="tailCv">Receives the partial chunk's CV after its complete blocks (8 words).</param>
+    /// <param name="baseCounter">Index of the first chunk.</param>
+    /// <param name="baseFlags">Mode flags for the chunk compressions.</param>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void CompressChunks16TailAvx512(
+        byte* source, int chunkCount, int tailBlocks, uint* key, uint* outCvs, uint* tailCv, ulong baseCounter, uint baseFlags)
+    {
+        Debug.Assert(chunkCount > Avx2ChunksPerBatch && chunkCount < Avx512ChunksPerBatch, "the partial chunk needs a free lane");
+        Debug.Assert(tailBlocks >= 1 && tailBlocks < BlocksPerChunk, "the partial chunk has 1..15 complete blocks");
+
+        byte* scratch = stackalloc byte[Avx512ScratchBytes];
+        Vector512<uint>* m = Avx512Scratch(scratch);
+        Vector512<uint>* cv = m + BlockSizeWords;
+        Vector512<uint>* counters = cv + KeySizeWords;
+
+        CounterVectors512(baseCounter, out var counterLow, out var counterHigh);
+        counters[0] = counterLow;
+        counters[1] = counterHigh;
+
+        for (int i = 0; i < KeySizeWords; i++)
+        {
+            cv[i] = Vector512.Create(key[i]);
+        }
+
+        uint middleFlags = baseFlags;
+        uint endFlags = baseFlags | FlagChunkEnd;
+        uint flags = baseFlags | FlagChunkStart;
+        byte* blockBase = source;
+
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
+        {
+            int lanes = blockIdx < tailBlocks ? chunkCount + 1 : chunkCount;
+            Transpose16x16Into(blockBase, ChunkSizeBytes, lanes, m);
+
+            CompressVector512(cv, m, counters, flags);
+
+            if (blockIdx == tailBlocks - 1)
+            {
+                for (int w = 0; w < KeySizeWords; w++)
+                {
+                    tailCv[w] = ((uint*)(cv + w))[chunkCount];
+                }
+            }
+
+            flags = (blockIdx >= BlocksPerChunk - 2) ? endFlags : middleFlags;
+            blockBase += BlockSizeBytes;
+        }
+
+        UntransposeCvs8x16(cv, outCvs);
     }
 
     // m (16 vectors), then cv (8) and the two counter vectors; plus slack for 64-byte alignment.
