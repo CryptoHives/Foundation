@@ -19,7 +19,7 @@ using System.Text.Json;
 /// Covers <see cref="PoolFactory.CreatePool{T}"/>, the delegate-driven factory that lets callers pool
 /// types this package does not reference.
 /// </summary>
-[Parallelizable(ParallelScope.All)]
+[NonParallelizable]
 public class PoolFactoryTests
 {
     private sealed class Widget

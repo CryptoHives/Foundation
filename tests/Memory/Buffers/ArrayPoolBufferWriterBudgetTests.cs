@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 /// power of two, where <see cref="System.Buffers.ArrayPool{T}"/>'s round-up would otherwise push the
 /// array over the line.
 /// </remarks>
-[Parallelizable(ParallelScope.All)]
+[NonParallelizable]
 public class ArrayPoolBufferWriterBudgetTests
 {
     /// <summary>
