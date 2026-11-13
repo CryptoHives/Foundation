@@ -542,15 +542,36 @@ internal unsafe partial struct Blake3State
     /// <param name="batchCvs">The caller's 64-CV scratch buffer.</param>
     /// <param name="isFinal">Whether no input follows this call.</param>
     /// <returns>The number of bytes consumed.</returns>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private int CommitPartialBatchAvx2(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs, bool isFinal)
     {
         int remaining = length - offset;
         int fullChunks = remaining / ChunkSizeBytes;
-        Debug.Assert(fullChunks >= Avx2PairChunksPerBatch && fullChunks < Avx2ChunksPerBatch,
-            "the 8-chunk batch loop leaves 2..7 chunks here");
+        Debug.Assert(fullChunks >= 1 && fullChunks < Avx2ChunksPerBatch,
+            "the 8-chunk batch loop leaves 1..7 chunks here");
 
         int tailBytes = remaining - (fullChunks * ChunkSizeBytes);
+        Debug.Assert(fullChunks > 1 || (isFinal && tailBytes > BlockSizeBytes),
+            "a single chunk is only batched together with a partial chunk");
+
+        if (fullChunks == 1)
+        {
+            int tailBlocks = (tailBytes - 1) / BlockSizeBytes;
+            uint* tailCv = stackalloc uint[KeySizeWords];
+
+            CompressChunkAndTailAvx2(srcPtr + offset, core->_keyWords, batchCvs, _chunkCounter, _baseFlags, tailBlocks, tailCv);
+            FinishTailChunk(
+                srcPtr + offset + ChunkSizeBytes + (tailBlocks * BlockSizeBytes),
+                tailBytes - (tailBlocks * BlockSizeBytes),
+                tailCv,
+                _chunkCounter + 1,
+                batchCvs + KeySizeWords);
+
+            CommitPartialBatchCvsAvx2(core, batchCvs, 2, true);
+            return remaining;
+        }
+
         if (isFinal && fullChunks > Avx2PairChunksPerBatch && tailBytes > BlockSizeBytes)
         {
             int tailBlocks = (tailBytes - 1) / BlockSizeBytes;

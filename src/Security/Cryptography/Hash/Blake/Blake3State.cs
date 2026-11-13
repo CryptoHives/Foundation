@@ -686,9 +686,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // Partial batch: 2..7 chunks, by the pair, two-chain or 8-lane kernel
-                    // (see CommitPartialBatchAvx2).
-                    if (length - offset >= 2 * ChunkSizeBytes)
+                    // Partial batch: 2..7 chunks, or one chunk and a partial chunk of a final
+                    // input, by the pair, two-chain or 8-lane kernel (see CommitPartialBatchAvx2).
+                    if (length - offset >= 2 * ChunkSizeBytes ||
+                        (isFinal && length - offset > ChunkSizeBytes + BlockSizeBytes))
                     {
                         offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs, isFinal);
                     }
@@ -753,12 +754,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // SSSE3 partial batch: exactly 3 chunks via the 4-way kernel with
-                    // one ignored lane, mirroring the NEON tier's threshold (2 chunks
-                    // did not repay the transpose cost there either).
-                    if (length - offset >= 3 * ChunkSizeBytes)
+                    // SSSE3 partial batch: 2 or 3 chunks via the 4-way kernel with
+                    // ignored lanes; two serial chunks cost more than one such pass.
+                    if (length - offset >= 2 * ChunkSizeBytes)
                     {
-                        offset += CommitPartialBatch3Ssse3(core, srcPtr, offset, length, batchCvs);
+                        offset += CommitPartialBatchSsse3(core, srcPtr, offset, length, batchCvs);
                     }
                 }
 

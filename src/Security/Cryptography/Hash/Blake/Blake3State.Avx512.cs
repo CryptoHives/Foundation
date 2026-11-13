@@ -182,6 +182,7 @@ internal unsafe partial struct Blake3State
     /// <param name="batchCvs">The caller's 64-CV scratch buffer.</param>
     /// <param name="isFinal">Whether no input follows this call.</param>
     /// <returns>The number of bytes consumed.</returns>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private int CommitPartialBatchAvx512(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs, bool isFinal)
     {

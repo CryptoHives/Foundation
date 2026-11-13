@@ -110,6 +110,66 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
+    /// Compresses one full chunk and the complete blocks of the partial chunk that follows it
+    /// on one pair chain, for a final input.
+    /// </summary>
+    /// <remarks>
+    /// Past the partial chunk's complete blocks its half repeats the full chunk's block, so
+    /// nothing beyond the input is read and the surplus result is dropped.
+    /// </remarks>
+    /// <param name="source">The full chunk, followed directly by the partial chunk.</param>
+    /// <param name="key">The 8-word key/IV words for this hash.</param>
+    /// <param name="outCv">Receives the full chunk's CV (8 words).</param>
+    /// <param name="baseCounter">Index of the full chunk; the partial chunk is the next one.</param>
+    /// <param name="baseFlags">Mode flags for the chunk compressions.</param>
+    /// <param name="tailBlocks">Complete blocks of the partial chunk, 1..15.</param>
+    /// <param name="tailCv">Receives the partial chunk's CV after its complete blocks (8 words).</param>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void CompressChunkAndTailAvx2(
+        byte* source, uint* key, uint* outCv, ulong baseCounter, uint baseFlags, int tailBlocks, uint* tailCv)
+    {
+        Debug.Assert(tailBlocks >= 1 && tailBlocks < BlocksPerChunk, "the partial chunk has 1..15 complete blocks");
+
+        var keyLow = Sse2.LoadVector128(key);
+        var keyHigh = Sse2.LoadVector128(key + 4);
+        var row0 = Vector256.Create(keyLow, keyLow);
+        var row1 = Vector256.Create(keyHigh, keyHigh);
+        var row2Seed = Vector256.Create(IVLow, IVLow);
+
+        ulong counterB = baseCounter + 1;
+        var row3Start = Row3Pair(baseCounter, counterB, baseFlags | FlagChunkStart);
+        var row3Mid = Row3Pair(baseCounter, counterB, baseFlags);
+        var row3End = Row3Pair(baseCounter, counterB, baseFlags | FlagChunkEnd);
+
+        byte* blockA = source;
+        byte* blockB = source + ChunkSizeBytes;
+
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
+        {
+            var row2 = row2Seed;
+            var row3 = blockIdx == 0 ? row3Start : (blockIdx == BlocksPerChunk - 1 ? row3End : row3Mid);
+
+            GRounds256Pair(blockA, blockIdx < tailBlocks ? blockB : blockA, ref row0, ref row1, ref row2, ref row3);
+
+            row0 = Avx2.Xor(row0, row2);
+            row1 = Avx2.Xor(row1, row3);
+
+            if (blockIdx == tailBlocks - 1)
+            {
+                Sse2.Store(tailCv, row0.GetUpper());
+                Sse2.Store(tailCv + 4, row1.GetUpper());
+            }
+
+            blockA += BlockSizeBytes;
+            blockB += BlockSizeBytes;
+        }
+
+        Sse2.Store(outCv, row0.GetLower());
+        Sse2.Store(outCv + 4, row1.GetLower());
+    }
+
+    /// <summary>
     /// Compresses three or four independent, full chunks as two pair chains driven side by
     /// side, writing their CVs contiguously to <paramref name="outCvs"/>.
     /// </summary>

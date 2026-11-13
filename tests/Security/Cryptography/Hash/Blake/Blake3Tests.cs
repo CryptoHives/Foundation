@@ -566,7 +566,7 @@ public class Blake3Tests
 
     private static IEnumerable<int> OneShotTrailingPartialChunkLengths()
     {
-        int[] tails = [1, 64, 65, 128, 500, 784, 1023];
+        int[] tails = [0, 1, 64, 65, 128, 500, 784, 1023];
         foreach (int prefixChunks in new[] { 0, 16 })
         {
             for (int chunks = 1; chunks <= 16; chunks++)
@@ -594,6 +594,14 @@ public class Blake3Tests
             using var scalar = Blake3.Create(CH.SimdSupport.None, outputBytes);
             byte[] expected = new byte[outputBytes];
             Assert.That(scalar.TryComputeHash(input, expected, out _), Is.True);
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                using var ssse3 = Blake3.Create(CH.SimdSupport.Ssse3, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(ssse3.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"SSSE3 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
 
             if ((Blake3.SimdSupport & CH.SimdSupport.Avx2) != 0)
             {
