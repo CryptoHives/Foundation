@@ -316,7 +316,7 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Compresses <paramref name="chunkCount"/> (2..4) independent, full (1024-byte) chunks
+    /// Compresses <paramref name="chunkCount"/> (3 or 4) independent, full (1024-byte) chunks
     /// with a 4-lane kernel. Only <paramref name="chunkCount"/> rows are loaded, so nothing
     /// outside the input is touched; the surplus lane compresses whatever <c>m</c> holds and
     /// its output is not stored.
@@ -325,7 +325,7 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartial4Ssse3(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        Debug.Assert(chunkCount >= 2 && chunkCount <= Ssse3ChunksPerBatch, "the SSSE3 kernel compresses two to four chunks");
+        Debug.Assert(chunkCount is 3 or Ssse3ChunksPerBatch, "the SSSE3 kernel compresses three or four chunks");
         CounterVectors128(baseCounter, out var counterLow, out var counterHigh);
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
 
@@ -818,26 +818,26 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Compresses the 2 or 3 chunks this tier can still batch, and commits their CVs.
+    /// Compresses the exactly-3-chunk tail this tier can still batch, and commits its CVs.
     /// </summary>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
     /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
     /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
     /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
-    /// <returns>The number of bytes consumed (two or three chunks).</returns>
+    /// <returns>The number of bytes consumed (three chunks).</returns>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private int CommitPartialBatchSsse3(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    private int CommitPartialBatch3Ssse3(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
     {
-        int fullChunks = (length - offset) / ChunkSizeBytes;
-        Debug.Assert(fullChunks is 2 or 3, "two or three chunks remain here");
-        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
+        const int FullChunks = 3;
+        Debug.Assert((length - offset) / ChunkSizeBytes == FullChunks, "exactly three chunks remain here");
+        bool drainsRemainingInput = offset + (FullChunks * ChunkSizeBytes) == length;
 
         CompressChunksPartial4Ssse3(
-            srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+            srcPtr + offset, FullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
-        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
-        return fullChunks * ChunkSizeBytes;
+        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? FullChunks - 1 : FullChunks, drainsRemainingInput);
+        return FullChunks * ChunkSizeBytes;
     }
 
     /// <summary>
