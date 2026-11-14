@@ -7,6 +7,7 @@ using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using CH = CryptoHives.Foundation.Security.Cryptography;
@@ -242,6 +243,9 @@ public class Blake3Tests
     [TestCase(2049)]      // smallest partial batch: 2 committable chunks + 1 byte
     [TestCase(3072)]
     [TestCase(3073)]
+    [TestCase(3137)]      // 3 chunks + a tail of one complete block and one byte
+    [TestCase(3500)]
+    [TestCase(4095)]      // 3 chunks + a tail of 15 complete blocks
     [TestCase(4096)]
     [TestCase(4097)]
     [TestCase(5120)]
@@ -255,6 +259,9 @@ public class Blake3Tests
     [TestCase(10240)]     // 1 batch + a 2-chunk tail: the pair kernel at a nonzero counter
     [TestCase(10241)]     // same, with a byte following so both pair CVs commit
     [TestCase(11263)]     // largest 2-chunk tail before the 3-chunk kernel takes over
+    [TestCase(11264)]     // 1 batch + a 3-chunk tail
+    [TestCase(11764)]     // 1 batch + 3 chunks + a partial chunk
+    [TestCase(12288)]     // 1 batch + a 4-chunk tail
     [TestCase(16383)]
     [TestCase(16384)]     // exactly 2 batches
     [TestCase(16385)]     // 2 batches + 1 byte
@@ -561,6 +568,63 @@ public class Blake3Tests
         avx512.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
         Assert.That(avx512.Hash, Is.EqualTo(scalar.Hash), $"AVX-512 streaming mismatch at {inputLength} bytes / {writeSize}-byte writes");
+    }
+
+    private static IEnumerable<int> OneShotTrailingPartialChunkLengths()
+    {
+        int[] tails = [0, 1, 64, 65, 128, 500, 784, 1023];
+        foreach (int prefixChunks in new[] { 0, 16 })
+        {
+            for (int chunks = 1; chunks <= 16; chunks++)
+            {
+                foreach (int tail in tails)
+                {
+                    yield return ((prefixChunks + chunks) * 1024) + tail;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Cross-validates one-shot hashing of an input that ends in a partial chunk, which the
+    /// SIMD tiers compress in a lane of the last batch, against the scalar reference.
+    /// </summary>
+    /// <param name="inputLength">The length of the input.</param>
+    [TestCaseSource(nameof(OneShotTrailingPartialChunkLengths))]
+    public void OneShotTrailingPartialChunkMatchesScalarReference(int inputLength)
+    {
+        byte[] input = GenerateTestInput(inputLength);
+
+        foreach (int outputBytes in new[] { 32, 100 })
+        {
+            using var scalar = Blake3.Create(CH.SimdSupport.None, outputBytes);
+            byte[] expected = new byte[outputBytes];
+            Assert.That(scalar.TryComputeHash(input, expected, out _), Is.True);
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                using var ssse3 = Blake3.Create(CH.SimdSupport.Ssse3, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(ssse3.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"SSSE3 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                using var avx2 = Blake3.Create(CH.SimdSupport.Avx2, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(avx2.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"AVX2 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                using var avx512 = Blake3.Create(CH.SimdSupport.Avx512F | CH.SimdSupport.Avx2, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(avx512.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"AVX-512 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
+        }
     }
 
     /// <summary>

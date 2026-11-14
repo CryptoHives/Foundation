@@ -90,23 +90,24 @@ internal unsafe partial struct Blake3State
 
 
     /// <summary>
-    /// Compresses <paramref name="chunkCount"/> (2..4) independent, full
-    /// (1024-byte) chunks with the 4-way kernel by pointing the surplus lanes
-    /// back at the real chunks (lane <c>j</c> reads chunk <c>j</c> mod
+    /// Compresses <paramref name="chunkCount"/> (3 or 4) independent, full
+    /// (1024-byte) chunks with the 4-way kernel by pointing the surplus lane
+    /// back at a real chunk (lane <c>j</c> reads chunk <c>j</c> mod
     /// <paramref name="chunkCount"/>, so no memory outside the
     /// <paramref name="chunkCount"/>·1024 input bytes is touched); the surplus
-    /// lanes' outputs are wrong (their counters don't match the duplicated
-    /// data) and must be ignored. Only <paramref name="chunkCount"/> chaining
-    /// values in <paramref name="outCvs"/> are valid. At <paramref name="chunkCount"/>
+    /// lane's output is wrong (its counter doesn't match the duplicated
+    /// data) and is not stored. At <paramref name="chunkCount"/>
     /// == 4, <c>j % chunkCount == j</c> for every lane, so the lane-offset table
     /// degenerates to the same direct addressing the exact 4-chunk case would
-    /// use — this single kernel serves both the exact-batch and partial-tail
-    /// call sites, mirroring <see cref="CompressChunksPartialAvx2"/>.
+    /// use — this single kernel serves both the exact-batch and the 3-chunk tail
+    /// call sites.
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialNeon(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
+        Debug.Assert(chunkCount is 3 or NeonChunksPerBatch, "the NEON kernel compresses three or four chunks");
+
         int* laneOffsets = stackalloc int[NeonChunksPerBatch];
         for (int j = 0; j < NeonChunksPerBatch; j++)
         {
@@ -165,10 +166,8 @@ internal unsafe partial struct Blake3State
         }
 
         // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network —
-        // both groups must be transposed before any store. Only chunkCount (2..4)
-        // chunks are valid/requested here; a surplus lane's slot (whenever
-        // chunkCount < 4) is never written, since the caller's outCvs buffer is
-        // only sized for chunkCount chunks.
+        // both groups must be transposed before any store. Only chunkCount chunks
+        // are valid; the surplus lane's slot (when chunkCount is 3) is not stored.
         Transpose4x4Neon(ref cv0, ref cv1, ref cv2, ref cv3);
         Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
 
@@ -377,8 +376,7 @@ internal unsafe partial struct Blake3State
 
     /// <summary>
     /// Compresses the exactly-3-chunk tail this tier can still batch, and commits its CVs.
-    /// See <see cref="CommitPartialBatch3Ssse3"/> for why the count is a literal. The
-    /// 2-chunk case is deliberately absent: it benchmarked slower than the scalar loop,
+    /// The 2-chunk case is deliberately absent: it benchmarked slower than the scalar loop,
     /// so it falls through instead.
     /// </summary>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
@@ -402,7 +400,7 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Reduces <paramref name="chunkCount"/> (a power of two: 4, 16 or 64)
+    /// Reduces <paramref name="chunkCount"/> (4 or 64)
     /// contiguous chunk CVs to a single subtree CV at <paramref name="cvs"/>[0..8)
     /// using wide parent compressions, at NEON's 4-lane width. Mirrors
     /// <see cref="ReduceChunkCvsToSubtreeCvAvx2"/> (AVX2, 8-lane) one register width down.
@@ -432,6 +430,9 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ReduceChunkCvsToHalvesNeon(uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
+        Debug.Assert(chunkCount is NeonChunksPerBatch or ChunksPerSubtreeGroup,
+            "reduces one 4-chunk batch or one 64-chunk subtree group");
+
         // Full-width levels: every 4-parent group is fully populated.
         while (chunkCount >= 8)
         {
@@ -447,7 +448,7 @@ internal unsafe partial struct Blake3State
         CompressParents4Neon(cvs, key, cvs, baseFlags);   // 4 -> 2 (upper 2 lanes ignored)
     }
 
-    // Mirrors Blake3State.Compress(uint*, uint*) exactly (same message schedule,
+    // Mirrors Blake3State.Compress exactly (same message schedule,
     // same G-function groupings), with every uint word replaced by a
     // Vector128<uint> holding that word's value for 4 independent chunks.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -549,8 +550,8 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// In-place 4×4 transpose of 32-bit words: on input <c>vecs[j]</c> holds
-    /// 4 consecutive words of chunk <c>j</c>; on output <c>vecs[w]</c> holds
+    /// In-place 4×4 transpose of 32-bit words held in four registers: on input <c>vj</c>
+    /// holds 4 consecutive words of chunk <c>j</c>; on output <c>vw</c> holds
     /// word <c>w</c> of all 4 chunks (lane <c>j</c> = chunk <c>j</c>).
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
