@@ -6,7 +6,7 @@
 # <package>/<code-commit>/<platform>/<framework>/. -DestDir names the package directory; the three
 # levels below it are derived from the commit under test and from the reports themselves.
 # Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>]
-#            [-PlatformId <slug>] [-CodeCommit <sha>] [-TargetFramework <tfm>] [-DryRun]
+#            [-PlatformId <slug>] [-CodeCommit <sha>] [-TargetFramework <tfm>] [-Comment <text>] [-DryRun]
 
 [CmdletBinding()]
 param(
@@ -28,6 +28,9 @@ param(
 
     [Parameter(HelpMessage = "Target framework the benchmarks ran under. Must match run-benchmarks.ps1 -Framework, since the competitor package versions are read from that framework's resolved dependency graph.")]
     [string]$TargetFramework = "net10.0",
+
+    [Parameter(HelpMessage = "Free-text note on settings the reports do not capture (for example: 'High performance plan, max processor state 99% (boost off)'). Written to machine-spec.md and run.json.")]
+    [string]$Comment,
 
     [Parameter(HelpMessage = "Dry run - show actions without executing")]
     [switch]$DryRun
@@ -81,6 +84,8 @@ $packageConfigurations = @{
             @{ Source = "AsyncReaderWriterLockWriterBenchmark-report.md"; Target = "asyncreaderwriterlock-writer.md" }
             @{ Source = "AsyncConditionVariableProducerConsumerBenchmark-report.md"; Target = "asyncconditionvariable-producerconsumer.md" }
             @{ Source = "AsyncExchangeRendezvousBenchmark-report.md"; Target = "asyncexchange-rendezvous.md" }
+            @{ Source = "AsyncReentrantLockBenchmark-report.md"; Target = "asyncreentrantlock-single.md" }
+            @{ Source = "AsyncReentrantLockNestedDepthBenchmark-report.md"; Target = "asyncreentrantlock-nesteddepth.md" }
         )
     }
 
@@ -201,6 +206,9 @@ $packageConfigurations = @{
             @{ Source = "AesCbc128Benchmark-report.md"; Target = "aes-cbc-128.md" }
             @{ Source = "AesCbc256Benchmark-report.md"; Target = "aes-cbc-256.md" }
 
+            # Cipher benchmarks - AES key wrap (KW and KWP). The "aes-key-wrap" prefix files it under Cipher.
+            @{ Source = "AesKeyWrapBenchmark-report.md"; Target = "aes-key-wrap.md" }
+
             # Cipher benchmarks - ChaCha20
             @{ Source = "ChaCha20Benchmark-report.md"; Target = "chacha20.md" }
 
@@ -286,6 +294,10 @@ $packageConfigurations = @{
             @{ Source = "SlhDsaKeyGenBenchmark-report.md"; Target = "slh-dsa-keygen.md" }
             @{ Source = "SlhDsaBenchmark-report.md"; Target = "slh-dsa-ops.md" }
         )
+        # Reports that are deliberately not published; the unmapped-report warning skips them.
+        Excluded  = @(
+            "MLKemInternalsBenchmark-report.md"
+        )
     }
 }
 
@@ -319,6 +331,7 @@ foreach ($name in 'SourceDir', 'DestDir') {
 }
 
 $benchmarkMappings = $selectedConfig.Files
+$deliberatelyUnpublished = @($selectedConfig.Excluded)
 
 Write-Host ""
 Write-Host "========================================"
@@ -489,7 +502,10 @@ function Get-PlatformIdFromMachineSpec {
     }
 
     $cpuName = $cpuLine -replace ',.*$', ''
+    # Intel names read "Intel Xeon E-2136 CPU 3.30GHz (Max: 3.31GHz)"; keep only the model.
+    $cpuName = $cpuName -replace '\s*\(Max:[^)]*\)', ''
     $cpuName = $cpuName -replace '\s+[0-9.]+GHz\b', ''
+    $cpuName = $cpuName -replace '\s+CPU$', ''
     $cpuSlug = ConvertTo-Slug -Value $cpuName
 
     if (-not $cpuSlug) {
@@ -730,6 +746,7 @@ if ($machineSpec) {
     }
 
     $machineSpecFile = Join-Path $resolvedDestDir "machine-spec.md"
+    $commentBlock = if ($Comment) { "`nRun settings: $Comment`n" } else { '' }
     $machineSpecContent = @"
 ## Machine Specification
 
@@ -738,7 +755,7 @@ The benchmarks were run on the following machine:
 ``````
 $machineSpec
 ``````
-
+$commentBlock
 > **Note:** Results are machine-specific and may vary between systems. Run benchmarks locally for your specific hardware.
 "@
     if ($DryRun) {
@@ -795,6 +812,10 @@ if ($machineSpec -and $resolvedDestDir) {
         $runMetadata.packagesSource = "project.assets.json"
         $runMetadata.packages = $packageVersions
     }
+
+    if ($Comment) {
+        $runMetadata.comment = $Comment
+    }
     $runJsonContent = ($runMetadata | ConvertTo-Json -Depth 3) + "`n"
 
     if ($DryRun) {
@@ -813,7 +834,7 @@ $unmapped = @()
 if (Test-Path $SourceDir) {
     $mappedSources = @($benchmarkMappings | ForEach-Object { $_.Source })
     $unmapped = @(Get-ChildItem -Path $SourceDir -Filter "*-report.md" -File |
-        Where-Object { $mappedSources -notcontains $_.Name } |
+        Where-Object { $mappedSources -notcontains $_.Name -and $deliberatelyUnpublished -notcontains $_.Name } |
         Select-Object -ExpandProperty Name |
         Sort-Object)
 }

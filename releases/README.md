@@ -8,6 +8,7 @@ Newest first.
 
 | Version | Tag | Date | Headline |
 |---|---|---|---|
+| [0.7.59](0.7.59.md) | `0.7.59.31593` | 2026-10-30 | AES-GCM-SIV, regional GCM/CCM, GOST MGM and Magma, CFB/OFB/CTS, experimental `AsyncReentrantLock` |
 | [0.7.37](0.7.37.md) | `0.7.37.24694` | 2026-09-30 | ML-DSA and SLH-DSA (FIPS 204/205), PQC key formats, BLAKE2/BLAKE3 kernel work |
 | [0.6.101](0.6.101.md) | `0.6.101.8500` | 2026-09-01 | ML-KEM (FIPS 203), pooled buffer writers and `SequenceLease<T>`, KMAC key leak fix |
 | [0.6.79](0.6.79.md) | `0.6.79.4022` | 2026-08-12 | `AsyncKeyedLock<TKey>`, ARM SHA-1, `AsyncBarrier` deadlock fix |
@@ -65,3 +66,8 @@ that produced it without paying for a copy.
 the PKCS#8/SPKI/PEM key formats. All three post-quantum types can now replace the .NET 10 in-box
 types with only a `using` change, down to net462. Secrets on the key-format surface pass only
 through memory that can be erased.
+
+0.7.59 turns to breadth in authenticated encryption, with AES-GCM-SIV, GCM and CCM over the
+regional ciphers, and the GOST MGM mode, and it takes stack secrets the rest of the way to
+erasure. A new CI run on big-endian and other Mono runtimes reaches code paths that ordinary
+CI never executes. The project becomes dual-licensed under MIT OR Apache-2.0.
