@@ -25,7 +25,25 @@ Please include:
 
 ### No GitHub account?
 
-Send a short note to **[security@cryptohives.org](mailto:security@cryptohives.org)** — **without** any vulnerability details — and we will invite you to a private advisory where they can be shared securely.
+Send a short note to **[security@cryptohives.org](mailto:security@cryptohives.org)** — **without** any vulnerability details — and we will invite you to a private advisory where they can be shared securely. We do not offer PGP-encrypted email.
+
+---
+
+## Response
+
+CryptoHives is maintained on a best-effort basis, and security reports get the highest priority.
+We will acknowledge your report as soon as we can, keep you informed while a fix is prepared,
+and coordinate public disclosure with you once a fixed release is available — crediting you if you wish.
+
+---
+
+## Supported Versions
+
+| Version | Supported |
+|----------|------------|
+| Latest release | ✅ Supported |
+| Older releases | ❌ Not supported |
+| Pre releases | ❌ Not supported |
 
 ---
 
