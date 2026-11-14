@@ -243,6 +243,9 @@ public class Blake3Tests
     [TestCase(2049)]      // smallest partial batch: 2 committable chunks + 1 byte
     [TestCase(3072)]
     [TestCase(3073)]
+    [TestCase(3137)]      // 3 chunks + a tail of one complete block and one byte
+    [TestCase(3500)]
+    [TestCase(4095)]      // 3 chunks + a tail of 15 complete blocks
     [TestCase(4096)]
     [TestCase(4097)]
     [TestCase(5120)]
@@ -256,6 +259,9 @@ public class Blake3Tests
     [TestCase(10240)]     // 1 batch + a 2-chunk tail: the pair kernel at a nonzero counter
     [TestCase(10241)]     // same, with a byte following so both pair CVs commit
     [TestCase(11263)]     // largest 2-chunk tail before the 3-chunk kernel takes over
+    [TestCase(11264)]     // 1 batch + a 3-chunk tail
+    [TestCase(11764)]     // 1 batch + 3 chunks + a partial chunk
+    [TestCase(12288)]     // 1 batch + a 4-chunk tail
     [TestCase(16383)]
     [TestCase(16384)]     // exactly 2 batches
     [TestCase(16385)]     // 2 batches + 1 byte
