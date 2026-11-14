@@ -100,7 +100,7 @@ public sealed class Blake2b : HashAlgorithm
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
     internal Blake2b(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key)
     {
-        if (outputBytes < 1 || outputBytes > MaxHashSizeBytes)
+        if (outputBytes is < 1 or > MaxHashSizeBytes)
         {
             throw new ArgumentOutOfRangeException(nameof(outputBytes),
                 $"Output size must be between 1 and {MaxHashSizeBytes} bytes.");
