@@ -754,12 +754,12 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // SSSE3 partial batch: exactly 3 chunks via the 4-way kernel with
-                    // one ignored lane, mirroring the NEON tier's threshold (2 chunks
-                    // did not repay the transpose cost there either).
-                    if (length - offset >= 3 * ChunkSizeBytes)
+                    // SSSE3 partial batch: 3 chunks via the 4-way kernel with one ignored lane,
+                    // or 2 where the CPU has the 32-register file. Elsewhere 2 chunks did not
+                    // repay the transpose cost, as on the NEON tier.
+                    if (length - offset >= (Avx512F.VL.IsSupported ? 2 : 3) * ChunkSizeBytes)
                     {
-                        offset += CommitPartialBatch3Ssse3(core, srcPtr, offset, length, batchCvs);
+                        offset += CommitPartialBatchSsse3(core, srcPtr, offset, length, batchCvs);
                     }
                 }
 
