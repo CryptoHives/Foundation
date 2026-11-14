@@ -8,6 +8,7 @@ Newest first.
 
 | Version | Tag | Date | Headline |
 |---|---|---|---|
+| [0.7.75](0.7.75.md) | `0.7.75.50202` | 2026-11-14 | BLAKE3 partial batches and AVX2-only performance, CHT severity settings honored |
 | [0.7.59](0.7.59.md) | `0.7.59.31593` | 2026-10-30 | AES-GCM-SIV, regional GCM/CCM, GOST MGM and Magma, CFB/OFB/CTS, experimental `AsyncReentrantLock` |
 | [0.7.37](0.7.37.md) | `0.7.37.24694` | 2026-09-30 | ML-DSA and SLH-DSA (FIPS 204/205), PQC key formats, BLAKE2/BLAKE3 kernel work |
 | [0.6.101](0.6.101.md) | `0.6.101.8500` | 2026-09-01 | ML-KEM (FIPS 203), pooled buffer writers and `SequenceLease<T>`, KMAC key leak fix |
