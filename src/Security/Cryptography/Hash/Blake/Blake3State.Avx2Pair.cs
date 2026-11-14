@@ -30,8 +30,8 @@ using System.Runtime.Intrinsics.X86;
 /// <para>
 /// A transposed kernel is the wrong shape below five chunks: it spends a full vector's
 /// worth of rounds plus a transpose whatever the count, so three chunks cost what seven do.
-/// Two chunks run one chain here, and three or four run two chains side by side where the
-/// 32-register file allows it; without it they take the 8-lane kernel.
+/// Two chunks run one chain here, and three or four run two chains: side by side where the
+/// 32-register file allows it, one after the other where it does not.
 /// </para>
 /// </remarks>
 internal unsafe partial struct Blake3State
@@ -52,20 +52,24 @@ internal unsafe partial struct Blake3State
     internal const int Avx2PairX2ChunksPerBatch = 2 * Avx2PairChunksPerBatch;
 
     /// <summary>
-    /// Compresses exactly two independent, full (1024-byte) chunks, writing their two
-    /// chaining values to <paramref name="outCvs"/> (16 words, chunk-major).
+    /// Compresses one or two independent, full (1024-byte) chunks, writing their chaining
+    /// values to <paramref name="outCvs"/> (8 words per chunk, chunk-major).
     /// </summary>
-    /// <param name="source">The two chunks, contiguous: chunk A at offset 0, chunk B at 1024.</param>
-    /// <param name="chunkCount">Always 2; present so this matches the signature of the other chunk kernels.</param>
+    /// <remarks>
+    /// A single chunk occupies both halves and its duplicate CV is not stored, so it costs the
+    /// same as two.
+    /// </remarks>
+    /// <param name="source">The chunks, contiguous: chunk A at offset 0, chunk B at 1024.</param>
+    /// <param name="chunkCount">1 or 2.</param>
     /// <param name="key">The 8-word key/IV words for this hash.</param>
-    /// <param name="outCvs">Receives two 8-word CVs, chunk-major.</param>
+    /// <param name="outCvs">Receives one 8-word CV per chunk, chunk-major.</param>
     /// <param name="baseCounter">Chunk counter of chunk A; chunk B is <paramref name="baseCounter"/> + 1.</param>
     /// <param name="baseFlags">Mode flags; the per-block chunk-start/chunk-end flags are added here.</param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunks2Avx2(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        Debug.Assert(chunkCount == Avx2PairChunksPerBatch, "the pair kernel compresses exactly two chunks");
+        Debug.Assert(chunkCount is 1 or Avx2PairChunksPerBatch, "the pair kernel compresses one or two chunks");
 
         // Both chunks start from the same key, so one 128-bit load broadcast to both
         // halves seeds rows 0 and 1.
@@ -85,7 +89,7 @@ internal unsafe partial struct Blake3State
         var row3End = Row3Pair(baseCounter, counterB, baseFlags | FlagChunkEnd);
 
         byte* blockA = source;
-        byte* blockB = source + ChunkSizeBytes;
+        byte* blockB = source + (chunkCount == Avx2PairChunksPerBatch ? ChunkSizeBytes : 0);
 
         for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
@@ -105,8 +109,12 @@ internal unsafe partial struct Blake3State
         // no transpose.
         Sse2.Store(outCvs, row0.GetLower());
         Sse2.Store(outCvs + 4, row1.GetLower());
-        Sse2.Store(outCvs + 8, row0.GetUpper());
-        Sse2.Store(outCvs + 12, row1.GetUpper());
+
+        if (chunkCount == Avx2PairChunksPerBatch)
+        {
+            Sse2.Store(outCvs + 8, row0.GetUpper());
+            Sse2.Store(outCvs + 12, row1.GetUpper());
+        }
     }
 
     /// <summary>

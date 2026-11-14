@@ -532,8 +532,8 @@ internal unsafe partial struct Blake3State
     /// Only the loads and stores are bounded by the count: the 8-lane kernel's rounds run
     /// full width whatever it is, and surplus lanes are discarded, so 5 chunks cost the same
     /// as 7. Below that the row-oriented kernels take over - one pair chain at exactly 2, two
-    /// chains at 3 or 4 where the wider register file allows it. Narrowing the vector instead
-    /// does not help: halving the lanes does not halve the work.
+    /// chains at 3 or 4, interleaved only where the wider register file allows it. Narrowing
+    /// the vector instead does not help: halving the lanes does not halve the work.
     /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
@@ -576,6 +576,26 @@ internal unsafe partial struct Blake3State
         {
             int tailBlocks = (tailBytes - 1) / BlockSizeBytes;
 
+            if (fullChunks == Avx2PairChunksPerBatch + 1 && !Avx512F.VL.IsSupported)
+            {
+                uint* tailCv = stackalloc uint[KeySizeWords];
+                byte* third = srcPtr + offset + Avx2PairBatchSizeBytes;
+
+                CompressChunks2Avx2(
+                    srcPtr + offset, Avx2PairChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+                CompressChunkAndTailAvx2(
+                    third, core->_keyWords, batchCvs + (2 * KeySizeWords), _chunkCounter + 2, _baseFlags, tailBlocks, tailCv);
+                FinishTailChunk(
+                    third + ChunkSizeBytes + (tailBlocks * BlockSizeBytes),
+                    tailBytes - (tailBlocks * BlockSizeBytes),
+                    tailCv,
+                    _chunkCounter + 3,
+                    batchCvs + (3 * KeySizeWords));
+
+                CommitPartialBatchCvsAvx2(core, batchCvs, fullChunks + 1, true);
+                return remaining;
+            }
+
             // The two-chain kernel is cheaper than the 8-lane pass, so a short tail does not
             // repay switching to it.
             if (fullChunks > Avx2PairX2ChunksPerBatch || !Avx512F.VL.IsSupported || tailBlocks >= MinTailBlocksOverTwoChain)
@@ -610,6 +630,18 @@ internal unsafe partial struct Blake3State
         {
             CompressChunks4Avx2(
                 srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+        }
+        else if (fullChunks <= Avx2PairX2ChunksPerBatch)
+        {
+            CompressChunks2Avx2(
+                srcPtr + offset, Avx2PairChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+            CompressChunks2Avx2(
+                srcPtr + offset + Avx2PairBatchSizeBytes,
+                fullChunks - Avx2PairChunksPerBatch,
+                core->_keyWords,
+                batchCvs + (2 * KeySizeWords),
+                _chunkCounter + 2,
+                _baseFlags);
         }
         else
         {
