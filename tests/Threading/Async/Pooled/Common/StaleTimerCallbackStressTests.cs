@@ -33,7 +33,7 @@ using Threading.Tests.Pools;
 /// </para>
 /// </remarks>
 [TestFixture]
-[Parallelizable(ParallelScope.Self)]
+[Parallelizable(ParallelScope.All)]
 public class StaleTimerCallbackStressTests
 {
     private const int Racers = 4;

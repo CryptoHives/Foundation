@@ -34,6 +34,7 @@ using NUnit.Framework;
 /// </para>
 /// </remarks>
 [TestFixture]
+[NonParallelizable]
 [Config(typeof(ThreadingConfig))]
 [BenchmarkCategory("AsyncManualResetEvent")]
 public class AsyncManualResetEventSetResetBenchmark : AsyncManualResetEventBaseBenchmark
