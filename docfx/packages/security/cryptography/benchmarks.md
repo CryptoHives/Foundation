@@ -12,6 +12,13 @@ machine can appear side by side, not just a fixed set of CI hosts.
 
 [Open the dashboard in its own page →](benchmark-trends/index.html)
 
+>The `CryptoHives-Ssse3` and `CryptoHives-AVX2` rows of a run on an AVX-512 host, such as the
+>Zen 4 machine, are not what a CPU without AVX-512 executes. The tier only selects the kernel; the
+>JIT still has AVX-512 available, so these kernels use 32 vector registers instead of 16 and
+>single-instruction rotates. Both matter most where the 16-register code spills, so those rows run
+>faster than they would on real SSSE3- or AVX2-only hardware. A run made with
+>`run-benchmarks.ps1 -DisableIsa AVX512` measures the narrower instruction set on the same machine.
+
 ## Library Matrix
 
 Which library implements which algorithm, and which one measured fastest in a given run — the

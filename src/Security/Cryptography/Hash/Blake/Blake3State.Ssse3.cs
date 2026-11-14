@@ -79,8 +79,7 @@ internal unsafe partial struct Blake3State
     /// Four, matching the NEON tier: both are 128-bit, so both hold one BLAKE3
     /// state word across four independent chunks per vector. The kernel itself is
     /// <see cref="CompressChunksPartial4Ssse3"/> — pure
-    /// <c>Vector128</c> code, also used by the AVX2 tier as its partial-batch
-    /// handler, and requires nothing beyond SSSE3.
+    /// <c>Vector128</c> code that requires nothing beyond SSSE3.
     /// </remarks>
     internal const int Ssse3ChunksPerBatch = 4;
 
@@ -119,10 +118,6 @@ internal unsafe partial struct Blake3State
         var row0 = Sse2.LoadVector128(cv);
         var row1 = Sse2.LoadVector128(cv + 4);
 
-        // counter/blockLen never change across blocks within a chunk, and
-        // flags only changes once (FlagChunkStart clears after the first
-        // block) — build these seeds at most twice total instead of
-        // reconstructing them from scalars on every block iteration.
         var row2 = IVLow;
         var row3 = Vector128.Create((uint)counter, (uint)(counter >> 32), blockLen, flags);
 
@@ -136,6 +131,28 @@ internal unsafe partial struct Blake3State
         // Finalize: cv = row0 ^ row2, cv = row1 ^ row3
         Sse2.Store(cv, row0);
         Sse2.Store(cv + 4, row1);
+    }
+
+    /// <summary>
+    /// Compresses one parent node: the key seeds the state and the two child CVs at
+    /// <paramref name="children"/> are the message block, so no staging copy is needed.
+    /// </summary>
+    /// <remarks>
+    /// The output is stored only after the rounds have read the whole block, so
+    /// <paramref name="destination"/> may be <paramref name="children"/>.
+    /// </remarks>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void CompressParentSsse3(uint* key, uint* children, uint* destination, uint flags)
+    {
+        var row0 = Sse2.LoadVector128(key);
+        var row1 = Sse2.LoadVector128(key + 4);
+        var row2 = IVLow;
+        var row3 = Vector128.Create(0u, 0u, (uint)BlockSizeBytes, flags);
+
+        GRounds128(children, ref row0, ref row1, ref row2, ref row3);
+
+        Sse2.Store(destination, Sse2.Xor(row0, row2));
+        Sse2.Store(destination + 4, Sse2.Xor(row1, row3));
     }
 
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -219,7 +236,7 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// The 129..1024-byte case: the chunk's whole block loop fused, with the chaining
+    /// The 65..1024-byte case: the chunk's whole block loop fused, with the chaining
     /// value living in two registers from the IV to the root fold.
     /// </summary>
     [SkipLocalsInit]
@@ -300,15 +317,15 @@ internal unsafe partial struct Blake3State
 
     /// <summary>
     /// Compresses <paramref name="chunkCount"/> (2..4) independent, full (1024-byte) chunks
-    /// with a 4-lane kernel. Lane <c>j</c> reads chunk <c>j</c> mod
-    /// <paramref name="chunkCount"/>, so nothing outside the input is touched; surplus
-    /// lanes' outputs are wrong and must be ignored.
+    /// with a 4-lane kernel. Only <paramref name="chunkCount"/> rows are loaded, so nothing
+    /// outside the input is touched; the surplus lane compresses whatever <c>m</c> holds and
+    /// its output is not stored.
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartial4Ssse3(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        Debug.Assert(chunkCount >= 2 && chunkCount <= 4);
+        Debug.Assert(chunkCount >= 2 && chunkCount <= Ssse3ChunksPerBatch, "the SSSE3 kernel compresses two to four chunks");
         CounterVectors128(baseCounter, out var counterLow, out var counterHigh);
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
 
@@ -393,7 +410,7 @@ internal unsafe partial struct Blake3State
     /// <summary>
     /// Squeezes one or more independent, consecutive output blocks directly into
     /// <paramref name="dst"/> in one call — <paramref name="blocks"/> = 1
-    /// serves the single-block callers (initial priming, look-ahead), since
+    /// serves the single-block callers (a partial read's buffered block, a one-block tail), since
     /// <c>_rootCv</c> is loaded once regardless of the batch size.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
@@ -529,7 +546,7 @@ internal unsafe partial struct Blake3State
         // vectors, so they are textually identical. Kept as a twin loop to save register moves.
         for (int i = 1; i < 7; i += 2)
         {
-            // round 2 + i
+            // round 1 + i
             q0 = GatherColX128(colX, colY);
             GRoundX128(ref row0, ref row1, ref row2, ref row3, q0);
             q1 = GatherColY128(colX, diagX, diagY);
@@ -542,7 +559,7 @@ internal unsafe partial struct Blake3State
             GRoundY128(ref row0, ref row1, ref row2, ref row3, q3);
             DiagPermute128(ref row2, ref row0, ref row3);
 
-            // round 3 + i
+            // round 2 + i
             colX = GatherColX128(q0, q1);
             GRoundX128(ref row0, ref row1, ref row2, ref row3, colX);
             colY = GatherColY128(q0, q2, q3);
@@ -666,8 +683,8 @@ internal unsafe partial struct Blake3State
     /// register-argument form of <see cref="Transpose4x4(Vector128{uint}*)"/>.
     /// </summary>
     /// <remarks>
-    /// Used for the output side of <see cref="CompressParents4Ssse3"/>, where the
-    /// four state words live in registers rather than a buffer, so the pointer
+    /// Used for the output side of <see cref="CompressChunksPartial4Ssse3"/> and
+    /// <see cref="CompressParents4Ssse3"/>, where the four state words live in registers rather than a buffer, so the pointer
     /// form would force a needless spill and reload.
     /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -801,30 +818,26 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Compresses the exactly-3-chunk tail this tier can still batch, and commits its CVs.
+    /// Compresses the 2 or 3 chunks this tier can still batch, and commits their CVs.
     /// </summary>
-    /// <remarks>
-    /// The count is passed as a literal, not computed: a constant width folds the kernel's
-    /// lane-offset table and per-lane store guards, which a runtime count cannot.
-    /// </remarks>
     /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
     /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
     /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
     /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
     /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
-    /// <returns>The number of bytes consumed (three chunks).</returns>
+    /// <returns>The number of bytes consumed (two or three chunks).</returns>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    private int CommitPartialBatch3Ssse3(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    private int CommitPartialBatchSsse3(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
     {
-        const int FullChunks = 3;
-        Debug.Assert((length - offset) / ChunkSizeBytes == FullChunks, "exactly three chunks remain here");
-        bool drainsRemainingInput = offset + (FullChunks * ChunkSizeBytes) == length;
+        int fullChunks = (length - offset) / ChunkSizeBytes;
+        Debug.Assert(fullChunks is 2 or 3, "two or three chunks remain here");
+        bool drainsRemainingInput = offset + (fullChunks * ChunkSizeBytes) == length;
 
         CompressChunksPartial4Ssse3(
-            srcPtr + offset, FullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+            srcPtr + offset, fullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
-        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? FullChunks - 1 : FullChunks, drainsRemainingInput);
-        return FullChunks * ChunkSizeBytes;
+        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? fullChunks - 1 : fullChunks, drainsRemainingInput);
+        return fullChunks * ChunkSizeBytes;
     }
 
     /// <summary>
@@ -856,6 +869,9 @@ internal unsafe partial struct Blake3State
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void ReduceChunkCvsToHalvesSsse3(uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
+        Debug.Assert(chunkCount is Ssse3ChunksPerBatch or ChunksPerSubtreeGroup,
+            "reduces one 4-chunk batch or one 64-chunk subtree group");
+
         // Full-width levels: every 4-parent group is fully populated.
         while (chunkCount >= 8)
         {
