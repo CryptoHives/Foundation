@@ -1,10 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 /// <summary>
@@ -55,7 +56,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
     /// <param name="functionName">The function name string N (for NIST-defined functions).</param>
     /// <param name="customization">The customization string S.</param>
     public CShake256(int outputBytes = DefaultOutputBits / 8, string? functionName = null, string? customization = null)
-        : this(SimdSupport.KeccakDefault, outputBytes,
+        : this(KeccakDefault, outputBytes,
               functionName == null ? [] : Encoding.UTF8.GetBytes(functionName),
               customization == null ? [] : Encoding.UTF8.GetBytes(customization))
     {
@@ -68,7 +69,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
     /// <param name="functionName">The function name bytes N.</param>
     /// <param name="customization">The customization bytes S.</param>
     public CShake256(int outputBytes, byte[]? functionName, byte[]? customization)
-        : this(SimdSupport.KeccakDefault, outputBytes, functionName, customization)
+        : this(KeccakDefault, outputBytes, functionName, customization)
     {
     }
 
@@ -108,7 +109,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
     /// no customization is required.</param>
     /// <returns>A new CShake256 instance configured with the specified output length, function name, and customization string.</returns>
     public static CShake256 Create(int outputBytes, byte[]? functionName = null, byte[]? customization = null)
-        => new(SimdSupport.KeccakDefault, outputBytes, functionName, customization);
+        => new(KeccakDefault, outputBytes, functionName, customization);
 
     /// <summary>
     /// Creates a new instance of the <see cref="CShake256"/> class with specified parameters.
@@ -209,6 +210,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
         Initialize();
     }
 
+    [SkipLocalsInit]
     private void AbsorbBytePad()
     {
         byte[] encodedN = _encodedFunctionName;
@@ -223,7 +225,6 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
         int totalLen = leftEncodedBytes + encodedN.Length + encodedS.Length;
         int padLen = (_rateBytes - (totalLen % _rateBytes)) % _rateBytes;
 
-        // Create a padded buffer
         int paddedLength = totalLen + padLen;
         byte[]? pooledBuffer = null;
         Span<byte> paddedBuffer = paddedLength <= _rateBytes ?
@@ -241,6 +242,7 @@ public sealed class CShake256 : KeccakCore, IExtendableOutput
 
             encodedS.AsSpan(0, encodedS.Length).CopyTo(paddedBuffer.Slice(offset));
             offset += encodedS.Length;
+            paddedBuffer.Slice(totalLen, padLen).Clear();
 
             // Absorb the bytepad data
             for (int i = 0; i < paddedLength; i += RateBytes)

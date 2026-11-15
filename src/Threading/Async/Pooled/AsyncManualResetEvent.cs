@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
@@ -122,7 +122,10 @@ public sealed class AsyncManualResetEvent : IResettable
         try
         {
             // If waiters are queued the instance is still in active use; decline the reset.
-            if (_waiters.Count != 0)
+            // A local waiter that is still in use means a waiter has been handed its result but
+            // has not observed it yet: resetting now would bump the version underneath that
+            // ValueTask and make the await throw.
+            if (_waiters.Count != 0 || _localWaiter.InUse)
             {
                 return false;
             }
@@ -145,6 +148,29 @@ public sealed class AsyncManualResetEvent : IResettable
     {
         get => _signaled;
     }
+
+    /// <summary>
+    /// Attempts to complete a wait without awaiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="WaitAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask"/> - there is nothing to await in the first place, since this either succeeds
+    /// immediately or doesn't.
+    /// <para>
+    /// A manual-reset event does <b>not</b> consume its signal, so this never changes state and is exactly
+    /// equivalent to reading <see cref="IsSet"/>. It exists for naming symmetry with the other primitives in
+    /// this package; when only one thing acts on the signal, prefer <see cref="AsyncAutoResetEvent"/> whose
+    /// <see cref="AsyncAutoResetEvent.TryWait"/> hands the signal to a single caller.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> if the event is set; <see langword="false"/> otherwise. Every caller that
+    /// observes <see langword="true"/> may proceed - the signal is not consumed.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryWait()
+        => _signaled;
 
     /// <summary>
     /// Gets or sets whether to force continuations to run asynchronously.
@@ -248,11 +274,6 @@ public sealed class AsyncManualResetEvent : IResettable
             return default;
         }
 
-        if (timeout == TimeSpan.Zero)
-        {
-            return new ValueTask(Task.FromException(new TimeoutException()));
-        }
-
         return WaitAsyncImpl(timeout, cancellationToken);
     }
 
@@ -275,6 +296,11 @@ public sealed class AsyncManualResetEvent : IResettable
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
             }
 
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new TimeoutException()));
+            }
+
             if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -284,16 +310,16 @@ public sealed class AsyncManualResetEvent : IResettable
 
             version = waiter.Version;
             _waiters.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)

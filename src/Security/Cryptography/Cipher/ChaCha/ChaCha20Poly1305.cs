@@ -1,10 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using System.Runtime.CompilerServices;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// ChaCha20-Poly1305 authenticated encryption as specified in RFC 8439.
@@ -70,7 +71,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
     /// Initializes a new instance of the <see cref="ChaCha20Poly1305"/> class.
     /// </summary>
     /// <param name="key">The 32-byte key.</param>
-    public ChaCha20Poly1305(byte[] key) : this(SimdSupport.All, key)
+    public ChaCha20Poly1305(byte[] key) : this(ChaCha20.ChaCha20Default, key)
     {
     }
 
@@ -125,6 +126,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public void Encrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> plaintext,
                         Span<byte> ciphertext, Span<byte> tag,
                         ReadOnlySpan<byte> associatedData = default)
@@ -148,10 +150,12 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         // Compute Poly1305 tag over (AAD || pad || ciphertext || pad || lengths)
         Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData,
                                      ciphertext.Slice(0, plaintext.Length), tag);
+        CryptographicOperations.ZeroMemory(polyKey);
     }
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     public bool Decrypt(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> ciphertext,
                         ReadOnlySpan<byte> tag, Span<byte> plaintext,
                         ReadOnlySpan<byte> associatedData = default)
@@ -172,9 +176,12 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
         // Compute expected tag
         Span<byte> expectedTag = stackalloc byte[TagSizeBytesConst];
         Poly1305Core.ComputeAeadTag(polyKey.Slice(0, Poly1305Core.KeySizeBytes), associatedData, ciphertext, expectedTag);
+        CryptographicOperations.ZeroMemory(polyKey);
 
         // Verify tag in constant time
-        if (!CryptographicOperations.FixedTimeEquals(tag, expectedTag))
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        if (!authentic)
         {
             plaintext.Slice(0, ciphertext.Length).Clear();
             return false;
@@ -204,7 +211,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
                           ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytesConst)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytesConst;
         ReadOnlySpan<byte> ciphertext = ciphertextWithTag.Slice(0, ciphertextLength);
@@ -214,7 +221,7 @@ public sealed class ChaCha20Poly1305 : IAeadCipher
 
         if (!Decrypt(nonce, ciphertext, tag, plaintext, associatedData))
         {
-            throw new CryptographicException("Authentication failed.");
+            throw new OS.CryptographicException("Authentication failed.");
         }
 
         return plaintext;

@@ -1,3 +1,8 @@
+---
+title: Threading.Analyzers Package
+_description: CryptoHives.Foundation.Threading.Analyzers — Roslyn analyzers and code fixes (CHT001–CHT013) that catch ValueTask misuse at compile time. Ships separately from the Threading package.
+---
+
 # CryptoHives.Foundation.Threading.Analyzers
 
 ## Overview
@@ -20,20 +25,21 @@ Or add to your project file:
 
 | ID | Severity | Description |
 |----|----------|----------|
-| [CHT001](CHT001.md) | Error | ValueTask awaited multiple times |
+| [CHT001](CHT001.md) | Error | ValueTask consumed multiple times (await, AsTask, Preserve, GetResult) |
 | [CHT002](CHT002.md) | Warning | ValueTask.GetAwaiter().GetResult() used (blocking) |
 | [CHT003](CHT003.md) | Warning | ValueTask stored in field |
-| [CHT004](CHT004.md) | Error | ValueTask.AsTask() called multiple times |
 | [CHT005](CHT005.md) | Warning | ValueTask.Result accessed directly |
-| [CHT006](CHT006.md) | Warning | ValueTask passed to potentially unsafe method |
 | [CHT007](CHT007.md) | Info | AsTask() stored before signaling (performance) |
 | [CHT008](CHT008.md) | Warning | ValueTask not awaited or consumed |
 | [CHT009](CHT009.md) | Info | `SemaphoreSlim(1, 1)` used as async lock; replace with `AsyncLock` |
-| [CHT010](CHT010.md) | Error | ValueTask captured in lambda/closure |
+| [CHT010](CHT010.md) | Warning | ValueTask captured in lambda/closure |
+| [CHT011](CHT011.md) | Warning | `async` method only forwards an awaited ValueTask |
+| [CHT012](CHT012.md) | Info | `async` ValueTask wrapper boxes a state machine when it suspends |
+| [CHT013](CHT013.md) | Warning | `async` method returns an `AsyncReentrantLock` releaser, hiding the hold from its caller |
 
 ## Quick Reference
 
-### ❌ Anti-Patterns Detected
+### Anti-Patterns Detected
 
 ```csharp
 // CHT001: Multiple await (Error)
@@ -48,7 +54,7 @@ vt.GetAwaiter().GetResult(); // Warning: undefined behavior
 // CHT003: Stored in field (Warning)
 private ValueTask _task; // Warning: may be consumed multiple times
 
-// CHT004: Multiple AsTask() calls (Error)
+// CHT001 also covers repeated AsTask(): converting twice consumes twice (Error)
 ValueTask vt = GetValueTask();
 var t1 = vt.AsTask();
 var t2 = vt.AsTask(); // Error: already consumed
@@ -56,9 +62,6 @@ var t2 = vt.AsTask(); // Error: already consumed
 // CHT005: Direct .Result access (Warning)
 ValueTask<int> vt = GetValueTask();
 int result = vt.Result; // Warning: undefined behavior
-
-// CHT006: Passed to unsafe method (Warning)
-await Task.WhenAll(GetValueTask()); // Warning: use AsTask() or Preserve()
 
 // CHT007: AsTask() stored before signaling (Info)
 Task t = GetValueTask().AsTask(); // Info: may cause perf degradation
@@ -72,7 +75,7 @@ GetValueTask(); // Warning: result not awaited
 private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1); // Info: consider AsyncLock
 ```
 
-### ✅ Correct Patterns
+### Correct Patterns
 
 ```csharp
 // Single await - correct
@@ -112,12 +115,14 @@ The analyzer package includes automatic code fixes for most diagnostics:
 | CHT001 | Convert to AsTask() at declaration, Use Preserve() |
 | CHT002 | Convert to await, Use AsTask() before GetAwaiter().GetResult() |
 | CHT003 | Change field type to Task |
-| CHT004 | Store AsTask() result in variable |
 | CHT005 | Convert to await, Use AsTask().Result |
 | CHT007 | Await ValueTask directly |
 | CHT008 | Add await, Explicitly discard with _ = |
 | CHT009 | Replace with AsyncLock |
 | CHT010 | Convert to AsTask() at declaration, Use Preserve() |
+| CHT011 | Remove async and return the ValueTask directly |
+| CHT012 | Pool the state machine box (offered only on .NET 6+; a partial mitigation) |
+| CHT013 | None; return the ValueTask from LockAsync directly (the CHT011 fix does this when it applies) |
 
 ## The Preserve() Method
 
@@ -163,7 +168,10 @@ dotnet_diagnostic.CHT007.severity = warning
 dotnet_diagnostic.CHT003.severity = none
 ```
 
-## See Also
+## Relation to CA2012
+
+The .NET SDK's [CA2012](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2012) covers part of the same ground as CHT001, CHT005 and CHT008: a `ValueTask` consumed twice, its result read before it is known to be complete, or one that is ignored. With both enabled, the same line can be reported by each, so keep whichever you prefer for those cases. The other rules have no CA2012 counterpart.
+
 
 - [CryptoHives.Foundation.Threading Package](../threading/index.md)
 - [ValueTask Best Practices](https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/)
@@ -172,4 +180,4 @@ dotnet_diagnostic.CHT003.severity = none
 
 ---
 
-© 2025 The Keepers of the CryptoHives
+© 2026 The Keepers of the CryptoHives

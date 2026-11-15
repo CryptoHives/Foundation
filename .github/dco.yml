@@ -1,0 +1,12 @@
+# Configuration for the DCO GitHub App (https://github.com/apps/dco).
+# Bots such as Dependabot and merge commits are skipped by the app itself.
+
+# Organization members are exempt only for commits that are also cryptographically signed
+# (GPG/SSH "Verified"); unsigned member commits still need a Signed-off-by line.
+require:
+  members: false
+
+# A contributor who forgot to sign off can push one follow-up commit that signs off retroactively,
+# instead of rewriting the branch.
+allowRemediationCommits:
+  individual: true

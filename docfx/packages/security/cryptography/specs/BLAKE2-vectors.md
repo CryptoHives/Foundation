@@ -1,10 +1,10 @@
-﻿# BLAKE2 Test Vectors
+# BLAKE2 Test Vectors
 
 ## Source
 
 BLAKE2 Official Specification and Reference Implementation
-- https://www.blake2.net/
-- https://github.com/BLAKE2/BLAKE2
+- [www.blake2.net](https://www.blake2.net/)
+- [github.com/BLAKE2/BLAKE2](https://github.com/BLAKE2/BLAKE2)
 - RFC 7693: The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC)
 
 ---

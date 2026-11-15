@@ -1,10 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// ChaCha20 stream cipher implementation as specified in RFC 8439.
@@ -42,6 +42,11 @@ using System.Security.Cryptography;
 public sealed class ChaCha20 : SymmetricCipher
 {
     /// <summary>
+    /// The default optimization to use for Aes based algorithms.
+    /// </summary>
+    internal const SimdSupport ChaCha20Default = SimdSupport.All;
+
+    /// <summary>
     /// Key size in bits for ChaCha20 (256 bits).
     /// </summary>
     public const int KeySizeBits = 256;
@@ -62,7 +67,7 @@ public sealed class ChaCha20 : SymmetricCipher
     /// <summary>
     /// Initializes a new instance of the <see cref="ChaCha20"/> class.
     /// </summary>
-    public ChaCha20() : this(SimdSupport.All)
+    public ChaCha20() : this(ChaCha20Default)
     {
     }
 
@@ -75,8 +80,8 @@ public sealed class ChaCha20 : SymmetricCipher
         _simdSupport = simdSupport & ChaChaCore.SimdSupport;
         BlockSizeValue = ChaChaCore.BlockSizeBytes * 8;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(256, 256, 0)];
-        LegalBlockSizesValue = [new KeySizes(512, 512, 0)];
+        LegalKeySizesValue = LegalSizes.Bits256;
+        LegalBlockSizesValue = LegalSizes.Bits512;
         Mode = CipherMode.Stream;
         Padding = PaddingMode.None;
     }
@@ -138,7 +143,7 @@ public sealed class ChaCha20 : SymmetricCipher
     {
         if (byteLength != NonceSizeConst)
         {
-            throw new CryptographicException($"Invalid nonce size: {byteLength} bytes. Expected: {NonceSizeConst} bytes.");
+            throw new OS.CryptographicException($"Invalid nonce size: {byteLength} bytes. Expected: {NonceSizeConst} bytes.");
         }
     }
 

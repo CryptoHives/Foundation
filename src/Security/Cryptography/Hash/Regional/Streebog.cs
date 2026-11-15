@@ -1,11 +1,13 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
+using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -37,6 +39,16 @@ public sealed class Streebog : HashAlgorithm
     /// The block size in bytes.
     /// </summary>
     public const int BlockSizeBytes = 64;
+
+    /// <summary>
+    /// The hash size in bytes for Streebog256.
+    /// </summary>
+    public const int HashSizeBytes256 = 32;
+
+    /// <summary>
+    /// The hash size in bytes for Streebog512.
+    /// </summary>
+    public const int HashSizeBytes512 = 64;
 
     /// <summary>
     /// Number of rounds in the E function.
@@ -245,7 +257,10 @@ public sealed class Streebog : HashAlgorithm
     /// <param name="hashSizeBytes">The desired output size in bytes (32 or 64).</param>
     public Streebog(int hashSizeBytes)
     {
-        if (hashSizeBytes != 32 && hashSizeBytes != 64) throw new ArgumentException("Hash size must be 32 or 64 bytes.", nameof(hashSizeBytes));
+        if (hashSizeBytes is not HashSizeBytes256 and not HashSizeBytes512)
+        {
+            throw new ArgumentException("Hash size must be 32 or 64 bytes.", nameof(hashSizeBytes));
+        }
 
         _hashSizeBytes = hashSizeBytes;
         HashSizeValue = hashSizeBytes * 8;
@@ -259,7 +274,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Gets the name of the hash algorithm.
     /// </summary>
-    public override string AlgorithmName => _hashSizeBytes == 32 ? "Streebog-256" : "Streebog-512";
+    public override string AlgorithmName => _hashSizeBytes == HashSizeBytes256 ? "Streebog-256" : "Streebog-512";
 
     /// <summary>
     /// Gets the block size of the hash algorithm.
@@ -280,10 +295,10 @@ public sealed class Streebog : HashAlgorithm
     public static Streebog Create(int hashSizeBytes) => new(hashSizeBytes);
 
     private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<Streebog> _pool256
-        = HashAlgorithmPool.CreatePool(() => new Streebog(32));
+        = HashAlgorithmPool.CreatePool(() => new Streebog(HashSizeBytes256));
 
     private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<Streebog> _pool512
-        = HashAlgorithmPool.CreatePool(() => new Streebog(64));
+        = HashAlgorithmPool.CreatePool(() => new Streebog(HashSizeBytes512));
 
     /// <summary>
     /// Computes the Streebog hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
@@ -296,7 +311,7 @@ public sealed class Streebog : HashAlgorithm
     /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 32 or 64.</exception>
     public static bool TryHashData(ReadOnlySpan<byte> source, Span<byte> destination, int hashSizeBytes, out int bytesWritten)
     {
-        var pool = hashSizeBytes switch {
+        ObjectPool<Streebog> pool = hashSizeBytes switch {
             32 => _pool256,
             64 => _pool512,
             _ => throw new ArgumentException("Hash size must be 32 or 64 bytes.", nameof(hashSizeBytes))
@@ -313,9 +328,9 @@ public sealed class Streebog : HashAlgorithm
     /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 32 or 64.</exception>
     public static byte[] HashData(ReadOnlySpan<byte> source, int hashSizeBytes)
     {
-        var pool = hashSizeBytes switch {
-            32 => _pool256,
-            64 => _pool512,
+        ObjectPool<Streebog> pool = hashSizeBytes switch {
+            HashSizeBytes256 => _pool256,
+            HashSizeBytes512 => _pool512,
             _ => throw new ArgumentException("Hash size must be 32 or 64 bytes.", nameof(hashSizeBytes))
         };
         return HashAlgorithmPool.HashData(pool, source);
@@ -332,9 +347,9 @@ public sealed class Streebog : HashAlgorithm
     /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 32 or 64.</exception>
     public static bool TryHashData(in ReadOnlySequence<byte> source, Span<byte> destination, int hashSizeBytes, out int bytesWritten)
     {
-        var pool = hashSizeBytes switch {
-            32 => _pool256,
-            64 => _pool512,
+        ObjectPool<Streebog> pool = hashSizeBytes switch {
+            HashSizeBytes256 => _pool256,
+            HashSizeBytes512 => _pool512,
             _ => throw new ArgumentException("Hash size must be 32 or 64 bytes.", nameof(hashSizeBytes))
         };
         return HashAlgorithmPool.TryHashData(pool, source, destination, out bytesWritten);
@@ -349,9 +364,9 @@ public sealed class Streebog : HashAlgorithm
     /// <exception cref="ArgumentException">Thrown when <paramref name="hashSizeBytes"/> is not 32 or 64.</exception>
     public static byte[] HashData(in ReadOnlySequence<byte> source, int hashSizeBytes)
     {
-        var pool = hashSizeBytes switch {
-            32 => _pool256,
-            64 => _pool512,
+        ObjectPool<Streebog> pool = hashSizeBytes switch {
+            HashSizeBytes256 => _pool256,
+            HashSizeBytes512 => _pool512,
             _ => throw new ArgumentException("Hash size must be 32 or 64 bytes.", nameof(hashSizeBytes))
         };
         return HashAlgorithmPool.HashData(pool, source);
@@ -364,7 +379,7 @@ public sealed class Streebog : HashAlgorithm
         if (_disposed) throw new ObjectDisposedException(nameof(Streebog));
 
         // IV is 0x00 for 512-bit, 0x01 for 256-bit (RFC 6986 Section 6.1)
-        ulong iv = _hashSizeBytes == 32 ? 0x0101010101010101UL : 0UL;
+        ulong iv = _hashSizeBytes == HashSizeBytes256 ? 0x0101010101010101UL : 0UL;
 
         _h[0] = iv; _h[1] = iv; _h[2] = iv; _h[3] = iv;
         _h[4] = iv; _h[5] = iv; _h[6] = iv; _h[7] = iv;
@@ -415,6 +430,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Processes a complete 64-byte message block.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> m)
     {
@@ -434,6 +450,7 @@ public sealed class Streebog : HashAlgorithm
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
@@ -445,7 +462,7 @@ public sealed class Streebog : HashAlgorithm
         }
 
         // Pad the final block: m || 1 || 0...0
-        Span<byte> paddedBlock = stackalloc byte[64];
+        Span<byte> paddedBlock = stackalloc byte[BlockSizeBytes];
         paddedBlock.Clear();
         _buffer.AsSpan(0, _bufferLength).CopyTo(paddedBlock);
         paddedBlock[_bufferLength] = 0x01;
@@ -469,7 +486,7 @@ public sealed class Streebog : HashAlgorithm
 
         // Output: convert ulong array back to bytes
         int index = 0;
-        if (_hashSizeBytes == 32)
+        if (_hashSizeBytes == HashSizeBytes256)
         {
             // For 256-bit, take the last 32 bytes (h[4..7])
             index = BlockSizeWords / 2;
@@ -492,12 +509,12 @@ public sealed class Streebog : HashAlgorithm
     private static void GN(Span<ulong> h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
     {
         // Load h, n, m as Vector512
-        Vector512<ulong> hV = Vector512.Create<ulong>(h);
-        Vector512<ulong> nV = Vector512.Create<ulong>(n);
-        Vector512<ulong> mV = Vector512.Create<ulong>(m);
+        var hV = Vector512.Create<ulong>(h);
+        var nV = Vector512.Create<ulong>(n);
+        var mV = Vector512.Create<ulong>(m);
 
         // k = h ^ N
-        Vector512<ulong> kV = Vector512.Xor(hV, nV);
+        var kV = Vector512.Xor(hV, nV);
 
         // k = LPS(k)
         Span<ulong> k = stackalloc ulong[BlockSizeWords];
@@ -509,7 +526,7 @@ public sealed class Streebog : HashAlgorithm
         E(k, m, ref kV);
 
         // h = h ^ t ^ m (using SIMD)
-        Vector512<ulong> resultV = Vector512.Xor(Vector512.Xor(hV, kV), mV);
+        var resultV = Vector512.Xor(Vector512.Xor(hV, kV), mV);
 
         // Store result back to h
         resultV.CopyTo(h);
@@ -523,8 +540,8 @@ public sealed class Streebog : HashAlgorithm
     private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, ref Vector512<ulong> resultV)
     {
         // Initialize state and key as Vector512
-        Vector512<ulong> stateV = Vector512.Create<ulong>(m);
-        Vector512<ulong> keyV = Vector512.Create<ulong>(k);
+        var stateV = Vector512.Create<ulong>(m);
+        var keyV = Vector512.Create<ulong>(k);
 
         Span<ulong> state = stackalloc ulong[BlockSizeWords];
         Span<ulong> key = stackalloc ulong[BlockSizeWords];
@@ -554,6 +571,7 @@ public sealed class Streebog : HashAlgorithm
     /// The g_N compression function: h = h ^ E(h ^ N, m) ^ m
     /// Uses Miyaguchi-Preneel construction.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void GN(ulong[] h, ReadOnlySpan<ulong> n, ReadOnlySpan<ulong> m)
     {
@@ -578,6 +596,7 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// The E function: 12-round block cipher with key schedule.
     /// </summary>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void E(ReadOnlySpan<ulong> k, ReadOnlySpan<ulong> m, Span<ulong> result)
     {
@@ -620,26 +639,73 @@ public sealed class Streebog : HashAlgorithm
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ApplyLPS(Span<ulong> data)
     {
-        // Convert ulong span to byte span for table lookups
+        // The T-tables are static readonly ulong[256] and every subscript below is a byte,
+        // so the lookups are in range by construction. The JIT cannot see the length behind
+        // a static field load, so take the references once and index without the checks.
+        Debug.Assert(T0.Length == 256 && T7.Length == 256, "T-tables must be 256 entries");
+
+        ref ulong t0 = ref MemoryMarshalEx.GetArrayDataReference(T0);
+        ref ulong t1 = ref MemoryMarshalEx.GetArrayDataReference(T1);
+        ref ulong t2 = ref MemoryMarshalEx.GetArrayDataReference(T2);
+        ref ulong t3 = ref MemoryMarshalEx.GetArrayDataReference(T3);
+        ref ulong t4 = ref MemoryMarshalEx.GetArrayDataReference(T4);
+        ref ulong t5 = ref MemoryMarshalEx.GetArrayDataReference(T5);
+        ref ulong t6 = ref MemoryMarshalEx.GetArrayDataReference(T6);
+        ref ulong t7 = ref MemoryMarshalEx.GetArrayDataReference(T7);
+
+        // The lookups index the state's little-endian bytes. Every word is overwritten below,
+        // so a big-endian host can swap in place.
+        if (!BitConverter.IsLittleEndian)
+        {
+            for (int i = 0; i < BlockSizeWords; i++)
+            {
+                data[i] = BinaryPrimitives.ReverseEndianness(data[i]);
+            }
+        }
+
         Span<byte> d = MemoryMarshal.AsBytes(data);
 
         // Compute all 8 rows using lookup tables with hardcoded Tau indices
         // Row 0: Tau indices 0,8,16,24,32,40,48,56
-        ulong r0 = T7[d[0]] ^ T6[d[8]] ^ T5[d[16]] ^ T4[d[24]] ^ T3[d[32]] ^ T2[d[40]] ^ T1[d[48]] ^ T0[d[56]];
+        ulong r0 = Unsafe.Add(ref t7, d[0]) ^ Unsafe.Add(ref t6, d[8]) ^
+            Unsafe.Add(ref t5, d[16]) ^ Unsafe.Add(ref t4, d[24]) ^
+            Unsafe.Add(ref t3, d[32]) ^ Unsafe.Add(ref t2, d[40]) ^
+            Unsafe.Add(ref t1, d[48]) ^ Unsafe.Add(ref t0, d[56]);
         // Row 1: Tau indices 1,9,17,25,33,41,49,57
-        ulong r1 = T7[d[1]] ^ T6[d[9]] ^ T5[d[17]] ^ T4[d[25]] ^ T3[d[33]] ^ T2[d[41]] ^ T1[d[49]] ^ T0[d[57]];
+        ulong r1 = Unsafe.Add(ref t7, d[1]) ^ Unsafe.Add(ref t6, d[9]) ^
+            Unsafe.Add(ref t5, d[17]) ^ Unsafe.Add(ref t4, d[25]) ^
+            Unsafe.Add(ref t3, d[33]) ^ Unsafe.Add(ref t2, d[41]) ^
+            Unsafe.Add(ref t1, d[49]) ^ Unsafe.Add(ref t0, d[57]);
         // Row 2: Tau indices 2,10,18,26,34,42,50,58
-        ulong r2 = T7[d[2]] ^ T6[d[10]] ^ T5[d[18]] ^ T4[d[26]] ^ T3[d[34]] ^ T2[d[42]] ^ T1[d[50]] ^ T0[d[58]];
+        ulong r2 = Unsafe.Add(ref t7, d[2]) ^ Unsafe.Add(ref t6, d[10]) ^
+            Unsafe.Add(ref t5, d[18]) ^ Unsafe.Add(ref t4, d[26]) ^
+            Unsafe.Add(ref t3, d[34]) ^ Unsafe.Add(ref t2, d[42]) ^
+            Unsafe.Add(ref t1, d[50]) ^ Unsafe.Add(ref t0, d[58]);
         // Row 3: Tau indices 3,11,19,27,35,43,51,59
-        ulong r3 = T7[d[3]] ^ T6[d[11]] ^ T5[d[19]] ^ T4[d[27]] ^ T3[d[35]] ^ T2[d[43]] ^ T1[d[51]] ^ T0[d[59]];
+        ulong r3 = Unsafe.Add(ref t7, d[3]) ^ Unsafe.Add(ref t6, d[11]) ^
+            Unsafe.Add(ref t5, d[19]) ^ Unsafe.Add(ref t4, d[27]) ^
+            Unsafe.Add(ref t3, d[35]) ^ Unsafe.Add(ref t2, d[43]) ^
+            Unsafe.Add(ref t1, d[51]) ^ Unsafe.Add(ref t0, d[59]);
         // Row 4: Tau indices 4,12,20,28,36,44,52,60
-        ulong r4 = T7[d[4]] ^ T6[d[12]] ^ T5[d[20]] ^ T4[d[28]] ^ T3[d[36]] ^ T2[d[44]] ^ T1[d[52]] ^ T0[d[60]];
+        ulong r4 = Unsafe.Add(ref t7, d[4]) ^ Unsafe.Add(ref t6, d[12]) ^
+            Unsafe.Add(ref t5, d[20]) ^ Unsafe.Add(ref t4, d[28]) ^
+            Unsafe.Add(ref t3, d[36]) ^ Unsafe.Add(ref t2, d[44]) ^
+            Unsafe.Add(ref t1, d[52]) ^ Unsafe.Add(ref t0, d[60]);
         // Row 5: Tau indices 5,13,21,29,37,45,53,61
-        ulong r5 = T7[d[5]] ^ T6[d[13]] ^ T5[d[21]] ^ T4[d[29]] ^ T3[d[37]] ^ T2[d[45]] ^ T1[d[53]] ^ T0[d[61]];
+        ulong r5 = Unsafe.Add(ref t7, d[5]) ^ Unsafe.Add(ref t6, d[13]) ^
+            Unsafe.Add(ref t5, d[21]) ^ Unsafe.Add(ref t4, d[29]) ^
+            Unsafe.Add(ref t3, d[37]) ^ Unsafe.Add(ref t2, d[45]) ^
+            Unsafe.Add(ref t1, d[53]) ^ Unsafe.Add(ref t0, d[61]);
         // Row 6: Tau indices 6,14,22,30,38,46,54,62
-        ulong r6 = T7[d[6]] ^ T6[d[14]] ^ T5[d[22]] ^ T4[d[30]] ^ T3[d[38]] ^ T2[d[46]] ^ T1[d[54]] ^ T0[d[62]];
+        ulong r6 = Unsafe.Add(ref t7, d[6]) ^ Unsafe.Add(ref t6, d[14]) ^
+            Unsafe.Add(ref t5, d[22]) ^ Unsafe.Add(ref t4, d[30]) ^
+            Unsafe.Add(ref t3, d[38]) ^ Unsafe.Add(ref t2, d[46]) ^
+            Unsafe.Add(ref t1, d[54]) ^ Unsafe.Add(ref t0, d[62]);
         // Row 7: Tau indices 7,15,23,31,39,47,55,63
-        ulong r7 = T7[d[7]] ^ T6[d[15]] ^ T5[d[23]] ^ T4[d[31]] ^ T3[d[39]] ^ T2[d[47]] ^ T1[d[55]] ^ T0[d[63]];
+        ulong r7 = Unsafe.Add(ref t7, d[7]) ^ Unsafe.Add(ref t6, d[15]) ^
+            Unsafe.Add(ref t5, d[23]) ^ Unsafe.Add(ref t4, d[31]) ^
+            Unsafe.Add(ref t3, d[39]) ^ Unsafe.Add(ref t2, d[47]) ^
+            Unsafe.Add(ref t1, d[55]) ^ Unsafe.Add(ref t0, d[63]);
 
         data[0] = r0; data[1] = r1; data[2] = r2; data[3] = r3;
         data[4] = r4; data[5] = r5; data[6] = r6; data[7] = r7;
@@ -648,25 +714,64 @@ public sealed class Streebog : HashAlgorithm
     /// <summary>
     /// Combined LPS transformation for byte spans (used by test compatibility).
     /// </summary>
+    [SkipLocalsInit]
     internal static void ApplyLPS(Span<byte> data)
     {
+        // The T-tables are static readonly ulong[256] and every subscript below is a byte,
+        // so the lookups are in range by construction. The JIT cannot see the length behind
+        // a static field load, so take the references once and index without the checks.
+        Debug.Assert(T0.Length == 256 && T7.Length == 256, "T-tables must be 256 entries");
+
+        ref ulong t0 = ref MemoryMarshalEx.GetArrayDataReference(T0);
+        ref ulong t1 = ref MemoryMarshalEx.GetArrayDataReference(T1);
+        ref ulong t2 = ref MemoryMarshalEx.GetArrayDataReference(T2);
+        ref ulong t3 = ref MemoryMarshalEx.GetArrayDataReference(T3);
+        ref ulong t4 = ref MemoryMarshalEx.GetArrayDataReference(T4);
+        ref ulong t5 = ref MemoryMarshalEx.GetArrayDataReference(T5);
+        ref ulong t6 = ref MemoryMarshalEx.GetArrayDataReference(T6);
+        ref ulong t7 = ref MemoryMarshalEx.GetArrayDataReference(T7);
+
         Span<ulong> r = stackalloc ulong[BlockSizeWords];
         // Row 0: Tau indices 0,8,16,24,32,40,48,56
-        r[0] = T7[data[0]] ^ T6[data[8]] ^ T5[data[16]] ^ T4[data[24]] ^ T3[data[32]] ^ T2[data[40]] ^ T1[data[48]] ^ T0[data[56]];
+        r[0] = Unsafe.Add(ref t7, data[0]) ^ Unsafe.Add(ref t6, data[8]) ^
+            Unsafe.Add(ref t5, data[16]) ^ Unsafe.Add(ref t4, data[24]) ^
+            Unsafe.Add(ref t3, data[32]) ^ Unsafe.Add(ref t2, data[40]) ^
+            Unsafe.Add(ref t1, data[48]) ^ Unsafe.Add(ref t0, data[56]);
         // Row 1: Tau indices 1,9,17,25,33,41,49,57
-        r[1] = T7[data[1]] ^ T6[data[9]] ^ T5[data[17]] ^ T4[data[25]] ^ T3[data[33]] ^ T2[data[41]] ^ T1[data[49]] ^ T0[data[57]];
+        r[1] = Unsafe.Add(ref t7, data[1]) ^ Unsafe.Add(ref t6, data[9]) ^
+            Unsafe.Add(ref t5, data[17]) ^ Unsafe.Add(ref t4, data[25]) ^
+            Unsafe.Add(ref t3, data[33]) ^ Unsafe.Add(ref t2, data[41]) ^
+            Unsafe.Add(ref t1, data[49]) ^ Unsafe.Add(ref t0, data[57]);
         // Row 2: Tau indices 2,10,18,26,34,42,50,58
-        r[2] = T7[data[2]] ^ T6[data[10]] ^ T5[data[18]] ^ T4[data[26]] ^ T3[data[34]] ^ T2[data[42]] ^ T1[data[50]] ^ T0[data[58]];
+        r[2] = Unsafe.Add(ref t7, data[2]) ^ Unsafe.Add(ref t6, data[10]) ^
+            Unsafe.Add(ref t5, data[18]) ^ Unsafe.Add(ref t4, data[26]) ^
+            Unsafe.Add(ref t3, data[34]) ^ Unsafe.Add(ref t2, data[42]) ^
+            Unsafe.Add(ref t1, data[50]) ^ Unsafe.Add(ref t0, data[58]);
         // Row 3: Tau indices 3,11,19,27,35,43,51,59
-        r[3] = T7[data[3]] ^ T6[data[11]] ^ T5[data[19]] ^ T4[data[27]] ^ T3[data[35]] ^ T2[data[43]] ^ T1[data[51]] ^ T0[data[59]];
+        r[3] = Unsafe.Add(ref t7, data[3]) ^ Unsafe.Add(ref t6, data[11]) ^
+            Unsafe.Add(ref t5, data[19]) ^ Unsafe.Add(ref t4, data[27]) ^
+            Unsafe.Add(ref t3, data[35]) ^ Unsafe.Add(ref t2, data[43]) ^
+            Unsafe.Add(ref t1, data[51]) ^ Unsafe.Add(ref t0, data[59]);
         // Row 4: Tau indices 4,12,20,28,36,44,52,60
-        r[4] = T7[data[4]] ^ T6[data[12]] ^ T5[data[20]] ^ T4[data[28]] ^ T3[data[36]] ^ T2[data[44]] ^ T1[data[52]] ^ T0[data[60]];
+        r[4] = Unsafe.Add(ref t7, data[4]) ^ Unsafe.Add(ref t6, data[12]) ^
+            Unsafe.Add(ref t5, data[20]) ^ Unsafe.Add(ref t4, data[28]) ^
+            Unsafe.Add(ref t3, data[36]) ^ Unsafe.Add(ref t2, data[44]) ^
+            Unsafe.Add(ref t1, data[52]) ^ Unsafe.Add(ref t0, data[60]);
         // Row 5: Tau indices 5,13,21,29,37,45,53,61
-        r[5] = T7[data[5]] ^ T6[data[13]] ^ T5[data[21]] ^ T4[data[29]] ^ T3[data[37]] ^ T2[data[45]] ^ T1[data[53]] ^ T0[data[61]];
+        r[5] = Unsafe.Add(ref t7, data[5]) ^ Unsafe.Add(ref t6, data[13]) ^
+            Unsafe.Add(ref t5, data[21]) ^ Unsafe.Add(ref t4, data[29]) ^
+            Unsafe.Add(ref t3, data[37]) ^ Unsafe.Add(ref t2, data[45]) ^
+            Unsafe.Add(ref t1, data[53]) ^ Unsafe.Add(ref t0, data[61]);
         // Row 6: Tau indices 6,14,22,30,38,46,54,62
-        r[6] = T7[data[6]] ^ T6[data[14]] ^ T5[data[22]] ^ T4[data[30]] ^ T3[data[38]] ^ T2[data[46]] ^ T1[data[54]] ^ T0[data[62]];
+        r[6] = Unsafe.Add(ref t7, data[6]) ^ Unsafe.Add(ref t6, data[14]) ^
+            Unsafe.Add(ref t5, data[22]) ^ Unsafe.Add(ref t4, data[30]) ^
+            Unsafe.Add(ref t3, data[38]) ^ Unsafe.Add(ref t2, data[46]) ^
+            Unsafe.Add(ref t1, data[54]) ^ Unsafe.Add(ref t0, data[62]);
         // Row 7: Tau indices 7,15,23,31,39,47,55,63
-        r[7] = T7[data[7]] ^ T6[data[15]] ^ T5[data[23]] ^ T4[data[31]] ^ T3[data[39]] ^ T2[data[47]] ^ T1[data[55]] ^ T0[data[63]];
+        r[7] = Unsafe.Add(ref t7, data[7]) ^ Unsafe.Add(ref t6, data[15]) ^
+            Unsafe.Add(ref t5, data[23]) ^ Unsafe.Add(ref t4, data[31]) ^
+            Unsafe.Add(ref t3, data[39]) ^ Unsafe.Add(ref t2, data[47]) ^
+            Unsafe.Add(ref t1, data[55]) ^ Unsafe.Add(ref t0, data[63]);
 
         // Write result back to data in little-endian order
         BinarySpans.WriteUInt64LittleEndian(r.Slice(0, BlockSizeWords), data);
@@ -678,38 +783,68 @@ public sealed class Streebog : HashAlgorithm
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void AddModulus512(ulong[] counter, int bits)
     {
+        Debug.Assert(counter.Length >= BlockSizeWords, "counter must be a full 512-bit word block");
+        ref ulong rc = ref MemoryMarshalEx.GetArrayDataReference(counter);
+
         unchecked
         {
-            ulong sum = counter[0] + (ulong)bits;
-            ulong carry = sum < counter[0] ? 1UL : 0UL;
-            counter[0] = sum;
-            if (carry == 0) return;
+            ulong sum = Unsafe.Add(ref rc, 0) + (ulong)bits;
+            ulong carry = sum < Unsafe.Add(ref rc, 0) ? 1UL : 0UL;
+            Unsafe.Add(ref rc, 0) = sum;
+            if (carry == 0)
+            {
+                return;
+            }
 
-            sum = counter[1] + carry;
-            carry = sum < counter[1] ? 1UL : 0UL;
-            counter[1] = sum;
-            if (carry == 0) return;
-            sum = counter[2] + carry;
-            carry = sum < counter[2] ? 1UL : 0UL;
-            counter[2] = sum;
-            if (carry == 0) return;
-            sum = counter[3] + carry;
-            carry = sum < counter[3] ? 1UL : 0UL;
-            counter[3] = sum;
-            if (carry == 0) return;
-            sum = counter[4] + carry;
-            carry = sum < counter[4] ? 1UL : 0UL;
-            counter[4] = sum;
-            if (carry == 0) return;
-            sum = counter[5] + carry;
-            carry = sum < counter[5] ? 1UL : 0UL;
-            counter[5] = sum;
-            if (carry == 0) return;
-            sum = counter[6] + carry;
-            carry = sum < counter[6] ? 1UL : 0UL;
-            counter[6] = sum;
-            if (carry == 0) return;
-            counter[7] += carry;
+            sum = Unsafe.Add(ref rc, 1) + carry;
+            carry = sum < Unsafe.Add(ref rc, 1) ? 1UL : 0UL;
+            Unsafe.Add(ref rc, 1) = sum;
+            if (carry == 0)
+            {
+                return;
+            }
+
+            sum = Unsafe.Add(ref rc, 2) + carry;
+            carry = sum < Unsafe.Add(ref rc, 2) ? 1UL : 0UL;
+            Unsafe.Add(ref rc, 2) = sum;
+            if (carry == 0)
+            {
+                return;
+            }
+
+            sum = Unsafe.Add(ref rc, 3) + carry;
+            carry = sum < Unsafe.Add(ref rc, 3) ? 1UL : 0UL;
+            Unsafe.Add(ref rc, 3) = sum;
+            if (carry == 0)
+            {
+                return;
+            }
+
+            sum = Unsafe.Add(ref rc, 4) + carry;
+            carry = sum < Unsafe.Add(ref rc, 4) ? 1UL : 0UL;
+            Unsafe.Add(ref rc, 4) = sum;
+            if (carry == 0)
+            {
+                return;
+            }
+
+            sum = Unsafe.Add(ref rc, 5) + carry;
+            carry = sum < Unsafe.Add(ref rc, 5) ? 1UL : 0UL;
+            Unsafe.Add(ref rc, 5) = sum;
+            if (carry == 0)
+            {
+                return;
+            }
+
+            sum = Unsafe.Add(ref rc, 6) + carry;
+            carry = sum < Unsafe.Add(ref rc, 6) ? 1UL : 0UL;
+            Unsafe.Add(ref rc, 6) = sum;
+            if (carry == 0)
+            {
+                return;
+            }
+
+            Unsafe.Add(ref rc, 7) += carry;
         }
     }
 
@@ -719,31 +854,34 @@ public sealed class Streebog : HashAlgorithm
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void AddBlock512(ulong[] a, ReadOnlySpan<ulong> b)
     {
+        Debug.Assert(a.Length >= BlockSizeWords && b.Length >= BlockSizeWords, "both operands must be full 512-bit word blocks");
+        ref ulong ra = ref MemoryMarshalEx.GetArrayDataReference(a);
+
         unchecked
         {
-            ulong sum = a[0] + b[0];
-            ulong carry = sum < a[0] ? 1UL : 0UL;
-            a[0] = sum;
+            ulong sum = Unsafe.Add(ref ra, 0) + b[0];
+            ulong carry = sum < Unsafe.Add(ref ra, 0) ? 1UL : 0UL;
+            Unsafe.Add(ref ra, 0) = sum;
 
-            sum = a[1] + b[1] + carry;
-            carry = (sum < a[1] || (carry == 1UL && sum == a[1])) ? 1UL : 0UL;
-            a[1] = sum;
-            sum = a[2] + b[2] + carry;
-            carry = (sum < a[2] || (carry == 1UL && sum == a[2])) ? 1UL : 0UL;
-            a[2] = sum;
-            sum = a[3] + b[3] + carry;
-            carry = (sum < a[3] || (carry == 1UL && sum == a[3])) ? 1UL : 0UL;
-            a[3] = sum;
-            sum = a[4] + b[4] + carry;
-            carry = (sum < a[4] || (carry == 1UL && sum == a[4])) ? 1UL : 0UL;
-            a[4] = sum;
-            sum = a[5] + b[5] + carry;
-            carry = (sum < a[5] || (carry == 1UL && sum == a[5])) ? 1UL : 0UL;
-            a[5] = sum;
-            sum = a[6] + b[6] + carry;
-            carry = (sum < a[6] || (carry == 1UL && sum == a[6])) ? 1UL : 0UL;
-            a[6] = sum;
-            a[7] = a[7] + b[7] + carry;
+            sum = Unsafe.Add(ref ra, 1) + b[1] + carry;
+            carry = (sum < Unsafe.Add(ref ra, 1) || (carry == 1UL && sum == Unsafe.Add(ref ra, 1))) ? 1UL : 0UL;
+            Unsafe.Add(ref ra, 1) = sum;
+            sum = Unsafe.Add(ref ra, 2) + b[2] + carry;
+            carry = (sum < Unsafe.Add(ref ra, 2) || (carry == 1UL && sum == Unsafe.Add(ref ra, 2))) ? 1UL : 0UL;
+            Unsafe.Add(ref ra, 2) = sum;
+            sum = Unsafe.Add(ref ra, 3) + b[3] + carry;
+            carry = (sum < Unsafe.Add(ref ra, 3) || (carry == 1UL && sum == Unsafe.Add(ref ra, 3))) ? 1UL : 0UL;
+            Unsafe.Add(ref ra, 3) = sum;
+            sum = Unsafe.Add(ref ra, 4) + b[4] + carry;
+            carry = (sum < Unsafe.Add(ref ra, 4) || (carry == 1UL && sum == Unsafe.Add(ref ra, 4))) ? 1UL : 0UL;
+            Unsafe.Add(ref ra, 4) = sum;
+            sum = Unsafe.Add(ref ra, 5) + b[5] + carry;
+            carry = (sum < Unsafe.Add(ref ra, 5) || (carry == 1UL && sum == Unsafe.Add(ref ra, 5))) ? 1UL : 0UL;
+            Unsafe.Add(ref ra, 5) = sum;
+            sum = Unsafe.Add(ref ra, 6) + b[6] + carry;
+            carry = (sum < Unsafe.Add(ref ra, 6) || (carry == 1UL && sum == Unsafe.Add(ref ra, 6))) ? 1UL : 0UL;
+            Unsafe.Add(ref ra, 6) = sum;
+            Unsafe.Add(ref ra, 7) = Unsafe.Add(ref ra, 7) + b[7] + carry;
         }
     }
 

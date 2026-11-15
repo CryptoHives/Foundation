@@ -22,6 +22,8 @@ against the shipped source. Do not invent members. Human-oriented docs live in `
 | `ArrayPool<T>.Shared.Rent(n)` with manual return; caller owns a fixed-size `T[]` slice | `PooledSegment<T>.Rent(n)` — same pool, no manual return |
 | `new T[n]` handed to a method that needs to signal "no data" via `null` or length 0 | `AllocatedSegment<T>.Create(buffer)` / `EmptySegment<T>.Instance` |
 | `IMemoryOwner<T>` patterns where `ArraySegment<T>` is preferred over `Memory<T>` | `ISegmentOwner<T>` |
+| A `ReadOnlySequence<T>` that must outlive the scope that built it, without copying | `ISequenceOwner<T>` / `SequenceLease<T>` (from `LeaseSequence()`) |
+| Repeated `new ArrayPoolBufferWriter<T>(...)` calls with the same settings | `ArrayPoolBufferWriterProvider<T>` — one profile, `Rent()` per use |
 
 ---
 
@@ -30,18 +32,35 @@ against the shipped source. Do not invent members. Human-oriented docs live in `
 ```csharp
 namespace CryptoHives.Foundation.Memory.Buffers;
 
-sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable {
-    ArrayPoolBufferWriter();                                              // default 256 → max 65536 chunks
-    ArrayPoolBufferWriter(int defaultChunkSize, int maxChunkSize);
-    ArrayPoolBufferWriter(bool clearArray, int defaultChunkSize, int maxChunkSize); // clearArray zeroes on return
+sealed class ArrayPoolBufferWriter<T> : IBufferWriter<T>, IDisposable, IResettable {
+    const int DefaultChunkBytes = 256;            // budgets are BYTES, divided by sizeof(T)
+    const int MaxChunkBytes     = 64 * 1024;      // ceiling that keeps a chunk off the LOH
+    ArrayPoolBufferWriter();                                                     // 256 B → 64 KiB, doubling
+    ArrayPoolBufferWriter(int defaultChunkBytes, int maxChunkBytes);
+    ArrayPoolBufferWriter(bool clearArray, int defaultChunkBytes, int maxChunkBytes); // zeroes on return
     Span<T>   GetSpan(int sizeHint = 0);
     Memory<T> GetMemory(int sizeHint = 0);
     void      Advance(int count);
-    ReadOnlySequence<T> GetReadOnlySequence();   // valid only until next write or Dispose()
-    void      Dispose();                          // returns pooled arrays
+    ReadOnlySequence<T> GetReadOnlySequence();   // borrowed: valid only until next write or Dispose()
+    SequenceLease<T>    LeaseSequence();         // lets the payload outlive this scope, 0 alloc
+    bool      TryReset();                         // IResettable, for pooling
+    void      Dispose();                          // returns pooled arrays, or self to its pool
 }
 
-sealed class ArrayPoolMemoryStream : MemoryStream { … }           // pooled MemoryStream; Dispose returns segments
+sealed class ArrayPoolMemoryStream : MemoryStream {                // pooled; Dispose returns segments
+    ArrayPoolMemoryStream();
+    ArrayPoolMemoryStream(bool clearArray);
+    ArrayPoolMemoryStream(int bufferSize, bool clearArray = false);
+    ArrayPoolMemoryStream(int bufferListSize, int bufferSize, bool clearArray = false);
+    ArrayPoolMemoryStream(int bufferListSize, int bufferSize, int start, int count, bool clearArray = false);
+    ArrayPoolMemoryStream(IEnumerable<ArraySegment<byte>> buffers);  // read-only over caller-owned buffers
+    ReadOnlySequence<byte> GetReadOnlySequence();                  // borrowed
+    SequenceLease<byte>    LeaseSequence();                        // escapes the scope, 0 alloc
+    override byte[] ToArray();                                     // copies across segments; works
+    // GetBuffer() throws and TryGetBuffer() returns false - neither can expose several segments as
+    // one array. ToArray() is overridden and does work; it just copies, so prefer the sequence on
+    // hot paths and reach for ToArray() only when an owned byte[] is genuinely required.
+}
 sealed class ReadOnlySequenceMemoryStream : MemoryStream {         // read-only Stream over an existing sequence
     ReadOnlySequenceMemoryStream(ReadOnlySequence<byte> sequence);
 }
@@ -58,7 +77,10 @@ interface ISegmentOwner<T> : IDisposable {
 
 sealed class PooledSegment<T> : ISegmentOwner<T> {
     // Rents from ArrayPool<T>.Shared; Segment.Count == minimumLength; array may be larger.
-    static ISegmentOwner<T> Rent(int minimumLength);
+    // clearArray: true zeroes the whole backing array as it returns to the pool - use it for
+    // secrets. Debug builds zero every returned buffer regardless, but that is a use-after-return
+    // diagnostic, NOT a security control: do not verify a wipe in Debug and ship Release without it.
+    static ISegmentOwner<T> Rent(int minimumLength, bool clearArray = false);
     // Dispose returns the rented array to the pool and resets Segment to default.
 }
 
@@ -75,6 +97,37 @@ sealed class EmptySegment<T> : ISegmentOwner<T> {
     static ISegmentOwner<T> Instance { get; }
 }
 
+// ── Sequence ownership ───────────────────────────────────────────────────────
+// ISequenceOwner<T> is the sequence-shaped counterpart to ISegmentOwner<T> (same idea as
+// IMemoryOwner<T>: the interface carries the payload, IDisposable carries the lifetime).
+// No indexer, no re-window method - a ReadOnlySequence<T> is read-only, and Slice() is
+// already a cheap value operation that leaves ownership untouched.
+
+interface ISequenceOwner<T> : IDisposable {
+    ReadOnlySequence<T> Sequence { get; }
+    long Length { get; }
+    bool IsEmpty { get; }
+}
+
+readonly struct SequenceLease<T> : ISequenceOwner<T> {
+    // What LeaseSequence() on ArrayPoolBufferWriter<T>/ArrayPoolMemoryStream hands out.
+    // Holds no buffers itself - it holds the producer, and disposing it disposes the
+    // producer. A struct: using it through ISequenceOwner<T> boxes it (measured 48 bytes),
+    // so take it by its own type unless several owner kinds must be treated uniformly.
+    SequenceLease(ReadOnlySequence<T> sequence, IDisposable? owner);   // for your own producers
+}
+
+sealed class SegmentSequence<T> : ISequenceOwner<T> {
+    // Adopts one ISegmentOwner<T> and disposes it in turn. Bridges the two families so code
+    // written against ISequenceOwner<T> works with every segment strategy underneath.
+    static ISequenceOwner<T> Create(ISegmentOwner<T> owner);
+}
+
+sealed class EmptySequence<T> : ISequenceOwner<T> {
+    // Null-object singleton. Sequence == ReadOnlySequence<T>.Empty. Dispose is a no-op.
+    static ISequenceOwner<T> Instance { get; }
+}
+
 namespace CryptoHives.Foundation.Memory.Pools;
 
 readonly struct ObjectOwner<T> : IDisposable where T : class {
@@ -85,6 +138,24 @@ readonly struct ObjectOwner<T> : IDisposable where T : class {
 
 static class ObjectPools {
     static ObjectOwner<StringBuilder> GetStringBuilder();
+    static ArrayPoolBufferWriter<T>   RentBufferWriter<T>();  // writer returns ITSELF on Dispose
+}
+
+sealed class ArrayPoolBufferWriterProvider<T> {
+    // An immutable settings profile (clearArray, chunk budgets) that hands out writers already
+    // configured with it. Writers are configured when rented, not when constructed, so pooled
+    // instances are interchangeable and one pool can serve differently configured providers.
+    ArrayPoolBufferWriterProvider(bool clearArray = false, int defaultChunkBytes = …,
+        int maxChunkBytes = …, ObjectPool<ArrayPoolBufferWriter<T>>? pool = null);
+    ArrayPoolBufferWriter<T> Rent();   // dispose returns it to this provider's pool
+}
+
+static class PoolFactory {
+    static ObjectPool<T> CreatePool<T>(Func<T> create, Func<T, bool> reset, int maximumRetained = 0) where T : class;
+    static ObjectPool<ArrayPoolBufferWriter<T>> CreateBufferWriterPool<T>(int maximumRetained = 0);  // isolated pool
+    static ObjectPool<ArrayPoolBufferWriter<T>> SharedBufferWriterPool<T>();   // process-wide default, one per T
+    static ObjectPool<StringBuilder> CreateStringBuilderPool(int maxCapacity = …, int maxStringBuilderCapacity = …);
+    static ObjectPool<StringBuilder> SharedStringBuilderPool { get; }
 }
 ```
 
@@ -142,15 +213,22 @@ StringBuilder sb = owner.PooledObject;
    `ArrayPoolMemoryStream`, `PooledSegment<T>`, and `ObjectOwner<T>` all return pooled
    memory on `Dispose`. Never let one escape its scope.
 2. **The `ReadOnlySequence<T>` from `GetReadOnlySequence()` is only valid until the next
-   write or `Dispose()`.** Fully consume or copy it before disposing; never return it to a
-   caller that outlives the `using`.
+   write or `Dispose()`.** Fully consume or copy it before disposing. When the payload must
+   outlive the scope, do not copy it — hand back `LeaseSequence()`, a `readonly struct`
+   carrying the sequence plus the producer that owns it, at no cost over borrowing. Do not
+   copy the lease or cast it to `ISequenceOwner<T>`/`IDisposable`; both boxing and copying
+   defeat it, exactly as with `ObjectOwner<T>`.
 3. **`ObjectOwner<T>` is a `readonly struct` — never cast it to `IDisposable` and never box
    it** (double-return / boxing hazard). Use only `using var`; do not copy it.
 4. **Do not use a pooled object after its owner is disposed** — it has been returned and may
    be handed to another caller. This applies equally to `PooledSegment<T>` (array is back in
    the pool) and `ObjectOwner<T>` (object is back in the pool).
-5. For sensitive data, construct `new ArrayPoolBufferWriter<byte>(clearArray: true, …)` so
-   buffers are zeroed on return. `PooledSegment<T>` clears in DEBUG builds automatically.
+5. For sensitive data, pass `clearArray: true` — on the writer, on any owning
+   `ArrayPoolMemoryStream` constructor, or to `PooledSegment<T>.Rent(length, clearArray: true)`
+   — so buffers are zeroed on their way back to the pool. Debug builds zero every returned
+   `PooledSegment<T>` buffer regardless, but that is a use-after-return diagnostic, **not** a
+   security control: never verify a wipe in Debug and ship a Release build that never asked
+   for one.
 6. The `ObjectOwner<T>` accessor is named **`PooledObject`** (not `Object`).
 7. **`TrySetSegment` does not reallocate.** It only repositions the view within the existing
    backing array. If the requested range does not fit (`offset + length > array.Length`),

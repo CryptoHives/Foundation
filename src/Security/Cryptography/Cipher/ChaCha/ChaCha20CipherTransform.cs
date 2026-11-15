@@ -1,12 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// ChaCha20 cipher transform for encryption or decryption operations.
@@ -36,7 +36,7 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     /// <param name="nonce">The 12-byte nonce.</param>
     /// <param name="initialCounter">The initial block counter (usually 0 or 1).</param>
     public ChaCha20CipherTransform(ReadOnlySpan<byte> key, ReadOnlySpan<byte> nonce, uint initialCounter = 0)
-        : this(SimdSupport.All, key, nonce, initialCounter)
+        : this(ChaCha20.ChaCha20Default, key, nonce, initialCounter)
     {
     }
 
@@ -70,10 +70,10 @@ internal sealed class ChaCha20CipherTransform : ICipherTransform
     public int BlockSize => 1; // Stream cipher - can process any byte count
 
     /// <inheritdoc/>
-    int ICryptoTransform.InputBlockSize => 1;
+    int OS.ICryptoTransform.InputBlockSize => 1;
 
     /// <inheritdoc/>
-    int ICryptoTransform.OutputBlockSize => 1;
+    int OS.ICryptoTransform.OutputBlockSize => 1;
 
     /// <inheritdoc/>
     public bool CanTransformMultipleBlocks => true;

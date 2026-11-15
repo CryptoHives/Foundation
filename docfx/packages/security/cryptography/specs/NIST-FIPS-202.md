@@ -1,4 +1,4 @@
-﻿# NIST FIPS 202 - SHA-3 Standard
+# NIST FIPS 202 - SHA-3 Standard
 
 ## Overview
 
@@ -15,19 +15,19 @@ Federal Information Processing Standards Publication 202 specifies the SHA-3 fam
 
 - **Document:** NIST FIPS 202
 - **Title:** SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions
-- **URL:** https://csrc.nist.gov/pubs/fips/202/final
-- **PDF:** https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+- **URL:** [csrc.nist.gov/pubs/fips/202/final](https://csrc.nist.gov/pubs/fips/202/final)
+- **PDF:** [nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf)
 
 ## Implementation Status
 
 | Algorithm | Output Size | Status | Class |
 |-----------|-------------|--------|-------|
-| SHA3-224 | 224 bits | ✅ Implemented | `SHA3_224` |
-| SHA3-256 | 256 bits | ✅ Implemented | `SHA3_256` |
-| SHA3-384 | 384 bits | ✅ Implemented | `SHA3_384` |
-| SHA3-512 | 512 bits | ✅ Implemented | `SHA3_512` |
-| SHAKE128 | Variable | ✅ Implemented | `Shake128` |
-| SHAKE256 | Variable | ✅ Implemented | `Shake256` |
+| SHA3-224 | 224 bits | ✅ | `SHA3_224` |
+| SHA3-256 | 256 bits | ✅ | `SHA3_256` |
+| SHA3-384 | 384 bits | ✅ | `SHA3_384` |
+| SHA3-512 | 512 bits | ✅ | `SHA3_512` |
+| SHAKE128 | Variable | ✅ | `Shake128` |
+| SHAKE256 | Variable | ✅ | `Shake256` |
 
 ---
 
@@ -251,7 +251,7 @@ SHA-3 provides defense-in-depth as an alternative to SHA-2, using a completely d
 
 ## References
 
-1. NIST FIPS 202: https://doi.org/10.6028/NIST.FIPS.202
-2. Keccak Team: https://keccak.team/
-3. SHA-3 Examples: https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
-4. Keccak Reference: https://keccak.team/keccak_specs_summary.html
+1. [NIST FIPS 202](https://doi.org/10.6028/NIST.FIPS.202)
+2. [Keccak Team](https://keccak.team/)
+3. [SHA-3 Examples](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values)
+4. [Keccak Reference](https://keccak.team/keccak_specs_summary.html)

@@ -1,13 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Benchmarks.Hash;
 
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using BenchmarkDotNet.Exporters;
-using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
@@ -23,11 +21,6 @@ using System.Runtime.InteropServices;
 /// </summary>
 public class HashConfig : ManualConfig
 {
-    /// <summary>
-    /// Shared instance of the short name markdown exporter.
-    /// </summary>
-    private static readonly ShortNameMarkdownExporter ShortExporter = ShortNameMarkdownExporter.Default;
-
     public HashConfig()
     {
         // Disable default exporters
@@ -36,8 +29,8 @@ public class HashConfig : ManualConfig
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(
-                maxDepth: 3,
-                printSource: true,
+                maxDepth: 12,
+                printSource: false,
                 exportGithubMarkdown: true,
                 exportCombinedDisassemblyReport: true)));
         }
@@ -48,7 +41,7 @@ public class HashConfig : ManualConfig
 
         // Export formats: markdown for docfx, plus full JSON so
         // scripts/cryptography-benchmark-trends/append_results.py can ingest results without extra flags.
-        AddExporter(ShortExporter);
+        AddExporter(ShortNameMarkdownExporter.Default);
         AddExporter(BenchmarkDotNet.Exporters.Json.JsonExporter.Full);
     }
 
@@ -105,6 +98,8 @@ public class HashConfig : ManualConfig
                 return "Blake3.NET-Native";
             if (name.EndsWith("(Blake3Managed)", StringComparison.InvariantCultureIgnoreCase))
                 return "Blake3.NET-Managed";
+            if (name.EndsWith("(Blake3DissimilisSerial)", StringComparison.InvariantCultureIgnoreCase))
+                return "Blake3.Managed-Serial";
             if (name.EndsWith("(Blake3Dissimilis)", StringComparison.InvariantCultureIgnoreCase))
                 return "Blake3.Managed";
             if (name.EndsWith("(CryptoHives-Arm64)", StringComparison.InvariantCultureIgnoreCase))

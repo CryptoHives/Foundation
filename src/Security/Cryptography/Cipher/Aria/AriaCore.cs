@@ -1,5 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+#pragma warning disable IDE1006 // Naming rule violation - cryptographic constant names per RFC 5794
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -19,7 +21,7 @@ internal static class AriaCore
     public const int BlockSizeBytes = 16;
 
     // SB1: AES S-box
-    private static ReadOnlySpan<byte> SB1 =>
+    private static readonly byte[] SB1 =
     [
         0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
         0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -40,7 +42,7 @@ internal static class AriaCore
     ];
 
     // SB2: RFC 5794 Section 2.4.2
-    private static ReadOnlySpan<byte> SB2 =>
+    private static readonly byte[] SB2 =
     [
         0xE2, 0x4E, 0x54, 0xFC, 0x94, 0xC2, 0x4A, 0xCC, 0x62, 0x0D, 0x6A, 0x46, 0x3C, 0x4D, 0x8B, 0xD1,
         0x5E, 0xFA, 0x64, 0xCB, 0xB4, 0x97, 0xBE, 0x2B, 0xBC, 0x77, 0x2E, 0x03, 0xD3, 0x19, 0x59, 0xC1,
@@ -61,7 +63,7 @@ internal static class AriaCore
     ];
 
     // SB3: AES inverse S-box
-    private static ReadOnlySpan<byte> SB3 =>
+    private static readonly byte[] SB3 =
     [
         0x52, 0x09, 0x6A, 0xD5, 0x30, 0x36, 0xA5, 0x38, 0xBF, 0x40, 0xA3, 0x9E, 0x81, 0xF3, 0xD7, 0xFB,
         0x7C, 0xE3, 0x39, 0x82, 0x9B, 0x2F, 0xFF, 0x87, 0x34, 0x8E, 0x43, 0x44, 0xC4, 0xDE, 0xE9, 0xCB,
@@ -82,7 +84,7 @@ internal static class AriaCore
     ];
 
     // SB4: RFC 5794 Section 2.4.2
-    private static ReadOnlySpan<byte> SB4 =>
+    private static readonly byte[] SB4 =
     [
         0x30, 0x68, 0x99, 0x1B, 0x87, 0xB9, 0x21, 0x78, 0x50, 0x39, 0xDB, 0xE1, 0x72, 0x09, 0x62, 0x3C,
         0x3E, 0x7E, 0x5E, 0x8E, 0xF1, 0xA0, 0xCC, 0xA3, 0x2A, 0x1D, 0xFB, 0xB6, 0xD6, 0x20, 0xC4, 0x8D,
@@ -115,6 +117,7 @@ internal static class AriaCore
     /// <param name="key">The cipher key (16, 24, or 32 bytes).</param>
     /// <param name="encRoundKeys">Output buffer for encryption round keys (at least (nr+1)*16 bytes).</param>
     /// <returns>The number of rounds (12, 14, or 16).</returns>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<byte> encRoundKeys)
     {
@@ -134,9 +137,12 @@ internal static class AriaCore
         // KL = leftmost 128 bits of key, KR = rightmost bits (zero-padded)
         Span<byte> kl = stackalloc byte[16];
         Span<byte> kr = stackalloc byte[16];
+        kr.Clear();
         key.Slice(0, 16).CopyTo(kl);
         if (key.Length > 16)
+        {
             key.Slice(16, Math.Min(key.Length - 16, 16)).CopyTo(kr);
+        }
 
         // W0 = KL
         Span<byte> w0 = stackalloc byte[16];
@@ -163,6 +169,13 @@ internal static class AriaCore
         // ek2  = W1 ^ (W2 >>> 19)  ... etc
         GenerateRoundKeys(w0, w1, w2, w3, encRoundKeys, nr);
 
+        CryptographicOperations.ZeroMemory(kl);
+        CryptographicOperations.ZeroMemory(kr);
+        CryptographicOperations.ZeroMemory(w0);
+        CryptographicOperations.ZeroMemory(w1);
+        CryptographicOperations.ZeroMemory(w2);
+        CryptographicOperations.ZeroMemory(w3);
+        CryptographicOperations.ZeroMemory(temp);
         return nr;
     }
 
@@ -266,21 +279,25 @@ internal static class AriaCore
         x[12] = SB1[x[12]]; x[13] = SB2[x[13]]; x[14] = SB3[x[14]]; x[15] = SB4[x[15]];
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SubstLayerOdd(
         ref byte x0, ref byte x1, ref byte x2, ref byte x3,
         ref byte x4, ref byte x5, ref byte x6, ref byte x7,
         ref byte x8, ref byte x9, ref byte x10, ref byte x11,
         ref byte x12, ref byte x13, ref byte x14, ref byte x15)
     {
-        x0 = SB1[x0]; x1 = SB2[x1]; x2 = SB3[x2]; x3 = SB4[x3];
-        x4 = SB1[x4]; x5 = SB2[x5]; x6 = SB3[x6]; x7 = SB4[x7];
-        x8 = SB1[x8]; x9 = SB2[x9]; x10 = SB3[x10]; x11 = SB4[x11];
-        x12 = SB1[x12]; x13 = SB2[x13]; x14 = SB3[x14]; x15 = SB4[x15];
+        ref byte sb1 = ref MemoryMarshalEx.GetArrayDataReference(SB1);
+        ref byte sb2 = ref MemoryMarshalEx.GetArrayDataReference(SB2);
+        ref byte sb3 = ref MemoryMarshalEx.GetArrayDataReference(SB3);
+        ref byte sb4 = ref MemoryMarshalEx.GetArrayDataReference(SB4);
+        x0 = Unsafe.Add(ref sb1, x0); x1 = Unsafe.Add(ref sb2, x1); x2 = Unsafe.Add(ref sb3, x2); x3 = Unsafe.Add(ref sb4, x3);
+        x4 = Unsafe.Add(ref sb1, x4); x5 = Unsafe.Add(ref sb2, x5); x6 = Unsafe.Add(ref sb3, x6); x7 = Unsafe.Add(ref sb4, x7);
+        x8 = Unsafe.Add(ref sb1, x8); x9 = Unsafe.Add(ref sb2, x9); x10 = Unsafe.Add(ref sb3, x10); x11 = Unsafe.Add(ref sb4, x11);
+        x12 = Unsafe.Add(ref sb1, x12); x13 = Unsafe.Add(ref sb2, x13); x14 = Unsafe.Add(ref sb3, x14); x15 = Unsafe.Add(ref sb4, x15);
     }
 
     // Even-round substitution: SB3, SB4, SB1, SB2 pattern
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SubstLayerEven(Span<byte> x)
     {
         x[0] = SB3[x[0]]; x[1] = SB4[x[1]]; x[2] = SB1[x[2]]; x[3] = SB2[x[3]];
@@ -289,20 +306,25 @@ internal static class AriaCore
         x[12] = SB3[x[12]]; x[13] = SB4[x[13]]; x[14] = SB1[x[14]]; x[15] = SB2[x[15]];
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SubstLayerEven(
         ref byte x0, ref byte x1, ref byte x2, ref byte x3,
         ref byte x4, ref byte x5, ref byte x6, ref byte x7,
         ref byte x8, ref byte x9, ref byte x10, ref byte x11,
         ref byte x12, ref byte x13, ref byte x14, ref byte x15)
     {
-        x0 = SB3[x0]; x1 = SB4[x1]; x2 = SB1[x2]; x3 = SB2[x3];
-        x4 = SB3[x4]; x5 = SB4[x5]; x6 = SB1[x6]; x7 = SB2[x7];
-        x8 = SB3[x8]; x9 = SB4[x9]; x10 = SB1[x10]; x11 = SB2[x11];
-        x12 = SB3[x12]; x13 = SB4[x13]; x14 = SB1[x14]; x15 = SB2[x15];
+        ref byte sb1 = ref MemoryMarshalEx.GetArrayDataReference(SB1);
+        ref byte sb2 = ref MemoryMarshalEx.GetArrayDataReference(SB2);
+        ref byte sb3 = ref MemoryMarshalEx.GetArrayDataReference(SB3);
+        ref byte sb4 = ref MemoryMarshalEx.GetArrayDataReference(SB4);
+        x0 = Unsafe.Add(ref sb3, x0); x1 = Unsafe.Add(ref sb4, x1); x2 = Unsafe.Add(ref sb1, x2); x3 = Unsafe.Add(ref sb2, x3);
+        x4 = Unsafe.Add(ref sb3, x4); x5 = Unsafe.Add(ref sb4, x5); x6 = Unsafe.Add(ref sb1, x6); x7 = Unsafe.Add(ref sb2, x7);
+        x8 = Unsafe.Add(ref sb3, x8); x9 = Unsafe.Add(ref sb4, x9); x10 = Unsafe.Add(ref sb1, x10); x11 = Unsafe.Add(ref sb2, x11);
+        x12 = Unsafe.Add(ref sb3, x12); x13 = Unsafe.Add(ref sb4, x13); x14 = Unsafe.Add(ref sb1, x14); x15 = Unsafe.Add(ref sb2, x15);
     }
 
     // Diffusion layer A (binary matrix from RFC 5794)
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void DiffuseA(ReadOnlySpan<byte> x, Span<byte> y)
     {
         byte x0 = x[0]; byte x1 = x[1]; byte x2 = x[2]; byte x3 = x[3];
@@ -349,37 +371,43 @@ internal static class AriaCore
     }
 
     // FO: Odd round function (substitution layer 1 + diffusion)
+    [SkipLocalsInit]
     private static void FO(ReadOnlySpan<byte> d, ulong ckHi, ulong ckLo, Span<byte> output)
     {
-        Span<byte> temp = stackalloc byte[16];
+        Span<byte> temp = stackalloc byte[2 * sizeof(ulong)];
         // XOR with round constant
         ulong hi = BinaryPrimitives.ReadUInt64BigEndian(d) ^ ckHi;
         ulong lo = BinaryPrimitives.ReadUInt64BigEndian(d.Slice(8)) ^ ckLo;
         BinaryPrimitives.WriteUInt64BigEndian(temp, hi);
-        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(8), lo);
+        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(sizeof(ulong)), lo);
 
         SubstLayerOdd(temp);
         DiffuseA(temp, output);
+        CryptographicOperations.ZeroMemory(temp);
     }
 
     // FE: Even round function (substitution layer 2 + diffusion)
+    [SkipLocalsInit]
     private static void FE(ReadOnlySpan<byte> d, ulong ckHi, ulong ckLo, Span<byte> output)
     {
-        Span<byte> temp = stackalloc byte[16];
+        Span<byte> temp = stackalloc byte[2 * sizeof(ulong)];
         ulong hi = BinaryPrimitives.ReadUInt64BigEndian(d) ^ ckHi;
         ulong lo = BinaryPrimitives.ReadUInt64BigEndian(d.Slice(8)) ^ ckLo;
         BinaryPrimitives.WriteUInt64BigEndian(temp, hi);
-        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(8), lo);
+        BinaryPrimitives.WriteUInt64BigEndian(temp.Slice(sizeof(ulong)), lo);
 
         SubstLayerEven(temp);
         DiffuseA(temp, output);
+        CryptographicOperations.ZeroMemory(temp);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void Xor128(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, Span<byte> result)
     {
         for (int i = 0; i < 16; i++)
+        {
             result[i] = (byte)(a[i] ^ b[i]);
+        }
     }
 
     // Rotate 128-bit value right by n bits
@@ -399,12 +427,7 @@ internal static class AriaCore
         }
     }
 
-    // Rotate 128-bit value left by n bits
-    private static void RotateLeft128(ReadOnlySpan<byte> input, int n, Span<byte> output)
-    {
-        RotateRight128(input, 128 - n, output);
-    }
-
+    [SkipLocalsInit]
     private static void GenerateRoundKeys(ReadOnlySpan<byte> w0, ReadOnlySpan<byte> w1,
         ReadOnlySpan<byte> w2, ReadOnlySpan<byte> w3, Span<byte> ek, int nr)
     {
@@ -423,19 +446,20 @@ internal static class AriaCore
             int wRot = ((i % 4 + 1) % 4) * 16;
 
             int rotAmount;
-            bool isLeft;
-            if (i < 4) { rotAmount = 19; isLeft = false; }
-            else if (i < 8) { rotAmount = 31; isLeft = false; }
-            else if (i < 12) { rotAmount = 61; isLeft = true; }
-            else if (i < 16) { rotAmount = 31; isLeft = true; }
-            else { rotAmount = 19; isLeft = true; }
+            // right rotations
+            if (i < 4) { rotAmount = 19; }
+            else if (i < 8) { rotAmount = 31; }
+            // Convert left rotation to equivalent right rotation
+            else if (i < 12) { rotAmount = 128 - 61; }
+            else if (i < 16) { rotAmount = 128 - 31; }
+            else { rotAmount = 128 - 19; }
 
-            if (isLeft)
-                RotateLeft128(wBuf.Slice(wRot, 16), rotAmount, rot);
-            else
-                RotateRight128(wBuf.Slice(wRot, 16), rotAmount, rot);
+            RotateRight128(wBuf.Slice(wRot, 16), rotAmount, rot);
 
             Xor128(wBuf.Slice(wBase, 16), rot, ek.Slice(i * 16, 16));
         }
+
+        CryptographicOperations.ZeroMemory(rot);
+        CryptographicOperations.ZeroMemory(wBuf);
     }
 }

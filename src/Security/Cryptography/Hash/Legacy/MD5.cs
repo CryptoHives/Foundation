@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -242,6 +242,7 @@ public sealed class MD5 : HashAlgorithm
     }
 
     /// <inheritdoc/>
+    [SkipLocalsInit]
     protected override bool TryHashFinal(Span<byte> destination, out int bytesWritten)
     {
         if (destination.Length < HashSizeBytes)
@@ -301,13 +302,8 @@ public sealed class MD5 : HashAlgorithm
             uint c = _c;
             uint d = _d;
 
-#if NET8_0_OR_GREATER
-            ref int gPtr = ref MemoryMarshal.GetArrayDataReference(G);
-            ref uint kPtr = ref MemoryMarshal.GetArrayDataReference(K);
-#else
-            ref int gPtr = ref MemoryMarshal.GetReference(G.AsSpan());
-            ref uint kPtr = ref MemoryMarshal.GetReference(K.AsSpan());
-#endif
+            ref int gPtr = ref MemoryMarshalEx.GetArrayDataReference(G);
+            ref uint kPtr = ref MemoryMarshalEx.GetArrayDataReference(K);
             ref uint mPtr = ref MemoryMarshal.GetReference(m);
 
             for (int i = 0; i < 16; i++)

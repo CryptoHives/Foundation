@@ -1,4 +1,4 @@
-﻿# SHA-1 Test Vectors
+# SHA-1 Test Vectors
 
 > **WARNING**: SHA-1 is cryptographically broken and should NOT be used for security-sensitive applications.
 > These test vectors are provided only for legacy compatibility and verification of existing data.
@@ -6,7 +6,7 @@
 ## Source
 
 NIST FIPS 180-4: Secure Hash Standard (SHS)
-- https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf
+- [csrc.nist.gov/…/SHA1.pdf](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf)
 
 ## Algorithm Parameters
 

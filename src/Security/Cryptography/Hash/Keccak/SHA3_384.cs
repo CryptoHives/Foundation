@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA1707 // Identifiers should not contain underscores
 
@@ -51,7 +51,7 @@ public sealed class SHA3_384 : KeccakHashCore
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA3_384"/> class.
     /// </summary>
-    public SHA3_384() : this(SimdSupport.KeccakDefault)
+    public SHA3_384() : this(KeccakDefault)
     {
     }
 

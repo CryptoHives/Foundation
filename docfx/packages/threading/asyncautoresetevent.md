@@ -1,20 +1,10 @@
 # AsyncAutoResetEvent
 
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncAutoResetEvent)
+
 ## Overview
 
 `AsyncAutoResetEvent` is a pooled async version of `AutoResetEvent` that uses `ValueTask` to minimize memory allocations in high-throughput scenarios. It provides allocation-free async signaling by reusing pooled `IValueTaskSource` instances.
-
-## Namespace
-
-```csharp
-using CryptoHives.Foundation.Threading.Async.Pooled;
-```
-
-## Class Declaration
-
-```csharp
-public sealed class AsyncAutoResetEvent
-```
 
 ## Key Features
 
@@ -54,6 +44,8 @@ public bool IsSet { get; }
 ```
 
 Gets whether this event is currently in the signaled state. A successful `WaitAsync()` consumes the signal (auto-reset semantics) and returns `false` after a wait consumes the signal.
+
+`IsSet` only **peeks** — two callers reading it can both proceed on a single signal. When the answer decides *who* does the work, use [`TryWait()`](#trywait) instead, which consumes the signal exactly as a completed `WaitAsync()` would.
 
 ### RunContinuationAsynchronously
 
@@ -154,6 +146,30 @@ await _event.WaitAsync(Timeout.InfiniteTimeSpan);
 
 Immediate waits are completely allocation-free using atomic operations. When the event is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated operations.
 
+### TryWait
+
+```csharp
+public bool TryWait()
+```
+
+Attempts to consume a pending signal without waiting.
+
+**Returns**: `true` if a signal was pending and has now been consumed by this caller; `false` if the event was not set.
+
+Synchronous and non-throwing by design: unlike `WaitAsync(TimeSpan.Zero)`, a failed attempt never allocates an exception or a faulted `ValueTask` — there is nothing to await in the first place.
+
+This **consumes** the signal exactly as a completed `WaitAsync()` would, which is what separates it from `IsSet`: that property only peeks, and two callers reading it can both proceed on one signal. Prefer `TryWait()` whenever the answer decides who does the work.
+
+**Example**:
+
+```csharp
+// Drain any already-signaled work without suspending
+while (_event.TryWait())
+{
+    ProcessOnePendingItem();
+}
+```
+
 ### Set
 
 ```csharp
@@ -214,7 +230,7 @@ finally
 
 ## Thread Safety
 
-✓ **Thread-safe**. All public methods are thread-safe and can be called concurrently.
+**Thread-safe**. All public methods are thread-safe and can be called concurrently.
 
 ## Performance Characteristics
 
@@ -231,20 +247,21 @@ The benchmarks compare various `AsyncAutoResetEvent` implementations:
 - ProtoPromiseAsyncAutoResetEvent: The implementation from the Proto.Promises.Threading library which uses custom awaiter and cancelation tokens
 - RefImplAsyncAutoResetEvent: The reference `TaskCompletionSource`-based implementation from Stephen Toub's blog, which does not support cancellation tokens
 - NitoAsyncAutoResetEvent: The implementation from Nito.AsyncEx library
+- DotNextAsyncAutoResetEvent (net10.0 only): The implementation from the DotNext.Threading library
 - AutoResetEvent: The .NET built-in `AutoResetEvent` which lacks the async API
 
 ### Set Operation Benchmark
 
 Measures the performance of signaling the event when no waiters are queued. There is no contention and no allocation cost in all implementations.
 
-[View live Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=Set)
+[View live Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=Set&mode=trend)
 
 ### Set Then Wait Benchmark
 
 Measures the pattern where the event is set before a waiter arrives (synchronous completion path).
 For the pooled implementation this is the fast path and an immediate return from WaitAsync is possible. There is no contention and no allocation cost in all implementations.
 
-[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=SetThenWait)
+[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=SetThenWait&mode=trend)
 
 ### Wait Then Set Benchmark
 
@@ -256,7 +273,7 @@ ProtoPromise is now included as an additional low-allocation competitor and is o
 The Nito.AsyncEx implementation uses a custom waiter type and allocates memory per waiter in any contested wait, beside being a lot slower than the pooled implementation.
 The pooled implementation starts to allocate memory only when the pool is exhausted (high contention), when the ValueTask is converted to Task by AsTask() or when cancellable tokens are used in legacy .NET versions prior to .NET 6 (due to registration overhead).
 
-[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=WaitThenSet)
+[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncAutoReset&method=WaitThenSet&mode=trend)
 
 ### Benchmark Analysis
 
@@ -297,7 +314,7 @@ await evt.WaitAsync(); // Blocks until next Set()
 
 ## Best Practices
 
-### ✓ DO: Use for Producer-Consumer
+### Use for producer-consumer
 
 ```csharp
 public class WorkQueue<T>
@@ -320,7 +337,7 @@ public class WorkQueue<T>
 }
 ```
 
-### ✓ DO: Always await `ValueTask` directly when possible
+### Always await `ValueTask` directly when possible
 
 ```csharp
 // Good: Direct await
@@ -330,15 +347,15 @@ await _event.WaitAsync();
 await _event.WaitAsync().AsTask();
 ```
 
-### ✓ DO: Use a custom pool when high contention is expected
+### Use a custom pool when high contention is expected
 
 Provide a larger object pool to avoid temporary allocations when many waiters are queued simultaneously.
 
-### ✗ DON'T: Store `AsTask()` Before Signaling (when `RunContinuationAsynchronously == true`)
+### Don't store `AsTask()` before signaling (when `RunContinuationAsynchronously == true`)
 
 Storing the `Task` result of `AsTask()` before `Set()` forces an asynchronous completion path that can be much slower. Prefer awaiting the `ValueTask` directly.
 
-### ✗ DON'T: Await `ValueTask` Multiple Times
+### Don't await `ValueTask` multiple times
 
 ```csharp
 ValueTask vt = _event.WaitAsync();
@@ -346,7 +363,7 @@ await vt;
 await vt; // throws InvalidOperationException
 ```
 
-### ✓ DO: Use `WaitAsync(TimeSpan)` for timed waits
+### Use `WaitAsync(TimeSpan)` for timed waits
 
 Avoid the `AsTask().WaitAsync(timeout)` pattern — it forces a `Task` allocation and may cause the 10x–100x slowdown described above. Use the direct timeout overload instead:
 
@@ -376,9 +393,12 @@ await _event.WaitAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

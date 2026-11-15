@@ -1,5 +1,7 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+#pragma warning disable IDE1006 // Naming rule violation - standard cryptographic constant names per RFC
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -272,7 +274,7 @@ internal static class SeedCore
         BinaryPrimitives.WriteUInt64BigEndian(output[8..], l);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong F(uint ki0, uint ki1, ulong r)
     {
         uint r0 = ki0 ^ (uint)(r >> 32);
@@ -287,7 +289,7 @@ internal static class SeedCore
         return (ulong)rd0 << 32 | rd1;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static uint G(uint x)
     {
         return SS0[x & 0xFF] ^ SS1[(x >> 8) & 0xFF] ^ SS2[(x >> 16) & 0xFF] ^ SS3[x >> 24];

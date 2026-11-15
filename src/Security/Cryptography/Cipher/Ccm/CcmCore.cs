@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 #if NET8_0_OR_GREATER
@@ -21,7 +22,7 @@ using System.Runtime.Intrinsics;
 /// <para>
 /// <b>Implementation notes:</b>
 /// <list type="bullet">
-///   <item><description>Defined for 128-bit block ciphers only (AES)</description></item>
+///   <item><description>Defined for 128-bit block ciphers only: AES here, others through <see cref="BlockCipher128"/></description></item>
 ///   <item><description>Authenticate-then-encrypt construction</description></item>
 ///   <item><description>Variable tag length (4-16 bytes, even values)</description></item>
 ///   <item><description>Variable nonce length (7-13 bytes)</description></item>
@@ -60,11 +61,11 @@ internal unsafe struct CcmCore
     /// </summary>
     private const int MaxRoundKeyWords = 60;
 
-    private unsafe fixed uint _roundKeys[MaxRoundKeyWords];
+    private fixed uint _roundKeys[MaxRoundKeyWords];
     private readonly int _rounds;
+    private readonly BlockCipher128? _blockCipher;
 #if NET8_0_OR_GREATER
-    private readonly bool _useAesNi;
-    private readonly bool _useArmAes;
+    private readonly bool _useAes;
 #endif
 
     /// <summary>
@@ -74,18 +75,20 @@ internal unsafe struct CcmCore
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     public CcmCore(ReadOnlySpan<byte> key, SimdSupport simdSupport)
     {
+        simdSupport = simdSupport.WithImplicit();
+
         fixed (uint* p = _roundKeys)
         {
             var roundKeys = new Span<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if ((simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
+            if (AesCoreAesNi.IsSupported && (simdSupport & SimdSupport & SimdSupport.AesNi) != 0)
             {
-                _useAesNi = true;
+                _useAes = true;
                 _rounds = AesCoreAesNi.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
             }
-            else if ((simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
+            else if (AesCoreArm.IsSupported && (simdSupport & SimdSupport & SimdSupport.ArmAes) != 0)
             {
-                _useArmAes = true;
+                _useAes = true;
                 _rounds = AesCoreArm.ExpandKey(key, MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys));
             }
             else
@@ -94,6 +97,15 @@ internal unsafe struct CcmCore
                 _rounds = AesCore.ExpandKey(key, roundKeys);
             }
         }
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CcmCore"/> struct over a non-AES 128-bit block cipher.
+    /// </summary>
+    /// <param name="blockCipher">The keyed block cipher; <see cref="Clear"/> erases it.</param>
+    public CcmCore(BlockCipher128 blockCipher)
+    {
+        _blockCipher = blockCipher ?? throw new ArgumentNullException(nameof(blockCipher));
     }
 
     /// <summary>
@@ -112,6 +124,7 @@ internal unsafe struct CcmCore
     /// </summary>
     public void Clear()
     {
+        _blockCipher?.Clear();
         fixed (uint* p = _roundKeys)
         {
             new Span<uint>(p, MaxRoundKeyWords).Clear();
@@ -126,6 +139,7 @@ internal unsafe struct CcmCore
     /// <param name="associatedData">Additional authenticated data.</param>
     /// <param name="ciphertext">Output buffer for ciphertext.</param>
     /// <param name="tag">Output buffer for authentication tag.</param>
+    [SkipLocalsInit]
     public void Encrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> plaintext,
@@ -155,6 +169,9 @@ internal unsafe struct CcmCore
         {
             tag[i] = (byte)(macTag[i] ^ s0[i]);
         }
+
+        CryptographicOperations.ZeroMemory(macTag);
+        CryptographicOperations.ZeroMemory(s0);
     }
 
     /// <summary>
@@ -166,6 +183,7 @@ internal unsafe struct CcmCore
     /// <param name="associatedData">Additional authenticated data.</param>
     /// <param name="plaintext">Output buffer for plaintext.</param>
     /// <returns>True if authentication succeeded; otherwise false.</returns>
+    [SkipLocalsInit]
     public bool Decrypt(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> ciphertext,
@@ -198,9 +216,14 @@ internal unsafe struct CcmCore
         }
 
         // Constant-time comparison
-        return CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        bool authentic = CryptographicOperations.FixedTimeEquals(tag, expectedTag);
+        CryptographicOperations.ZeroMemory(macTag);
+        CryptographicOperations.ZeroMemory(s0);
+        CryptographicOperations.ZeroMemory(expectedTag);
+        return authentic;
     }
 
+    [SkipLocalsInit]
     private void ComputeCbcMac(
         ReadOnlySpan<byte> nonce,
         ReadOnlySpan<byte> message,
@@ -223,26 +246,12 @@ internal unsafe struct CcmCore
             ProcessAad(associatedData, x, b);
         }
 
-        // Process message
-        int offset = 0;
-        while (offset < message.Length)
-        {
-            int blockLen = Math.Min(BlockSizeBytes, message.Length - offset);
-            b.Clear();
-            message.Slice(offset, blockLen).CopyTo(b);
-
-            // XOR with previous X and encrypt
-            for (int i = 0; i < BlockSizeBytes; i++)
-            {
-                b[i] ^= x[i];
-            }
-            EncryptBlockDispatch(b, x);
-
-            offset += BlockSizeBytes;
-        }
+        CbcMacBlocks(message, x, b);
 
         // Copy MAC result
         x.Slice(0, M).CopyTo(mac);
+        CryptographicOperations.ZeroMemory(x);
+        CryptographicOperations.ZeroMemory(b);
     }
 
     [SkipLocalsInit]
@@ -254,30 +263,33 @@ internal unsafe struct CcmCore
     {
         Span<byte> counterBlock = stackalloc byte[BlockSizeBytes];
         Span<byte> keystream = stackalloc byte[BlockSizeBytes];
+        ref byte inRef = ref MemoryMarshal.GetReference(plaintext);
+        ref byte outRef = ref MemoryMarshal.GetReference(ciphertext.Slice(0, plaintext.Length));
+        ref byte ksRef = ref MemoryMarshal.GetReference(keystream);
 
-        int offset = 0;
+        nuint offset = 0;
         uint counter = 1; // Start from 1 (0 is used for MAC)
 
-        while (offset < plaintext.Length)
+        nuint length = (nuint)plaintext.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
-            // Format counter block
             FormatCounterBlock(nonce, counter, counterBlock, L);
-
-            // Generate keystream
             EncryptBlockDispatch(counterBlock, keystream);
-
-            // XOR plaintext with keystream
-            int remaining = plaintext.Length - offset;
-            int bytesToProcess = Math.Min(remaining, BlockSizeBytes);
-
-            for (int i = 0; i < bytesToProcess; i++)
-            {
-                ciphertext[offset + i] = (byte)(plaintext[offset + i] ^ keystream[i]);
-            }
-
+            BinaryOperations.Xor128(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset));
             offset += BlockSizeBytes;
             counter++;
         }
+
+        if (offset < length)
+        {
+            FormatCounterBlock(nonce, counter, counterBlock, L);
+            EncryptBlockDispatch(counterBlock, keystream);
+
+            BinaryOperations.Xor(ref Unsafe.Add(ref inRef, offset), ref ksRef, ref Unsafe.Add(ref outRef, offset), length - offset);
+        }
+
+        CryptographicOperations.ZeroMemory(keystream);
     }
 
     [SkipLocalsInit]
@@ -314,11 +326,8 @@ internal unsafe struct CcmCore
         // Nonce
         nonce.CopyTo(b0.Slice(1, nonce.Length));
 
-        // Message length (big-endian)
-        for (int i = 0; i < L; i++)
-        {
-            b0[BlockSizeBytes - 1 - i] = (byte)(messageLength >> (i * 8));
-        }
+        // Message length in the last L bytes, big-endian; the shift makes those bytes lead.
+        BinaryStore.WriteUInt64BigEndianTruncated((ulong)messageLength << ((sizeof(ulong) - L) * 8), b0.Slice(BlockSizeBytes - L, L));
     }
 
     private static void FormatCounterBlock(
@@ -336,11 +345,8 @@ internal unsafe struct CcmCore
         // Nonce
         nonce.CopyTo(block.Slice(1, nonce.Length));
 
-        // Counter (big-endian)
-        for (int i = 0; i < L; i++)
-        {
-            block[BlockSizeBytes - 1 - i] = (byte)(counter >> (i * 8));
-        }
+        // Counter in the last L bytes, big-endian; the shift makes those bytes lead.
+        BinaryStore.WriteUInt64BigEndianTruncated((ulong)counter << ((sizeof(ulong) - L) * 8), block.Slice(BlockSizeBytes - L, L));
     }
 
     private void ProcessAad(
@@ -349,7 +355,7 @@ internal unsafe struct CcmCore
         Span<byte> b)
     {
         b.Clear();
-        int pos = 0;
+        int pos;
 
         // Encode AAD length
         // aad.Length is int, so maximum value is int.MaxValue (~2GB)
@@ -357,18 +363,15 @@ internal unsafe struct CcmCore
         if (aad.Length < 0xFF00)
         {
             // Short form: 2 bytes
-            b[pos++] = (byte)(aad.Length >> 8);
-            b[pos++] = (byte)aad.Length;
+            BinaryPrimitives.WriteUInt16BigEndian(b, (ushort)aad.Length);
+            pos = sizeof(ushort);
         }
         else
         {
             // Medium form: 6 bytes (0xFFFE + 4 bytes)
-            b[pos++] = 0xFF;
-            b[pos++] = 0xFE;
-            b[pos++] = (byte)(aad.Length >> 24);
-            b[pos++] = (byte)(aad.Length >> 16);
-            b[pos++] = (byte)(aad.Length >> 8);
-            b[pos++] = (byte)aad.Length;
+            BinaryPrimitives.WriteUInt16BigEndian(b, 0xFFFE);
+            BinaryPrimitives.WriteUInt32BigEndian(b.Slice(sizeof(ushort)), (uint)aad.Length);
+            pos = sizeof(ushort) + sizeof(uint);
         }
 
         // Copy AAD
@@ -385,41 +388,61 @@ internal unsafe struct CcmCore
         }
         EncryptBlockDispatch(b, x);
 
-        // Process remaining AAD blocks
-        while (aadOffset < aad.Length)
+        CbcMacBlocks(aad.Slice(aadOffset), x, b);
+    }
+
+    /// <summary>
+    /// Chains <paramref name="data"/> through the CBC-MAC state <paramref name="x"/>, zero-padding the last block.
+    /// </summary>
+    private void CbcMacBlocks(ReadOnlySpan<byte> data, Span<byte> x, Span<byte> b)
+    {
+        ref byte dataRef = ref MemoryMarshal.GetReference(data);
+        ref byte xRef = ref MemoryMarshal.GetReference(x.Slice(0, BlockSizeBytes));
+        ref byte bRef = ref MemoryMarshal.GetReference(b.Slice(0, BlockSizeBytes));
+
+        nuint offset = 0;
+        nuint length = (nuint)data.Length;
+        nuint fullBlockLength = length & ~(nuint)(BlockSizeBytes - 1);
+        while (offset < fullBlockLength)
         {
-            int blockLen = Math.Min(BlockSizeBytes, aad.Length - aadOffset);
-            b.Clear();
-            aad.Slice(aadOffset, blockLen).CopyTo(b);
-
-            for (int i = 0; i < BlockSizeBytes; i++)
-            {
-                b[i] ^= x[i];
-            }
+            BinaryOperations.Xor128(ref Unsafe.Add(ref dataRef, offset), ref xRef, ref bRef);
             EncryptBlockDispatch(b, x);
+            offset += BlockSizeBytes;
+        }
 
-            aadOffset += BlockSizeBytes;
+        if (offset < length)
+        {
+            b.Clear();
+            data.Slice((int)offset).CopyTo(b);
+            BinaryOperations.Xor128(ref bRef, ref xRef, ref bRef);
+            EncryptBlockDispatch(b, x);
         }
     }
 
     /// <summary>
-    /// Dispatches a single AES block encryption to hardware-accelerated or managed implementation.
+    /// Dispatches a single block encryption to the block cipher, or to a hardware-accelerated or managed AES.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void EncryptBlockDispatch(Span<byte> input, Span<byte> output)
     {
+        if (_blockCipher is not null)
+        {
+            EncryptBlockCipher(_blockCipher, input, output);
+            return;
+        }
+
         fixed (uint* p = _roundKeys)
         {
             var roundKeys = new ReadOnlySpan<uint>(p, MaxRoundKeyWords);
 #if NET8_0_OR_GREATER
-            if (_useAesNi)
+            if (AesCoreAesNi.IsSupported && _useAes)
             {
                 AesCoreAesNi.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
                 return;
             }
 
-            if (_useArmAes)
+            if (AesCoreArm.IsSupported && _useAes)
             {
                 AesCoreArm.EncryptBlock(input, output,
                     MemoryMarshal.Cast<uint, Vector128<byte>>(roundKeys), _rounds);
@@ -428,6 +451,18 @@ internal unsafe struct CcmCore
 #endif
             AesCore.EncryptBlock(input, output, roundKeys, _rounds);
         }
+    }
+
+    // Kept out of EncryptBlockDispatch: a stackalloc there would stop the AES paths inlining.
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void EncryptBlockCipher(BlockCipher128 blockCipher, ReadOnlySpan<byte> input, Span<byte> output)
+    {
+        // The tag path encrypts S_0 in place, which BlockCipher128 does not allow.
+        Span<byte> block = stackalloc byte[BlockSizeBytes];
+        input.CopyTo(block);
+        blockCipher.EncryptBlock(block, output);
+        CryptographicOperations.ZeroMemory(block);
     }
 
     private static void ValidateParameters(
@@ -439,8 +474,8 @@ internal unsafe struct CcmCore
             throw new ArgumentException($"Nonce must be between {MinNonceSizeBytes} and {MaxNonceSizeBytes} bytes.", nameof(nonce));
 
         int L = 15 - nonce.Length;
-        long maxMessageLength = (1L << (8 * L)) - 1;
-        if (data.Length > maxMessageLength)
+        // A span is shorter than 2^31 bytes, so only a length field under four bytes can be too small.
+        if (L < sizeof(int) && data.Length > (1 << (8 * L)) - 1)
             throw new ArgumentException($"Message too large for nonce length {nonce.Length}.", nameof(data));
 
         if (tag.Length < MinTagSizeBytes || tag.Length > MaxTagSizeBytes)

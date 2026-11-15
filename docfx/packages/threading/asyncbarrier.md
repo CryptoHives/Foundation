@@ -244,13 +244,13 @@ If the post-phase action throws an exception:
 
 ## Benchmark Results
 
-The following benchmarks compares the pooled `AsyncBarrier` against the .NET `System.Threading.Barrier` and a reference implementations from Stephen Toub's blog.
+The following benchmarks compares the pooled `AsyncBarrier` against the .NET `System.Threading.Barrier`, `DotNext.Threading.AsyncBarrier` (net10.0 only), and a reference implementations from Stephen Toub's blog.
 
 ### Signal and Wait Benchmark
 
 Measures the performance of the `SignalAndWaitAsync` operation across multiple participants. The .NET implementation uses blocking waits and is out of contest because multiple threads are needed to contest the barrier. Similarly the RefImpl is out of contest because it does not support cancellation tokens. So the run is mainly a proof that there are no memory allocations for the pooled version in contested waits.
 
-[View live Signal and Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncBarrier&method=SignalAndWait)
+[View live Signal and Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncBarrier&method=SignalAndWait&mode=trend)
 
 ### Benchmark Analysis
 
@@ -285,7 +285,7 @@ When a waiting participant is cancelled:
 
 ## Best Practices
 
-### ✓ DO: Use `SignalAndWaitAsync(TimeSpan)` to guard against slow participants
+### Use `SignalAndWaitAsync(TimeSpan)` to guard against slow participants
 
 ```csharp
 try
@@ -317,8 +317,11 @@ catch (TimeoutException)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

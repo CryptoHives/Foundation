@@ -1,6 +1,7 @@
 # Cryptographic Test Vectors
 
-This folder contains test vectors for cryptographic hash algorithms from official sources.
+This folder contains test vectors for the hash, MAC and cipher algorithms in this package, from
+official sources.
 
 ## Implementation Status
 
@@ -8,67 +9,71 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| SHA-1 | 160 bits | ✅ Implemented | `SHA1` |
-| SHA-224 | 224 bits | ✅ Implemented | `SHA224` |
-| SHA-256 | 256 bits | ✅ Implemented | `SHA256` |
-| SHA-384 | 384 bits | ✅ Implemented | `SHA384` |
-| SHA-512 | 512 bits | ✅ Implemented | `SHA512` |
-| SHA-512/224 | 224 bits | ✅ Implemented | `SHA512_224` |
-| SHA-512/256 | 256 bits | ✅ Implemented | `SHA512_256` |
+| SHA-1 | 160 bits | ✅ | `SHA1` |
+| SHA-224 | 224 bits | ✅ | `SHA224` |
+| SHA-256 | 256 bits | ✅ | `SHA256` |
+| SHA-384 | 384 bits | ✅ | `SHA384` |
+| SHA-512 | 512 bits | ✅ | `SHA512` |
+| SHA-512/224 | 224 bits | ✅ | `SHA512_224` |
+| SHA-512/256 | 256 bits | ✅ | `SHA512_256` |
 
 ### FIPS 202 (SHA-3 Standard)
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| SHA3-224 | 224 bits | ✅ Implemented | `SHA3_224` |
-| SHA3-256 | 256 bits | ✅ Implemented | `SHA3_256` |
-| SHA3-384 | 384 bits | ✅ Implemented | `SHA3_384` |
-| SHA3-512 | 512 bits | ✅ Implemented | `SHA3_512` |
-| SHAKE128 | Variable | ✅ Implemented | `Shake128` |
-| SHAKE256 | Variable | ✅ Implemented | `Shake256` |
+| SHA3-224 | 224 bits | ✅ | `SHA3_224` |
+| SHA3-256 | 256 bits | ✅ | `SHA3_256` |
+| SHA3-384 | 384 bits | ✅ | `SHA3_384` |
+| SHA3-512 | 512 bits | ✅ | `SHA3_512` |
+| SHAKE128 | Variable | ✅ | `Shake128` |
+| SHAKE256 | Variable | ✅ | `Shake256` |
 
 ### NIST SP 800-185 (SHA-3 Derived Functions)
 
 | Algorithm | Security | Status | Class |
 |-----------|----------|--------|-------|
-| cSHAKE128 | 128 bits | ✅ Implemented | `CShake128` |
-| cSHAKE256 | 256 bits | ✅ Implemented | `CShake256` |
-| KMAC128 | 128 bits | ✅ Implemented | `KMac128` |
-| KMAC256 | 256 bits | ✅ Implemented | `KMac256` |
-| TupleHash128 | 128 bits | ⬜ Not implemented | - |
-| TupleHash256 | 256 bits | ⬜ Not implemented | - |
-| ParallelHash128 | 128 bits | ⬜ Not implemented | - |
-| ParallelHash256 | 256 bits | ⬜ Not implemented | - |
+| cSHAKE128 | 128 bits | ✅ | `CShake128` |
+| cSHAKE256 | 256 bits | ✅ | `CShake256` |
+| KMAC128 | 128 bits | ✅ | `KMac128` |
+| KMAC256 | 256 bits | ✅ | `KMac256` |
+| ParallelHash128 | 128 bits | ✅ | `ParallelHash`, `IncrementalParallelHash` |
+| ParallelHash256 | 256 bits | ✅ | `ParallelHash`, `IncrementalParallelHash` |
+| TupleHash128 | 128 bits | ⬜ | - |
+| TupleHash256 | 256 bits | ⬜ | - |
+
+> **ParallelHash:** one-shot via `ParallelHash.ComputeHash128`/`ComputeHash256`, streaming via
+> `IncrementalParallelHash`. Test vectors: [ParallelHash-vectors.md](ParallelHash-vectors.md).
 
 ### RFC 9861 (TurboSHAKE and KangarooTwelve)
 
 | Algorithm | Security | Status | Class |
 |-----------|----------|--------|-------|
-| TurboSHAKE128 | 128 bits | ✅ Implemented | `TurboShake128` |
-| TurboSHAKE256 | 256 bits | ✅ Implemented | `TurboShake256` |
-| KT128 | 128 bits | ✅ Implemented | `KT128` |
-| KT256 | 256 bits | ✅ Implemented | `KT256` |
+| TurboSHAKE128 | 128 bits | ✅ | `TurboShake128` |
+| TurboSHAKE256 | 256 bits | ✅ | `TurboShake256` |
+| KT128 | 128 bits | ✅ | `KT128` |
+| KT256 | 256 bits | ✅ | `KT256` |
 
 > **Note:** KT128 and KT256 (formerly KangarooTwelve and MarsupilamiFourteen) are defined in RFC 9861.
 > They use reduced-round Keccak (12 rounds) for ~2× faster performance than SHAKE.
 
-### NIST FIPS 207 (Ascon Lightweight Cryptography)
+### NIST SP 800-232 (Ascon Lightweight Cryptography)
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| Ascon-Hash256 | 256 bits | ✅ Implemented | `AsconHash256` |
-| Ascon-XOF128 | Variable | ✅ Implemented | `AsconXof128` |
+| Ascon-Hash256 | 256 bits | ✅ | `AsconHash256` |
+| Ascon-XOF128 | Variable | ✅ | `AsconXof128` |
 
-> **Note:** Ascon was selected as the NIST Lightweight Cryptography standard in 2023.
+> **Note:** Ascon was selected as the NIST Lightweight Cryptography standard in 2023 and
+> published as SP 800-232. See [NIST-SP-800-232.md](NIST-SP-800-232.md).
 > It is designed for constrained environments (IoT, embedded systems).
 
 ### Keccak (Original Algorithm)
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| Keccak-256 | 256 bits | ✅ Implemented | `Keccak256` |
-| Keccak-384 | 384 bits | ✅ Implemented | `Keccak384` |
-| Keccak-512 | 512 bits | ✅ Implemented | `Keccak512` |
+| Keccak-256 | 256 bits | ✅ | `Keccak256` |
+| Keccak-384 | 384 bits | ✅ | `Keccak384` |
+| Keccak-512 | 512 bits | ✅ | `Keccak512` |
 
 > **Note:** Keccak uses the original Keccak padding (0x01) as used in Ethereum.
 > SHA-3 uses different padding (0x06). Use `SHA3_256` for NIST SHA-3 compliance.
@@ -77,8 +82,8 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Features | Status | Class |
 |-----------|-----------|----------|--------|-------|
-| BLAKE2b | 1-64 bytes | Hash, Keyed (MAC) | ✅ Implemented | `Blake2b` |
-| BLAKE2s | 1-32 bytes | Hash, Keyed (MAC) | ✅ Implemented | `Blake2s` |
+| BLAKE2b | 1-64 bytes | Hash, Keyed (MAC) | ✅ | `Blake2b` |
+| BLAKE2s | 1-32 bytes | Hash, Keyed (MAC) | ✅ | `Blake2s` |
 
 #### BLAKE2 Features
 
@@ -91,11 +96,15 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 | Tree hashing | ❌ | ❌ | Optional (not implemented) |
 | Parallel variants | ❌ | ❌ | BLAKE2bp/BLAKE2sp (not implemented) |
 
+> **Hardware acceleration:** BLAKE2b uses an AVX2 kernel and BLAKE2s an SSSE3 one with an SSE2
+> fallback, both on .NET 8+, and both take AVX-512 VL rotates where the CPU offers them. A
+> portable scalar kernel is always available.
+
 ### BLAKE3
 
 | Algorithm | Hash Size | Features | Status | Class |
 |-----------|-----------|----------|--------|-------|
-| BLAKE3 | Variable | Hash, Keyed, Derive Key | ✅ Implemented | `Blake3` |
+| BLAKE3 | Variable | Hash, Keyed, Derive Key | ✅ | `Blake3` |
 
 #### BLAKE3 Modes
 
@@ -103,14 +112,18 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 |------|--------|----------------|-------------|
 | Hash | ✅ | `Blake3.Create()` | Standard cryptographic hashing |
 | Keyed Hash | ✅ | `Blake3.CreateKeyed(key)` | MAC with 32-byte key |
-| Derive Key | ✅ | `Blake3.CreateDeriveKey(context)` | Key derivation from context + input |
+| Derive Key | ✅ | `Blake3.CreateDeriveKey(context)` | Key derivation from a context string and key material |
 | XOF | ✅ | `Blake3.Create(outputBytes)` | Extendable output (any length) |
+
+> **Hardware acceleration:** on .NET 8+, AVX-512 hashes 16 chunks in parallel, AVX2 8, and
+> SSSE3 and NEON 4 each, with narrower kernels for inputs too small to fill one, and a scalar
+> fallback.
 
 ### RIPEMD Family
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| RIPEMD-160 | 160 bits | ✅ Implemented | `Ripemd160` |
+| RIPEMD-160 | 160 bits | ✅ | `Ripemd160` |
 
 > **Note:** RIPEMD-160 is widely used in cryptocurrency systems (Bitcoin address generation).
 
@@ -118,7 +131,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| SM3 | 256 bits | ✅ Implemented | `SM3` |
+| SM3 | 256 bits | ✅ | `SM3` |
 
 > **Standard:** GB/T 32905-2016 (China), ISO/IEC 10118-3:2018
 
@@ -126,7 +139,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| Whirlpool | 512 bits | ✅ Implemented | `Whirlpool` |
+| Whirlpool | 512 bits | ✅ | `Whirlpool` |
 
 > **Standard:** ISO/IEC 10118-3:2004, NESSIE recommended
 
@@ -134,8 +147,8 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| Streebog-256 | 256 bits | ✅ Implemented | `Streebog` |
-| Streebog-512 | 512 bits | ✅ Implemented | `Streebog` |
+| Streebog-256 | 256 bits | ✅ | `Streebog` |
+| Streebog-512 | 512 bits | ✅ | `Streebog` |
 
 > **Standard:** GOST R 34.11-2012, RFC 6986
 
@@ -143,9 +156,9 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| Kupyna-256 | 256 bits | ✅ Implemented | `Kupyna` |
-| Kupyna-384 | 384 bits | ✅ Implemented | `Kupyna` |
-| Kupyna-512 | 512 bits | ✅ Implemented | `Kupyna` |
+| Kupyna-256 | 256 bits | ✅ | `Kupyna` |
+| Kupyna-384 | 384 bits | ✅ | `Kupyna` |
+| Kupyna-512 | 512 bits | ✅ | `Kupyna` |
 
 > **Standard:** DSTU 7564:2014 (Ukraine)
 
@@ -153,11 +166,11 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| LSH-256-224 | 224 bits | ✅ Implemented | `Lsh256` |
-| LSH-256-256 | 256 bits | ✅ Implemented | `Lsh256` |
-| LSH-512-256 | 256 bits | ✅ Implemented | `Lsh512` |
-| LSH-512-384 | 384 bits | ✅ Implemented | `Lsh512` |
-| LSH-512-512 | 512 bits | ✅ Implemented | `Lsh512` |
+| LSH-256-224 | 224 bits | ✅ | `Lsh256` |
+| LSH-256-256 | 256 bits | ✅ | `Lsh256` |
+| LSH-512-256 | 256 bits | ✅ | `Lsh512` |
+| LSH-512-384 | 384 bits | ✅ | `Lsh512` |
+| LSH-512-512 | 512 bits | ✅ | `Lsh512` |
 
 > **Standard:** KS X 3262 (South Korea), approved by KCMVP
 
@@ -165,7 +178,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash Size | Status | Class |
 |-----------|-----------|--------|-------|
-| MD5 | 128 bits | ✅ Implemented (deprecated) | `MD5` |
+| MD5 | 128 bits | ✅ (deprecated) | `MD5` |
 
 > **Warning:** MD5 is cryptographically broken and should NOT be used for security purposes.
 > It is provided only for legacy compatibility and non-cryptographic uses.
@@ -178,12 +191,14 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Hash | MAC Size | Status | Class |
 |-----------|------|----------|--------|-------|
-| HMAC-SHA-256 | SHA-256 | 32 bytes | ✅ Implemented | `HmacSha256` |
-| HMAC-SHA-384 | SHA-384 | 48 bytes | ✅ Implemented | `HmacSha384` |
-| HMAC-SHA-512 | SHA-512 | 64 bytes | ✅ Implemented | `HmacSha512` |
-| HMAC-SHA3-256 | SHA3-256 | 32 bytes | ✅ Implemented | `HmacSha3_256` |
-| HMAC-SHA-1 | SHA-1 | 20 bytes | ✅ Implemented (legacy) | `HmacSha1` |
-| HMAC-MD5 | MD5 | 16 bytes | ✅ Implemented (legacy) | `HmacMd5` |
+| HMAC-SHA-256 | SHA-256 | 32 bytes | ✅ | `HmacSha256` |
+| HMAC-SHA-384 | SHA-384 | 48 bytes | ✅ | `HmacSha384` |
+| HMAC-SHA-512 | SHA-512 | 64 bytes | ✅ | `HmacSha512` |
+| HMAC-SHA3-256 | SHA3-256 | 32 bytes | ✅ | `HmacSha3_256` |
+| HMAC-SHA3-384 | SHA3-384 | 48 bytes | ✅ | `HmacSha3_384` |
+| HMAC-SHA3-512 | SHA3-512 | 64 bytes | ✅ | `HmacSha3_512` |
+| HMAC-SHA-1 | SHA-1 | 20 bytes | ✅ (legacy) | `HmacSha1` |
+| HMAC-MD5 | MD5 | 16 bytes | ✅ (legacy) | `HmacMd5` |
 
 > **Note:** The `HmacCore` base class works with any `HashAlgorithm`, so custom HMAC variants
 > (HMAC-SM3, HMAC-Kupyna, etc.) can be created by subclassing.
@@ -192,9 +207,9 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Key Size | MAC Size | Status | Class |
 |-----------|----------|----------|--------|-------|
-| AES-128-CMAC | 128 bits | 128 bits | ✅ Implemented | `AesCmac` |
-| AES-192-CMAC | 192 bits | 128 bits | ✅ Implemented | `AesCmac` |
-| AES-256-CMAC | 256 bits | 128 bits | ✅ Implemented | `AesCmac` |
+| AES-128-CMAC | 128 bits | 128 bits | ✅ | `AesCmac` |
+| AES-192-CMAC | 192 bits | 128 bits | ✅ | `AesCmac` |
+| AES-256-CMAC | 256 bits | 128 bits | ✅ | `AesCmac` |
 
 > **Hardware acceleration:** AES-NI on .NET 8+.
 > **Note:** .NET does not provide a portable CMAC implementation.
@@ -203,9 +218,9 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Key Size | MAC Size | Status | Class |
 |-----------|----------|----------|--------|-------|
-| AES-128-GMAC | 128 bits | 128 bits | ✅ Implemented | `AesGmac` |
-| AES-192-GMAC | 192 bits | 128 bits | ✅ Implemented | `AesGmac` |
-| AES-256-GMAC | 256 bits | 128 bits | ✅ Implemented | `AesGmac` |
+| AES-128-GMAC | 128 bits | 128 bits | ✅ | `AesGmac` |
+| AES-192-GMAC | 192 bits | 128 bits | ✅ | `AesGmac` |
+| AES-256-GMAC | 256 bits | 128 bits | ✅ | `AesGmac` |
 
 > **Hardware acceleration:** AES-NI + PCLMULQDQ on .NET 8+, VPCLMULQDQ on .NET 10+.
 > **Note:** GMAC requires a unique nonce per invocation. .NET does not provide a standalone GMAC class.
@@ -218,21 +233,20 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Key Size | Mode | Status | Class |
 |-----------|----------|------|--------|-------|
-| AES-128 | 128 bits | ECB/CBC/CTR | ✅ Implemented | `Aes128` |
-| AES-192 | 192 bits | ECB/CBC/CTR | ✅ Implemented | `Aes192` |
-| AES-256 | 256 bits | ECB/CBC/CTR | ✅ Implemented | `Aes256` |
+| AES-128 | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | ✅ | `Aes128` |
+| AES-192 | 192 bits | ECB/CBC/CTR/OFB/CFB/CTS | ✅ | `Aes192` |
+| AES-256 | 256 bits | ECB/CBC/CTR/OFB/CFB/CTS | ✅ | `Aes256` |
 
 > **Hardware acceleration:** AES-NI (`AESENC`/`AESDEC`) on .NET 8+. CBC decrypt uses 8-block interleaving.
-> OFB, CFB, and CTS modes are defined for compatibility but marked `[Obsolete]` and not implemented —
-> modern protocols use AEAD modes (GCM, CCM) or CTR instead.
+> OFB, CFB and CTS are implemented for interoperability; new designs should use an AEAD mode (GCM, CCM) or CTR.
 
 ### SP 800-38D (AES-GCM)
 
 | Algorithm | Key Size | Status | Class |
 |-----------|----------|--------|-------|
-| AES-128-GCM | 128 bits | ✅ Implemented | `AesGcm128` |
-| AES-192-GCM | 192 bits | ✅ Implemented | `AesGcm192` |
-| AES-256-GCM | 256 bits | ✅ Implemented | `AesGcm256` |
+| AES-128-GCM | 128 bits | ✅ | `AesGcm128` |
+| AES-192-GCM | 192 bits | ✅ | `AesGcm192` |
+| AES-256-GCM | 256 bits | ✅ | `AesGcm256` |
 
 > **Hardware acceleration:** AES-NI + PCLMULQDQ (.NET 8+), VPCLMULQDQ (.NET 10+).
 > Uses 8-block stitched AES+GHASH pipeline with lagged carry-less multiplication and
@@ -242,8 +256,9 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Key Size | Status | Class |
 |-----------|----------|--------|-------|
-| AES-128-CCM | 128 bits | ✅ Implemented | `AesCcm128` |
-| AES-256-CCM | 256 bits | ✅ Implemented | `AesCcm256` |
+| AES-128-CCM | 128 bits | ✅ | `AesCcm128` |
+| AES-192-CCM | 192 bits | ✅ | `AesCcm192` |
+| AES-256-CCM | 256 bits | ✅ | `AesCcm256` |
 
 > **Hardware acceleration:** AES-NI on .NET 8+ for CTR and CBC-MAC block operations.
 
@@ -251,9 +266,9 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Key Size | Status | Class |
 |-----------|----------|--------|-------|
-| ChaCha20 | 256 bits | ✅ Implemented | `ChaCha20` |
-| Poly1305 | 256 bits | ✅ Implemented | `Poly1305` |
-| ChaCha20-Poly1305 | 256 bits | ✅ Implemented | `ChaCha20Poly1305` |
+| ChaCha20 | 256 bits | ✅ | `ChaCha20` |
+| Poly1305 | 256 bits | ✅ | `Poly1305Mac` |
+| ChaCha20-Poly1305 | 256 bits | ✅ | `ChaCha20Poly1305` |
 
 > **Hardware acceleration:** SSSE3 (single-block) and AVX2 (dual-block) on .NET 8+.
 > Poly1305 uses donna-64 (3×44-bit limbs) on .NET 8+, donna-32 (5×26-bit limbs) on older targets.
@@ -262,10 +277,102 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 
 | Algorithm | Key Size | Nonce Size | Status | Class |
 |-----------|----------|------------|--------|-------|
-| XChaCha20-Poly1305 | 256 bits | 192 bits | ✅ Implemented | `XChaCha20Poly1305` |
+| XChaCha20-Poly1305 | 256 bits | 192 bits | ✅ | `XChaCha20Poly1305` |
 
 > **Note:** XChaCha20-Poly1305 extends ChaCha20-Poly1305 with a 24-byte nonce (vs 12-byte),
 > making random nonce generation safe for a practically unlimited number of messages.
+> There is no standalone `XChaCha20` stream cipher — only the AEAD construction.
+
+### NIST SP 800-232 (Ascon-AEAD128)
+
+| Algorithm | Key Size | Nonce Size | Status | Class |
+|-----------|----------|------------|--------|-------|
+| Ascon-AEAD128 | 128 bits | 128 bits | ✅ | `AsconAead128` |
+
+### Regional Block Ciphers
+
+| Algorithm | Key Size | Block Size | Mode | Standard | Status | Class |
+|-----------|----------|------------|------|----------|--------|-------|
+| SM4 | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | GB/T 32907-2016 (China) | ✅ | `Sm4` |
+| ARIA-128 | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 5794 (Korea) | ✅ | `Aria128` |
+| ARIA-192 | 192 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 5794 (Korea) | ✅ | `Aria192` |
+| ARIA-256 | 256 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 5794 (Korea) | ✅ | `Aria256` |
+| SEED | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 4269 (Korea) | ✅ | `Seed` |
+| Camellia-128 | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 3713 (Japan) | ✅ | `Camellia128` |
+| Camellia-192 | 192 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 3713 (Japan) | ✅ | `Camellia192` |
+| Camellia-256 | 256 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | RFC 3713 (Japan) | ✅ | `Camellia256` |
+| Kuznyechik | 256 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | GOST R 34.12-2015 (Russia) | ✅ | `Kuznyechik` |
+| Kalyna-128/128 | 128 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | DSTU 7624:2014 (Ukraine) | ✅ | `Kalyna128` |
+| Kalyna-128/256 | 256 bits | 128 bits | ECB/CBC/CTR/OFB/CFB/CTS | DSTU 7624:2014 (Ukraine) | ✅ | `Kalyna256` |
+| Kalyna-256/256, -256/512 | 256/512 bits | 256 bits | ECB/CBC/CTR/OFB/CFB/CTS | DSTU 7624:2014 (Ukraine) | ✅ | `Kalyna512` |
+
+> **Modes:** every block cipher here supports ECB (testing only), CBC and CTR, plus OFB, CFB and CTS
+> (CBC-CS3) for interoperability. Kalyna's 512-bit block variant, and the GCM/CCM/XTS/MGM modes the
+> regional standards define, are not implemented.
+
+### Key Derivation Functions
+
+| Algorithm | Standard | Status | Class |
+|-----------|----------|--------|-------|
+| HKDF | RFC 5869 | ✅ | `Hkdf` |
+| KBKDF | NIST SP 800-108 | ✅ | `Kbkdf` |
+| Concat KDF | NIST SP 800-56A | ✅ | `ConcatKdf` |
+| PBKDF2 | RFC 8018 / NIST SP 800-132 | ✅ | `Pbkdf2` |
+
+---
+
+## Key Encapsulation Mechanisms (KEM)
+
+### FIPS 203 (Module-Lattice-Based Key-Encapsulation Mechanism)
+
+| Algorithm | Security Category | Status | Class |
+|-----------|-------------------|--------|-------|
+| ML-KEM-512 | 1 (~AES-128) | ✅ | `MLKem512`, `MLKem` |
+| ML-KEM-768 | 3 (~AES-192) | ✅ | `MLKem768`, `MLKem` |
+| ML-KEM-1024 | 5 (~AES-256) | ✅ | `MLKem1024`, `MLKem` |
+
+> **Note:** Validated against official NIST ACVP vectors (key generation, encapsulation,
+> decapsulation including implicit rejection, and the FIPS 203 §7.2/§7.3 key checks) and
+> cross-checked against BouncyCastle and .NET 10 `System.Security.Cryptography.MLKem`.
+> The `MLKem` key-holding class mirrors the .NET 10 API shape on all target frameworks.
+
+---
+
+## Digital Signature Algorithms
+
+### FIPS 204 (Module-Lattice-Based Digital Signature Algorithm)
+
+| Algorithm | Security Category | Status | Class |
+|-----------|-------------------|--------|-------|
+| ML-DSA-44 | 2 | ✅ | `MLDsa44`, `MLDsa` |
+| ML-DSA-65 | 3 | ✅ | `MLDsa65`, `MLDsa` |
+| ML-DSA-87 | 5 | ✅ | `MLDsa87`, `MLDsa` |
+| HashML-DSA (pre-hash) | - | ✅ | `MLDsa.SignPreHash`/`VerifyPreHash` |
+
+> **Note:** Validated against official NIST ACVP vectors (key generation, deterministic
+> and hedged signing with byte-exact signatures, and verification including modified
+> commitment/z/hint/message rejections) and cross-checked against BouncyCastle and
+> .NET 10 `System.Security.Cryptography.MLDsa`. The `MLDsa` key-holding class mirrors
+> the .NET 10 API shape on all target frameworks.
+
+
+---
+
+## Digital Signature Algorithms
+
+### FIPS 205 (Stateless Hash-Based Digital Signature Algorithm)
+
+| Algorithm | Security Category | Status | Class |
+|-----------|-------------------|--------|-------|
+| SLH-DSA-{SHA2,SHAKE}-128{s,f} | 1 | ✅ | `SlhDsa` + `SlhDsaAlgorithm` |
+| SLH-DSA-{SHA2,SHAKE}-192{s,f} | 3 | ✅ | `SlhDsa` + `SlhDsaAlgorithm` |
+| SLH-DSA-{SHA2,SHAKE}-256{s,f} | 5 | ✅ | `SlhDsa` + `SlhDsaAlgorithm` |
+| HashSLH-DSA (pre-hash) | - | ✅ | `SlhDsa.SignPreHash`/`VerifyPreHash` |
+
+> **Note:** Validated against official NIST ACVP vectors (key generation for all 12
+> parameter sets, deterministic and hedged signing with byte-exact signatures, and
+> verification including modified R/SIGFORS/SIGHT/message and wrong-length rejections)
+> and cross-checked against BouncyCastle and .NET 10 `System.Security.Cryptography.SlhDsa`.
 
 ---
 
@@ -276,7 +383,7 @@ This folder contains test vectors for cryptographic hash algorithms from officia
 Official test vectors and examples with intermediate values are available from:
 
 - **NIST Cryptographic Standards and Guidelines Example Values**:
-  https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
+  [csrc.nist.gov/…/example-values](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values)
 
 #### SHA-1 and SHA-2 Family (FIPS 180-4)
 
@@ -344,18 +451,18 @@ The official RFC 7693 specification is available from IETF:
 - [RFC 7693](https://www.rfc-editor.org/rfc/rfc7693) - The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC)
 
 Additional BLAKE2 resources:
-- https://www.blake2.net/
-- https://github.com/BLAKE2/BLAKE2
+- [www.blake2.net](https://www.blake2.net/)
+- [github.com/BLAKE2/BLAKE2](https://github.com/BLAKE2/BLAKE2)
 
 ### BLAKE3
 
 BLAKE3 test vectors are from the official BLAKE3 specification:
-- https://github.com/BLAKE3-team/BLAKE3
+- [github.com/BLAKE3-team/BLAKE3](https://github.com/BLAKE3-team/BLAKE3)
 
 ### RIPEMD-160
 
 - **[RIPEMD-160-vectors.md](RIPEMD-160-vectors.md)** - Test vectors
-- Original specification: https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
+- [Original specification](https://homes.esat.kuleuven.be/~bosselae/ripemd160.html)
 
 ### SM3 (GB/T 32905-2016)
 
@@ -367,28 +474,28 @@ BLAKE3 test vectors are from the official BLAKE3 specification:
 
 - **[Whirlpool-vectors.md](Whirlpool-vectors.md)** - Test vectors
 - ISO/IEC 10118-3:2004
-- https://www.larc.usp.br/~pbarreto/WhirlpoolPage.html
+- [www.larc.usp.br/~pbarreto/WhirlpoolPage.html](https://www.larc.usp.br/~pbarreto/WhirlpoolPage.html)
 
 ### Streebog (GOST R 34.11-2012)
 
 - **[Streebog-vectors.md](Streebog-vectors.md)** - Test vectors
-- RFC 6986: https://www.rfc-editor.org/rfc/rfc6986
+- [RFC 6986](https://www.rfc-editor.org/rfc/rfc6986)
 
 ### Kupyna (DSTU 7564:2014)
 
 - **[Kupyna-vectors.md](Kupyna-vectors.md)** - Test vectors
-- IACR ePrint 2015/885: https://eprint.iacr.org/2015/885.pdf
-- Reference implementation: https://github.com/Roman-Oliynykov/Kupyna-reference
+- [IACR ePrint 2015/885](https://eprint.iacr.org/2015/885.pdf)
+- [Reference implementation](https://github.com/Roman-Oliynykov/Kupyna-reference)
 
 ### LSH (KS X 3262)
 
 - KS X 3262 specification (Korean standard)
-- Reference implementation: https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do
+- [Reference implementation](https://seed.kisa.or.kr/kisa/algorithm/EgovLSHInfo.do)
 
 ### MD5 (RFC 1321)
 
 MD5 is defined in RFC 1321:
-- https://www.ietf.org/rfc/rfc1321.txt
+- [www.ietf.org/rfc/rfc1321.txt](https://www.ietf.org/rfc/rfc1321.txt)
 
 ### AES (FIPS 197)
 
@@ -411,6 +518,30 @@ The official FIPS 197 specification is available from NIST:
 ### XChaCha20-Poly1305 (draft-irtf-cfrg-xchacha)
 
 - [draft-irtf-cfrg-xchacha](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha) - XChaCha20 and XChaCha20-Poly1305
+
+### ML-KEM (FIPS 203)
+
+The official FIPS 203 specification and ACVP test vectors are available from NIST:
+- **[NIST-FIPS-203.md](NIST-FIPS-203.md)** - Local reference with algorithm details
+- **[ML-KEM-vectors.md](ML-KEM-vectors.md)** - Test vector documentation (NIST ACVP)
+- [NIST FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) - Module-Lattice-Based Key-Encapsulation Mechanism Standard
+- [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - ML-KEM-keyGen-FIPS203 and ML-KEM-encapDecap-FIPS203
+
+### ML-DSA (FIPS 204)
+
+The official FIPS 204 specification and ACVP test vectors are available from NIST:
+- **[NIST-FIPS-204.md](NIST-FIPS-204.md)** - Local reference with algorithm details
+- **[ML-DSA-vectors.md](ML-DSA-vectors.md)** - Test vector documentation (NIST ACVP)
+- [NIST FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) - Module-Lattice-Based Digital Signature Standard
+- [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - ML-DSA-keyGen/sigGen/sigVer-FIPS204
+
+### SLH-DSA (FIPS 205)
+
+The official FIPS 205 specification and ACVP test vectors are available from NIST:
+- **[NIST-FIPS-205.md](NIST-FIPS-205.md)** - Local reference with algorithm details
+- **[SLH-DSA-vectors.md](SLH-DSA-vectors.md)** - Test vector documentation (NIST ACVP)
+- [NIST FIPS 205](https://csrc.nist.gov/pubs/fips/205/final) - Stateless Hash-Based Digital Signature Standard
+- [NIST ACVP-Server vectors](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files) - SLH-DSA-keyGen/sigGen/sigVer-FIPS205
 
 ## File Organization
 
@@ -443,15 +574,22 @@ specs/
 ├── MD5-vectors.md         # MD5 test vectors (legacy)
 ├── HMAC-vectors.md        # HMAC-SHA-256/384/512 test vectors (RFC 4231)
 ├── CMAC-vectors.md        # AES-CMAC test vectors (SP 800-38B)
+├── ParallelHash-vectors.md # ParallelHash128/256 test vectors (SP 800-185)
 ├── AES-vectors.md         # AES ECB/GCM/CCM test vectors
 ├── ChaCha20-vectors.md    # ChaCha20, Poly1305, ChaCha20-Poly1305 test vectors
-└── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
+├── XChaCha20-vectors.md   # XChaCha20-Poly1305 test vectors
+├── NIST-FIPS-203.md       # NIST FIPS 203 - ML-KEM reference
+├── ML-KEM-vectors.md      # ML-KEM test vectors (NIST ACVP)
+├── NIST-FIPS-204.md       # NIST FIPS 204 - ML-DSA reference
+├── ML-DSA-vectors.md      # ML-DSA test vectors (NIST ACVP)
+├── NIST-FIPS-205.md       # NIST FIPS 205 - SLH-DSA reference
+└── SLH-DSA-vectors.md     # SLH-DSA test vectors (NIST ACVP)
 ```
 
 ## Usage
 
 These test vectors are used by the unit tests in `tests/Security/Cryptography/` to verify
-the correctness of our hash implementations against known good values from official sources.
+the correctness of our implementations against known good values from official sources.
 
 ## License
 

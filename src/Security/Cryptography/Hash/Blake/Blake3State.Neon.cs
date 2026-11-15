@@ -1,11 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 #if NET8_0_OR_GREATER
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -17,36 +18,54 @@ using System.Runtime.Intrinsics.Arm;
 internal unsafe partial struct Blake3State
 {
     /// <summary>
-    /// Performs one G round on 4 parallel lanes using ARM NEON intrinsics.
+    /// Four independent G's on 4 parallel lanes, advanced one step at a time.
     /// </summary>
+    /// <remarks>
+    /// The JIT emits statements in source order, so stepping the four G's together is what puts
+    /// independent work side by side; one G after another leaves each short chain exposed. The
+    /// message word is added before b, the value produced last. The rotate by 16 is a halfword
+    /// swap within each word (REV32), which needs no table register, unlike the TBL for 8.
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void GRoundNeon(
-        ref Vector128<uint> a,
-        ref Vector128<uint> b,
-        ref Vector128<uint> c,
-        ref Vector128<uint> d,
-        Vector128<uint> x,
-        Vector128<uint> y)
+    private static void GRound4Neon(
+        ref Vector128<uint> a0, ref Vector128<uint> a1, ref Vector128<uint> a2, ref Vector128<uint> a3,
+        ref Vector128<uint> b0, ref Vector128<uint> b1, ref Vector128<uint> b2, ref Vector128<uint> b3,
+        ref Vector128<uint> c0, ref Vector128<uint> c1, ref Vector128<uint> c2, ref Vector128<uint> c3,
+        ref Vector128<uint> d0, ref Vector128<uint> d1, ref Vector128<uint> d2, ref Vector128<uint> d3,
+        Vector128<uint> x0, Vector128<uint> x1, Vector128<uint> x2, Vector128<uint> x3,
+        Vector128<uint> y0, Vector128<uint> y1, Vector128<uint> y2, Vector128<uint> y3)
     {
-        // a = a + b + x
-        a = AdvSimd.Add(a, AdvSimd.Add(b, x));
-        // d = ror(d ^ a, 16) — TBL byte shuffle
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask16).AsUInt32();
-        // c = c + d
-        c = AdvSimd.Add(c, d);
-        // b = ror(b ^ c, 12) — shift+or (not byte-aligned)
-        var t1 = b ^ c;
-        b = AdvSimd.Or(AdvSimd.ShiftRightLogical(t1, 12), AdvSimd.ShiftLeftLogical(t1, 20));
-        // a = a + b + y
-        a = AdvSimd.Add(a, AdvSimd.Add(b, y));
-        // d = ror(d ^ a, 8) — TBL byte shuffle
-        d = AdvSimd.Arm64.VectorTableLookup((d ^ a).AsByte(), RotateMask8).AsUInt32();
-        // c = c + d
-        c = AdvSimd.Add(c, d);
-        // b = ror(b ^ c, 7) — shift+or (not byte-aligned)
-        var t2 = b ^ c;
-        b = AdvSimd.Or(AdvSimd.ShiftRightLogical(t2, 7), AdvSimd.ShiftLeftLogical(t2, 25));
+        a0 = AdvSimd.Add(AdvSimd.Add(a0, x0), b0); a1 = AdvSimd.Add(AdvSimd.Add(a1, x1), b1);
+        a2 = AdvSimd.Add(AdvSimd.Add(a2, x2), b2); a3 = AdvSimd.Add(AdvSimd.Add(a3, x3), b3);
+        d0 = RotateRight16Neon(d0 ^ a0); d1 = RotateRight16Neon(d1 ^ a1);
+        d2 = RotateRight16Neon(d2 ^ a2); d3 = RotateRight16Neon(d3 ^ a3);
+        c0 = AdvSimd.Add(c0, d0); c1 = AdvSimd.Add(c1, d1); c2 = AdvSimd.Add(c2, d2); c3 = AdvSimd.Add(c3, d3);
+        b0 = RotateRight12Neon(b0 ^ c0); b1 = RotateRight12Neon(b1 ^ c1);
+        b2 = RotateRight12Neon(b2 ^ c2); b3 = RotateRight12Neon(b3 ^ c3);
+        a0 = AdvSimd.Add(AdvSimd.Add(a0, y0), b0); a1 = AdvSimd.Add(AdvSimd.Add(a1, y1), b1);
+        a2 = AdvSimd.Add(AdvSimd.Add(a2, y2), b2); a3 = AdvSimd.Add(AdvSimd.Add(a3, y3), b3);
+        d0 = RotateRight8Neon(d0 ^ a0); d1 = RotateRight8Neon(d1 ^ a1);
+        d2 = RotateRight8Neon(d2 ^ a2); d3 = RotateRight8Neon(d3 ^ a3);
+        c0 = AdvSimd.Add(c0, d0); c1 = AdvSimd.Add(c1, d1); c2 = AdvSimd.Add(c2, d2); c3 = AdvSimd.Add(c3, d3);
+        b0 = RotateRight7Neon(b0 ^ c0); b1 = RotateRight7Neon(b1 ^ c1);
+        b2 = RotateRight7Neon(b2 ^ c2); b3 = RotateRight7Neon(b3 ^ c3);
     }
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> RotateRight16Neon(Vector128<uint> value) =>
+        AdvSimd.ReverseElement16(value.AsInt32()).AsUInt32();
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> RotateRight8Neon(Vector128<uint> value) =>
+        AdvSimd.Arm64.VectorTableLookup(value.AsByte(), RotateMask8).AsUInt32();
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> RotateRight12Neon(Vector128<uint> value) =>
+        AdvSimd.Or(AdvSimd.ShiftRightLogical(value, 12), AdvSimd.ShiftLeftLogical(value, 20));
+
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static Vector128<uint> RotateRight7Neon(Vector128<uint> value) =>
+        AdvSimd.Or(AdvSimd.ShiftRightLogical(value, 7), AdvSimd.ShiftLeftLogical(value, 25));
 
     // ------------------------------------------------------------------
     // Chunk-parallel (4-wide) NEON compression.
@@ -60,38 +79,42 @@ internal unsafe partial struct Blake3State
     // independent tree leaves).
     // ------------------------------------------------------------------
 
-    internal const int ChunksPerNeonBatch = 4;
-    internal const int NeonBatchSizeBytes = ChunksPerNeonBatch * ChunkSizeBytes;
+    internal const int NeonChunksPerBatch = 4;
+    internal const int NeonBatchSizeBytes = NeonChunksPerBatch * ChunkSizeBytes;
 
     /// <summary>
-    /// Compresses <paramref name="chunkCount"/> (2..4) independent, full
-    /// (1024-byte) chunks with the 4-way kernel by pointing the surplus lanes
-    /// back at the real chunks (lane <c>j</c> reads chunk <c>j</c> mod
+    /// Tree level of one aligned 4-chunk batch: a subtree of 2^level chunks, which is what
+    /// <see cref="PushSubtreeCv"/> takes. Must stay log2(<see cref="NeonChunksPerBatch"/>).
+    /// </summary>
+    internal const int NeonBatchLevel = 2;
+
+
+    /// <summary>
+    /// Compresses <paramref name="chunkCount"/> (3 or 4) independent, full
+    /// (1024-byte) chunks with the 4-way kernel by pointing the surplus lane
+    /// back at a real chunk (lane <c>j</c> reads chunk <c>j</c> mod
     /// <paramref name="chunkCount"/>, so no memory outside the
     /// <paramref name="chunkCount"/>·1024 input bytes is touched); the surplus
-    /// lanes' outputs are wrong (their counters don't match the duplicated
-    /// data) and must be ignored. Only <paramref name="chunkCount"/> chaining
-    /// values in <paramref name="outCvs"/> are valid. At <paramref name="chunkCount"/>
+    /// lane's output is wrong (its counter doesn't match the duplicated
+    /// data) and is not stored. At <paramref name="chunkCount"/>
     /// == 4, <c>j % chunkCount == j</c> for every lane, so the lane-offset table
     /// degenerates to the same direct addressing the exact 4-chunk case would
-    /// use — this single kernel serves both the exact-batch and partial-tail
-    /// call sites, mirroring <see cref="CompressChunksPartialAvx2"/>.
+    /// use — this single kernel serves both the exact-batch and the 3-chunk tail
+    /// call sites.
     /// </summary>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private static void CompressChunksPartialNeon(byte* source, int chunkCount, uint* key, uint* outCvs, ulong baseCounter, uint baseFlags)
     {
-        int* laneOffsets = stackalloc int[ChunksPerNeonBatch];
-        for (int j = 0; j < ChunksPerNeonBatch; j++)
+        Debug.Assert(chunkCount is 3 or NeonChunksPerBatch, "the NEON kernel compresses three or four chunks");
+
+        int* laneOffsets = stackalloc int[NeonChunksPerBatch];
+        for (int j = 0; j < NeonChunksPerBatch; j++)
         {
             laneOffsets[j] = (j % chunkCount) * ChunkSizeBytes;
         }
 
-        var counterLow = Vector128.Create(
-            (uint)(baseCounter + 0), (uint)(baseCounter + 1), (uint)(baseCounter + 2), (uint)(baseCounter + 3));
-        var counterHigh = Vector128.Create(
-            (uint)((baseCounter + 0) >> 32), (uint)((baseCounter + 1) >> 32),
-            (uint)((baseCounter + 2) >> 32), (uint)((baseCounter + 3) >> 32));
+        CounterVectors128(baseCounter, out var counterLow, out var counterHigh);
         var blockLenVec = Vector128.Create((uint)BlockSizeBytes);
 
         Vector128<uint> cv0, cv1, cv2, cv3, cv4, cv5, cv6, cv7;
@@ -100,22 +123,23 @@ internal unsafe partial struct Blake3State
         cv4 = Vector128.Create(key[4]); cv5 = Vector128.Create(key[5]);
         cv6 = Vector128.Create(key[6]); cv7 = Vector128.Create(key[7]);
 
-        var m = stackalloc Vector128<uint>[16];
-        for (int blockIdx = 0; blockIdx < 16; blockIdx++)
+        var m = stackalloc Vector128<uint>[BlockSizeWords];
+        for (int blockIdx = 0; blockIdx < BlocksPerChunk; blockIdx++)
         {
             byte* blockBase = source + blockIdx * BlockSizeBytes;
 
-            for (int g = 0; g < 4; g++)
+            for (int g = 0; g < BlockSizeWords / NeonChunksPerBatch; g++)
             {
-                for (int j = 0; j < ChunksPerNeonBatch; j++)
+                for (int j = 0; j < NeonChunksPerBatch; j++)
                 {
-                    m[g * 4 + j] = AdvSimd.LoadVector128((uint*)(blockBase + laneOffsets[j] + g * 16));
+                    m[(g * NeonChunksPerBatch) + j] =
+                        AdvSimd.LoadVector128((uint*)(blockBase + laneOffsets[j] + (g * Vector128<byte>.Count)));
                 }
 
-                Transpose4x4Neon(m + g * 4);
+                Transpose4x4Neon(m + (g * NeonChunksPerBatch));
             }
 
-            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == 15 ? baseFlags | FlagChunkEnd : baseFlags);
+            uint flags = blockIdx == 0 ? baseFlags | FlagChunkStart : (blockIdx == BlocksPerChunk - 1 ? baseFlags | FlagChunkEnd : baseFlags);
 
             var v0 = cv0; var v1 = cv1; var v2 = cv2; var v3 = cv3;
             var v4 = cv4; var v5 = cv5; var v6 = cv6; var v7 = cv7;
@@ -142,10 +166,8 @@ internal unsafe partial struct Blake3State
         }
 
         // Un-transpose the CVs (word-major → chunk-major) with the same 4×4 network —
-        // both groups must be transposed before any store. Only chunkCount (2..4)
-        // chunks are valid/requested here; a surplus lane's slot (whenever
-        // chunkCount < 4) is never written, since the caller's outCvs buffer is
-        // only sized for chunkCount chunks.
+        // both groups must be transposed before any store. Only chunkCount chunks
+        // are valid; the surplus lane's slot (when chunkCount is 3) is not stored.
         Transpose4x4Neon(ref cv0, ref cv1, ref cv2, ref cv3);
         Transpose4x4Neon(ref cv4, ref cv5, ref cv6, ref cv7);
 
@@ -176,12 +198,7 @@ internal unsafe partial struct Blake3State
         uint blockLen = _rootBlockLen;
         uint flags = _rootFlags;
 
-        var counterLow = Vector128.Create(
-            (uint)(startCounter + 0), (uint)(startCounter + 1),
-            (uint)(startCounter + 2), (uint)(startCounter + 3));
-        var counterHigh = Vector128.Create(
-            (uint)((startCounter + 0) >> 32), (uint)((startCounter + 1) >> 32),
-            (uint)((startCounter + 2) >> 32), (uint)((startCounter + 3) >> 32));
+        CounterVectors128(startCounter, out var counterLow, out var counterHigh);
 
         var cv0 = Vector128.Create(rootCv[0]); var cv1 = Vector128.Create(rootCv[1]);
         var cv2 = Vector128.Create(rootCv[2]); var cv3 = Vector128.Create(rootCv[3]);
@@ -199,8 +216,8 @@ internal unsafe partial struct Blake3State
 
         // No transpose-in: every lane compresses the same message, so each of
         // the 16 words is simply broadcast rather than gathered per-lane.
-        var m = stackalloc Vector128<uint>[16];
-        for (int w = 0; w < 16; w++)
+        var m = stackalloc Vector128<uint>[BlockSizeWords];
+        for (int w = 0; w < BlockSizeWords; w++)
         {
             m[w] = Vector128.Create(rootBlock[w]);
         }
@@ -273,13 +290,13 @@ internal unsafe partial struct Blake3State
         v4 = Vector128.Create(key[4]); v5 = Vector128.Create(key[5]);
         v6 = Vector128.Create(key[6]); v7 = Vector128.Create(key[7]);
 
-        var m = stackalloc Vector128<uint>[16];
-        for (int j = 0; j < ChunksPerNeonBatch; j++)
+        var m = stackalloc Vector128<uint>[BlockSizeWords];
+        for (int j = 0; j < NeonChunksPerBatch; j++)
         {
-            m[j] = AdvSimd.LoadVector128(childCvs + j * 16);
-            m[j + 4] = AdvSimd.LoadVector128(childCvs + j * 16 + 4);
-            m[j + 8] = AdvSimd.LoadVector128(childCvs + j * 16 + 8);
-            m[j + 12] = AdvSimd.LoadVector128(childCvs + j * 16 + 12);
+            m[j] = AdvSimd.LoadVector128(childCvs + j * ParentStrideWords);
+            m[j + 4] = AdvSimd.LoadVector128(childCvs + j * ParentStrideWords + 4);
+            m[j + 8] = AdvSimd.LoadVector128(childCvs + j * ParentStrideWords + 8);
+            m[j + 12] = AdvSimd.LoadVector128(childCvs + j * ParentStrideWords + 12);
         }
 
         Transpose4x4Neon(m);
@@ -313,7 +330,77 @@ internal unsafe partial struct Blake3State
     }
 
     /// <summary>
-    /// Reduces <paramref name="chunkCount"/> (a power of two: 4, 16 or 64)
+    /// Runs every complete 64-chunk subtree group the remaining input allows, using this
+    /// tier's 4-wide chunk kernel and 4-lane parent reduction, and returns the advanced
+    /// offset. See <see cref="CompressSubtreeGroupsAvx2"/> for why this is specialised per
+    /// tier and why the loop tests length alone.
+    /// </summary>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the first group starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
+    /// <returns><paramref name="offset"/> advanced past every group compressed.</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CompressSubtreeGroupsNeon(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        do
+        {
+            for (int b = 0; b < ChunksPerSubtreeGroup / NeonChunksPerBatch; b++)
+            {
+                CompressChunksPartialNeon(
+                    srcPtr + offset,
+                    NeonChunksPerBatch,
+                    core->_keyWords,
+                    batchCvs + b * NeonChunksPerBatch * KeySizeWords,
+                    _chunkCounter + (ulong)(b * NeonChunksPerBatch),
+                    _baseFlags);
+                offset += NeonBatchSizeBytes;
+            }
+
+            if (offset == length)
+            {
+                ReduceChunkCvsToHalvesNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+                DeferRightHalf(core, batchCvs, SubtreeGroupLevel - 1);
+                break;
+            }
+
+            ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
+            PushSubtreeCv(core, batchCvs, SubtreeGroupLevel);
+            _chunkCounter += ChunksPerSubtreeGroup;
+        }
+        while (length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes);
+
+        return offset;
+    }
+
+    /// <summary>
+    /// Compresses the exactly-3-chunk tail this tier can still batch, and commits its CVs.
+    /// The 2-chunk case is deliberately absent: it benchmarked slower than the scalar loop,
+    /// so it falls through instead.
+    /// </summary>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
+    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the tail starts.</param>
+    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
+    /// <param name="batchCvs">Caller-owned scratch buffer for the kernel's output CVs.</param>
+    /// <returns>The number of bytes consumed (three chunks).</returns>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private int CommitPartialBatch3Neon(Blake3State* core, byte* srcPtr, int offset, int length, uint* batchCvs)
+    {
+        const int FullChunks = 3;
+        Debug.Assert((length - offset) / ChunkSizeBytes == FullChunks, "exactly three chunks remain here");
+        bool drainsRemainingInput = offset + (FullChunks * ChunkSizeBytes) == length;
+
+        CompressChunksPartialNeon(
+            srcPtr + offset, FullChunks, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+
+        CommitBatchChunks(core, batchCvs, 0, drainsRemainingInput ? FullChunks - 1 : FullChunks, drainsRemainingInput);
+        return FullChunks * ChunkSizeBytes;
+    }
+
+    /// <summary>
+    /// Reduces <paramref name="chunkCount"/> (4 or 64)
     /// contiguous chunk CVs to a single subtree CV at <paramref name="cvs"/>[0..8)
     /// using wide parent compressions, at NEON's 4-lane width. Mirrors
     /// <see cref="ReduceChunkCvsToSubtreeCvAvx2"/> (AVX2, 8-lane) one register width down.
@@ -323,25 +410,45 @@ internal unsafe partial struct Blake3State
     /// <paramref name="chunkCount"/> — see <see cref="CompressParents4Neon"/>
     /// on surplus lanes.
     /// </remarks>
-    private void ReduceChunkCvsToSubtreeCvNeon(uint* cvs, uint* key, int chunkCount, uint baseFlags)
+
+    /// <param name="core">Pointer to the instance; only the final 2 → 1 merge needs it.</param>
+    /// <param name="cvs">The chunk CVs to reduce, in place; receives the subtree CV at [0..8).</param>
+    /// <param name="key">The 8-word key/IV words for this hash.</param>
+    /// <param name="chunkCount">Number of chunk CVs to reduce; a power of two.</param>
+    /// <param name="baseFlags">Mode flags for the parent compressions.</param>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void ReduceChunkCvsToSubtreeCvNeon(Blake3State* core, uint* cvs, uint* key, int chunkCount, uint baseFlags)
     {
+        ReduceChunkCvsToHalvesNeon(cvs, key, chunkCount, baseFlags);
+        core->ComputeParentCv(cvs, key, cvs);             // 2 -> 1
+    }
+
+    /// <summary>
+    /// <see cref="ReduceChunkCvsToSubtreeCvNeon"/> without the final merge: leaves the CVs of
+    /// the subtree's two halves at <paramref name="cvs"/>[0..16).
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void ReduceChunkCvsToHalvesNeon(uint* cvs, uint* key, int chunkCount, uint baseFlags)
+    {
+        Debug.Assert(chunkCount is NeonChunksPerBatch or ChunksPerSubtreeGroup,
+            "reduces one 4-chunk batch or one 64-chunk subtree group");
+
         // Full-width levels: every 4-parent group is fully populated.
         while (chunkCount >= 8)
         {
             int parents = chunkCount >> 1;
-            for (int g = 0; g < parents; g += ChunksPerNeonBatch)
+            for (int g = 0; g < parents; g += NeonChunksPerBatch)
             {
-                CompressParents4Neon(cvs + g * 16, key, cvs + g * 8, baseFlags);
+                CompressParents4Neon(cvs + g * ParentStrideWords, key, cvs + g * KeySizeWords, baseFlags);
             }
 
             chunkCount = parents;
         }
 
         CompressParents4Neon(cvs, key, cvs, baseFlags);   // 4 -> 2 (upper 2 lanes ignored)
-        ComputeParentCv(cvs, key, cvs);                    // 2 -> 1
     }
 
-    // Mirrors Blake3State.Compress(uint*, uint*) exactly (same message schedule,
+    // Mirrors Blake3State.Compress exactly (same message schedule,
     // same G-function groupings), with every uint word replaced by a
     // Vector128<uint> holding that word's value for 4 independent chunks.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -358,79 +465,93 @@ internal unsafe partial struct Blake3State
         var m12 = m[12]; var m13 = m[13]; var m14 = m[14]; var m15 = m[15];
 
         // Round 1
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m0, m1);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m2, m3);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m4, m5);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m6, m7);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m8, m9);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m10, m11);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m12, m13);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m14, m15);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m0, m2, m4, m6, m1, m3, m5, m7);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m8, m10, m12, m14, m9, m11, m13, m15);
 
         // Round 2
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m2, m6);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m3, m10);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m7, m0);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m4, m13);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m1, m11);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m12, m5);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m9, m14);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m15, m8);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m2, m3, m7, m4, m6, m10, m0, m13);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m1, m12, m9, m15, m11, m5, m14, m8);
 
         // Round 3
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m3, m4);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m10, m12);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m13, m2);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m7, m14);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m6, m5);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m9, m0);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m11, m15);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m8, m1);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m3, m10, m13, m7, m4, m12, m2, m14);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m6, m9, m11, m8, m5, m0, m15, m1);
 
         // Round 4
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m10, m7);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m12, m9);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m14, m3);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m13, m15);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m4, m0);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m11, m2);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m5, m8);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m1, m6);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m10, m12, m14, m13, m7, m9, m3, m15);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m4, m11, m5, m1, m0, m2, m8, m6);
 
         // Round 5
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m12, m13);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m9, m11);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m15, m10);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m14, m8);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m7, m2);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m5, m3);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m0, m1);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m6, m4);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m12, m9, m15, m14, m13, m11, m10, m8);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m7, m5, m0, m6, m2, m3, m1, m4);
 
         // Round 6
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m9, m14);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m11, m5);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m8, m12);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m15, m1);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m13, m3);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m0, m10);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m2, m6);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m4, m7);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m9, m11, m8, m15, m14, m5, m12, m1);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m13, m0, m2, m4, m3, m10, m6, m7);
 
         // Round 7
-        GRoundNeon(ref v0, ref v4, ref v8, ref v12, m11, m15);
-        GRoundNeon(ref v1, ref v5, ref v9, ref v13, m5, m0);
-        GRoundNeon(ref v2, ref v6, ref v10, ref v14, m1, m9);
-        GRoundNeon(ref v3, ref v7, ref v11, ref v15, m8, m6);
-        GRoundNeon(ref v0, ref v5, ref v10, ref v15, m14, m10);
-        GRoundNeon(ref v1, ref v6, ref v11, ref v12, m2, m12);
-        GRoundNeon(ref v2, ref v7, ref v8, ref v13, m3, m4);
-        GRoundNeon(ref v3, ref v4, ref v9, ref v14, m7, m13);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11,
+            ref v12, ref v13, ref v14, ref v15,
+            m11, m5, m1, m8, m15, m0, m9, m6);
+        GRound4Neon(ref v0, ref v1, ref v2, ref v3,
+            ref v5, ref v6, ref v7, ref v4,
+            ref v10, ref v11, ref v8, ref v9,
+            ref v15, ref v12, ref v13, ref v14,
+            m14, m2, m3, m7, m10, m12, m4, m13);
     }
 
     /// <summary>
-    /// In-place 4×4 transpose of 32-bit words: on input <c>vecs[j]</c> holds
-    /// 4 consecutive words of chunk <c>j</c>; on output <c>vecs[w]</c> holds
+    /// In-place 4×4 transpose of 32-bit words held in four registers: on input <c>vj</c>
+    /// holds 4 consecutive words of chunk <c>j</c>; on output <c>vw</c> holds
     /// word <c>w</c> of all 4 chunks (lane <c>j</c> = chunk <c>j</c>).
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]

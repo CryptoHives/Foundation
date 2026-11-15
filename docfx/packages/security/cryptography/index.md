@@ -1,17 +1,26 @@
+---
+title: Security.Cryptography Package
+_description: CryptoHives.Foundation.Security.Cryptography — fully managed, OS-independent implementations of hashes, MACs, ciphers, AEAD, KDFs, ML-KEM (FIPS 203), ML-DSA (FIPS 204) and SLH-DSA (FIPS 205), drop-in for System.Security.Cryptography, with optional hardware acceleration. Targets net462 through net10.0.
+---
+
 # CryptoHives.Foundation.Security.Cryptography Package
 
 ## Overview
 
-The Cryptography package implements hash algorithms, message authentication codes, and ciphers for .NET. The core is fully managed code, with optional hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics — dispatched automatically where the hardware supports it, with consistent behavior everywhere else.
+The Cryptography package implements hash algorithms, message authentication codes, ciphers, key derivation functions, and the NIST post-quantum KEM and signature schemes for .NET. The core is fully managed code, with optional hardware acceleration via AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, AVX2 and AVX-512 on x86/x64 and ARM AES, ARM SHA, PMULL and NEON on Arm64 — dispatched automatically where the hardware supports it, with consistent behavior everywhere else.
 
 ## Key Features
 
 - **Specification-based** — implemented from official NIST, RFC, and ISO specifications
 - **No OS dependencies** — behaves identically on every platform without calling OS crypto APIs
-- **Hardware acceleration** — optional AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, and AVX2 intrinsics, with automatic fallback
+- **Hardware acceleration** — optional x86/x64 (AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, AVX2, AVX-512) and Arm64 (ARM AES, ARM SHA, PMULL, NEON) intrinsics, with automatic scalar fallback
 - **Broad coverage** — SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, Ascon-AEAD128, and more
-- **AEAD support** — AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305, and Ascon-AEAD128
+- **AEAD support** — AES-GCM, AES-CCM, AES-GCM-SIV, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, GCM/CCM over the regional block ciphers (SM4, ARIA, Camellia, SEED, Kuznyechik), and Kuznyechik-MGM and Magma-MGM
 - **Key management** — AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
+- **Post-quantum KEM** — ML-KEM-512/768/1024 (FIPS 203) on every target framework, mirroring the .NET 10 `MLKem` API
+- **Post-quantum signatures** — ML-DSA-44/65/87 (FIPS 204) and SLH-DSA (FIPS 205, all 12 parameter sets) on every target framework, mirroring the .NET 10 `MLDsa`/`SlhDsa` APIs — the complete NIST PQC trio
+- **Key formats** — PKCS#8, SubjectPublicKeyInfo and PEM import/export for ML-KEM, ML-DSA and SLH-DSA keys, including PBES2-encrypted PKCS#8, matching .NET 10 byte for byte
+- **Erasable memory** — no member takes a password or returns a plaintext private key as a `string`; secrets stay in spans the caller can wipe with the public `CryptographicOperations.ZeroMemory` (see [Erasable Memory](erasable-memory.md))
 - **Variable-length output** — XOF support for SHAKE, cSHAKE, KMAC, and BLAKE3
 - **Keyed hashing** — built-in MAC modes for BLAKE2, BLAKE3, and KMAC
 - **Standards compliant** — verified against NIST, RFC, and ISO test vectors
@@ -49,6 +58,34 @@ using CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Kdf;
+```
+
+### Key Encapsulation Mechanisms
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Kem;
+```
+
+### Digital Signature Algorithms
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Dsa;
+```
+
+### Key Formats, Password-Based Encryption and Helpers
+
+`PbeOptions`, `PbeEncryptionAlgorithm`, `Pbkdf2Prf` and `CryptographicOperations` (`ZeroMemory`, `FixedTimeEquals`) live in the root namespace. The key-format members themselves are on `MLKem`, `MLDsa` and `SlhDsa`.
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography;
+```
+
+### Random Number Generation
+
+`RandomNumberGenerator` with a span-based `Fill` on every target framework, drawing from the platform generator. See [Random Number Generation](random-numbers.md).
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Rng;
 ```
 
 ## Implemented Algorithms
@@ -103,6 +140,23 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 | PBKDF2 | RFC 8018 | [Details](kdf-algorithms.md#pbkdf2-password-based-kdf) |
 | BLAKE3 DeriveKey | BLAKE3 Spec | [Details](hash-algorithms.md#blake3) |
 
+### Key Encapsulation Mechanisms (KEM)
+
+| Algorithm | Standard | Security Category | Documentation |
+|-----------|----------|-------------------|---------------|
+| ML-KEM-512 | FIPS 203 | 1 (~AES-128) | [Details](kem-algorithms.md#ml-kem-fips-203) |
+| ML-KEM-768 | FIPS 203 | 3 (~AES-192) | [Details](kem-algorithms.md#ml-kem-fips-203) |
+| ML-KEM-1024 | FIPS 203 | 5 (~AES-256) | [Details](kem-algorithms.md#ml-kem-fips-203) |
+
+### Digital Signatures (Post-Quantum)
+
+| Algorithm | Standard | Security Category | Documentation |
+|-----------|----------|-------------------|---------------|
+| ML-DSA-44 | FIPS 204 | 2 | [Details](signature-algorithms.md#ml-dsa-fips-204) |
+| ML-DSA-65 | FIPS 204 | 3 | [Details](signature-algorithms.md#ml-dsa-fips-204) |
+| ML-DSA-87 | FIPS 204 | 5 | [Details](signature-algorithms.md#ml-dsa-fips-204) |
+| SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f} | FIPS 205 | 1/3/5 | [Details](signature-algorithms.md#slh-dsa-fips-205) |
+
 ### Cipher Algorithms (Block/Stream)
 
 | Algorithm | Key Sizes | Modes | Documentation |
@@ -120,6 +174,7 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 | ARIA | Korea | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aria-korea) |
 | Camellia | Japan | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#camellia-japan) |
 | Kuznyechik | Russia | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kuznyechik-russia) |
+| Magma | Russia | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#magma-russia) |
 | Kalyna | Ukraine | 128/256/512 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kalyna-ukraine) |
 | SEED | Korea | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#seed-korea) |
 
@@ -129,6 +184,11 @@ using CryptoHives.Foundation.Security.Cryptography.Kdf;
 |-----------|-----------|------------|----------|---------------|
 | AES-GCM | 128/192/256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#aes-gcm-galoiscounter-mode) |
 | AES-CCM | 128/192/256 bits | 7-13 bytes | 4-16 bytes | [Details](cipher-algorithms.md#aes-ccm-counter-with-cbc-mac) |
+| AES-GCM-SIV | 128/256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#aes-gcm-siv-nonce-misuse-resistant) |
+| SM4/ARIA/Camellia/SEED/Kuznyechik-GCM | per cipher | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#gcm-and-ccm-over-regional-block-ciphers) |
+| SM4/ARIA/Camellia-CCM | per cipher | 7-13 bytes | 4-16 bytes | [Details](cipher-algorithms.md#gcm-and-ccm-over-regional-block-ciphers) |
+| Kuznyechik-MGM | 256 bits | 16 bytes, top bit clear | 4-16 bytes | [Details](cipher-algorithms.md#kuznyechik-mgm-and-magma-mgm-multilinear-galois-mode) |
+| Magma-MGM | 256 bits | 8 bytes, top bit clear | 4-8 bytes | [Details](cipher-algorithms.md#kuznyechik-mgm-and-magma-mgm-multilinear-galois-mode) |
 | ChaCha20-Poly1305 | 256 bits | 12 bytes | 16 bytes | [Details](cipher-algorithms.md#chacha20-poly1305) |
 | XChaCha20-Poly1305 | 256 bits | 24 bytes | 16 bytes | [Details](cipher-algorithms.md#xchacha20-poly1305) |
 | Ascon-AEAD128 | 128 bits | 16 bytes | 16 bytes | [Details](cipher-algorithms.md#ascon-aead128) |
@@ -367,6 +427,9 @@ Every implementation is verified against its official test vectors:
 - **NIST FIPS 180-4**: SHA-1, SHA-2 family
 - **NIST FIPS 197**: AES (128/192/256)
 - **NIST FIPS 202**: SHA-3, SHAKE
+- **NIST FIPS 203**: ML-KEM-512/768/1024 (NIST ACVP vectors, BouncyCastle and .NET 10 interop)
+- **NIST FIPS 204**: ML-DSA-44/65/87 (NIST ACVP vectors, BouncyCastle and .NET 10 interop)
+- **NIST FIPS 205**: SLH-DSA, all 12 parameter sets (NIST ACVP vectors, BouncyCastle and .NET 10 interop)
 - **NIST SP 800-38B**: AES-CMAC
 - **NIST SP 800-38D**: AES-GCM
 - **NIST SP 800-108r1**: KBKDF Counter Mode
@@ -432,6 +495,11 @@ Every implementation uses fixed-size internal buffers sized to its block size �
 | AES block modes (ECB/CBC/CTR) | Yes (managed + AES-NI) | Yes (OS-dependent) |
 | ChaCha20 stream cipher | Yes (managed + SSSE3/AVX2) | No |
 | HKDF | Yes (all TFMs, pluggable HMAC) | .NET Core 3.0+ only |
+| ML-KEM (FIPS 203) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |
+| ML-DSA (FIPS 204) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |
+| SLH-DSA (FIPS 205) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |
+| PKCS#8 / SPKI / PEM for PQC keys | Yes (all TFMs, `Span<char>` PEM exports, no `string` secrets) | .NET 10+ only |
+| `ZeroMemory` / `FixedTimeEquals` | Yes (all TFMs, incl. `char` overloads) | .NET Core 2.1+ / netstandard2.1+, no `char` overloads |
 | XOF (SHAKE/cSHAKE/TurboSHAKE/BLAKE3) | Yes (Absorb/Squeeze API) | SHAKE only (.NET 9+) |
 | SM3/Streebog/Kupyna/LSH/Whirlpool | Yes | No |
 
@@ -454,9 +522,14 @@ public bool ComputeHashThreadSafe(ReadOnlySpan<byte> data, Span<byte> destinatio
 - [Cipher Algorithms Reference](cipher-algorithms.md)
 - [MAC Algorithms Reference](mac-algorithms.md)
 - [KDF Algorithms Reference](kdf-algorithms.md)
+- [KEM Algorithms Reference](kem-algorithms.md)
+- [Signature Algorithms Reference](signature-algorithms.md)
+- [Erasable Memory](erasable-memory.md)
+- [Random Number Generation](random-numbers.md)
 - [XOF Mode (Extendable-Output)](xof-mode.md)
-- [Hash Benchmarks](benchmarks.md)
-- [Cipher Benchmarks](benchmarks.md)
+- [Pooled Hash API](pooled-hash-api.md)
+- [Benchmarks](benchmarks.md)
+- [Porting Guide](../../../porting-to-cryptohives.md)
 - [Cryptographic Specifications](specs/README.md)
 - [Security Package Overview](../index.md)
 

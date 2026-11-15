@@ -2,21 +2,15 @@
 
 A pooled async mutual exclusion lock for coordinating access to shared resources.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Threading.Async.Pooled
-```
-
-## Syntax
-
-```csharp
-public sealed class AsyncLock : IResettable
-```
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncLock)
 
 ## Overview
 
 `AsyncLock` provides async mutual exclusion, similar to `SemaphoreSlim(1,1)` but optimized for the common async locking pattern. It returns a small value-type releaser that implements `IDisposable`/`IAsyncDisposable` so the lock can be released with a `using` pattern. The implementation uses pooled `IValueTaskSource` instances to minimize allocations in high-throughput scenarios and a local reusable waiter to avoid allocations for the first queued waiter.
+
+It guards one resource. When the thing being guarded is one of many — a row, an account, a tenant, a cache entry — use [`AsyncKeyedLock<TKey>`](asynckeyedlock.md) instead of a lock per key or a dictionary of locks: it serializes callers per key while letting unrelated keys run fully in parallel.
+
+`AsyncLock` is not reentrant. When a nested call on the same flow has to re-acquire the lock, and the locked region cannot be narrowed, see [`AsyncReentrantLock`](asyncreentrantlock.md).
 
 ## Benefits
 
@@ -113,6 +107,39 @@ catch (TimeoutException)
 }
 ```
 
+### TryLock
+
+```csharp
+public bool TryLock(out Releaser releaser)
+```
+
+Attempts to acquire the lock without waiting.
+
+**Parameters**:
+- `releaser` — The releaser for the acquired lock, if the method returns `true`. Dispose it to release the lock. `default` (no associated lock) if the method returns `false`.
+
+**Returns**: `true` if the lock was acquired immediately; `false` if it is currently held or awaited by someone else.
+
+Synchronous and non-throwing by design: unlike `LockAsync(TimeSpan.Zero)`, a failed attempt never allocates an exception or a faulted `ValueTask<Releaser>` — there is nothing to await in the first place. Use it on paths that shed work rather than queue it, where contention is an expected outcome instead of an exceptional one.
+
+> **Do not dispose the releaser from a failed `TryLock`.** It is `default(Releaser)` and represents no acquired lock. In `DEBUG` builds, disposing it throws `InvalidOperationException` to surface the mistake; release builds silently ignore it. Always check the return value first.
+
+**Example**:
+
+```csharp
+public void RefreshIfIdle()
+{
+    if (_lock.TryLock(out var releaser))
+    {
+        using (releaser)
+        {
+            RefreshCache();
+        }
+    }
+    // Held by someone else — skip; the refresh happens on their release
+}
+```
+
 ### Allocation Behavior
 
 Immediate acquisitions are completely allocation-free using atomic operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<Releaser>` instances are reused to minimize allocation pressure across repeated lock operations.
@@ -174,6 +201,7 @@ The benchmarks compare various `AsyncLock` implementations:
 - AsyncNonKeyedLocker: An implementation from the AsyncKeyedLock.AsyncNonKeyedLocker library which uses SemaphoreSlim internally
 - SemaphoreSlim: The .NET built-in synchronization primitive
 - VS.Threading AsyncSemaphore: The Microsoft.VisualStudio.Threading semaphore used as a lock-compatible baseline
+- DotNextAsyncExclusiveLock (net10.0 only): The `DotNext.Threading.AsyncExclusiveLock` implementation, which has no disposable releaser - callers call `Release()` explicitly
 
 ### Single Lock Benchmark
 
@@ -182,11 +210,11 @@ In order to understand the impact of moving from a `lock` or `Interlocked` imple
 The benchmark shows both throughput (operations per second) and allocations per operation. ProtoPromise is currently a strong uncontended competitor and can beat the pooled implementation on raw throughput, while the pooled implementation stays allocation-free and keeps the same API shape and cancellation behavior used throughout this library. VS.Threading is also included as a semaphore-based comparison point, but in the published uncontended results it trails both ProtoPromise and the pooled implementation.
 The new .NET 9 `Lock` primitive shows slighlty better performance than the well known lock on an object, but `AsyncLock` remains competitive due to the fast path implementation with Interlocked variable based state.
 
-[View live Single Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncLock&method=LockAsync)
+[View live Single Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncLock&method=LockAsync&mode=trend)
 
 The synchronous baselines (`lock`/`Monitor`, .NET 9 `Lock`/`Lock.EnterScope`, `SpinLock`, and the `Interlocked` variants) are broken out into their own comparison table, since they're several orders of magnitude faster than any async option and would otherwise flatten the async comparison on a shared chart:
 
-[View live synchronous lock/Interlocked baseline results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=SyncLock&method=LockAsync)
+[View live synchronous lock/Interlocked baseline results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=SyncLock&method=LockAsync&mode=trend)
 
 ### Multiple Concurrent Lock Benchmark
 
@@ -195,7 +223,7 @@ The benchmark shows both throughput (operations per second) and allocations per 
 It is noticable that all implementations except the pooled one and ProtoPromise require memory allocations on contention, as long as the `ValueTask` is not converted to `Task`.
 ProtoPromise is particularly competitive here and can outperform the pooled `AsyncLock` in several low- and mid-contention cases, especially when comparing pure throughput. The pooled implementation still distinguishes itself by combining allocation-free `ValueTask` usage with built-in cancellation support and predictable behavior when integrated with the rest of this library. VS.Threading is included as another real-world baseline, but its semaphore-based path is slower and allocates under contention in the published results.
 
-[View live Multiple Concurrent Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncLock&method=Multiple)
+[View live Multiple Concurrent Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncLock&method=Multiple&mode=trend)
 
 ### Benchmark Analysis
 
@@ -217,7 +245,7 @@ ProtoPromise is particularly competitive here and can outperform the pooled `Asy
 
 ## Best Practices
 
-### DO: Use the using pattern to ensure lock release and await the result directly
+### Use the using pattern to ensure lock release and await the result directly
 
 ```csharp
 // Good: Minimal time holding lock
@@ -234,7 +262,7 @@ public async Task UpdateAsync(Data newData)
 }
 ```
 
-### DO: Keep critical sections short
+### Keep critical sections short
 
 ```csharp
 // Good: Minimal time holding lock
@@ -244,15 +272,15 @@ using (await _lock.LockAsync())
 }
 ```
 
-### DO: Prefer avoiding CancellationToken for hot-path locks
+### Prefer avoiding CancellationToken for hot-path locks
 
 Cancellation registrations allocate a small control structure. For hot-path code, omit the token when possible, or perform an early `cancellationToken.IsCancellationRequested` check before calling `LockAsync` to avoid allocations from `Task.FromCanceled`.
 
-### DO: Configure a larger pool under high contention
+### Configure a larger pool under high contention
 
 If you expect many concurrent waiters, provide a custom object pool with a larger retention size so allocations are avoided when the pool can satisfy requests.
 
-### DO: Use `LockAsync(TimeSpan)` to bound wait time
+### Use `LockAsync(TimeSpan)` to bound wait time
 
 ```csharp
 try
@@ -268,7 +296,22 @@ catch (TimeoutException)
 }
 ```
 
-### DON'T: Create new locks repeatedly
+### Use `TryLock` when a missed acquisition is acceptable
+
+```csharp
+// Opportunistic work that can be skipped when the lock is busy
+if (_lock.TryLock(out var releaser))
+{
+    using (releaser)
+    {
+        DoOptionalWork();
+    }
+}
+```
+
+`TryLock` never waits and never allocates. Prefer it over `LockAsync(TimeSpan.Zero)` whenever the call site does not otherwise need a `ValueTask<Releaser>` — the zero-timeout overload signals a miss by throwing `TimeoutException`, which allocates.
+
+### Don't create new locks repeatedly
 
 ```csharp
 // Bad: Creating new lock each time
@@ -288,7 +331,7 @@ public async Task Work(AsyncLock lock)
 }
 ```
 
-### DON'T: Hold the lock during long-running operations
+### Don't hold the lock during long-running operations
 
 ```csharp
 // Bad: Holding lock during slow operation
@@ -298,7 +341,7 @@ using (await _lock.LockAsync())
 }
 ```
 
-### DON'T: Nest locks (may deadlock)
+### Don't nest locks (may deadlock)
 
 ```csharp
 // Bad: Risk of deadlock
@@ -314,12 +357,16 @@ using (await _lock1.LockAsync())
 ## See Also
 
 - [Threading Package Overview](index.md)
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion; distinct keys never block each other
+- [AsyncReentrantLock](asyncreentrantlock.md) - Async lock a nested call on the same flow can re-acquire (experimental)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

@@ -1,9 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 
 /// <summary>
@@ -117,6 +118,26 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
     public static byte[] HashData(ReadOnlySpan<byte> source)
         => HashAlgorithmPool<AsconXof128>.HashData(source);
 
+    /// <summary>
+    /// Computes the Ascon-XOF128 hash of <paramref name="source"/> using the default output size
+    /// and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <c>32</c> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+    public static bool TryHashData(in ReadOnlySequence<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<AsconXof128>.TryHashData(source, destination, out bytesWritten);
+
+    /// <summary>
+    /// Computes the Ascon-XOF128 hash of <paramref name="source"/> using the default output size
+    /// and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <returns>A new byte array containing the Ascon-XOF128 hash.</returns>
+    public static byte[] HashData(in ReadOnlySequence<byte> source)
+        => HashAlgorithmPool<AsconXof128>.HashData(source);
+
     /// <inheritdoc/>
     public void Absorb(ReadOnlySpan<byte> input)
     {
@@ -149,7 +170,6 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
             _squeezeOffset = 0;
         }
 
-        Span<byte> block = stackalloc byte[RateBytes];
         int remaining = output.Length;
         int destOffset = 0;
 
@@ -158,8 +178,7 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
         {
             int available = RateBytes - _squeezeOffset;
             int toCopy = Math.Min(remaining, available);
-            BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
-            block.Slice(_squeezeOffset, toCopy).CopyTo(output.Slice(destOffset));
+            BinaryStore.WriteUInt64LittleEndianTruncated(_x0 >> (_squeezeOffset * 8), output.Slice(destOffset, toCopy));
             destOffset += toCopy;
             remaining -= toCopy;
             _squeezeOffset += toCopy;
@@ -183,8 +202,7 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
         // Handle trailing partial block
         if (remaining > 0)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
-            block.Slice(0, remaining).CopyTo(output.Slice(destOffset));
+            BinaryStore.WriteUInt64LittleEndianTruncated(_x0, output.Slice(destOffset, remaining));
             _squeezeOffset = remaining;
         }
     }
@@ -192,23 +210,13 @@ public sealed class AsconXof128 : AsconHashAlgorithm, IExtendableOutput
     /// <inheritdoc/>
     protected override void SqueezeOutput(Span<byte> destination)
     {
-        // Squeeze output
-        Span<byte> block = stackalloc byte[RateBytes];
         int remaining = _outputSizeBytes;
         int destOffset = 0;
 
         while (remaining > 0)
         {
             int toCopy = Math.Min(remaining, RateBytes);
-            if (toCopy == RateBytes)
-            {
-                BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(destOffset), _x0);
-            }
-            else
-            {
-                BinaryPrimitives.WriteUInt64LittleEndian(block, _x0);
-                block.Slice(0, toCopy).CopyTo(destination.Slice(destOffset));
-            }
+            BinaryStore.WriteUInt64LittleEndianTruncated(_x0, destination.Slice(destOffset, toCopy));
 
             remaining -= toCopy;
             destOffset += toCopy;

@@ -1,11 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -94,7 +95,8 @@ internal static class CamelliaCore
     private static readonly ulong[] _sp7;
     private static readonly ulong[] _sp8;
 
-    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "All 8 SP tables share a single 256-iteration initialization loop for efficiency.")]
+    [SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline",
+        Justification = "All 8 SP tables share a single 256-iteration initialization loop for efficiency.")]
     static CamelliaCore()
     {
         _sp1 = new ulong[256];
@@ -155,7 +157,7 @@ internal static class CamelliaCore
     /// <exception cref="ArgumentException">The key length is invalid.</exception>
     public static int ExpandKey(ReadOnlySpan<byte> key, Span<ulong> subkeys)
     {
-        if (key.Length != 16 && key.Length != 24 && key.Length != 32)
+        if (key.Length is not 16 and not 24 and not 32)
             throw new ArgumentException("Key must be 16, 24, or 32 bytes.", nameof(key));
 
         ulong klh = BinaryPrimitives.ReadUInt64BigEndian(key);
@@ -322,55 +324,34 @@ internal static class CamelliaCore
             // FL / FLINV with ke6, ke5
             d1 = FL(d1, subkeys[25]);
             d2 = FLINV(d2, subkeys[24]);
-
-            // Rounds 18–13
-            SixRoundsReverse(ref d1, ref d2, subkeys, 18);
-
-            // FL / FLINV with ke4, ke3
-            d1 = FL(d1, subkeys[17]);
-            d2 = FLINV(d2, subkeys[16]);
-
-            // Rounds 12–7
-            SixRoundsReverse(ref d1, ref d2, subkeys, 10);
-
-            // FL / FLINV with ke2, ke1
-            d1 = FL(d1, subkeys[9]);
-            d2 = FLINV(d2, subkeys[8]);
-
-            // Rounds 6–1
-            SixRoundsReverse(ref d1, ref d2, subkeys, 2);
-
-            // Post-whitening with kw1, kw2
-            d2 ^= subkeys[0];
-            d1 ^= subkeys[1];
         }
         else
         {
             // Pre-whitening with kw3, kw4
             d1 ^= subkeys[24];
             d2 ^= subkeys[25];
-
-            // Rounds 18–13
-            SixRoundsReverse(ref d1, ref d2, subkeys, 18);
-
-            // FL / FLINV with ke4, ke3
-            d1 = FL(d1, subkeys[17]);
-            d2 = FLINV(d2, subkeys[16]);
-
-            // Rounds 12–7
-            SixRoundsReverse(ref d1, ref d2, subkeys, 10);
-
-            // FL / FLINV with ke2, ke1
-            d1 = FL(d1, subkeys[9]);
-            d2 = FLINV(d2, subkeys[8]);
-
-            // Rounds 6–1
-            SixRoundsReverse(ref d1, ref d2, subkeys, 2);
-
-            // Post-whitening with kw1, kw2
-            d2 ^= subkeys[0];
-            d1 ^= subkeys[1];
         }
+
+        // Rounds 18–13
+        SixRoundsReverse(ref d1, ref d2, subkeys, 18);
+
+        // FL / FLINV with ke4, ke3
+        d1 = FL(d1, subkeys[17]);
+        d2 = FLINV(d2, subkeys[16]);
+
+        // Rounds 12–7
+        SixRoundsReverse(ref d1, ref d2, subkeys, 10);
+
+        // FL / FLINV with ke2, ke1
+        d1 = FL(d1, subkeys[9]);
+        d2 = FLINV(d2, subkeys[8]);
+
+        // Rounds 6–1
+        SixRoundsReverse(ref d1, ref d2, subkeys, 2);
+
+        // Post-whitening with kw1, kw2
+        d2 ^= subkeys[0];
+        d1 ^= subkeys[1];
 
         // Output D2 || D1
         r1 = d2;
@@ -380,7 +361,7 @@ internal static class CamelliaCore
     /// <summary>
     /// Performs six Feistel rounds in forward (encryption) order.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SixRounds(ref ulong d1, ref ulong d2,
         ReadOnlySpan<ulong> k, int offset)
     {
@@ -395,7 +376,7 @@ internal static class CamelliaCore
     /// <summary>
     /// Performs six Feistel rounds in reverse (decryption) order.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static void SixRoundsReverse(ref ulong d1, ref ulong d2,
         ReadOnlySpan<ulong> k, int offset)
     {
@@ -415,19 +396,18 @@ internal static class CamelliaCore
     /// that combines the S-box and the P-function column for that byte position.
     /// The eight 64-bit table values are XOR-folded to produce the F-function output.
     /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong F(ulong input, ulong key)
     {
         ulong x = input ^ key;
-#if NET6_0_OR_GREATER
-        ref ulong r1 = ref MemoryMarshal.GetArrayDataReference(_sp1);
-        ref ulong r2 = ref MemoryMarshal.GetArrayDataReference(_sp2);
-        ref ulong r3 = ref MemoryMarshal.GetArrayDataReference(_sp3);
-        ref ulong r4 = ref MemoryMarshal.GetArrayDataReference(_sp4);
-        ref ulong r5 = ref MemoryMarshal.GetArrayDataReference(_sp5);
-        ref ulong r6 = ref MemoryMarshal.GetArrayDataReference(_sp6);
-        ref ulong r7 = ref MemoryMarshal.GetArrayDataReference(_sp7);
-        ref ulong r8 = ref MemoryMarshal.GetArrayDataReference(_sp8);
+        ref ulong r1 = ref MemoryMarshalEx.GetArrayDataReference(_sp1);
+        ref ulong r2 = ref MemoryMarshalEx.GetArrayDataReference(_sp2);
+        ref ulong r3 = ref MemoryMarshalEx.GetArrayDataReference(_sp3);
+        ref ulong r4 = ref MemoryMarshalEx.GetArrayDataReference(_sp4);
+        ref ulong r5 = ref MemoryMarshalEx.GetArrayDataReference(_sp5);
+        ref ulong r6 = ref MemoryMarshalEx.GetArrayDataReference(_sp6);
+        ref ulong r7 = ref MemoryMarshalEx.GetArrayDataReference(_sp7);
+        ref ulong r8 = ref MemoryMarshalEx.GetArrayDataReference(_sp8);
         return Unsafe.Add(ref r1, (byte)(x >> 56))
              ^ Unsafe.Add(ref r2, (byte)(x >> 48))
              ^ Unsafe.Add(ref r3, (byte)(x >> 40))
@@ -436,33 +416,12 @@ internal static class CamelliaCore
              ^ Unsafe.Add(ref r6, (byte)(x >> 16))
              ^ Unsafe.Add(ref r7, (byte)(x >> 8))
              ^ Unsafe.Add(ref r8, (byte)x);
-#else
-        // Fallback implementation for .NET Framework: use safe array indexing.
-        // This avoids MemoryMarshal / Unsafe APIs not available on older TFMs.
-        int b1 = (int)((x >> 56) & 0xFF);
-        int b2 = (int)((x >> 48) & 0xFF);
-        int b3 = (int)((x >> 40) & 0xFF);
-        int b4 = (int)((x >> 32) & 0xFF);
-        int b5 = (int)((x >> 24) & 0xFF);
-        int b6 = (int)((x >> 16) & 0xFF);
-        int b7 = (int)((x >> 8) & 0xFF);
-        int b8 = (int)(x & 0xFF);
-
-        return _sp1[b1]
-             ^ _sp2[b2]
-             ^ _sp3[b3]
-             ^ _sp4[b4]
-             ^ _sp5[b5]
-             ^ _sp6[b6]
-             ^ _sp7[b7]
-             ^ _sp8[b8];
-#endif
     }
 
     /// <summary>
     /// FL-function: key-dependent linear mixing applied every 6 rounds.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong FL(ulong x, ulong k)
     {
         uint x1 = (uint)(x >> 32);
@@ -470,7 +429,7 @@ internal static class CamelliaCore
         uint k1 = (uint)(k >> 32);
         uint k2 = (uint)k;
 
-        x2 ^= RotateLeft32(x1 & k1, 1);
+        x2 ^= BitOperations.RotateLeft(x1 & k1, 1);
         x1 ^= (x2 | k2);
 
         return ((ulong)x1 << 32) | x2;
@@ -479,7 +438,7 @@ internal static class CamelliaCore
     /// <summary>
     /// FLINV-function: inverse of <see cref="FL"/>.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong FLINV(ulong y, ulong k)
     {
         uint y1 = (uint)(y >> 32);
@@ -488,15 +447,9 @@ internal static class CamelliaCore
         uint k2 = (uint)k;
 
         y1 ^= (y2 | k2);
-        y2 ^= RotateLeft32(y1 & k1, 1);
+        y2 ^= BitOperations.RotateLeft(y1 & k1, 1);
 
         return ((ulong)y1 << 32) | y2;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint RotateLeft32(uint value, int shift)
-    {
-        return (value << shift) | (value >> (32 - shift));
     }
 
     /// <summary>

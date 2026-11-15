@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
 #pragma warning disable CS0414  // _simdSupport is read inside #if NET8_0_OR_GREATER guard
@@ -8,10 +8,13 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
-using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.Intrinsics.Arm;
+using System.Runtime.Intrinsics.X86;
+#endif
 
 /// <summary>
 /// Computes the BLAKE2b hash for the input data.
@@ -48,7 +51,7 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
     private const int ScratchSize = BlockSizeBytes / sizeof(ulong);
 
     // BLAKE2b IV constants (same as SHA-512)
-    private static ReadOnlySpan<ulong> IV =>
+    private static readonly ulong[] IV =
     [
         0x6a09e667f3bcc908UL,
         0xbb67ae8584caa73bUL,
@@ -81,7 +84,7 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
         _outputBytes = outputBytes;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
 
         Initialize();
@@ -118,6 +121,64 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
         Compress(ref _buffer[0], _bufferLength, true);
 
         // Extract output
+        ExtractOutput(destination);
+
+        bytesWritten = _outputBytes;
+        return true;
+    }
+
+
+    /// <summary>
+    /// True when nothing has been appended since the last <see cref="Reset"/>.
+    /// </summary>
+    /// <remarks>
+    /// A keyed instance is never fresh: <see cref="Reset"/> leaves the zero-padded key sitting in
+    /// the staging buffer as the first block.
+    /// </remarks>
+    internal readonly bool IsFresh => _bytesCompressed == 0 && _bufferLength == 0;
+
+    /// <summary>
+    /// Hashes a complete message in one call.
+    /// </summary>
+    /// <remarks>
+    /// <b>Precondition:</b> <see cref="IsFresh"/>. Knowing the whole length up front lets a full
+    /// final block be compressed where it lies; the streaming path cannot, because it has to hold
+    /// a block back before it knows whether more is coming, and so always copies it.
+    /// </remarks>
+    internal bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (destination.Length < _outputBytes)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        ref byte rinput = ref MemoryMarshal.GetReference(source);
+        uint remaining = (uint)source.Length;
+
+        if (remaining > BlockSizeBytes)
+        {
+            uint cb = (remaining - 1) & ~((uint)BlockSizeBytes - 1);
+            Compress(ref rinput, cb, false);
+            rinput = ref Unsafe.Add(ref rinput, (nint)cb);
+            remaining -= cb;
+        }
+
+        if (remaining == BlockSizeBytes)
+        {
+            Compress(ref rinput, BlockSizeBytes, true);
+        }
+        else
+        {
+            if (remaining != 0)
+            {
+                Unsafe.CopyBlockUnaligned(ref _buffer[0], ref rinput, remaining);
+            }
+
+            Unsafe.InitBlockUnaligned(ref _buffer[remaining], 0, BlockSizeBytes - remaining);
+            Compress(ref _buffer[0], remaining, true);
+        }
+
         ExtractOutput(destination);
 
         bytesWritten = _outputBytes;
@@ -209,12 +270,12 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
                 _bytesCompressed += (ulong)blockSize;
 
 #if NET8_0_OR_GREATER
-                if ((_simdSupport & SimdSupport.Avx2) != 0)
+                if (Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
                 {
                     CompressAvx2(block, state, _bytesCompressed, isFinal);
                 }
 #if EXPERIMENTAL
-                else if ((_simdSupport & SimdSupport.Neon) != 0)
+                else if (AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Neon) != 0)
                 {
                     CompressNeon(block, state, _bytesCompressed, isFinal);
                 }
@@ -256,13 +317,10 @@ internal unsafe partial struct Blake2bState : IIncrementalHash<byte[]>
         {
             BinarySpans.WriteUInt64LittleEndian(state, dst, fullWords);
 
-            // Handle partial final word
             int remainingBytes = _outputBytes % sizeof(UInt64);
             if (remainingBytes > 0)
             {
-                Span<byte> temp = stackalloc byte[sizeof(UInt64)];
-                BinaryPrimitives.WriteUInt64LittleEndian(temp, _state[fullWords]);
-                temp.Slice(0, remainingBytes).CopyTo(destination.Slice(fullWords * sizeof(UInt64)));
+                BinaryStore.WriteUInt64LittleEndianTruncated(state[fullWords], dst + (fullWords * sizeof(UInt64)), remainingBytes);
             }
         }
     }

@@ -130,6 +130,41 @@ catch (TimeoutException)
 }
 ```
 
+### TryWait
+
+```csharp
+public bool TryWait()
+```
+
+Attempts to acquire a permit without waiting.
+
+**Returns**: `true` if a permit was acquired — in which case the caller must `Release()` it exactly once; `false` if no permit was available.
+
+Synchronous and non-throwing by design: unlike `WaitAsync(TimeSpan.Zero)`, a failed attempt never allocates an exception or a faulted `ValueTask` — there is nothing to await in the first place. Use it wherever exhaustion is an expected outcome rather than an exceptional one — a rate limiter, or a bounded queue that reports "busy" instead of throwing.
+
+**Example**:
+
+```csharp
+public bool TryHandle(Request request)
+{
+    if (!_semaphore.TryWait())
+    {
+        return false; // at capacity — shed load
+    }
+
+    try
+    {
+        Process(request);
+    }
+    finally
+    {
+        _semaphore.Release();
+    }
+
+    return true;
+}
+```
+
 ### Allocation Behavior
 
 Immediate acquisitions are completely allocation-free using atomic operations. When the semaphore is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated lock operations.
@@ -159,7 +194,7 @@ TODO: Currently benchmarks are only available on uncontended scenarios to measur
 
 Measures the performance of acquiring and releasing a single permit. In the current published results, ProtoPromise is slightly faster than the pooled implementation on raw uncontended throughput, while the pooled implementation preserves the same `ValueTask`-first design and behavior used across this library.
 
-[View live Single Wait/Release benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncSemaphore&method=WaitRelease)
+[View live Single Wait/Release benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncSemaphore&method=WaitRelease&mode=trend)
 
 ### Benchmark Analysis
 
@@ -194,11 +229,12 @@ Measures the performance of acquiring and releasing a single permit. In the curr
 | ValueTask support | Native | Via WaitAsync |
 | Cancellation | Full support | Full support |
 | Timeout support | Direct `WaitAsync(TimeSpan)` | Via `WaitAsync(int)` / CT |
+| Non-blocking attempt | `TryWait()` — synchronous, never throws | `Wait(0)` — synchronous, or `WaitAsync(0)` |
 | Performance | Optimized | Standard |
 
 ## Best Practices
 
-### ✓ DO: Use `WaitAsync(TimeSpan)` for timed acquisitions
+### Use `WaitAsync(TimeSpan)` for timed acquisitions
 
 ```csharp
 try
@@ -214,6 +250,22 @@ catch (TimeoutException)
 }
 ```
 
+### Use `TryWait()` for opportunistic, load-shedding paths
+
+```csharp
+if (_semaphore.TryWait())
+{
+    try { DoWork(); }
+    finally { _semaphore.Release(); }
+}
+else
+{
+    // No permit — report busy, drop, or fall back
+}
+```
+
+`TryWait()` never waits and never allocates. Prefer it over `WaitAsync(TimeSpan.Zero)` unless the call site already needs a `ValueTask` to compose with — the zero-timeout overload signals a miss by throwing `TimeoutException`.
+
 ## See Also
 
 - [Threading Package Overview](index.md)
@@ -221,8 +273,11 @@ catch (TimeoutException)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

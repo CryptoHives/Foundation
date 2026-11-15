@@ -531,7 +531,8 @@ BLAKE2b and BLAKE2s support built-in keyed hashing mode for message authenticati
 ### Blake2b Keyed Mode
 
 ```csharp
-public static Blake2b Create(byte[]? key = null, int hashSize = 64)
+public static Blake2b CreateKeyed(ReadOnlySpan<byte> key)
+public static Blake2b CreateKeyed(int outputBytes, ReadOnlySpan<byte> key)
 ```
 
 **Properties:**
@@ -544,7 +545,7 @@ public static Blake2b Create(byte[]? key = null, int hashSize = 64)
 byte[] key = new byte[32]; // Up to 64 bytes
 RandomNumberGenerator.Fill(key);
 
-using var blake2b = Blake2b.Create(key: key, hashSize: 32);
+using var blake2b = Blake2b.CreateKeyed(outputBytes: 32, key: key);
 Span<byte> mac = stackalloc byte[32];
 blake2b.TryComputeHash(message, mac, out _);
 ```
@@ -552,7 +553,8 @@ blake2b.TryComputeHash(message, mac, out _);
 ### Blake2s Keyed Mode
 
 ```csharp
-public static Blake2s Create(byte[]? key = null, int hashSize = 32)
+public static Blake2s CreateKeyed(ReadOnlySpan<byte> key)
+public static Blake2s CreateKeyed(int outputBytes, ReadOnlySpan<byte> key)
 ```
 
 **Properties:**
@@ -565,7 +567,7 @@ public static Blake2s Create(byte[]? key = null, int hashSize = 32)
 byte[] key = new byte[16]; // Up to 32 bytes
 RandomNumberGenerator.Fill(key);
 
-using var blake2s = Blake2s.Create(key: key, hashSize: 16);
+using var blake2s = Blake2s.CreateKeyed(outputBytes: 16, key: key);
 Span<byte> mac = stackalloc byte[16];
 blake2s.TryComputeHash(message, mac, out _);
 ```
@@ -608,7 +610,10 @@ blake3Long.TryComputeHash(message, longMac, out _);
 BLAKE3 also supports key derivation from a context string and input key material:
 
 ```csharp
-public static Blake3 CreateDeriveKey(string context, int outputBytes = 32)
+public static Blake3 CreateDeriveKey(string context);
+public static Blake3 CreateDeriveKey(string context, int outputBytes);
+public static Blake3 CreateDeriveKey(ReadOnlySpan<byte> contextUtf8);
+public static Blake3 CreateDeriveKey(ReadOnlySpan<byte> contextUtf8, int outputBytes);
 ```
 
 **Usage:**
@@ -716,13 +721,24 @@ using var encKey = Blake3.CreateDeriveKey("MyApp Encryption Key");
 When verifying MACs, use constant-time comparison to prevent timing attacks:
 
 ```csharp
-using System.Security.Cryptography;
+using CryptoHives.Foundation.Security.Cryptography;
 
 bool VerifyMac(byte[] expected, byte[] actual)
 {
     return CryptographicOperations.FixedTimeEquals(expected, actual);
 }
 ```
+
+`CryptographicOperations` here is **this package's**, not `System.Security.Cryptography`'s. The
+in-box type does not exist below .NET Standard 2.1, so on .NET Framework and netstandard2.0 there is
+no in-box constant-time comparison to reach for; this one works on every target framework. Where
+both exist they behave identically - but importing both namespaces in one file gives `CS0104` on
+the shared type name, so alias one side:
+`using Bcl = System.Security.Cryptography;`.
+
+Never verify a MAC with `SequenceEqual`, `==`, or a loop that returns early. Those stop at the first
+differing byte, so the time they take reveals how many leading bytes were right - which is enough to
+recover the whole tag one byte at a time.
 
 ---
 

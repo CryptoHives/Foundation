@@ -1,60 +1,12 @@
-﻿# ObjectOwner&lt;T&gt; Struct
+# ObjectOwner&lt;T&gt; Struct
 
 A RAII (Resource Acquisition Is Initialization) wrapper for objects obtained from `ObjectPool<T>`.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Pools
-```
-
-## Inheritance
-
-`ValueType` ? **`ObjectOwner<T>`**
-
-## Implements
-
-- `IDisposable`
-
-## Syntax
-
-```csharp
-public readonly struct ObjectOwner<T> : IDisposable where T : class
-```
-
-## Type Parameters
-
-**`T`** - The type of object being pooled. Must be a reference type.
+**Namespace:** `CryptoHives.Foundation.Memory.Pools` · [API reference](xref:CryptoHives.Foundation.Memory.Pools.ObjectOwner%601)
 
 ## Overview
 
-`ObjectOwner<T>` provides automatic return of pooled objects to their pool using the RAII pattern. When disposed, it automatically returns the object to the pool. This struct should be used with the `using` statement to ensure proper disposal.
-
-## ⚠️ Important Warnings
-
-- **This is a struct** - Avoid boxing by not casting to `IDisposable`
-- **Use with `using`** - Always use in a `using` statement or block
-- **Don't store in fields** - Keep in local scope only
-- **Don't copy** - The struct will be copied, causing double-returns to pool
-
-## Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `Object` | `T` | The pooled object obtained from the pool |
-
-## Constructors
-
-| Constructor | Description |
-|-------------|-------------|
-| `ObjectOwner(ObjectPool<T> objectPool)` | Creates an owner by getting an object from the specified pool |
-
-## Methods
-
-```csharp
-public void Dispose()
-```
-Returns the object to the pool. Called automatically when used with `using`.
+The constructor rents an object from the pool, `PooledObject` exposes it, and `Dispose` gives it back. Declare it with `using var` and keep it local: it is a struct, so casting it to `IDisposable` boxes it, and a copy that is also disposed returns the same object to the pool twice.
 
 ## Usage Examples
 
@@ -68,7 +20,7 @@ var pool = new DefaultObjectPool<StringBuilder>(
 );
 
 using var owner = new ObjectOwner<StringBuilder>(pool);
-StringBuilder sb = owner.Object;
+StringBuilder sb = owner.PooledObject;
 
 sb.Append("Hello");
 sb.Append(" World");
@@ -94,7 +46,7 @@ public class StringBuilderPolicy : IPooledObjectPolicy<StringBuilder>
 var pool = new DefaultObjectPool<StringBuilder>(new StringBuilderPolicy());
 
 using var owner = new ObjectOwner<StringBuilder>(pool);
-StringBuilder sb = owner.Object;
+StringBuilder sb = owner.PooledObject;
 // Use sb...
 ```
 
@@ -108,7 +60,7 @@ public List<int> ProcessData(IEnumerable<int> items)
     );
     
     using var owner = new ObjectOwner<List<int>>(pool);
-    List<int> list = owner.Object;
+    List<int> list = owner.PooledObject;
     
     foreach (int item in items)
     {
@@ -128,23 +80,23 @@ public List<int> ProcessData(IEnumerable<int> items)
 
 ## Best Practices
 
-### DO: Use with `using` Statement
+### Use with `using` statement
 
 ```csharp
 using var owner = new ObjectOwner<StringBuilder>(pool);
-StringBuilder sb = owner.Object;
+StringBuilder sb = owner.PooledObject;
 // Use sb...
 // Automatically returned to pool
 ```
 
-### DO: Keep Scope Minimal
+### Keep scope minimal
 
 ```csharp
 string result;
 
 using (var owner = new ObjectOwner<StringBuilder>(pool))
 {
-    StringBuilder sb = owner.Object;
+    StringBuilder sb = owner.PooledObject;
     sb.Append("Data");
     result = sb.ToString();
 } // Pool object returned here
@@ -152,7 +104,7 @@ using (var owner = new ObjectOwner<StringBuilder>(pool))
 return result;
 ```
 
-### ⚠️ DON'T: Store in Fields
+### Don't store in fields
 
 ```csharp
 // Wrong!
@@ -162,25 +114,25 @@ public class BadExample
 }
 ```
 
-### ⚠️ DON'T: Return the Pooled Object
+### Don't return the pooled object
 
 ```csharp
 // Wrong!
 public StringBuilder GetStringBuilder()
 {
     using var owner = new ObjectOwner<StringBuilder>(pool);
-    return owner.Object; // Object will be returned to pool!
+    return owner.PooledObject; // Object will be returned to pool!
 }
 
 // Correct: Return the result
 public string GetString()
 {
     using var owner = new ObjectOwner<StringBuilder>(pool);
-    return owner.Object.ToString();
+    return owner.PooledObject.ToString();
 }
 ```
 
-### ⚠️ DON'T: Box the Struct
+### Don't box the struct
 
 ```csharp
 // Wrong!
@@ -190,7 +142,7 @@ IDisposable disposable = new ObjectOwner<StringBuilder>(pool); // Boxing!
 using var owner = new ObjectOwner<StringBuilder>(pool);
 ```
 
-### ⚠️ DON'T: Copy the Struct
+### Don't copy the struct
 
 ```csharp
 // Wrong!
@@ -211,7 +163,7 @@ using var owner = new ObjectOwner<StringBuilder>(pool);
 public string FormatData(params object[] values)
 {
     using var owner = new ObjectOwner<StringBuilder>(stringBuilderPool);
-    StringBuilder sb = owner.Object;
+    StringBuilder sb = owner.PooledObject;
     
     foreach (var value in values)
     {
@@ -229,7 +181,7 @@ public string FormatData(params object[] values)
 public int[] FilterPositive(int[] values)
 {
     using var owner = new ObjectOwner<List<int>>(listPool);
-    List<int> list = owner.Object;
+    List<int> list = owner.PooledObject;
     
     foreach (int value in values)
     {
@@ -249,7 +201,7 @@ public int[] FilterPositive(int[] values)
 public byte[] ProcessData(byte[] input)
 {
     using var owner = new ObjectOwner<MemoryStream>(streamPool);
-    MemoryStream stream = owner.Object;
+    MemoryStream stream = owner.PooledObject;
     
     stream.Write(input, 0, input.Length);
 
@@ -286,7 +238,7 @@ finally
 
 // With ObjectOwner (safer, cleaner)
 using var owner = new ObjectOwner<T>(pool);
-T obj = owner.Object;
+T obj = owner.PooledObject;
 // Use obj...
 ```
 

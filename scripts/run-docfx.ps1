@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # run-docfx.ps1
 # Compiles DocFX documentation and optionally serves the content
@@ -18,6 +18,12 @@ param(
 
     [Parameter(HelpMessage = "Clean the output directory before building")]
     [switch]$Clean,
+
+    [Parameter(HelpMessage = "Skip regenerating the benchmark trends database before building")]
+    [switch]$SkipTrends,
+
+    [Parameter(HelpMessage = "Path to a checkout of the benchmarks branch. A temporary worktree is used when omitted.")]
+    [string]$BenchmarkArchive,
 
     [Parameter(HelpMessage = "Do not open the browser when serving (only applies with -Serve)")]
     [switch]$NoBrowser,
@@ -80,6 +86,48 @@ if (-not $docfxInstalled) {
     Write-Host ""
 }
 
+# Regenerate the benchmark trends database.
+#
+# The database is a derived artifact built from the run archive on the `benchmarks` branch, not
+# something committed alongside the docs, so a docs build that skips this step publishes a
+# dashboard with no data - or, worse, with whatever data happened to be left over locally.
+if (-not $SkipTrends -and -not $NoBuild) {
+    $trendsScript = Join-Path $scriptPath "build-trends-database.ps1"
+    $trendsDb = Join-Path $docfxPath "packages/threading/benchmark-trends/benchmark-history.sqlite"
+
+    Write-Host "Regenerating benchmark trends database..." -ForegroundColor Green
+    if ($DryRun) {
+        Write-Host "[DRY RUN] Would run: $trendsScript" -ForegroundColor Yellow
+    }
+    else {
+        try {
+            if ($BenchmarkArchive) {
+                & $trendsScript -Archive $BenchmarkArchive
+            }
+            else {
+                & $trendsScript
+            }
+            if ($LASTEXITCODE -ne 0) { throw "build-trends-database.ps1 exited with $LASTEXITCODE." }
+        }
+        catch {
+            # A clone that has never fetched the benchmarks branch can still build the docs; only
+            # the trend charts are affected. Fail only when there is no database at all, since
+            # publishing an empty dashboard silently is the outcome worth preventing.
+            if (Test-Path $trendsDb) {
+                Write-Host "WARNING: could not regenerate the trends database ($($_.Exception.Message))." -ForegroundColor Yellow
+                Write-Host "         Building with the existing one - its numbers may be stale." -ForegroundColor Yellow
+            }
+            else {
+                Write-Host "ERROR: could not build the trends database and none exists." -ForegroundColor Red
+                Write-Host "       Fetch the archive branch first:  git fetch origin benchmarks" -ForegroundColor Red
+                Write-Host "       Or pass -SkipTrends to build the rest of the site without it." -ForegroundColor Red
+                exit 1
+            }
+        }
+    }
+    Write-Host ""
+}
+
 # Clean output directory if requested
 if ($Clean -and (Test-Path $siteOutput)) {
     Write-Host "Cleaning output directory: $siteOutput" -ForegroundColor Yellow
@@ -90,6 +138,19 @@ if ($Clean -and (Test-Path $siteOutput)) {
         Write-Host "[DRY RUN] Would remove: $siteOutput" -ForegroundColor Yellow
     }
     Write-Host ""
+}
+
+# The dashboards' browser libraries are served from the site itself; they are downloaded, not committed.
+if (-not $NoBuild) {
+    $vendorScript = Join-Path $scriptPath "fetch-docfx-vendor.ps1"
+    if ($DryRun) {
+        Write-Host "[DRY RUN] Would run: $vendorScript" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "Fetching dashboard libraries..." -ForegroundColor Green
+        & $vendorScript
+        Write-Host ""
+    }
 }
 
 # Build documentation
@@ -117,6 +178,11 @@ if (-not $NoBuild) {
             exit $exitCode
         }
 
+        # Post-process the built site: strip the sitemap BOM and enforce noindex on
+        # `_noindex: true` pages (robots meta + sitemap removal). Same script the
+        # deploy workflow runs, so local output matches what gets published.
+        & (Join-Path $scriptPath "finalize-docfx-site.ps1") -SiteDir $siteOutput
+
         Write-Host ""
         Write-Host "========================================"
         Write-Host " Documentation built successfully!"
@@ -133,7 +199,11 @@ if ($Serve) {
         exit 1
     }
 
-    $serveArgs = @($docfxJson, "--serve", "--port", $Port)
+    # `docfx <config> --serve` builds *and* serves, so using it here rebuilt everything a second
+    # time after the build above - and ignored -NoBuild entirely. `docfx serve <folder>` only
+    # serves, which is what this step is for.
+    $serveArgs = @("serve", $siteOutput, "--port", $Port)
+    if (-not $NoBrowser) { $serveArgs += "--open-browser" }
 
     $cmdDisplay = "docfx " + ($serveArgs -join " ")
     Write-Host "Command: $cmdDisplay" -ForegroundColor Cyan
@@ -151,13 +221,8 @@ if ($Serve) {
         Write-Host "========================================"
         Write-Host ""
 
-        # Open browser if not disabled
-        if (-not $NoBrowser) {
-            $url = "http://localhost:$Port"
-            Write-Host "Opening browser to $url..." -ForegroundColor Cyan
-            Start-Process $url
-        }
-
+        # --open-browser rather than Start-Process: docfx opens it once the listener is up,
+        # instead of racing the server and landing on a connection error.
         & docfx @serveArgs
     }
 }
@@ -167,7 +232,10 @@ else {
     Write-Host "To view the documentation, run:"
     Write-Host "  .\scripts\run-docfx.ps1 -Serve"
     Write-Host ""
-    Write-Host "Or open the files directly:"
-    Write-Host "  $siteOutput\index.html"
+    # Opening the files directly used to be suggested here. It does not work for the benchmark
+    # trends pages: they fetch a SQLite database over XHR, which browsers block under file://
+    # regardless of what is on disk. Serving over HTTP is the only way those pages have data.
+    Write-Host "Note: the benchmark trends pages need to be served over HTTP - opening" -ForegroundColor DarkGray
+    Write-Host "      $siteOutput\index.html directly leaves their charts empty." -ForegroundColor DarkGray
     Write-Host ""
 }

@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -38,7 +38,7 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA224"/> class.
     /// </summary>
-    public SHA224() : this(SimdSupport.All)
+    public SHA224() : this(SHA256Core.Sha256Default)
     {
     }
 
@@ -48,7 +48,7 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     internal SHA224(SimdSupport simdSupport)
     {
-        _simdSupport = simdSupport & SHA256.SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SHA256.SimdSupport;
         HashSizeValue = HashSizeBits;
     }
 
@@ -139,7 +139,7 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     protected override void ProcessBlock(ReadOnlySpan<byte> block, Span<uint> state)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.ArmSha256) != 0)
+        if (SHA256Core.IsArmSha256Supported && (_simdSupport & SimdSupport.ArmSha256) != 0)
         {
             SHA256Core.ProcessBlockArm(block, state);
             return;
@@ -158,9 +158,6 @@ public sealed class SHA224 : Sha2HashAlgorithm<uint>
     protected override void OutputHash(Span<byte> destination, uint[] state)
     {
         // Output first 7 words (28 bytes) in big-endian
-        for (int i = 0; i < HashSizeBytes / sizeof(UInt32); i++)
-        {
-            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * sizeof(UInt32)), state[i]);
-        }
+        BinarySpans.WriteUInt32BigEndian(state.AsSpan(0, HashSizeBytes / sizeof(UInt32)), destination);
     }
 }

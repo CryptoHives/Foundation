@@ -1,5 +1,5 @@
-<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
-<!-- SPDX-License-Identifier: MIT -->
+﻿<!-- SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -8,18 +8,46 @@
     <TargetFrameworks>$(TestsTargetFrameworks)</TargetFrameworks>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
+    <!-- BinaryLoadTests drives the byte* overloads of BinaryLoad directly. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- CS0618: Using obsolete SHA1Managed for testing -->
     <NoWarn>$(NoWarn);CS0618</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    Mirrors the opt-in in Cryptography.csproj. A reviewer building with
+    /p:EnableObsoleteSecretAsStringApi=true gets the dropped members compiled back in, so the three
+    tests that assert those members are absent have to compile out for that build alone.
+  -->
+  <PropertyGroup Condition="'$(EnableObsoleteSecretAsStringApi)' == 'true'">
+    <DefineConstants>$(DefineConstants);OBSOLETE_SECRET_AS_STRING_API</DefineConstants>
+  </PropertyGroup>
+
+  <!-- The library is built for netstandard while the tests run on net8.0, so NET8_0_OR_GREATER-only library types are absent. -->
+  <PropertyGroup Condition="'$(CustomTestTarget)' == 'netstandard2.0' Or '$(CustomTestTarget)' == 'netstandard2.1'">
+    <DefineConstants>$(DefineConstants);LIB_NETSTANDARD</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="BouncyCastle.Cryptography" />
-    <PackageReference Include="HashifyNET" />
     <PackageReference Include="NaCl.Core" />
     <PackageReference Include="OpenGost.Security.Cryptography" />
     <PackageReference Include="SauceControl.Blake2Fast" />
   </ItemGroup>
+
+  <!--
+    /p:MonoRuntimeTests=true (the Mono runtime workflow) leaves out reference libraries that do not run
+    on Mono: HashifyNET fails in its own initialization on ppc64le, and "Blake3"/"Blake3.Native" wrap
+    a native library with no binary for linux-s390x, linux-ppc64le or browser-wasm.
+  -->
+  <ItemGroup Condition="'$(MonoRuntimeTests)' != 'true'">
+    <PackageReference Include="HashifyNET" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(MonoRuntimeTests)' != 'true'">
+    <DefineConstants>$(DefineConstants);HASHIFYNET</DefineConstants>
+  </PropertyGroup>
 
   <!-- Konscious.Security.Cryptography.Blake2 is not strong name signed -->
   <ItemGroup Condition="'$(SignAssembly)' != 'true'">
@@ -35,15 +63,42 @@
     <PackageReference Include="IndexRange" ExcludeAssets="all" PrivateAssets="all" />
   </ItemGroup>
 
+  <!--
+    System.Text.Json is in-box from net8.0 onward and a package only on the older test legs, where
+    the ACVP vector loaders use it to read the NIST JSON.
+  -->
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+
   <!-- Blake3 NuGet packages that only support .NET 8+ and which are not strong name signed. -->
-  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true' AND '$(MonoRuntimeTests)' != 'true'">
     <PackageReference Include="Blake3" Aliases="Blake3Managed" />
     <PackageReference Include="Blake3.Native" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true' AND '$(MonoRuntimeTests)' != 'true'">
+    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
     <PackageReference Include="Blake3.Managed" />
   </ItemGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
-    <DefineConstants>$(DefineConstants);BLAKE3_NATIVE;BLAKE3_MANAGED;BLAKE3_DISSIMILIS</DefineConstants>
+    <DefineConstants>$(DefineConstants);BLAKE3_DISSIMILIS</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    KyberNET is an independent pure-managed ML-KEM implementation, used as a benchmark
+    competitor. It targets netstandard2.1/net10.0, so it is unavailable on the net48 leg.
+  -->
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
+    <PackageReference Include="KyberNET" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0')) AND '$(SignAssembly)' != 'true'">
+    <DefineConstants>$(DefineConstants);KYBERNET</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
@@ -54,6 +109,8 @@
     <Compile Include="../../Common/AssemblyInfo.cs" Link="Properties/AssemblyInfo.cs" />
     <Compile Include="../../Common/Main.cs" />
     <Compile Include="../../Common/Common.cs" />
+    <Compile Include="../../Common/FixtureParallelismTests.cs" />
+    <Compile Include="../../Common/ShortNameMarkdownExporter.cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' != 'true'">
@@ -62,6 +119,72 @@
   
   <ItemGroup Condition="'$(UsePackedNuGetPackages)' == 'true'">
     <PackageReference Include="CryptoHives.Foundation.Security.Cryptography$(_NuGetPackageSuffix)" />
+  </ItemGroup>
+
+  <!--
+    NIST ACVP conformance vectors for ML-KEM (FIPS 203), stored in NIST's own ACVP JSON schema.
+    Embedded rather than inlined as C# literals: ML-KEM-1024 alone carries ~9.6 KB of hex per key
+    generation case. Gzipped because the JSON is ~2 MB; MLKemAcvpVectors decompresses and parses
+    it on load. Nothing is filtered — every ML-KEM group has an implementation.
+    Regenerate with scripts/fetch-mlkem-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mlkem-acvp-fips203.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mlkem-acvp-fips203.json.gz" />
+  </ItemGroup>
+
+  <!--
+    NIST ACVP conformance vectors for ML-DSA (FIPS 204), on the same terms. Larger than the
+    ML-KEM set because ACVP messages run to several KB each and ML-DSA-87 signatures are 4.6 KB;
+    ~4.4 MB of JSON gzipped to ~2.5 MB. Only the external-interface pure ML-DSA groups are kept —
+    pre-hash, internal-interface and external-mu have no implementation to test yet.
+    Regenerate with scripts/fetch-mldsa-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mldsa-acvp-fips204.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mldsa-acvp-fips204.json.gz" />
+  </ItemGroup>
+
+  <!--
+    NIST ACVP conformance vectors for SLH-DSA (FIPS 205). Same filter as ML-DSA, but the same
+    filter is not enough here: SLH-DSA signatures run from 7.8 KB to 48.7 KB, so the runnable
+    set is 11.8 MB gzipped. What ships is a stratified 180-case selection (~2.15 MB) that still
+    covers every parameter set. The complete 456-case file is fetched on demand: run
+    scripts/fetch-slhdsa-acvp-vectors.py with the 'full' profile, and SlhDsaAcvpVectors prefers
+    it when present. Regenerate with scripts/fetch-slhdsa-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/slhdsa-acvp-fips205.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.slhdsa-acvp-fips205.json.gz" />
+  </ItemGroup>
+
+  <!--
+    NIST ACVP conformance vectors for the pre-hash variants, HashML-DSA (FIPS 204 section 5.4)
+    and HashSLH-DSA (FIPS 205 section 10.2). Separate files rather than extra groups in the two
+    above: the selection rule differs, and merging would rewrite those already-committed
+    multi-megabyte blobs on every regeneration. Both are stratified so that all twelve approved
+    pre-hash functions and every parameter set are covered - 57 cases (~0.88 MB) for ML-DSA and
+    37 (~1.38 MB) for SLH-DSA. The complete sets, 135 and 456 cases, are fetched on demand with
+    the 'prehash-full' profile, which the loaders prefer when present. Regenerate with
+    scripts/fetch-mldsa-acvp-vectors.py and scripts/fetch-slhdsa-acvp-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mldsa-prehash-acvp-fips204.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mldsa-prehash-acvp-fips204.json.gz" />
+    <EmbeddedResource Include="TestData/slhdsa-prehash-acvp-fips205.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.slhdsa-prehash-acvp-fips205.json.gz" />
+  </ItemGroup>
+
+  <!--
+    Kuznyechik-MGM and Magma-MGM (RFC 9058) vectors. No .NET library implements MGM, so these
+    come from an independent Python MGM that must reproduce the RFC 9058 examples first.
+    Regenerate with scripts/generate-mgm-vectors.py.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="TestData/mgm-kuznyechik.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mgm-kuznyechik.json.gz" />
+    <EmbeddedResource Include="TestData/mgm-magma.json.gz"
+                      LogicalName="Cryptography.Tests.TestData.mgm-magma.json.gz" />
   </ItemGroup>
 
   <ItemGroup>

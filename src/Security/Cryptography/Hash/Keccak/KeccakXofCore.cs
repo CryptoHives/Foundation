@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -28,7 +28,7 @@ public abstract class KeccakXofCore : KeccakCore, IExtendableOutput
     /// <param name="domainSeparator">The domain separation byte for this variant.</param>
     /// <param name="startRound">The starting round for the sponge construction. 12 for some implementations, 0 otherwise.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    internal KeccakXofCore(int rateBytes, int outputBytes, byte domainSeparator, int startRound = 0, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+    internal KeccakXofCore(int rateBytes, int outputBytes, byte domainSeparator, int startRound = 0, SimdSupport simdSupport = KeccakDefault)
         : base(rateBytes, startRound, simdSupport)
     {
         _outputBytes = outputBytes;

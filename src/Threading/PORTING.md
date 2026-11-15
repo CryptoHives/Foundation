@@ -18,7 +18,7 @@ Use these when an `await` must happen inside a critical section, or to remove
 
 | Existing code | Replace with | Caveat |
 |---|---|---|
-| `lock (obj) { … }` around code that needs to `await` | `AsyncLock` + `using (await l.LockAsync())` | **Not reentrant.** Pure-sync `lock` blocks stay `lock`. |
+| `lock (obj) { … }` around code that needs to `await` | `AsyncLock` + `using (await l.LockAsync())` | **Not reentrant.** Pure-sync `lock` blocks stay `lock`. If the code re-enters the lock from a nested call, see below. |
 | `SemaphoreSlim(1, 1)` as a mutex | `AsyncLock` | Analyzer flags this (CHT009). |
 | `SemaphoreSlim(n, …)` for concurrency limiting | `AsyncSemaphore(n)` | No bool-returning `WaitAsync(timeout)` — see below. |
 | `ManualResetEventSlim` / TCS gate awaited async | `AsyncManualResetEvent` | |
@@ -26,7 +26,16 @@ Use these when an `await` must happen inside a critical section, or to remove
 | `CountdownEvent` (async) | `AsyncCountdownEvent` | |
 | `Barrier` (async) | `AsyncBarrier` | |
 | `ReaderWriterLockSlim` (async) | `AsyncReaderWriterLock` | |
-| `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, single-key `AsyncKeyedLock` | `AsyncLock` | Verify no reentrancy. |
+| `Monitor.Wait` / `Monitor.Pulse` (async) | `AsyncConditionVariable` | Pairs with an `AsyncLock`. Signals are not stored — re-check the predicate in a loop. |
+| Java's `Exchanger<V>` (no BCL equivalent) | `AsyncExchange<T>` | Two-party rendezvous, no buffering. `TryExchange` for a non-blocking attempt. |
+| `Dictionary<TKey, SemaphoreSlim>` / one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other. Not reentrant. |
+| `AsyncKeyedLock` (third-party), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | |
+| `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify no reentrancy. |
+| `lock` / `Monitor` that a nested call re-enters, once async | `AsyncReentrantLock` | Experimental: suppress `CHTEXP001` to use it. Never wrap `LockAsync` in an `async` method; return its `ValueTask` directly. |
+| `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | Replace the explicit `Release()` with disposing the `Releaser`. |
+| `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern. |
+| `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | Same-named type | |
+| `DotNext.Threading.AsyncExchanger<T>` | `AsyncExchange<T>` | |
 
 ---
 
@@ -38,8 +47,21 @@ sealed class AsyncLock {
     AsyncLock();
     ValueTask<Releaser> LockAsync(CancellationToken cancellationToken = default);
     ValueTask<Releaser> LockAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryLock(out Releaser releaser);   // never waits, never allocates; on false, never dispose the default releaser
     bool IsTaken { get; }
     readonly struct Releaser : IDisposable, IAsyncDisposable; // Dispose() releases the lock
+}
+
+// AsyncKeyedLock<TKey> — per-key exclusion, NOT reentrant. Distinct keys run in parallel.
+sealed class AsyncKeyedLock<TKey> where TKey : notnull {
+    AsyncKeyedLock(IEqualityComparer<TKey>? comparer = null, …, int maxIdleEntries = 128,
+                   int maxRetainedWaiters = 128);
+    ValueTask<Releaser> LockAsync(TKey key, CancellationToken cancellationToken = default);
+    ValueTask<Releaser> LockAsync(TKey key, TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryLock(TKey key, out Releaser releaser);   // never waits, never allocates
+    bool IsInUse(TKey key);                          // best-effort diagnostic
+    int  Count { get; }                              // keys currently held or awaited
+    readonly struct Releaser : IDisposable, IAsyncDisposable; // Dispose() releases that key
 }
 
 // AsyncSemaphore
@@ -47,17 +69,63 @@ sealed class AsyncSemaphore {
     AsyncSemaphore(int initialCount, bool runContinuationAsynchronously = true, …);
     ValueTask WaitAsync(CancellationToken cancellationToken = default);
     ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryWait();     // takes a permit only if one is free right now; never waits, never allocates
     void Release();
     void Release(int releaseCount);
     int CurrentCount { get; }
 }
 
 // AsyncManualResetEvent / AsyncAutoResetEvent
-new AsyncManualResetEvent(initialState: false);  // Set() releases ALL waiters, stays set until Reset()
+new AsyncManualResetEvent(set: false);           // Set() releases ALL waiters, stays set until Reset()
 new AsyncAutoResetEvent(initialState: false);    // Set() releases ONE waiter, auto-resets
-//   .Set(); .Reset(); ValueTask WaitAsync(CancellationToken); ValueTask WaitAsync(TimeSpan, CancellationToken);
+//   both: .Set(); bool IsSet; ValueTask WaitAsync(CancellationToken); ValueTask WaitAsync(TimeSpan, CancellationToken);
+//   AsyncManualResetEvent only: .Reset();   AsyncAutoResetEvent only: .PulseAll() (releases every current waiter)
+//   bool TryWait();    // AsyncManualResetEvent/AsyncCountdownEvent: non-consuming alias of IsSet
+//                      // AsyncAutoResetEvent: CONSUMES the signal, like a completed WaitAsync()
+//   bool TryReset();   // every primitive: IResettable, for returning an idle instance to a pool —
+//                      // declines (false) while waiters are queued. Not a "reset if set".
+
+// AsyncCountdownEvent
+sealed class AsyncCountdownEvent {
+    AsyncCountdownEvent(int initialCount, bool runContinuationAsynchronously = true, …);
+    ValueTask WaitAsync(CancellationToken cancellationToken = default);
+    ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryWait();               // non-consuming alias of IsSet; never waits, never allocates
+    void Signal(); void Signal(int signalCount);
+    ValueTask SignalAndWaitAsync(CancellationToken cancellationToken = default);
+    void AddCount(); void AddCount(int signalCount);
+    bool TryAddCount(int signalCount = 1);
+    void Reset(int count = 0);
+    bool IsSet { get; }
+    int CurrentCount { get; }
+}
 
 // AsyncReaderWriterLock — using (await rw.ReaderLockAsync(ct)) / (await rw.WriterLockAsync(ct))
+//   bool TryReaderLock(out Releaser releaser);
+//   bool TryUpgradeableReaderLock(out Releaser releaser);
+//   bool TryWriterLock(out Releaser releaser);
+//   Releaser.TryUpgradeToWriterLock(out Releaser releaser);   // on the upgradeable-reader Releaser
+// All four probe synchronously — never wait, never allocate — and return false on contention
+// rather than throwing. A failed probe hands back `default`; never dispose it.
+
+// AsyncConditionVariable — must pair with an AsyncLock the caller already holds.
+sealed class AsyncConditionVariable {
+    AsyncConditionVariable(bool runContinuationAsynchronously = true, …);
+    ValueTask WaitAsync(AsyncLock asyncLock, CancellationToken cancellationToken = default);
+    ValueTask WaitAsync(AsyncLock asyncLock, TimeSpan timeout, CancellationToken cancellationToken = default);
+    void Signal();      // wakes one waiter; lost if none is waiting
+    void SignalAll();   // wakes every waiter; lost if none is waiting
+    int WaiterCount { get; }
+}
+
+// AsyncExchange<T> — two-party rendezvous (async counterpart of Java's Exchanger<V>).
+sealed class AsyncExchange<T> {
+    AsyncExchange(bool runContinuationAsynchronously = true, …);
+    ValueTask<T> ExchangeAsync(T value, CancellationToken cancellationToken = default);
+    ValueTask<T> ExchangeAsync(T value, TimeSpan timeout, CancellationToken cancellationToken = default);
+    bool TryExchange(T value, out T result);   // never waits, never allocates
+    bool HasWaiter { get; }
+}
 ```
 
 `timeout` overloads throw `TimeoutException` when the time elapses (`TimeSpan.Zero` throws
@@ -93,18 +161,21 @@ public async Task FetchAsync(CancellationToken ct)
 ## Hard rules (the `ValueTask` contract — enforced by the analyzer)
 
 1. **Await each returned `ValueTask` exactly once.** A second `await` or `AsTask()` throws
-   `InvalidOperationException` (CHT001/CHT004).
+   `InvalidOperationException` (CHT001).
 2. **Never store a `ValueTask` in a field** (CHT003) or **capture it in a lambda/closure**
    (CHT010). Await it locally.
 3. **Never block on it**: no `.Result` (CHT005), no `.GetAwaiter().GetResult()` (CHT002).
-4. **Never pass it to `Task.WhenAll`/`WhenAny`** (CHT006) — call `.AsTask()` once first, or
-   restructure.
+4. **Never pass it to `Task.WhenAll`/`WhenAny`** — call `.AsTask()` once first, or restructure.
+   The compiler enforces this on its own, since those methods take `Task`.
 5. **Always await or discard** every returned `ValueTask`/`Releaser` (CHT008), otherwise the
    pooled source never returns to the pool.
 6. **`AsyncLock` is not reentrant** — re-acquiring on the same call stack deadlocks. If the
-   source lock was reentrant, do **not** port it; flag it for human review.
+   source lock was reentrant, first try narrowing the locked region so nothing nested re-enters it.
+   If that is not possible, use `AsyncReentrantLock` (experimental, `CHTEXP001`) and flag it for human review.
 7. There is **no** `SemaphoreSlim`-style `bool WaitAsync(timeout)`. Rewrite
-   `if (await sem.WaitAsync(timeout))` to try/catch `TimeoutException` or use a token.
+   `if (await sem.WaitAsync(timeout))` to try/catch `TimeoutException` or use a token — except
+   the `timeout == 0` / `Wait(0)` case, which is a non-blocking probe: use the primitive's
+   `Try*` method instead (`TryWait`, `TryReaderLock`, `TryWriterLock`, …), not a caught exception.
 
 ---
 
@@ -112,7 +183,7 @@ public async Task FetchAsync(CancellationToken ct)
 
 1. Add `CryptoHives.Foundation.Threading` and the `…Threading.Analyzers` package.
 2. Swap primitives per the table above; keep the `using`-based release pattern.
-3. Build and drive every `CHT001`–`CHT010` diagnostic to zero (do not suppress without human
+3. Build and drive every `CHT001`–`CHT012` diagnostic to zero (do not suppress without human
    approval). Run existing tests.
 4. Report: `file:line` → old type → new type; plus any reentrant locks / bool-timeout waits
    left unported for human review.

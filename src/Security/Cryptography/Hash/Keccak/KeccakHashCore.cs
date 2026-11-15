@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -25,7 +25,7 @@ public abstract class KeccakHashCore : KeccakCore
     /// <param name="outputBytes">The output size of the hash in bytes for this variant.</param>
     /// <param name="domainSeparator">The domain separation byte for this variant.</param>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
-    internal KeccakHashCore(int rateBytes, int outputBytes, byte domainSeparator, SimdSupport simdSupport = SimdSupport.KeccakDefault)
+    internal KeccakHashCore(int rateBytes, int outputBytes, byte domainSeparator, SimdSupport simdSupport = KeccakDefault)
         : base(rateBytes, simdSupport)
     {
         _outputBytes = outputBytes;

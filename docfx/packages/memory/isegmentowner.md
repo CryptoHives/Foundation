@@ -10,25 +10,7 @@ losing the ownership of the underlying pooled buffer.
 Due to the simple conversion to `Span<T>` and `Memory<T>`, 
 it is easy to use in the hot path of the code.
 
-## Namespace
-
-```csharp
-CryptoHives.Foundation.Memory.Buffers
-```
-
-## Inheritance
-
-`IDisposable` → **`ISegmentOwner<T>`**
-
-## Syntax
-
-```csharp
-public interface ISegmentOwner<T> : IDisposable
-```
-
-## Type Parameters
-
-**`T`** — The element type of the segment.
+**Namespace:** `CryptoHives.Foundation.Memory.Buffers` · [API reference](xref:CryptoHives.Foundation.Memory.Buffers.ISegmentOwner%601)
 
 ## Overview
 
@@ -129,5 +111,4 @@ Instances are **not thread-safe**. The intended pattern is single-owner, short-l
 ---
 
 © 2026 The Keepers of the CryptoHives
-
 

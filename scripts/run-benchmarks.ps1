@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-# SPDX-License-Identifier: MIT
+﻿# SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
+# SPDX-License-Identifier: MIT OR Apache-2.0
 
 # run-benchmarks.ps1
 # Runs BenchmarkDotNet benchmarks for the Threading or Cryptography libraries
@@ -49,26 +49,38 @@ param(
         # Cipher algorithms (individual)
         "AesGcm128", "AesGcm192", "AesGcm256",
         "AesCcm128", "AesCcm256",
+        "AesGcmSiv128", "AesGcmSiv256",
         "AesCbc128", "AesCbc256",
         "ChaCha20",
         "ChaCha20Poly1305", "XChaCha20Poly1305",
         # Regional cipher algorithms (individual)
-        "Sm4Cbc", "AriaCbc128", "AriaCbc256",
+        "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256",
         "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256",
-        "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256",
+        "KuznyechikCbc", "MagmaCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512",
         "SeedCbc",
+        # GCM, CCM and MGM over the regional ciphers (individual)
+        "Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256",
+        "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm", "KuznyechikMgm", "MagmaMgm",
+        # AEAD and key wrapping (individual)
+        "AsconAead128", "AesKeyWrap",
         # MAC algorithms (individual)
         "HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512",
         "HmacSha3_256", "HmacSha3_384", "HmacSha3_512",
         "AesCmac", "AesGmac", "Poly1305",
+        # Post-quantum KEM (individual)
+        "MLKem", "MLKemKeyGen", "MLKemOps", "MLKemInternals",
+        # Post-quantum signatures (individual)
+        "MLDsa", "MLDsaKeyGen", "MLDsaOps",
+        "SlhDsa", "SlhDsaKeyGen", "SlhDsaOps",
         # Group aliases (run multiple benchmarks)
         "SHA2", "SHA3", "Keccak", "KeccakCore", "SHAKE", "cSHAKE", "KT", "TurboSHAKE",
         "BLAKE2", "BLAKE2b", "BLAKE2s", "BLAKE",
         "Legacy", "RegionalHash", "Kupyna", "LSH", "Ascon", "ParallelHash", "KMAC",
         "XOF", "KeccakXOF", "BlakeXOF", "MacXOF", "AsconXOF",
-        "AES-GCM", "AES-CCM", "AES-CBC", "ChaCha",
-        "RegionalCipher", "SimdArm",
+        "AES-GCM", "AES-CCM", "AES-GCM-SIV", "AES-CBC", "ChaCha",
+        "RegionalCipher", "RegionalAEAD", "SimdArm",
         "Cipher", "AEAD", "HMAC", "MAC",
+        "KEM", "DSA",
         "All"
     )]
     [string]$Family,
@@ -105,7 +117,32 @@ param(
     [int]$TimeoutMinutes = 0,
 
     [Parameter(HelpMessage = "Shutdown dotnet build servers after run to avoid lingering MSBuild node-reuse processes")]
-    [switch]$ShutdownBuildServers
+    [switch]$ShutdownBuildServers,
+
+    # Deliberately not [ValidateSet]: pwsh -File (which the .cmd wrapper uses)
+    # passes arguments as literal strings, so "AVX512,AVX2" arrives as one token and
+    # ValidateSet rejects it. Split and validated below instead; the completer keeps
+    # tab-completion working.
+    [Parameter(HelpMessage = "Mask CoreCLR instruction-set support so a narrower target can be measured on this host (e.g. -DisableIsa AVX512 or -DisableIsa AVX512,AVX2)")]
+    [ArgumentCompleter({
+        param($commandName, $parameterName, $wordToComplete)
+        @("AVX512", "AVX2", "SSE42", "SSSE3", "AES", "AdvSimd") | Where-Object { $_ -like "$wordToComplete*" }
+    })]
+    [string[]]$DisableIsa,
+
+    # Deliberately [string[]], not [int[]]: under pwsh -File the list arrives as the single
+    # token "4,6", and PowerShell converts a string to int with NumberStyles.Any - which
+    # allows thousands separators, so "4,6" silently becomes 46 and "1,0" becomes 10.
+    # Parsed strictly below so a comma list cannot turn into the wrong core.
+    [Parameter(HelpMessage = "Pin the benchmark process to these logical CPUs (0-based, comma-separated, e.g. -PinToCore 4,6). Windows/Linux only; ignored on macOS")]
+    [string[]]$PinToCore,
+
+    [Parameter(HelpMessage = "Power plan for the run: UserPowerPlan (keep the active one), Balanced, PowerSaver, HighPerformance, UltimatePerformance, or a plan GUID. Windows only")]
+    [string]$PowerPlan,
+
+    [Parameter(HelpMessage = "Seconds to idle before each benchmark case (after the first) so the CPU can cool down between cases")]
+    [ValidateRange(0, 3600)]
+    [int]$CooldownSeconds = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -134,6 +171,10 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
     Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
     Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
+    Write-Host "   - DisableIsa — AVX512 | AVX2 | SSE42 | SSSE3 | AES | AdvSimd (comma list) — none  "
+    Write-Host "   - PinToCore — one or more 0-based logical CPUs (e.g. 4 or 4,6) — none (unpinned)  "
+    Write-Host "   - PowerPlan — UserPowerPlan | Balanced | PowerSaver | HighPerformance | UltimatePerformance | GUID — none (BDN forces HighPerformance)  "
+    Write-Host "   - CooldownSeconds — int (0..3600), idle time before each benchmark case after the first — 0 (none)  "
     Write-Host ""
     exit 0
 }
@@ -228,6 +269,9 @@ $AlgorithmBenchmarkMap = @{
     # Ciphers - AES-CCM
     "AesCcm128"         = "AesCcm128"
     "AesCcm256"         = "AesCcm256"
+    # Ciphers - AES-GCM-SIV
+    "AesGcmSiv128"      = "AesGcmSiv128"
+    "AesGcmSiv256"      = "AesGcmSiv256"
     # Ciphers - AES-CBC
     "AesCbc128"         = "AesCbc128"
     "AesCbc256"         = "AesCbc256"
@@ -238,14 +282,35 @@ $AlgorithmBenchmarkMap = @{
     # Ciphers - Regional
     "Sm4Cbc"            = "Sm4Cbc"
     "AriaCbc128"        = "AriaCbc128"
+    "AriaCbc192"        = "AriaCbc192"
     "AriaCbc256"        = "AriaCbc256"
     "CamelliaCbc128"    = "CamelliaCbc128"
     "CamelliaCbc192"    = "CamelliaCbc192"
     "CamelliaCbc256"    = "CamelliaCbc256"
     "KuznyechikCbc"     = "KuznyechikCbc"
+    "MagmaCbc"          = "MagmaCbc"
     "KalynaCbc128"      = "KalynaCbc128"
     "KalynaCbc256"      = "KalynaCbc256"
+    "KalynaCbc512"      = "KalynaCbc512"
     "SeedCbc"           = "SeedCbc"
+    # Ciphers - GCM, CCM and MGM over the regional ciphers
+    "Sm4Gcm"            = "Sm4Gcm"
+    "Sm4Ccm"            = "Sm4Ccm"
+    "AriaGcm128"        = "AriaGcm128"
+    "AriaGcm256"        = "AriaGcm256"
+    "AriaCcm128"        = "AriaCcm128"
+    "AriaCcm256"        = "AriaCcm256"
+    "CamelliaGcm128"    = "CamelliaGcm128"
+    "CamelliaGcm256"    = "CamelliaGcm256"
+    "CamelliaCcm128"    = "CamelliaCcm128"
+    "CamelliaCcm256"    = "CamelliaCcm256"
+    "SeedGcm"           = "SeedGcm"
+    "KuznyechikGcm"     = "KuznyechikGcm"
+    "KuznyechikMgm"     = "KuznyechikMgm"
+    "MagmaMgm"          = "MagmaMgm"
+    # Ciphers - AEAD and key wrapping
+    "AsconAead128"      = "AsconAead128"
+    "AesKeyWrap"        = "AesKeyWrap"
     # MAC - HMAC
     "HmacMd5"           = "HmacMd5"
     "HmacSha1"          = "HmacSha1"
@@ -259,6 +324,20 @@ $AlgorithmBenchmarkMap = @{
     "AesCmac"           = "AesCmac"
     "AesGmac"           = "AesGmac"
     "Poly1305"          = "Mac.Poly1305Benchmark"
+    # Post-quantum KEM. Namespace-qualified so the three classes stay distinct: the filters
+    # below match one class each and never overlap.
+    "MLKemOps"          = "Kem.MLKemBenchmark"
+    "MLKemKeyGen"       = "Kem.MLKemKeyGenBenchmark"
+    "MLKemInternals"    = "Kem.MLKemInternalsBenchmark"
+    # Post-quantum signatures. Namespace-qualified for the same reason as the KEM entries above.
+    # There is no MLDsaInternals or SlhDsaInternals: neither scheme has a counterpart to
+    # MLKemInternalsBenchmark yet.
+    "MLDsaOps"          = "Dsa.MLDsaBenchmark"
+    "MLDsaKeyGen"       = "Dsa.MLDsaKeyGenBenchmark"
+    # SLH-DSA runs the six 'f' parameter sets only; the 's' sets are marked
+    # ExcludeFromBenchmark in DsaAlgorithmRegistry, because signing with one takes seconds.
+    "SlhDsaOps"         = "Dsa.SlhDsaBenchmark"
+    "SlhDsaKeyGen"      = "Dsa.SlhDsaKeyGenBenchmark"
     # Group Aliases
     "All"               = "Hash"
 }
@@ -291,19 +370,28 @@ $GroupAliases = @{
     "AsconXOF"       = @("AsconXof128Xof")
     "AES-GCM"        = @("AesGcm128", "AesGcm192", "AesGcm256")
     "AES-CCM"        = @("AesCcm128", "AesCcm256")
+    "AES-GCM-SIV"    = @("AesGcmSiv128", "AesGcmSiv256")
     "AES-CBC"        = @("AesCbc128", "AesCbc256")
     "ChaCha"         = @("ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
-    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "ChaCha20Poly1305", "XChaCha20Poly1305")
-    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "Sm4Cbc", "AriaCbc128", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "KalynaCbc128", "KalynaCbc256", "SeedCbc")
-    "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
+    "RegionalCipher" = @("Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "MagmaCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc")
+    "RegionalAEAD"   = @("Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm", "KuznyechikMgm", "MagmaMgm")
+    "AEAD"           = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm", "KuznyechikMgm", "MagmaMgm")
+    "Cipher"         = @("AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "AesCbc128", "AesCbc256", "AesKeyWrap", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305", "AsconAead128", "Sm4Cbc", "AriaCbc128", "AriaCbc192", "AriaCbc256", "CamelliaCbc128", "CamelliaCbc192", "CamelliaCbc256", "KuznyechikCbc", "MagmaCbc", "KalynaCbc128", "KalynaCbc256", "KalynaCbc512", "SeedCbc", "Sm4Gcm", "Sm4Ccm", "AriaGcm128", "AriaGcm256", "AriaCcm128", "AriaCcm256", "CamelliaGcm128", "CamelliaGcm256", "CamelliaCcm128", "CamelliaCcm256", "SeedGcm", "KuznyechikGcm", "KuznyechikMgm", "MagmaMgm")
+    "SimdArm"        = @("SHA256", "Blake2b256", "Blake2b512", "Blake2s128", "Blake2s256", "Blake3", "AesGcm128", "AesGcm192", "AesGcm256", "AesCcm128", "AesCcm256", "AesGcmSiv128", "AesGcmSiv256", "AesCbc128", "AesCbc256", "ChaCha20", "ChaCha20Poly1305", "XChaCha20Poly1305")
     "HMAC"           = @("HmacMd5", "HmacSha1", "HmacSha256", "HmacSha384", "HmacSha512", "HmacSha3_256", "HmacSha3_384", "HmacSha3_512")
+    "MLKem"          = @("MLKemKeyGen", "MLKemOps")
+    "KEM"            = @("MLKemKeyGen", "MLKemOps", "MLKemInternals")
+    # 'MLDsa' and 'SlhDsa' are the algorithms, 'DSA' the category that runs both. Keeping them
+    # separate is what let SLH-DSA join 'DSA' without changing what '-Family MLDsa' runs.
+    "MLDsa"          = @("MLDsaKeyGen", "MLDsaOps")
+    "SlhDsa"         = @("SlhDsaKeyGen", "SlhDsaOps")
+    "DSA"            = @("MLDsaKeyGen", "MLDsaOps", "SlhDsaKeyGen", "SlhDsaOps")
 }
 
 $GroupAliases["MAC"] = $GroupAliases["HMAC"] + @("AesCmac", "AesGmac", "Poly1305")
 
-# 'All' should run all hash, cipher, and MAC benchmarks (convenience alias)
-$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["ParallelHash"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"] + $GroupAliases["Cipher"] + $GroupAliases["MAC"]
+# 'All' should run all hash, cipher, MAC, KEM and signature benchmarks (convenience alias)
+$GroupAliases["All"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["ParallelHash"] + $GroupAliases["KMAC"] + $GroupAliases["XOF"] + $GroupAliases["KeccakXOF"] + $GroupAliases["BlakeXOF"] + $GroupAliases["MacXOF"] + $GroupAliases["AsconXOF"] + $GroupAliases["Cipher"] + $GroupAliases["MAC"] + $GroupAliases["KEM"] + $GroupAliases["DSA"]
 
 # 'Hash' alias groups the common hash families (excluding XOF-specific families)
 $GroupAliases["Hash"] = $GroupAliases["SHA2"] + $GroupAliases["SHA3"] + $GroupAliases["Keccak"] + $GroupAliases["SHAKE"] + $GroupAliases["cSHAKE"] + $GroupAliases["KT"] + $GroupAliases["TurboSHAKE"] + $GroupAliases["BLAKE2"] + $GroupAliases["BLAKE2b"] + $GroupAliases["BLAKE2s"] + $GroupAliases["BLAKE"] + $GroupAliases["Legacy"] + $GroupAliases["RegionalHash"] + $GroupAliases["Kupyna"] + $GroupAliases["LSH"] + $GroupAliases["Ascon"] + $GroupAliases["ParallelHash"] + $GroupAliases["KMAC"]
@@ -412,10 +500,15 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host ""
     Write-Host "  AES-GCM:       -Family AesGcm128, AesGcm192, AesGcm256"
     Write-Host "  AES-CCM:       -Family AesCcm128, AesCcm256"
+    Write-Host "  AES-GCM-SIV:   -Family AesGcmSiv128, AesGcmSiv256"
     Write-Host "  AES-CBC:       -Family AesCbc128, AesCbc256"
+    Write-Host "  AES-KeyWrap:   -Family AesKeyWrap"
     Write-Host "  ChaCha:        -Family ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
-    Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
-    Write-Host "                          KuznyechikCbc, KalynaCbc128, KalynaCbc256, SeedCbc"
+    Write-Host "  Ascon-AEAD:    -Family AsconAead128"
+    Write-Host "  Regional:      -Family Sm4Cbc, AriaCbc128, AriaCbc192, AriaCbc256, CamelliaCbc128, CamelliaCbc192, CamelliaCbc256"
+    Write-Host "                          KuznyechikCbc, MagmaCbc, KalynaCbc128, KalynaCbc256, KalynaCbc512, SeedCbc"
+    Write-Host "  Regional AEAD: -Family Sm4Gcm, Sm4Ccm, AriaGcm128, AriaGcm256, AriaCcm128, AriaCcm256"
+    Write-Host "                          CamelliaGcm128, CamelliaGcm256, CamelliaCcm128, CamelliaCcm256, SeedGcm, KuznyechikGcm, KuznyechikMgm, MagmaMgm"
     Write-Host ""
     Write-Host "Available MAC algorithm families:" -ForegroundColor Yellow
     Write-Host ""
@@ -423,6 +516,25 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "                          HmacSha3_256, HmacSha3_384, HmacSha3_512"
     Write-Host "  CMAC/GMAC:     -Family AesCmac, AesGmac"
     Write-Host "  Poly1305:      -Family Poly1305"
+    Write-Host ""
+    Write-Host "Available post-quantum KEM families:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  ML-KEM:        -Family MLKem            (key generation plus encapsulation/decapsulation)"
+    Write-Host "  ML-KEM keygen: -Family MLKemKeyGen      (adds the no-pairwise-consistency-test variant)"
+    Write-Host "  ML-KEM ops:    -Family MLKemOps         (encapsulate, decapsulate, implicit rejection)"
+    Write-Host "  ML-KEM core:   -Family MLKemInternals   (CryptoHives-only diagnostics: pairwise"
+    Write-Host "                                           consistency test cost, SampleNtt, packers)"
+    Write-Host ""
+    Write-Host "Available post-quantum signature families:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  ML-DSA:        -Family MLDsa            (key generation plus sign/verify)"
+    Write-Host "  ML-DSA keygen: -Family MLDsaKeyGen      (adds the no-pairwise-consistency-test variant)"
+    Write-Host "  ML-DSA ops:    -Family MLDsaOps         (sign, verify, verify of a tampered signature)"
+    Write-Host "  SLH-DSA:       -Family SlhDsa           (key generation plus sign/verify, 'f' sets only)"
+    Write-Host "  SLH-DSA keygen:-Family SlhDsaKeyGen     (adds the no-pairwise-consistency-test variant)"
+    Write-Host "  SLH-DSA ops:   -Family SlhDsaOps        (sign, verify, verify of a tampered signature)"
+    Write-Host "                                          The 's' (small-signature) sets are excluded:"
+    Write-Host "                                          signing with one takes seconds per operation."
     Write-Host ""
     Write-Host "Group aliases (run multiple benchmarks, each with its own output):" -ForegroundColor Yellow
     Write-Host "  -Family SHA2       runs: SHA224, SHA256, SHA384, SHA512, SHA512_224, SHA512_256"
@@ -450,14 +562,21 @@ if ($Project -eq "Cryptography" -and $Help) {
     Write-Host "  -Family AsconXOF   runs: AsconXof128Xof"
     Write-Host "  -Family AES-GCM    runs: AesGcm128, AesGcm192, AesGcm256"
     Write-Host "  -Family AES-CCM    runs: AesCcm128, AesCcm256"
+    Write-Host "  -Family AES-GCM-SIV runs: AesGcmSiv128, AesGcmSiv256"
     Write-Host "  -Family AES-CBC    runs: AesCbc128, AesCbc256"
     Write-Host "  -Family ChaCha     runs: ChaCha20, ChaCha20Poly1305, XChaCha20Poly1305"
-    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, ChaCha20-Poly1305, XChaCha20-Poly1305)"
-    Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA, Camellia-128/192/256, Kuznyechik, Kalyna, SEED)"
+    Write-Host "  -Family AEAD       runs: All AEAD ciphers (AES-GCM, AES-CCM, AES-GCM-SIV, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, regional GCM/CCM/MGM)"
+    Write-Host "  -Family RegionalAEAD : GCM/CCM over SM4, ARIA, Camellia, SEED, Kuznyechik; MGM over Kuznyechik and Magma"
+    Write-Host "  -Family RegionalCipher : All regional ciphers (SM4, ARIA-128/192/256, Camellia-128/192/256, Kuznyechik, Magma, Kalyna-128/256/512, SEED)"
     Write-Host "  -Family Cipher     runs: All cipher benchmarks (including regional)"
     Write-Host "  -Family HMAC       runs: HmacMd5, HmacSha1, HmacSha256, HmacSha384, HmacSha512, HmacSha3_256, HmacSha3_384, HmacSha3_512"
     Write-Host "  -Family MAC        runs: All HMAC variants + AesCmac, AesGmac, Poly1305"
-    Write-Host "  -Family All        runs: All Hash, Cipher, and MAC benchmarks"
+    Write-Host "  -Family MLKem      runs: MLKemKeyGen, MLKemOps"
+    Write-Host "  -Family KEM        runs: MLKemKeyGen, MLKemOps, MLKemInternals"
+    Write-Host "  -Family MLDsa      runs: MLDsaKeyGen, MLDsaOps"
+    Write-Host "  -Family SlhDsa     runs: SlhDsaKeyGen, SlhDsaOps"
+    Write-Host "  -Family DSA        runs: MLDsaKeyGen, MLDsaOps, SlhDsaKeyGen, SlhDsaOps"
+    Write-Host "  -Family All        runs: All Hash, Cipher, MAC, KEM and signature benchmarks"
     Write-Host ""
     exit 0
 }
@@ -466,6 +585,182 @@ if ($Project -eq "Cryptography" -and $Help) {
 if (-not (Test-Path $testProject)) {
     Write-Host "ERROR: Test project not found at $testProject" -ForegroundColor Red
     exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Measurement environment: ISA masking, CPU pinning, power plan.
+# ---------------------------------------------------------------------------
+
+# Both list parameters have to survive `pwsh -File`, which hands the script literal
+# strings: "AVX512,AVX2" and "4,6" each arrive as a single token. Split them here so
+# the two invocation paths (run-benchmarks.cmd and a direct PowerShell call) behave
+# identically.
+function Split-ListArgument {
+    param([string[]]$Value)
+    if (-not $Value) { return @() }
+    return @($Value -split '[,\s]+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+$isaNames = @("AVX512", "AVX2", "SSE42", "SSSE3", "AES", "AdvSimd")
+$requestedIsa = @()
+foreach ($token in (Split-ListArgument -Value $DisableIsa)) {
+    $match = $isaNames | Where-Object { $_ -ieq $token } | Select-Object -First 1
+    if (-not $match) {
+        Write-Host "ERROR: -DisableIsa '$token' is not one of: $($isaNames -join ', ')" -ForegroundColor Red
+        exit 1
+    }
+    if ($requestedIsa -notcontains $match) { $requestedIsa += $match }
+}
+
+$pinnedCores = @()
+foreach ($token in (Split-ListArgument -Value $PinToCore)) {
+    $parsed = 0
+    # NumberStyles.None rejects the thousands separators that made "4,6" parse as 46.
+    if (-not [int]::TryParse($token, [System.Globalization.NumberStyles]::None,
+                             [System.Globalization.CultureInfo]::InvariantCulture, [ref]$parsed)) {
+        Write-Host "ERROR: -PinToCore '$token' is not a whole number." -ForegroundColor Red
+        exit 1
+    }
+    if ($parsed -lt 0 -or $parsed -gt 30) {
+        Write-Host "ERROR: -PinToCore $parsed is outside 0..30 (BenchmarkDotNet takes the affinity mask as a signed 32-bit int)." -ForegroundColor Red
+        exit 1
+    }
+    if ($pinnedCores -notcontains $parsed) { $pinnedCores += $parsed }
+}
+
+
+# CoreCLR reads these at startup and the benchmark host inherits them, as do the child
+# processes BenchmarkDotNet spawns per benchmark. Note DOTNET_EnableAVX512 - the more
+# obvious DOTNET_EnableAVX512F is silently a no-op.
+$isaEnvMap = [ordered]@{
+    "AVX512"  = "DOTNET_EnableAVX512"
+    "AVX2"    = "DOTNET_EnableAVX2"
+    "SSE42"   = "DOTNET_EnableSSE42"
+    "SSSE3"   = "DOTNET_EnableSSSE3"
+    "AES"     = "DOTNET_EnableAES"
+    "AdvSimd" = "DOTNET_EnableArm64AdvSimd"
+}
+$savedEnv = @{}
+
+function Set-BenchmarkEnv {
+    param([string]$Name, [string]$Value)
+    if (-not $savedEnv.ContainsKey($Name)) {
+        $savedEnv[$Name] = [Environment]::GetEnvironmentVariable($Name)
+    }
+    [Environment]::SetEnvironmentVariable($Name, $Value)
+}
+
+if ($requestedIsa.Count -gt 0) {
+    Write-Host "ISA mask requested: $($requestedIsa -join ', ')" -ForegroundColor Yellow
+    foreach ($isa in $requestedIsa) {
+        Set-BenchmarkEnv -Name $isaEnvMap[$isa] -Value "0"
+        Write-Host "  $($isaEnvMap[$isa])=0" -ForegroundColor DarkGray
+    }
+
+    # Assert rather than trust. A knob that silently does nothing produces a run that
+    # looks fine and measures the wrong target - after an hour of CPU time.
+    Write-Host "  verifying the mask took effect..." -ForegroundColor DarkGray
+    Push-Location $testProject
+    try {
+        $probeOutput = & dotnet run -v q --configuration $Configuration --framework $Framework -- --print-isa 2>&1
+    }
+    finally {
+        Pop-Location
+    }
+
+    $isaLine = $probeOutput | Where-Object { $_ -is [string] -and $_ -match '^ISA ' } | Select-Object -Last 1
+    if (-not $isaLine) {
+        Write-Host "ERROR: could not read the ISA probe. Output was:" -ForegroundColor Red
+        $probeOutput | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+        exit 1
+    }
+    if ($isaLine -match 'unavailable=') {
+        Write-Host "ERROR: -DisableIsa needs a framework with the intrinsics APIs; $Framework has none." -ForegroundColor Red
+        exit 1
+    }
+
+    $resolved = @{}
+    foreach ($pair in ($isaLine -replace '^ISA\s+', '') -split '\s+') {
+        $kv = $pair -split '=', 2
+        if ($kv.Count -eq 2) { $resolved[$kv[0]] = [bool]::Parse($kv[1]) }
+    }
+
+    $failed = @()
+    foreach ($isa in $requestedIsa) {
+        if ($resolved.ContainsKey($isa) -and $resolved[$isa]) { $failed += $isa }
+    }
+    if ($failed.Count -gt 0) {
+        Write-Host "ERROR: still enabled after masking: $($failed -join ', ')" -ForegroundColor Red
+        Write-Host "  resolved: $isaLine" -ForegroundColor DarkGray
+        Write-Host "  The environment variable had no effect - do not trust a run made this way." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "  resolved: $isaLine" -ForegroundColor DarkGray
+
+    # Masking an ISA removes rows: the adapters force an algorithm tier the hardware no
+    # longer offers, so those rows either vanish or silently fall back to a narrower one.
+    $collapsed = @()
+    if (-not $resolved["AVX512"]) { $collapsed += "CryptoHives-AVX512F" }
+    if (-not $resolved["AVX2"])   { $collapsed += "CryptoHives-AVX2" }
+    if (-not $resolved["SSSE3"])  { $collapsed += "CryptoHives-Ssse3" }
+    if ($collapsed.Count -gt 0) {
+        Write-Host "  tier collapse: no meaningful $($collapsed -join ', ') rows in this run." -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+
+# BenchmarkDotNet forces the High Performance plan for the duration of a run unless a job
+# says otherwise, so activating a plan externally (powercfg) does nothing. tests/Common/
+# Main.cs reads this and applies it as a mutator job instead.
+if ($PowerPlan) {
+    if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6) {
+        Write-Host "WARNING: -PowerPlan is Windows-only; ignoring." -ForegroundColor Yellow
+    }
+    else {
+        Set-BenchmarkEnv -Name "CRYPTOHIVES_BENCH_POWERPLAN" -Value $PowerPlan
+        Write-Host "Power plan: $PowerPlan" -ForegroundColor Yellow
+        if ($PowerPlan -eq "UserPowerPlan") {
+            Write-Host "  keeping the currently active plan instead of forcing High Performance." -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
+}
+
+# The pause runs inside the BenchmarkDotNet host between cases (tests/Common/Main.cs), so it
+# never falls inside a measurement.
+if ($CooldownSeconds -gt 0) {
+    Set-BenchmarkEnv -Name "CRYPTOHIVES_BENCH_COOLDOWN" -Value "$CooldownSeconds"
+    Write-Host "Cooldown: $CooldownSeconds s before each benchmark case" -ForegroundColor Yellow
+    Write-Host ""
+}
+
+# Affinity is passed to BenchmarkDotNet rather than set on this process, so it lands on
+# the benchmark child processes and is recorded as a job column in the report.
+$affinityMask = $null
+if ($pinnedCores.Count -gt 0) {
+    if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6 -and -not $IsLinux) {
+        Write-Host "WARNING: -PinToCore is Windows/Linux-only; ignoring." -ForegroundColor Yellow
+    }
+    else {
+        # The affinity mask is a bitmask, one bit per logical CPU, so any set of cores can
+        # be expressed. BenchmarkDotNet takes it as a signed 32-bit int, hence cores 0-30.
+        $cores = @($pinnedCores | Sort-Object -Unique)
+        $affinityMask = 0
+        foreach ($core in $cores) {
+            $affinityMask = $affinityMask -bor (1 -shl $core)
+        }
+
+        $coreList = $cores -join ', '
+        Write-Host "Pinning the benchmark process to logical CPU $coreList (affinity mask $affinityMask = 0x$('{0:X}' -f $affinityMask))." -ForegroundColor Yellow
+        Write-Host "  Pinning does not reduce throttling - it concentrates it - but it makes it" -ForegroundColor DarkGray
+        Write-Host "  repeatable, which is what an interleaved A/B needs." -ForegroundColor DarkGray
+        if ($cores.Count -eq 1) {
+            Write-Host "  One core also hosts the GC, finalizer and BDN's own engine threads, which then" -ForegroundColor DarkGray
+            Write-Host "  contend with the benchmark. Two cores often measure more cleanly - try -PinToCore $($cores[0]),$($cores[0] + 2)." -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
 }
 
 # Build the command arguments
@@ -478,7 +773,10 @@ $dotnetArgs = @(
 )
 
 if ($List) {
+    # BenchmarkDotNet's --list takes a value (Flat/Tree); a bare --list is rejected
+    # with "Option 'list' is defined with a bad format".
     $dotnetArgs += "--list"
+    $dotnetArgs += "flat"
 }
 else {
     # Add filter patterns - multiple patterns are space-separated after --filter
@@ -505,8 +803,19 @@ if ($ExtraArgs) {
     }
 }
 
-# Show command
-$cmdDisplay = "dotnet " + ($dotnetArgs -join " ")
+if ($null -ne $affinityMask) {
+    $dotnetArgs += "--affinity"
+    $dotnetArgs += [string]$affinityMask
+}
+
+# Show command. Quote any argument a shell would otherwise treat specially (wildcards,
+# whitespace, etc.) so this line is safe to copy-paste and re-run directly - the actual
+# invocation below uses Start-Process -ArgumentList and never goes through a shell, so it
+# doesn't need this, but a printed "*Aes*" left unquoted will glob-expand (or error with
+# "no matches found" under zsh's nomatch) if pasted as-is.
+$cmdDisplay = "dotnet " + (($dotnetArgs | ForEach-Object {
+    if ($_ -match '[\s\*\?\$`"''|<>&;()\[\]{}]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+}) -join " ")
 Write-Host "Command: $cmdDisplay" -ForegroundColor Cyan
 Write-Host ""
 
@@ -528,6 +837,13 @@ try {
     $dotnetPath = (Get-Command dotnet -ErrorAction Stop).Source
     $runStart = Get-Date
     $proc = Start-Process -FilePath $dotnetPath -ArgumentList $dotnetArgs -NoNewWindow -PassThru
+
+    # macOS idle-sleeps an unattended host mid-run; the measurements resume on wake but
+    # land on a CPU that is still ramping back up. -w ties the assertion to the run.
+    if ($IsMacOS) {
+        Start-Process -FilePath "/usr/bin/caffeinate" -ArgumentList @("-i", "-s", "-m", "-w", "$($proc.Id)") -NoNewWindow | Out-Null
+        Write-Host "Preventing system sleep for the duration of the run (caffeinate)." -ForegroundColor DarkGray
+    }
 
     if ($TimeoutMinutes -gt 0) {
         $timeout = [TimeSpan]::FromMinutes($TimeoutMinutes)
@@ -565,14 +881,23 @@ try {
     Write-Host "  $resultsPath"
     Write-Host ""
     
-    if ($Project -eq "Cryptography") {
-        Write-Host "To record this run into the trends dashboard, run:"
-        Write-Host "  .\scripts\cryptography-benchmark-trends\record-benchmark-run.ps1 -Category <Hash|Cipher|Mac>"
-        Write-Host ""
-    }
+    # Recording is a separate, deliberate step: not every local run is worth keeping as history.
+    Write-Host "To record this run into the archive on the benchmarks branch:"
+    Write-Host "  git worktree add ../foundation-bench benchmarks"
+    Write-Host "  .\scripts\update-benchmark-docs.ps1 -Project $Project -DestDir ../foundation-bench/$($Project.ToLowerInvariant())"
+    Write-Host ""
+    Write-Host "Then commit in that worktree. To rebuild the dashboard database locally:"
+    Write-Host "  .\scripts\build-trends-database.ps1"
+    Write-Host ""
 }
 finally {
     Pop-Location
+
+    # Leave the shell as we found it - an ISA mask left set would silently affect
+    # every later run from this session.
+    foreach ($name in $savedEnv.Keys) {
+        [Environment]::SetEnvironmentVariable($name, $savedEnv[$name])
+    }
 
     if ($ShutdownBuildServers) {
         Write-Host ""

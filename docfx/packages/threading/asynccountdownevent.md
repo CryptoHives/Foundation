@@ -141,6 +141,18 @@ catch (TimeoutException)
 
 Immediate acquisitions are completely allocation-free using atomic operations. When the countdown is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<bool>` instances are reused to minimize allocation pressure across repeated lock operations.
 
+### TryWait
+
+```csharp
+public bool TryWait()
+```
+
+Attempts to complete a wait without awaiting.
+
+**Returns**: `true` if the count has reached zero; `false` otherwise.
+
+The countdown is not consumed by a wait, so `TryWait()` never changes state and is exactly equivalent to reading [`IsSet`](#properties). It is synchronous, never allocates, and exists for naming symmetry with the other primitives in this package.
+
 ### Signal
 
 ```csharp
@@ -192,7 +204,7 @@ Resets the countdown to the specified count, or to the initial count if not spec
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncCountdownEvent` against `CountdownEvent`, `Proto.Promises.Threading.AsyncCountdownEvent`, `Nito.AsyncEx.AsyncCountdownEvent` and reference implementations.
+The following benchmarks compare `AsyncCountdownEvent` against `CountdownEvent`, `Proto.Promises.Threading.AsyncCountdownEvent`, `Nito.AsyncEx.AsyncCountdownEvent`, `DotNext.Threading.AsyncCountdownEvent` (net10.0 only, has no bare `Signal()` overload so each participant decrements by one explicitly via `Signal(1)`), and reference implementations.
 
 ### Signal Operation Benchmark
 
@@ -202,9 +214,9 @@ ProtoPromise is included as an additional comparison point and is faster than th
 Only the pooled `AsyncCountdownEvent` is benchmarked in a contested and a uncontested scenario to proof that no memory allocations occur.
 The Nito.Async implementation can not be benchmarked due to its internal design which doesn't allow to Reset the event, a new allocation for the AsyncCountdownEvent were necessary for each run so it was left out of contest.
 
-[View live SignalAndWait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=SignalAndWait)
+[View live SignalAndWait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=SignalAndWait&mode=trend)
 
-[View live WaitAndSignal benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=WaitAndSignal)
+[View live WaitAndSignal benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncCountdownEvent&method=WaitAndSignal&mode=trend)
 
 ### Benchmark Analysis
 
@@ -226,7 +238,7 @@ The Nito.Async implementation can not be benchmarked due to its internal design 
 
 ## Best Practices
 
-### ✓ DO: Use `WaitAsync(TimeSpan)` to bound fan-in waits
+### Use `WaitAsync(TimeSpan)` to bound fan-in waits
 
 ```csharp
 var countdown = new AsyncCountdownEvent(workers.Length);
@@ -252,8 +264,11 @@ catch (TimeoutException)
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

@@ -1,19 +1,18 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Benchmarks.Cipher;
 
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using BenchmarkDotNet.Exporters;
-using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// BenchmarkDotNet configuration for symmetric cipher benchmarks.
@@ -26,22 +25,26 @@ using System.Linq;
 /// </remarks>
 public class CipherConfig : ManualConfig
 {
-    /// <summary>
-    /// Shared instance of the short name markdown exporter.
-    /// </summary>
-    private static readonly ShortNameMarkdownExporter ShortExporter = ShortNameMarkdownExporter.Default;
-
     public CipherConfig()
     {
         // Disable default exporters
         WithOptions(ConfigOptions.DisableLogFile);
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            AddDiagnoser(new DisassemblyDiagnoser(new DisassemblyDiagnoserConfig(
+                maxDepth: 12,
+                printSource: false,
+                exportGithubMarkdown: true,
+                exportCombinedDisassemblyReport: true)));
+        }
 
         Orderer = new CategoryThenDataSizeOrderer();
         AddColumn(new DescriptionColumn());
         HideColumns("Method", "TestCipherAlgorithm");
 
         // Markdown with short file names, plus full JSON so append_results.py can ingest results without extra flags.
-        AddExporter(ShortExporter);
+        AddExporter(ShortNameMarkdownExporter.Default);
         AddExporter(BenchmarkDotNet.Exporters.Json.JsonExporter.Full);
     }
 

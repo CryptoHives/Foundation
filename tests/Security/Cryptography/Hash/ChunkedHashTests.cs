@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Hash;
 
@@ -316,7 +316,7 @@ public class ChunkedHashTests
 
         // Verify reset: a second single-shot should work without explicit Initialize
         Span<byte> afterReset = stackalloc byte[algo.HashSize / 8];
-        algo.TryComputeHash(input, afterReset, out _);
+        Assert.That(algo.TryComputeHash(input, afterReset, out _), Is.True);
         Assert.That(afterReset.ToArray(), Is.EqualTo(expected.ToArray()),
             $"{factory.Name}: algorithm not properly reset after TryGetHashAndReset");
     }

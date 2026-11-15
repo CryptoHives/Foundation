@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CS0618
 #pragma warning disable CA5350
@@ -12,10 +12,10 @@ using Cryptography.Tests.Adapter.Hash;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using BC = Org.BouncyCastle.Crypto.Digests;
 using CH = CryptoHives.Foundation.Security.Cryptography.Hash;
 using CHRoot = CryptoHives.Foundation.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Central registry of all hash algorithm implementations for testing and benchmarking.
@@ -54,7 +54,9 @@ public static class HashAlgorithmRegistry
         /// <summary>Blake3 managed (xoofx/Blake3.NET, "Blake3" package) implementation.</summary>
         Blake3Managed,
         /// <summary>Blake3.Managed (Dissimilis/Blake3.Managed package) implementation.</summary>
-        Blake3Dissimilis
+        Blake3Dissimilis,
+        /// <summary>Blake3.Managed with its thread fan-out capped at one thread.</summary>
+        Blake3DissimilisSerial
     }
 
     /// <summary>
@@ -76,7 +78,7 @@ public static class HashAlgorithmRegistry
             string algorithmFamily,
             string variant,
             int hashSizeBits,
-            Func<HashAlgorithm> factory,
+            Func<OS.HashAlgorithm> factory,
             Source source,
             Func<bool>? supportCheck = null,
             bool excludeFromBenchmark = false)
@@ -108,7 +110,7 @@ public static class HashAlgorithmRegistry
         /// <summary>
         /// Gets the factory function.
         /// </summary>
-        public Func<HashAlgorithm> Factory { get; }
+        public Func<OS.HashAlgorithm> Factory { get; }
 
         /// <summary>
         /// Gets the implementation source type.
@@ -144,7 +146,7 @@ public static class HashAlgorithmRegistry
         /// <summary>
         /// Creates a new instance of the hash algorithm.
         /// </summary>
-        public HashAlgorithm Create() => Factory();
+        public OS.HashAlgorithm Create() => Factory();
 
         /// <inheritdoc/>
         public override string ToString() => Name;
@@ -193,6 +195,12 @@ public static class HashAlgorithmRegistry
         => All.FirstOrDefault(h =>
             h.AlgorithmFamily.Equals(family, StringComparison.OrdinalIgnoreCase) &&
             h.Variant.Equals(variant, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Support check for reference libraries that produce wrong digests on a big-endian host,
+    /// as the s390x run shows; there they are dropped rather than reported as our failures.
+    /// </summary>
+    private static bool LittleEndianOnly() => BitConverter.IsLittleEndian;
 
     private static List<HashImplementation> BuildRegistry()
     {
@@ -260,8 +268,15 @@ public static class HashAlgorithmRegistry
 
     private static void AddSha1(List<HashImplementation> list)
     {
-        list.Add(new HashImplementation("SHA-1", "OS", 160, SHA1.Create, Source.OS));
-        list.Add(new HashImplementation("SHA-1", "CryptoHives-Scalar", 160, CH.SHA1.Create, Source.Managed));
+        list.Add(new HashImplementation("SHA-1", "OS", 160, OS.SHA1.Create, Source.OS));
+        var sha1Simd = CH.SHA1.SimdSupport;
+        if ((sha1Simd & CHRoot.SimdSupport.ArmSha1) != 0)
+        {
+            list.Add(new("SHA-1", "ArmSha1", 160,
+                () => CH.SHA1.Create(CHRoot.SimdSupport.ArmSha1), Source.Simd));
+        }
+        list.Add(new HashImplementation("SHA-1", "CryptoHives-Scalar", 160,
+            () => CH.SHA1.Create(CHRoot.SimdSupport.None), Source.Managed));
         list.Add(new("SHA-1", "BouncyCastle", 160,
             () => new BouncyCastleHashAdapter(new BC.Sha1Digest()), Source.BouncyCastle));
     }
@@ -285,7 +300,7 @@ public static class HashAlgorithmRegistry
             () => new BouncyCastleHashAdapter(new BC.Sha224Digest()), Source.BouncyCastle));
 
         // SHA-256
-        list.Add(new HashImplementation("SHA-256", "OS", 256, SHA256.Create, Source.OS));
+        list.Add(new HashImplementation("SHA-256", "OS", 256, OS.SHA256.Create, Source.OS));
         if ((sha256Simd & CHRoot.SimdSupport.ArmSha256) != 0)
         {
             list.Add(new("SHA-256", "ArmSha256", 256,
@@ -297,13 +312,13 @@ public static class HashAlgorithmRegistry
             () => new BouncyCastleHashAdapter(new BC.Sha256Digest()), Source.BouncyCastle));
 
         // SHA-384
-        list.Add(new HashImplementation("SHA-384", "OS", 384, SHA384.Create, Source.OS));
+        list.Add(new HashImplementation("SHA-384", "OS", 384, OS.SHA384.Create, Source.OS));
         list.Add(new("SHA-384", "CryptoHives-Scalar", 384, CH.SHA384.Create, Source.Managed));
         list.Add(new("SHA-384", "BouncyCastle", 384,
             () => new BouncyCastleHashAdapter(new BC.Sha384Digest()), Source.BouncyCastle));
 
         // SHA-512
-        list.Add(new HashImplementation("SHA-512", "OS", 512, SHA512.Create, Source.OS));
+        list.Add(new HashImplementation("SHA-512", "OS", 512, OS.SHA512.Create, Source.OS));
         list.Add(new("SHA-512", "CryptoHives-Scalar", 512,
             CH.SHA512.Create, Source.Managed));
         list.Add(new("SHA-512", "BouncyCastle", 512,
@@ -336,7 +351,7 @@ public static class HashAlgorithmRegistry
         AddKeccakFamilyVariant(list, "SHA3-256", 256, simdSupport,
             CH.SHA3_256.Create, () => new BC.Sha3Digest(256),
 #if NET8_0_OR_GREATER
-            () => SHA3_256.IsSupported ? SHA3_256.Create() : null
+            () => OS.SHA3_256.IsSupported ? OS.SHA3_256.Create() : null
 #else
             null
 #endif
@@ -345,7 +360,7 @@ public static class HashAlgorithmRegistry
         AddKeccakFamilyVariant(list, "SHA3-384", 384, simdSupport,
             CH.SHA3_384.Create, () => new BC.Sha3Digest(384),
 #if NET8_0_OR_GREATER
-            () => SHA3_384.IsSupported ? SHA3_384.Create() : null
+            () => OS.SHA3_384.IsSupported ? OS.SHA3_384.Create() : null
 #else
             null
 #endif
@@ -354,7 +369,7 @@ public static class HashAlgorithmRegistry
         AddKeccakFamilyVariant(list, "SHA3-512", 512, simdSupport,
             CH.SHA3_512.Create, () => new BC.Sha3Digest(512),
 #if NET8_0_OR_GREATER
-            () => SHA3_512.IsSupported ? SHA3_512.Create() : null
+            () => OS.SHA3_512.IsSupported ? OS.SHA3_512.Create() : null
 #else
             null
 #endif
@@ -366,9 +381,9 @@ public static class HashAlgorithmRegistry
         string family,
         int hashSizeBits,
         CHRoot.SimdSupport simdSupport,
-        Func<CHRoot.SimdSupport, HashAlgorithm> factory,
+        Func<CHRoot.SimdSupport, OS.HashAlgorithm> factory,
         Func<Org.BouncyCastle.Crypto.IDigest>? bcFactory = null,
-        Func<HashAlgorithm?>? osFactory = null)
+        Func<OS.HashAlgorithm?>? osFactory = null)
     {
 #if NET8_0_OR_GREATER
         if (osFactory != null)
@@ -411,11 +426,11 @@ public static class HashAlgorithmRegistry
 #if NET8_0_OR_GREATER
         list.Add(new("SHAKE128", "OS", 256,
             () => new Shake128HashAdapter(32), Source.OS,
-            () => Shake128.IsSupported));
+            () => OS.Shake128.IsSupported));
 
         list.Add(new("SHAKE256", "OS", 512,
             () => new Shake256HashAdapter(64), Source.OS,
-            () => Shake256.IsSupported));
+            () => OS.Shake256.IsSupported));
 #endif
 
         AddKeccakFamilyVariant(list, "SHAKE128", 256, simdSupport,
@@ -460,30 +475,34 @@ public static class HashAlgorithmRegistry
             s => CH.Blake2b.Create(s, 64));
         list.Add(new("BLAKE2b-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(512)), Source.BouncyCastle));
+#if HASHIFYNET
         list.Add(new("BLAKE2b-512", "HashifyNET", 512,
             () => new HashifyNetBlake2bAdapter(512), Source.HashifyNet,
             excludeFromBenchmark: true));
+#endif
 #if KONSCIOUS_BLAKE2
         list.Add(new("BLAKE2b-512", "Konscious", 512,
             () => new KonsciousBlake2Adapter(512), Source.Konscious));
 #endif
         list.Add(new("BLAKE2b-512", "Blake2Fast", 512,
-            () => Blake2FastAdapter.CreateBlake2b(512), Source.Blake2Fast));
+            () => Blake2FastAdapter.CreateBlake2b(512), Source.Blake2Fast, LittleEndianOnly));
 
         // BLAKE2b-256
         AlgorithmRegistry.AddHashSimdVariants(list, "BLAKE2b-256", 256, blake2bSimd,
             s => CH.Blake2b.Create(s, 32));
         list.Add(new("BLAKE2b-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2bDigest(256)), Source.BouncyCastle));
+#if HASHIFYNET
         list.Add(new("BLAKE2b-256", "HashifyNET", 256,
             () => new HashifyNetBlake2bAdapter(256), Source.HashifyNet,
             excludeFromBenchmark: true));
+#endif
 #if KONSCIOUS_BLAKE2
         list.Add(new("BLAKE2b-256", "Konscious", 256,
             () => new KonsciousBlake2Adapter(256), Source.Konscious));
 #endif
         list.Add(new("BLAKE2b-256", "Blake2Fast", 256,
-            () => Blake2FastAdapter.CreateBlake2b(256), Source.Blake2Fast));
+            () => Blake2FastAdapter.CreateBlake2b(256), Source.Blake2Fast, LittleEndianOnly));
 
         // BLAKE2s-256
         var blake2sSimd = CH.Blake2s.SimdSupport;
@@ -492,7 +511,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2s-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(256)), Source.BouncyCastle));
         list.Add(new("BLAKE2s-256", "Blake2Fast", 256,
-            () => Blake2FastAdapter.CreateBlake2s(256), Source.Blake2Fast));
+            () => Blake2FastAdapter.CreateBlake2s(256), Source.Blake2Fast, LittleEndianOnly));
 
         // BLAKE2s-128
         AlgorithmRegistry.AddHashSimdVariants(list, "BLAKE2s-128", 128, blake2sSimd,
@@ -500,7 +519,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("BLAKE2s-128", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.Blake2sDigest(128)), Source.BouncyCastle));
         list.Add(new("BLAKE2s-128", "Blake2Fast", 128,
-            () => Blake2FastAdapter.CreateBlake2s(128), Source.Blake2Fast));
+            () => Blake2FastAdapter.CreateBlake2s(128), Source.Blake2Fast, LittleEndianOnly));
     }
 
     #endregion
@@ -525,7 +544,9 @@ public static class HashAlgorithmRegistry
 #endif
 #if BLAKE3_DISSIMILIS
         list.Add(new("BLAKE3", "Blake3Dissimilis", 256,
-            () => new Blake3DissimilisAdapter(32), Source.Blake3Dissimilis));
+            () => new Blake3DissimilisAdapter(32), Source.Blake3Dissimilis, LittleEndianOnly));
+        list.Add(new("BLAKE3", "Blake3DissimilisSerial", 256,
+            () => new Blake3DissimilisSerialAdapter(32), Source.Blake3DissimilisSerial, LittleEndianOnly));
 #endif
     }
 
@@ -553,7 +574,8 @@ public static class HashAlgorithmRegistry
 
     private static void AddMd5(List<HashImplementation> list)
     {
-        list.Add(new HashImplementation("MD5", "OS", 128, MD5.Create, Source.OS));
+        list.Add(new HashImplementation("MD5", "OS", 128, OS.MD5.Create, Source.OS,
+            static () => !TestHelpers.IsBrowser));
         list.Add(new HashImplementation("MD5", "CryptoHives-Scalar", 128, CH.MD5.Create, Source.Managed));
         list.Add(new("MD5", "BouncyCastle", 128,
             () => new BouncyCastleHashAdapter(new BC.MD5Digest()), Source.BouncyCastle));
@@ -590,8 +612,10 @@ public static class HashAlgorithmRegistry
         list.Add(new HashImplementation("Whirlpool", "CryptoHives-Scalar", 512, CH.Whirlpool.Create, Source.Managed));
         list.Add(new("Whirlpool", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.WhirlpoolDigest()), Source.BouncyCastle));
+#if HASHIFYNET
         list.Add(new("Whirlpool", "HashifyNET", 512,
             () => new HashifyNetWhirlpoolAdapter(), Source.HashifyNet));
+#endif
     }
 
     #endregion
@@ -606,7 +630,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("Streebog-256", "BouncyCastle", 256,
             () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_256Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-256", "OpenGost", 256,
-            OpenGost.Security.Cryptography.Streebog256.Create, Source.OpenGost));
+            OpenGost.Security.Cryptography.Streebog256.Create, Source.OpenGost, LittleEndianOnly));
 
         // Streebog-512
         list.Add(new("Streebog-512", "CryptoHives-Scalar", 512,
@@ -614,7 +638,7 @@ public static class HashAlgorithmRegistry
         list.Add(new("Streebog-512", "BouncyCastle", 512,
             () => new BouncyCastleHashAdapter(new BC.Gost3411_2012_512Digest()), Source.BouncyCastle));
         list.Add(new("Streebog-512", "OpenGost", 512,
-            OpenGost.Security.Cryptography.Streebog512.Create, Source.OpenGost));
+            OpenGost.Security.Cryptography.Streebog512.Create, Source.OpenGost, LittleEndianOnly));
     }
 
     #endregion

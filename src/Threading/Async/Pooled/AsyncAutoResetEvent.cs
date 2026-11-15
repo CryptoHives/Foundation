@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Threading.Async.Pooled;
 
@@ -122,7 +122,10 @@ public sealed class AsyncAutoResetEvent : IResettable
         try
         {
             // If waiters are queued the instance is still in active use; decline the reset.
-            if (_waiters.Count != 0)
+            // A local waiter that is still in use means a waiter has been handed its result but
+            // has not observed it yet: resetting now would bump the version underneath that
+            // ValueTask and make the await throw.
+            if (_waiters.Count != 0 || _localWaiter.InUse)
             {
                 return false;
             }
@@ -144,6 +147,29 @@ public sealed class AsyncAutoResetEvent : IResettable
     {
         get { return _signaled != 0; }
     }
+
+    /// <summary>
+    /// Attempts to consume a pending signal without waiting.
+    /// </summary>
+    /// <remarks>
+    /// Synchronous and non-throwing by design: unlike <see cref="WaitAsync(TimeSpan, CancellationToken)"/>
+    /// with a zero timeout, a failed attempt here never allocates an exception or a faulted
+    /// <see cref="ValueTask"/> - there is nothing to await in the first place, since this either succeeds
+    /// immediately or doesn't.
+    /// <para>
+    /// This <b>consumes</b> the signal exactly as a completed <see cref="WaitAsync(CancellationToken)"/>
+    /// would, which is what separates it from <see cref="IsSet"/>: that property only peeks, and two
+    /// callers reading it can both proceed on one signal. Prefer this whenever the answer decides who
+    /// does the work.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> if a signal was pending and has now been consumed by this caller;
+    /// <see langword="false"/> if the event was not set.
+    /// </returns>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public bool TryWait()
+        => Interlocked.Exchange(ref _signaled, 0) != 0;
 
     /// <summary>
     /// Gets or sets whether to force continuations to run asynchronously.
@@ -241,25 +267,12 @@ public sealed class AsyncAutoResetEvent : IResettable
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public ValueTask WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan) throw new ArgumentOutOfRangeException(nameof(timeout));
+
         // fast path without lock
         if (Interlocked.Exchange(ref _signaled, 0) != 0)
         {
             return default;
-        }
-
-        if (timeout <= TimeSpan.Zero)
-        {
-            if (timeout == Timeout.InfiniteTimeSpan)
-            {
-                return WaitAsyncImpl(Timeout.InfiniteTimeSpan, cancellationToken);
-            }
-
-            if (timeout == TimeSpan.Zero)
-            {
-                return new ValueTask(Task.FromException(new TimeoutException()));
-            }
-
-            throw new ArgumentOutOfRangeException(nameof(timeout));
         }
 
         return WaitAsyncImpl(timeout, cancellationToken);
@@ -285,6 +298,11 @@ public sealed class AsyncAutoResetEvent : IResettable
                 return new ValueTask(Task.FromCanceled<bool>(cancellationToken));
             }
 
+            if (timeout == TimeSpan.Zero)
+            {
+                return new ValueTask(Task.FromException(new TimeoutException()));
+            }
+
             if (!_localWaiter.TryGetValueTaskSource(out waiter))
             {
                 waiter = _pool.GetPooledWaiter(this);
@@ -294,16 +312,16 @@ public sealed class AsyncAutoResetEvent : IResettable
 
             version = waiter.Version;
             _waiters.Enqueue(waiter);
-
-            if (timeout != Timeout.InfiniteTimeSpan)
-            {
-                waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
-                    _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
-            }
         }
         finally
         {
             _spinLock.Exit();
+        }
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            waiter.TimeoutTimer = TimeProvider.System.CreateTimer(
+                _timerCallbackAction, new TimeoutState<bool>(waiter), timeout, Timeout.InfiniteTimeSpan);
         }
 
         if (cancellationToken.CanBeCanceled)

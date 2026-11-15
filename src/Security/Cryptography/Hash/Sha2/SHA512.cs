@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -124,9 +124,6 @@ public sealed class SHA512 : Sha2HashAlgorithm<ulong>
     protected override void OutputHash(Span<byte> destination, ulong[] state)
     {
         // Convert state to bytes (big-endian)
-        for (int i = 0; i < 8; i++)
-        {
-            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(i * sizeof(UInt64)), state[i]);
-        }
+        BinarySpans.WriteUInt64BigEndian(state.AsSpan(0, 8), destination);
     }
 }

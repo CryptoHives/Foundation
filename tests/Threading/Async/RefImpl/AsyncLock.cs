@@ -44,6 +44,15 @@ public class AsyncLock
         _releaser = Task.FromResult(new Releaser(this));
     }
 
+    /// <summary>
+    /// Releases the lock without going through a <see cref="Releaser"/>, so that
+    /// <see cref="AsyncConditionVariable"/> can release and re-acquire around a wait.
+    /// </summary>
+    internal void Release()
+    {
+        _semaphore.Release();
+    }
+
     public Task<Releaser> LockAsync()
     {
         Task wait = _semaphore.WaitAsync();

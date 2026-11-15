@@ -1,11 +1,14 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+#pragma warning disable CA5401 // AES test vectors use explicit fixed IVs for deterministic verification.
 
 namespace Cryptography.Tests.Cipher.Aes;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Tests for AES implementations using NIST FIPS 197 test vectors.
@@ -208,9 +211,12 @@ public class AesTests
     {
         byte[] plaintext = FromHex("00112233445566778899aabbccddeeff");
         byte[] key = new byte[keyLength];
-        for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
+        for (int i = 0; i < keyLength; i++)
+        {
+            key[i] = (byte)i;
+        }
 
-        using var aes = CreateAes(keyLength);
+        using SymmetricCipher aes = CreateAes(keyLength);
         aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
@@ -231,10 +237,17 @@ public class AesTests
         byte[] plaintext = FromHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
         byte[] key = new byte[keyLength];
         byte[] iv = new byte[16];
-        for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
-        for (int i = 0; i < 16; i++) iv[i] = (byte)(0x10 + i);
+        for (int i = 0; i < keyLength; i++)
+        {
+            key[i] = (byte)i;
+        }
 
-        using var aes = CreateAes(keyLength);
+        for (int i = 0; i < 16; i++)
+        {
+            iv[i] = (byte)(0x10 + i);
+        }
+
+        using SymmetricCipher aes = CreateAes(keyLength);
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
@@ -256,10 +269,17 @@ public class AesTests
         byte[] plaintext = FromHex("00112233445566778899aabbccdd");
         byte[] key = new byte[keyLength];
         byte[] iv = new byte[16];
-        for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
-        for (int i = 0; i < 16; i++) iv[i] = (byte)(0x20 + i);
+        for (int i = 0; i < keyLength; i++)
+        {
+            key[i] = (byte)i;
+        }
 
-        using var aes = CreateAes(keyLength);
+        for (int i = 0; i < 16; i++)
+        {
+            iv[i] = (byte)(0x20 + i);
+        }
+
+        using SymmetricCipher aes = CreateAes(keyLength);
         aes.Mode = CipherMode.CTR;
         aes.Padding = PaddingMode.None;
         aes.Key = key;
@@ -284,10 +304,17 @@ public class AesTests
         byte[] plaintext = FromHex("00112233445566778899aabbccdd"); // 14 bytes - needs 2 bytes padding
         byte[] key = new byte[keyLength];
         byte[] iv = new byte[16];
-        for (int i = 0; i < keyLength; i++) key[i] = (byte)i;
-        for (int i = 0; i < 16; i++) iv[i] = (byte)(0x30 + i);
+        for (int i = 0; i < keyLength; i++)
+        {
+            key[i] = (byte)i;
+        }
 
-        using var aes = CreateAes(keyLength);
+        for (int i = 0; i < 16; i++)
+        {
+            iv[i] = (byte)(0x30 + i);
+        }
+
+        using SymmetricCipher aes = CreateAes(keyLength);
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
         aes.Key = key;
@@ -304,7 +331,7 @@ public class AesTests
 
     /// <summary>
     /// PKCS#7 padding must be rejected regardless of which byte in the pad is corrupted,
-    /// covering the constant-time rewrite of <c>IsPkcs7PaddingValid</c> - a naive
+    /// covering the constant-time check in <c>BlockPadding</c> - a naive
     /// early-exit implementation would still throw in every case here, but with a timing
     /// signature that differs by corruption position (the classical padding-oracle side
     /// channel this rewrite closes).
@@ -328,7 +355,7 @@ public class AesTests
         byte[] key = new byte[16];
         byte[] iv = new byte[16];
 
-        using var aes = CreateAes(16);
+        using SymmetricCipher aes = CreateAes(16);
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
         aes.Key = key;
@@ -341,7 +368,7 @@ public class AesTests
         ciphertext[corruptIndexInPadBlock] ^= 0xFF;
 
         aes.IV = iv;
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => aes.Decrypt(ciphertext));
+        Assert.Throws<OS.CryptographicException>(() => aes.Decrypt(ciphertext));
     }
 
     // ========================================================================
@@ -353,12 +380,22 @@ public class AesTests
     {
         // Multiple blocks to test CBC chaining
         byte[] plaintext = new byte[64]; // 4 blocks
-        for (int i = 0; i < plaintext.Length; i++) plaintext[i] = (byte)i;
+        for (int i = 0; i < plaintext.Length; i++)
+        {
+            plaintext[i] = (byte)i;
+        }
 
         byte[] key = new byte[32];
         byte[] iv = new byte[16];
-        for (int i = 0; i < 32; i++) key[i] = (byte)(0x40 + i);
-        for (int i = 0; i < 16; i++) iv[i] = (byte)(0x60 + i);
+        for (int i = 0; i < 32; i++)
+        {
+            key[i] = (byte)(0x40 + i);
+        }
+
+        for (int i = 0; i < 16; i++)
+        {
+            iv[i] = (byte)(0x60 + i);
+        }
 
         using var aes = Aes256.Create();
         aes.Mode = CipherMode.CBC;
@@ -392,7 +429,7 @@ public class AesTests
     public void Aes128_InvalidKeySize_Throws()
     {
         using var aes = Aes128.Create();
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
+        Assert.Throws<OS.CryptographicException>(() => {
             aes.Key = new byte[24]; // Wrong size for AES-128
         });
     }
@@ -401,9 +438,31 @@ public class AesTests
     public void Aes256_InvalidKeySize_Throws()
     {
         using var aes = Aes256.Create();
-        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => {
+        Assert.Throws<OS.CryptographicException>(() => {
             aes.Key = new byte[16]; // Wrong size for AES-256
         });
+    }
+
+    /// <summary>
+    /// Every cipher instance shares one legal-size table, so the arrays handed out must be
+    /// copies: overwriting one cannot change what another instance accepts.
+    /// </summary>
+    [Test]
+    public void Aes128_LegalSizesAreCopies()
+    {
+        using var first = Aes128.Create();
+        first.LegalKeySizes[0] = new OS.KeySizes(8, 8, 0);
+        first.LegalBlockSizes[0] = new OS.KeySizes(8, 8, 0);
+
+        using var second = Aes128.Create();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(second.LegalKeySizes[0].MinSize, Is.EqualTo(128));
+            Assert.That(second.LegalBlockSizes[0].MinSize, Is.EqualTo(128));
+            Assert.That(second.ValidKeySize(128), Is.True);
+        }
+
+        second.Key = new byte[16];
     }
 
     // ========================================================================
@@ -413,13 +472,18 @@ public class AesTests
     [Test]
     public void AesCipherTransform_DisposedInstance_Throws()
     {
+        var random = new Random(42);
         using var aes = Aes128.Create();
         aes.Mode = CipherMode.ECB;
         aes.Padding = PaddingMode.None;
-        aes.Key = new byte[16];
-        aes.IV = new byte[16];
+        var key = new byte[16];
+        var iv = new byte[16];
+        random.NextBytes(key);
+        random.NextBytes(iv);
+        aes.Key = key;
+        aes.IV = iv;
 
-        var encryptor = aes.CreateEncryptor();
+        ICipherTransform encryptor = aes.CreateEncryptor();
         byte[] block = new byte[16];
         byte[] output = new byte[16];
         encryptor.TransformBlock(block, output);

@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+#pragma warning disable CA1724 // Type name conflicts with the sibling Async/AsyncSemaphore/ test namespace
+
 /// <summary>
 /// An async version of <see cref="SemaphoreSlim"/> based on
 /// https://devblogs.microsoft.com/dotnet/building-async-coordination-primitives-part-5-asyncsemaphore/.

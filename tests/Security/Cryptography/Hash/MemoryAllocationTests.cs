@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #if !NETFRAMEWORK
 
@@ -14,7 +14,7 @@ using System.Linq;
 /// Measures and reports heap memory allocated by each hash algorithm constructor.
 /// </summary>
 [TestFixture]
-[NonParallelizable]
+[Parallelizable(ParallelScope.All)]
 public class MemoryAllocationTests
 {
     /// <summary>

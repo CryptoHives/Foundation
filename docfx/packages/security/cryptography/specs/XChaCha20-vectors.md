@@ -1,9 +1,9 @@
-﻿# XChaCha20-Poly1305 Test Vectors
+# XChaCha20-Poly1305 Test Vectors
 
 ## Source
 
 draft-irtf-cfrg-xchacha-03: XChaCha20 and XChaCha20-Poly1305
-- https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha
+- [datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha)
 
 ---
 

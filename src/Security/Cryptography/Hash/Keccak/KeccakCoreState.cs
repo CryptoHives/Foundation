@@ -1,7 +1,8 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA1815 // Override equals and operator equals on value types
+#pragma warning disable CA1857 // A constant is expected for the parameter — false positive due to .NET 8 runtime metadata bug.
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -32,9 +33,9 @@ using System.Runtime.Intrinsics.X86;
 /// The Keccak state is a 5×5×64 = 1600-bit array organized as 25 64-bit lanes.
 /// </para>
 /// <para>
-/// On platforms with AVX2 support (.NET 8+), an optimized SIMD implementation is used.
-/// However, currently the all SIMD versions are slower than the scalar version on AMD 8945
-/// which is used for benchmarking, so SIMD is disabled by default in release packages.
+/// On platforms with AVX2 support (.NET 8+), a SIMD implementation is prototyped.
+/// However, currently all SIMD versions are slower than the scalar version on all
+/// benchmarked processors, so SIMD is removed by default from release packages.
 /// </para>
 /// </remarks>
 internal unsafe partial struct KeccakCoreState
@@ -114,8 +115,16 @@ internal unsafe partial struct KeccakCoreState
     /// <param name="startRound">The starting round for the permutation (default 0). Use 12 for TurboSHAKE.</param>
     public KeccakCoreState(SimdSupport simdSupport = SimdSupport.None, int startRound = 0)
     {
+        // The vectorized permutations step two rounds at a time and index the round constant
+        // table at both round and round + 1, so an odd or out-of-range start would read past
+        // the table as well as compute the wrong digest.
+        if (startRound < 0 || startRound >= Rounds || (startRound & 1) != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(startRound), "Start round must be even and less than the round count.");
+        }
+
         // mask unsupported bits
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
         _startRound = startRound;
         Reset();
     }
@@ -139,18 +148,18 @@ internal unsafe partial struct KeccakCoreState
     public void Permute()
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & SimdSupport.Arm64) != 0)
+        if (AdvSimd.Arm64.IsSupported && (_simdSupport & SimdSupport.Arm64) != 0)
         {
             PermuteScalarArm64();
             return;
         }
 #if EXPERIMENTAL
-        if ((_simdSupport & SimdSupport.Avx512F) != 0)
+        if (Avx512F.IsSupported && (_simdSupport & SimdSupport.Avx512F) != 0)
         {
             PermuteAvx512F();
             return;
         }
-        if ((_simdSupport & SimdSupport.Avx2) != 0)
+        if (Avx2.IsSupported && (_simdSupport & SimdSupport.Avx2) != 0)
         {
             PermuteAvx2();
             return;
@@ -217,11 +226,24 @@ internal unsafe partial struct KeccakCoreState
 
     }
 
-    private static readonly PermuteAvx512FVectors Avx512FVectors = new();
+    // Built only where the AVX-512 permutation can actually run. Every read of these two
+    // fields is behind the SimdSupport.Avx512F dispatch, so the empty/default values are
+    // never observed on hardware that would reject the instructions.
+    //
+    // Note this reclaims the round-constant array, not the vector struct: Avx512FVectors is a
+    // struct field, so its storage exists in the type's statics either way and only the
+    // nineteen Vector512.Create calls are saved. Reclaiming those bytes would mean putting the
+    // struct behind a reference, which adds an indirection to the hottest permute path.
+    private static readonly PermuteAvx512FVectors Avx512FVectors = Avx512F.IsSupported ? new() : default;
     private static readonly Vector512<ulong>[] RoundConstantsAvx512 = CreateRoundConstantsAvx512();
 
     private static Vector512<ulong>[] CreateRoundConstantsAvx512()
     {
+        if (!Avx512F.IsSupported)
+        {
+            return [];
+        }
+
         var constants = new Vector512<ulong>[Rounds];
         for (int i = 0; i < Rounds; i++)
         {
@@ -414,8 +436,7 @@ internal unsafe partial struct KeccakCoreState
     /// <summary>
     /// Performs 64-bit rotation using AVX2 shift and OR operations.
     /// </summary>
-    [SuppressMessage("Performance", "CA1857:A constant is expected for the parameter", Justification = "False negative due to bug in .NET 8 runtime metadata.")]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<ulong> Rol64Avx2(Vector256<ulong> a, byte offset)
     {
         return Avx2.Or(Avx2.ShiftLeftLogical(a, offset), Avx2.ShiftRightLogical(a, (byte)(64 - offset)));
@@ -425,7 +446,7 @@ internal unsafe partial struct KeccakCoreState
     /// Performs 64-bit rotation on each lane of a Vector256 with different rotation amounts.
     /// </summary>
     /// <returns>A vector with each element rotated left by its corresponding amount.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static Vector256<ulong> Rol64Avx2(Vector256<ulong> a, Vector256<ulong> leftShifts)
     {
         // Perform variable shifts and combine with OR
@@ -434,10 +455,21 @@ internal unsafe partial struct KeccakCoreState
             Avx2.ShiftRightLogicalVariable(a, Avx2.Subtract(Rol64Avx2RShift, leftShifts)));
     }
 
+    // Built only where the AVX2 permutation can actually run; see the note on
+    // RoundConstantsAvx512. Both readers (PermuteAvx2 and the two-round unroll) are behind the
+    // SimdSupport.Avx2 dispatch, and one of them takes a ref to element 0 through
+    // MemoryMarshalEx.GetArrayDataReference, whose pre-.NET-5 path would throw on an empty
+    // array -- unreachable here since this whole region is net8.0+, but the reason the guard
+    // stays rather than relying on the dispatch alone.
     private static readonly Vector256<ulong>[] RoundConstantsAvx2 = CreateRoundConstantsAvx2();
 
     private static Vector256<ulong>[] CreateRoundConstantsAvx2()
     {
+        if (!Avx2.IsSupported)
+        {
+            return [];
+        }
+
         var constants = new Vector256<ulong>[Rounds];
         for (int i = 0; i < Rounds; i++)
         {
@@ -496,7 +528,7 @@ internal unsafe partial struct KeccakCoreState
 
         fixed (ulong* statePtr = _state)
         {
-            ref Vector256<ulong> rcBase = ref MemoryMarshal.GetArrayDataReference(RoundConstantsAvx2);
+            ref Vector256<ulong> rcBase = ref MemoryMarshalEx.GetArrayDataReference(RoundConstantsAvx2);
 
             // Load state into vectors
             // Key detail: we use Vector256.Create(value) for the U-lanes so that the value
@@ -742,7 +774,7 @@ internal unsafe partial struct KeccakCoreState
                         Avx2.Permute4x64(bbaeio, 0b00_11_10_01).AsDouble(),
                         bbu.AsDouble(), 0b1000).AsUInt64();
                     abaeio = Avx2.Xor(bbaeio, Avx2.AndNot(bbeiou, bbioua));
-                    abaeio = Avx2.Xor(abaeio, RoundConstantsAvx2[round + 1]); // Apply constant early
+                    abaeio = Avx2.Xor(abaeio, rc); // Apply constant early
 
                     abu = Avx2.Xor(bbu, Avx2.AndNot(bbaeio, bbeiou));
                     abu = Avx2.Permute4x64(abu, 0b00_00_00_00);
@@ -889,11 +921,11 @@ internal unsafe partial struct KeccakCoreState
 #endif
 
     #region Scalar Implementation
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private static ulong GetRoundConstants(int round)
     {
 #if NET8_0_OR_GREATER
-        return Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(RoundConstants), round);
+        return Unsafe.Add(ref MemoryMarshalEx.GetArrayDataReference(RoundConstants), round);
 #else
         return RoundConstants[round];
 #endif
@@ -1139,10 +1171,19 @@ internal unsafe partial struct KeccakCoreState
     /// </summary>
     /// <param name="output">The buffer to receive the output.</param>
     /// <param name="length">The number of bytes to extract (must be ≤ rate).</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="length"/> is negative or exceeds the state size.</exception>
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public void Squeeze(Span<byte> output, int length)
     {
         const int uInt64Size = sizeof(UInt64);
+
+        // The little-endian path reads length bytes straight out of the fixed state buffer,
+        // so this bound is what keeps the read inside it. Callers pass at most the rate,
+        // which is always smaller, but nothing in the type system says so.
+        if ((uint)length > (uint)(StateSize * uInt64Size))
+        {
+            throw new ArgumentOutOfRangeException(nameof(length), "Squeeze length cannot exceed the Keccak state size.");
+        }
 
         fixed (ulong* statePtr = _state)
         {
@@ -1168,9 +1209,7 @@ internal unsafe partial struct KeccakCoreState
 
                 if (bytesToCopy > 0)
                 {
-                    Span<byte> temp = stackalloc byte[uInt64Size];
-                    BinaryPrimitives.WriteUInt64LittleEndian(temp, statePtr[stateIndex]);
-                    temp.Slice(0, bytesToCopy).CopyTo(output.Slice(offset));
+                    BinaryStore.WriteUInt64LittleEndianTruncated(statePtr[stateIndex], output.Slice(offset, bytesToCopy));
                 }
             }
         }
@@ -1213,23 +1252,17 @@ internal unsafe partial struct KeccakCoreState
                 }
                 else
                 {
-                    // Big-endian: convert each byte individually.
-                    int stateIndex = squeezeOffset / 8;
-                    int byteIndex = squeezeOffset % 8;
-
-                    unchecked
+                    // Big-endian: one truncated write per lane.
+                    int written = 0;
+                    while (written < toCopy)
                     {
-                        for (int i = 0; i < toCopy; i++)
-                        {
-                            output[outputOffset + i] = (byte)(statePtr[stateIndex] >> (byteIndex * 8));
-                            byteIndex++;
-
-                            if (byteIndex >= 8)
-                            {
-                                byteIndex = 0;
-                                stateIndex++;
-                            }
-                        }
+                        int position = squeezeOffset + written;
+                        int byteIndex = position % sizeof(ulong);
+                        int take = Math.Min(sizeof(ulong) - byteIndex, toCopy - written);
+                        BinaryStore.WriteUInt64LittleEndianTruncated(
+                            statePtr[position / sizeof(ulong)] >> (byteIndex * 8),
+                            output.Slice(outputOffset + written, take));
+                        written += take;
                     }
                 }
 

@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #if !(NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER)
 #define MEMORYSTREAM_READ_SPAN_POLYFILL

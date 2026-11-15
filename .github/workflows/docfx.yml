@@ -2,47 +2,210 @@
 
 name: DocFX Deployment
 
-# Trigger on push to main, but only when documentation or the API-doc sources change.
-# (API reference is generated from src/**; other churn does not affect the site.)
+# Two jobs:
+#   build  - compiles the site. Runs on every PR that touches the docs sources (validation
+#            only, no deploy) and on push to main / workflow_dispatch.
+#   deploy - publishes the build job's artifact to GitHub Pages. Skipped for pull_request.
+#
+# Trigger paths cover everything that can change the rendered site: the docs sources
+# (docfx/**), the API-doc sources (src/**, since the API reference is generated from them),
+# the build/import scripts (scripts/**) and this workflow file itself.
+#
+# Recording a benchmark run does NOT publish it. The trends databases are generated at build
+# time from the orphan `benchmarks` branch, so a new run only becomes visible once this
+# workflow runs again - but a push to that branch cannot start it. For push events GitHub only
+# runs workflows that exist in the pushed ref, and `benchmarks` carries nothing but README.md
+# and the two run directories; it has no .github/ at all. Listing it here looked right and
+# never once fired.
+#
+# So after pushing a recorded run, publish it deliberately:
+#
+#     gh workflow run docfx.yml
+#
+# which is what workflow_dispatch below is for. Any later push to main republishes it too,
+# since the build always reads the archive branch fresh.
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
+      - benchmarks
     paths:
       - 'docfx/**'
       - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/docfx.yml'
+  pull_request:
+    paths:
+      - 'docfx/**'
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/docfx.yml'
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Only the deploy job needs write access; the build job is read-only.
 permissions:
-  actions: read
-  pages: write
-  id-token: write
+  contents: read
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-  
 jobs:
-  publish-docs:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
+    # Repeated pushes to the same PR/branch cancel a stale in-progress build. The deploy job
+    # has its own, separate concurrency group so a PR build never blocks a production deploy.
+    concurrency:
+      group: "docfx-build-${{ github.ref }}"
+      cancel-in-progress: true
     steps:
+    # For a pull request, build the PR's merge ref so the check actually validates the
+    # proposed change. Otherwise build main explicitly - never the triggering ref, since a
+    # push to `benchmarks` would otherwise check out the orphan data branch, which has no
+    # docfx/, src/ or scripts/, and the build would fail before it started.
     - name: Checkout
       uses: actions/checkout@v7
+      with:
+        ref: ${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+
+    # The run archive, into a directory of its own. It lives outside docfx/, so nothing here is
+    # picked up as site content.
+    - name: Checkout benchmark run archive
+      uses: actions/checkout@v7
+      with:
+        ref: benchmarks
+        path: .benchmarks-archive
+
     - name: Dotnet Setup
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 8.x
+        # 8.x for docfx itself, which ships a net8.0 tool; 10.x so the API metadata step can load
+        # the projects, whose target frameworks include net10.0.
+        dotnet-version: |
+          8.x
+          10.x
+
+    - name: Python Setup
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+
+    # The trends database is a derived artifact, rebuilt here rather than committed: it is a
+    # multi-megabyte binary that sqlite rewrites wholesale on every change, so committing it added
+    # a fresh incompressible blob to history for data that is fully reproducible from the archive.
+    - name: Build benchmark trends databases
+      run: |
+        python scripts/threading-benchmark-trends/import_run_archive.py \
+          --archive .benchmarks-archive \
+          --db docfx/packages/threading/benchmark-trends/benchmark-history.sqlite
+        python scripts/cryptography-benchmark-trends/import_run_archive.py \
+          --archive .benchmarks-archive \
+          --db docfx/packages/security/cryptography/benchmark-trends/benchmark-history.sqlite
+
+    # Publishing a dashboard with no data is worse than failing, because it looks like a result.
+    # The importer exits non-zero when the archive is missing entirely; this catches the subtler
+    # case where it ran, found nothing to import, and left an empty database behind.
+    - name: Verify the trends databases have data
+      run: |
+        for db in docfx/packages/threading/benchmark-trends/benchmark-history.sqlite \
+                  docfx/packages/security/cryptography/benchmark-trends/benchmark-history.sqlite; do
+          rows=$(python -c "import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('select count(*) from benchmark_results').fetchone()[0])" "$db")
+          echo "$db: $rows row(s)"
+          if [ "$rows" -eq 0 ]; then
+            echo "::error::$db is empty - refusing to publish a dashboard with no data."
+            exit 1
+          fi
+          # The dashboard degrades quietly without these - tooltips just stop naming the
+          # competitor's version - so an empty table has to be loud rather than invisible.
+          packages=$(python -c "import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('select count(*) from benchmark_run_packages').fetchone()[0])" "$db")
+          echo "$db: $packages package version(s)"
+          if [ "$packages" -eq 0 ]; then
+            echo "::warning::$db records no third-party package versions - competitor regressions cannot be attributed."
+          fi
+        done
+
+    # Served from the site itself so no visitor request reaches a third-party CDN; pinned by hash.
+    - name: Fetch dashboard libraries
+      shell: pwsh
+      run: ./scripts/fetch-docfx-vendor.ps1
+
     - run: dotnet tool update -g docfx
     - run: docfx docfx/docfx.json
+
+    # Post-process the built site before it is published:
+    #  - strip the UTF-8 BOM docfx writes on sitemap.xml (Search Console rejects it);
+    #  - turn `_noindex: true` pages (the Impressum) into a real robots noindex and
+    #    drop them from the sitemap.
+    # The script throws on any failed assertion, which fails the job.
+    - name: Finalize the built site
+      shell: pwsh
+      run: ./scripts/finalize-docfx-site.ps1 -SiteDir docfx/_site
+
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v5
       with:
         path: 'docfx/_site'
+
+  deploy:
+    needs: build
+    # Validation only for pull requests - no deploy.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      actions: read
+    # Allow only one concurrent deployment, skipping runs queued between the run in-progress and
+    # latest queued. Do NOT cancel in-progress runs - production deployments should complete.
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v5
+
+    # Tell IndexNow (Bing, Yandex, Seznam, Naver) the docs were just republished.
+    # The key is not a secret - it is served publicly at /<key>.txt for verification,
+    # exactly like the Google site-verification file - so it lives in the repo, added
+    # to docfx.json's `resource` list. `keyLocation` points IndexNow at the key under
+    # /Foundation/, which is what authorises submitting URLs beneath that path.
+    # Best-effort: a failed ping never fails the deploy.
+    - name: Notify IndexNow
+      continue-on-error: true
+      shell: bash
+      env:
+        INDEXNOW_KEY: 7c2e1cbd9afe450880c3e3e3d0b35728
+        SITE: https://cryptohives.github.io/Foundation/
+      run: |
+        set -uo pipefail
+        key_url="${SITE}${INDEXNOW_KEY}.txt"
+
+        # The key file must be live and contain exactly the key, or every endpoint
+        # rejects the whole batch.
+        got=$(curl -fsS --retry 3 --retry-delay 5 "$key_url") || {
+          echo "::warning::IndexNow key file not reachable at $key_url - skipping"; exit 0; }
+        if [ "$got" != "$INDEXNOW_KEY" ]; then
+          echo "::warning::key file at $key_url does not contain the key - skipping"; exit 0; fi
+
+        curl -fsS --retry 3 --retry-delay 5 "${SITE}sitemap.xml" -o sitemap.xml || {
+          echo "::warning::could not fetch the deployed sitemap - skipping IndexNow"; exit 0; }
+
+        mapfile -t urls < <(grep -oP '(?<=<loc>)[^<]+' sitemap.xml | sed 's/&amp;/\&/g')
+        if [ "${#urls[@]}" -eq 0 ]; then
+          echo "::warning::no <loc> entries in sitemap - skipping IndexNow"; exit 0; fi
+        echo "Submitting ${#urls[@]} URL(s) to IndexNow"
+
+        payload=$(printf '%s\n' "${urls[@]}" | jq -R . | jq -s \
+          --arg host cryptohives.github.io \
+          --arg key "$INDEXNOW_KEY" \
+          --arg keyLocation "$key_url" \
+          '{host: $host, key: $key, keyLocation: $keyLocation, urlList: .}')
+
+        code=$(curl -sS -o resp.txt -w '%{http_code}' \
+          -X POST -H 'Content-Type: application/json; charset=utf-8' \
+          --data "$payload" https://api.indexnow.org/indexnow)
+        echo "IndexNow HTTP $code"; cat resp.txt 2>/dev/null || true
+        case "$code" in
+          200|202) echo "IndexNow accepted the submission" ;;
+          *) echo "::warning::IndexNow returned HTTP $code" ;;
+        esac

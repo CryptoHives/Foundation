@@ -1,20 +1,10 @@
 # AsyncManualResetEvent
 
+**Namespace:** `CryptoHives.Foundation.Threading.Async.Pooled` · [API reference](xref:CryptoHives.Foundation.Threading.Async.Pooled.AsyncManualResetEvent)
+
 ## Overview
 
 `AsyncManualResetEvent` is a pooled async version of `ManualResetEvent` that uses `ValueTask` to minimize memory allocations. It provides async signaling by reusing pooled `IValueTaskSource` instances. Unlike `AsyncAutoResetEvent`, it releases **all** waiting threads when signaled and remains signaled until explicitly reset.
-
-## Namespace
-
-```csharp
-using CryptoHives.Foundation.Threading.Async.Pooled;
-```
-
-## Class Declaration
-
-```csharp
-public sealed class AsyncManualResetEvent : IResettable
-```
 
 ## Key Features
 
@@ -48,7 +38,7 @@ public AsyncManualResetEvent(
 public bool IsSet { get; }
 ```
 
-Gets whether this event is currently in the signaled state.
+Gets whether this event is currently in the signaled state. A manual-reset event does not consume its signal, so the state stays set until `Reset()` is called.
 
 ### RunContinuationAsynchronously
 
@@ -163,6 +153,20 @@ Signals the event, releasing **all** waiting threads. The event remains in the s
 - All future `WaitAsync()` calls complete immediately until `Reset()` is called.
 - When `RunContinuationAsynchronously` is `false`, continuations may run synchronously on the signaling thread.
 
+### TryWait
+
+```csharp
+public bool TryWait()
+```
+
+Attempts to complete a wait without awaiting.
+
+**Returns**: `true` if the event is set; `false` otherwise.
+
+A manual-reset event does **not** consume its signal, so `TryWait()` never changes state and is exactly equivalent to reading [`IsSet`](#isset). It exists for naming symmetry with the other primitives in this package (`AsyncLock.TryLock`, `AsyncSemaphore.TryWait`, `AsyncAutoResetEvent.TryWait`, …). Like those, it is synchronous and never allocates.
+
+When only one caller should act on the signal, reach for [`AsyncAutoResetEvent`](asyncautoresetevent.md) instead — its `TryWait()` hands the signal to a single caller.
+
 ### Reset
 
 ```csharp
@@ -214,7 +218,7 @@ finally
 
 ## Thread Safety
 
-✓ **Thread-safe**. All public methods are thread-safe and can be called concurrently.
+**Thread-safe**. All public methods are thread-safe and can be called concurrently.
 
 ## Performance Characteristics
 
@@ -225,26 +229,26 @@ finally
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncManualResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncManualResetEvent` and reference `TaskCompletionSource`-based implementations.
+The following benchmarks compare `AsyncManualResetEvent` against popular alternatives including `Nito.AsyncEx.AsyncManualResetEvent`, `DotNext.Threading.AsyncManualResetEvent` (net10.0 only), and reference `TaskCompletionSource`-based implementations.
 
 ### Set/Reset Cycle Benchmark
 
 Measures the performance of rapid uncontended Set/Reset cycles. No surprises here except for Nito and Refimpl which expose some memory allocations, probably for a TaskCompletionSource instance.
 
-[View live Set/Reset Cycle benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=SetReset)
+[View live Set/Reset Cycle benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=SetReset&mode=trend)
 
 ### Set Then Wait Benchmark
 
 Measures the pattern where the event is set before waiters arrive (synchronous completion path). Again no surprises here; all implementations complete synchronously but Nito and Refimpl require allocations.
 
-[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=SetThenWait)
+[View live Set Then Wait benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=SetThenWait&mode=trend)
 
 ### Wait Then Set Benchmark
 
 Measures the pattern where waiters are queued before the event is signaled (asynchronous completion path). The pooled implementation shows strong performance here without allocations, especially when a cancellation token is provided. 
 Nito and Refimpl again show higher allocation counts due to TaskCompletionSource usage. In the tests for non cancellable tokens, Nito is ahead of the pack because it can share a single TaskCompletionSource with all waiters, but falls back when real cancellable tokens are used.
 
-[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=WaitThenSet)
+[View live Wait Then Set benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncManualReset&method=WaitThenSet&mode=trend)
 
 ### Benchmark Analysis
 
@@ -268,7 +272,7 @@ Nito and Refimpl again show higher allocation counts due to TaskCompletionSource
 
 ## Best Practices
 
-### ✓ DO: Use for Initialization Signals
+### Use for initialization signals
 
 ```csharp
 public class DataService
@@ -289,7 +293,7 @@ public class DataService
 }
 ```
 
-### ✓ DO: Use for Broadcasting
+### Use for broadcasting
 
 ```csharp
 // Good: Release all waiting threads simultaneously
@@ -304,11 +308,11 @@ start.Set();
 await Task.WhenAll(workers);
 ```
 
-### ✓ DO: Use a custom pool when high contention is expected
+### Use a custom pool when high contention is expected
 
 Provide a larger object pool to avoid temporary allocations when many waiters are queued simultaneously.
 
-### ✓ DO: Always await `ValueTask` directly when possible
+### Always await `ValueTask` directly when possible
 
 ```csharp
 // Good: Direct await
@@ -318,7 +322,7 @@ await _event.WaitAsync();
 await _event.WaitAsync().AsTask();
 ```
 
-### ✗ DON'T: Use for One-at-a-Time Signaling
+### Don't use for one-at-a-time signaling
 
 ```csharp
 // Bad: Releases ALL waiters, not just one
@@ -332,11 +336,11 @@ evt.Set(); // Both tasks complete!
 // Better: Use AsyncAutoResetEvent for one-at-a-time
 ```
 
-### ✗ DON'T: Store `AsTask()` Before Signaling (when `RunContinuationAsynchronously == true`)
+### Don't store `AsTask()` before signaling (when `RunContinuationAsynchronously == true`)
 
 Storing the `Task` result of `AsTask()` before `Set()` forces an asynchronous completion path that can be much slower. Prefer awaiting the `ValueTask` directly.
 
-### ✗ DON'T: Await `ValueTask` Multiple Times
+### Don't await `ValueTask` multiple times
 
 ```csharp
 // Bad: Throws InvalidOperationException
@@ -350,7 +354,7 @@ await t;
 await t;  // OK
 ```
 
-### ✓ DO: Use `WaitAsync(TimeSpan)` for timed waits
+### Use `WaitAsync(TimeSpan)` for timed waits
 
 ```csharp
 try
@@ -374,9 +378,12 @@ catch (TimeoutException)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md) - Async reader-writer lock
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

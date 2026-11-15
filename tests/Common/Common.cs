@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable CA1308 // Normalize strings to uppercase
 #pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
@@ -36,6 +36,23 @@ static class AsyncAssert
 /// </summary>
 static class TestHelpers
 {
+    /// <summary>
+    /// Gets whether the tests run on browser-wasm, whose in-box cryptography has no AES, TripleDES
+    /// or MD5.
+    /// </summary>
+    public static bool IsBrowser =>
+#if NET5_0_OR_GREATER
+        OperatingSystem.IsBrowser();
+#else
+        false;
+#endif
+
+    /// <summary>
+    /// Skips the current test on browser-wasm.
+    /// </summary>
+    /// <param name="reason">What the test needs that browser-wasm does not have.</param>
+    public static void AssumeNotBrowser(string reason) => Assume.That(!IsBrowser, reason);
+
     /// <summary>
     /// Converts a hexadecimal string to a byte array.
     /// </summary>

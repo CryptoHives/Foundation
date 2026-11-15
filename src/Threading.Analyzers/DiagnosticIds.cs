@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Threading.Analyzers;
 
@@ -23,20 +23,12 @@ public static class DiagnosticIds
     /// </summary> 
     public const string StoredInField = "CHT003";
 
-    /// <summary>
-    /// ValueTask.AsTask() called multiple times. 
-    /// </summary> 
-    public const string MultipleAsTask = "CHT004";
 
     /// <summary>
     /// ValueTask.Result accessed directly (blocking and potential misuse). 
     /// </summary> 
     public const string DirectResultAccess = "CHT005";
 
-    /// <summary>
-    /// ValueTask passed to method that may consume it multiple times. 
-    /// </summary> 
-    public const string PassedToUnsafeMethod = "CHT006";
 
     /// <summary>
     /// ValueTask.AsTask() stored before signaling can cause performance issues. 
@@ -57,4 +49,19 @@ public static class DiagnosticIds
     /// ValueTask captured in lambda/closure. 
     /// </summary> 
     public const string CapturedInClosure = "CHT010";
+
+    /// <summary>
+    /// <c>async</c> ValueTask method only forwards an awaited ValueTask; return it directly.
+    /// </summary>
+    public const string RedundantAsyncForwarding = "CHT011";
+
+    /// <summary>
+    /// <c>async</c> ValueTask wrapper boxes a state machine whenever it suspends.
+    /// </summary>
+    public const string AsyncWrapperBoxesStateMachine = "CHT012";
+
+    /// <summary>
+    /// <c>async</c> method returns an <c>AsyncReentrantLock</c> releaser, hiding the hold from its caller.
+    /// </summary>
+    public const string AsyncReentrantReleaserReturnedFromAsync = "CHT013";
 }

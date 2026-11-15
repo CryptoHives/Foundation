@@ -1,10 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// AES-CCM (Counter with CBC-MAC) authenticated encryption implementation.
@@ -61,7 +61,7 @@ public abstract class AesCcm : IAeadCipher
     /// Initializes a new instance of the <see cref="AesCcm"/> class.
     /// </summary>
     /// <param name="key">The AES key (16, 24, or 32 bytes).</param>
-    protected AesCcm(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
+    protected AesCcm(ReadOnlySpan<byte> key) : this(AesCore.AesDefault, key)
     {
     }
 
@@ -180,7 +180,7 @@ public abstract class AesCcm : IAeadCipher
         ReadOnlySpan<byte> associatedData = default)
     {
         if (ciphertextWithTag.Length < TagSizeBytes)
-            throw new CryptographicException("Ciphertext too short.");
+            throw new OS.CryptographicException("Ciphertext too short.");
 
         int ciphertextLength = ciphertextWithTag.Length - TagSizeBytes;
         byte[] plaintext = new byte[ciphertextLength];
@@ -189,7 +189,7 @@ public abstract class AesCcm : IAeadCipher
                     ciphertextWithTag.Slice(ciphertextLength, TagSizeBytes),
                     plaintext, associatedData))
         {
-            throw new CryptographicException("Authentication tag mismatch.");
+            throw new OS.CryptographicException("Authentication tag mismatch.");
         }
 
         return plaintext;

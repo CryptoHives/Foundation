@@ -1,3 +1,8 @@
+---
+title: Threading Package
+_description: CryptoHives.Foundation.Threading — pooled, ValueTask-based async synchronization primitives for .NET (AsyncLock, AsyncKeyedLock<TKey>, AsyncSemaphore, events, barrier, countdown, reader-writer lock) with allocation-free waiters. Targets net462 through net10.0.
+---
+
 # CryptoHives.Foundation.Threading Package
 
 ## Overview
@@ -24,6 +29,9 @@ Most popular async synchronization libraries allocate a `Task` and/or `TaskCompl
 dotnet add package CryptoHives.Foundation.Threading
 ```
 
+**Target frameworks:** `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0`. No
+dependency on any other CryptoHives package.
+
 > **Note:** This package does not include [Threading Analyzers](../threading.analyzers/index.md) automatically.
 
 ## Namespaces
@@ -47,11 +55,14 @@ using CryptoHives.Foundation.Threading.Pools;
 | Class | Description | Documentation |
 |-------|-------------|---------------|
 | [AsyncLock](asynclock.md) | Pooled async mutual exclusion lock | [Details](asynclock.md) |
+| [AsyncKeyedLock&lt;TKey&gt;](asynckeyedlock.md) | Pooled per-key async exclusive lock (different keys never block each other) | [Details](asynckeyedlock.md) |
 | [AsyncAutoResetEvent](asyncautoresetevent.md) | Pooled async auto-reset event (one waiter per signal) | [Details](asyncautoresetevent.md) |
 | [AsyncManualResetEvent](asyncmanualresetevent.md) | Pooled async manual-reset event (all waiters per signal) | [Details](asyncmanualresetevent.md) |
 | [AsyncSemaphore](asyncsemaphore.md) | Pooled async semaphore with configurable permit count | [Details](asyncsemaphore.md) |
 | [AsyncCountdownEvent](asynccountdownevent.md) | Pooled async countdown event (signals when count reaches zero) | [Details](asynccountdownevent.md) |
 | [AsyncBarrier](asyncbarrier.md) | Pooled async barrier (synchronizes multiple participants) | [Details](asyncbarrier.md) |
+| [AsyncConditionVariable](asyncconditionvariable.md) | Pooled async condition variable (wait until a condition guarded by an `AsyncLock` holds) | [Details](asyncconditionvariable.md) |
+| [AsyncExchange&lt;T&gt;](asyncexchange.md) | Pooled two-party rendezvous that swaps a value between two tasks | [Details](asyncexchange.md) |
 | [AsyncReaderWriterLock](asyncreaderwriterlock.md) | Pooled async reader-writer lock (multiple readers or single writer) | [Details](asyncreaderwriterlock.md) |
 
 ### Pooling Support Classes
@@ -82,7 +93,11 @@ using CryptoHives.Foundation.Threading.Pools;
 
 Not every primitive here beats its popular-library equivalent in every scenario — most of the time it does, but there are exceptions. `AsyncManualResetEvent`, for instance, pays for one `IValueTaskSource` per waiter because a single `ValueTask` can't be awaited by more than one caller. A `Task`-based implementation can let every waiter share the same underlying `Task`/`TaskCompletionSource` instead.
 
-See the [Benchmarks overview](benchmarks.md) for numbers. Raw run reports live under `tests/Threading/BenchmarkDotNet.Artifacts/results/`.
+[`AsyncReentrantLock`](asyncreentrantlock.md) is the one primitive that is not allocation-free by design: tracking reentrancy through an `AsyncLocal` allocates on every acquisition. Its [Performance and memory](asyncreentrantlock.md#performance-and-memory) section has the details.
+
+The benchmarks measure each primitive against the BCL and the async libraries people actually use — Nito.AsyncEx, ProtoPromise, Microsoft.VisualStudio.Threading, NeoSmart.AsyncLock, DotNext.Threading (net10.0 only), and the keyed-lock libraries `AsyncKeyedLock`, `KeyedSemaphores`, `Dao.IndividualLock` and `AsyncUtilities` — wherever a comparable primitive exists.
+
+See the [Benchmarks overview](benchmarks.md) for numbers. A local run writes its reports to `tests/Threading/BenchmarkDotNet.Artifacts/results/`; recorded runs are archived on the `benchmarks` branch, which is what the published dashboard is built from.
 
 ## Quick Examples
 
@@ -98,6 +113,38 @@ public async Task AccessSharedResourceAsync(CancellationToken ct)
         // Critical section - only one task at a time
         await ModifySharedStateAsync();
     }
+}
+```
+
+### AsyncKeyedLock
+
+```csharp
+private readonly AsyncKeyedLock<string> _locksByAccount = new AsyncKeyedLock<string>();
+
+public async Task UpdateAccountAsync(string accountId, CancellationToken ct)
+{
+    using (await _locksByAccount.LockAsync(accountId, ct))
+    {
+        // Serialized per account - operations on other accounts run in parallel
+        await ApplyChangesAsync(accountId);
+    }
+}
+```
+
+`TryLock` acquires only if the key is free right now. It never waits and never allocates, which
+suits opportunistic work that can be skipped when someone else already holds the key:
+
+```csharp
+public void RefreshIfIdle(string accountId)
+{
+    if (_locksByAccount.TryLock(accountId, out var releaser))
+    {
+        using (releaser)
+        {
+            RefreshCache(accountId);
+        }
+    }
+    // Held by someone else - skip; the refresh will happen on their release
 }
 ```
 
@@ -153,6 +200,29 @@ public async Task AccessLimitedResourceAsync(CancellationToken ct)
     {
         // Max 3 concurrent tasks can access this section
         await AccessResourceAsync();
+    }
+    finally
+    {
+        _semaphore.Release();
+    }
+}
+
+// Shed load instead of queueing indefinitely: give up after two seconds
+public async Task<bool> TryAccessAsync(CancellationToken ct)
+{
+    try
+    {
+        await _semaphore.WaitAsync(TimeSpan.FromSeconds(2), ct);
+    }
+    catch (TimeoutException)
+    {
+        return false; // no permit came free in time
+    }
+
+    try
+    {
+        await AccessResourceAsync();
+        return true;
     }
     finally
     {
@@ -218,11 +288,50 @@ public async Task WriteAsync(CancellationToken ct)
         await WriteDataAsync();
     }
 }
+
+// Writer that would rather fail fast than block a request thread behind long readers
+public async Task<bool> TryWriteAsync(CancellationToken ct)
+{
+    try
+    {
+        using (await _rwLock.WriterLockAsync(TimeSpan.FromMilliseconds(250), ct))
+        {
+            await WriteDataAsync();
+            return true;
+        }
+    }
+    catch (TimeoutException)
+    {
+        return false;
+    }
+}
 ```
 
 ## Timeout Support
 
-Every synchronization primitive accepts an optional timeout, so you can attempt a non-blocking acquire or build timeout-based retry logic instead of waiting indefinitely:
+Every wait and every acquisition takes an optional timeout, as an overload that sits in front of the `CancellationToken`:
+
+| Primitive | Method taking a timeout |
+|-----------|-------------------------|
+| `AsyncLock` | `LockAsync(TimeSpan, CancellationToken)` |
+| `AsyncKeyedLock<TKey>` | `LockAsync(TKey, TimeSpan, CancellationToken)` — plus `TryLock(TKey, out Releaser)`, which never waits at all |
+| `AsyncSemaphore` | `WaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncAutoResetEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncManualResetEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncCountdownEvent` | `WaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncBarrier` | `SignalAndWaitAsync(TimeSpan, CancellationToken)` |
+| `AsyncConditionVariable` | `WaitAsync(AsyncLock, TimeSpan, CancellationToken)` |
+| `AsyncExchange<T>` | `ExchangeAsync(T, TimeSpan, CancellationToken)` |
+| `AsyncReaderWriterLock` | `ReaderLockAsync` / `UpgradeableReaderLockAsync` / `WriterLockAsync(TimeSpan, CancellationToken)`, and `UpgradeToWriterLockAsync(TimeSpan, CancellationToken)` on an upgradeable releaser |
+
+The semantics are the same across every primitive:
+
+- Elapsing throws `TimeoutException`; the wait is abandoned and nothing is acquired.
+- `Timeout.InfiniteTimeSpan` waits indefinitely, exactly like the overload without a timeout.
+- `TimeSpan.Zero` is an immediate attempt — it either succeeds or throws right away.
+- Any other negative value throws `ArgumentOutOfRangeException`.
+- An already-cancelled token wins over a zero timeout: you get `OperationCanceledException`, which carries the token, rather than a `TimeoutException` that names neither.
+- The timer costs nothing until it is needed. Nothing is allocated when the primitive is available immediately, when the timeout is infinite, or when a zero timeout fails outright — only a genuine wait on a finite timeout allocates one, and it is disposed when the `ValueTask` is awaited.
 
 ```csharp
 // Non-blocking attempt using TimeSpan.Zero
@@ -236,6 +345,27 @@ try
 catch (TimeoutException)
 {
     // Lock not immediately available
+}
+```
+
+```csharp
+// Per-key timeout: a slow tenant delays only callers working on that tenant
+private readonly AsyncKeyedLock<string> _locksByTenant = new AsyncKeyedLock<string>();
+
+public async Task<bool> TryImportAsync(string tenantId, CancellationToken ct)
+{
+    try
+    {
+        using (await _locksByTenant.LockAsync(tenantId, TimeSpan.FromSeconds(5), ct))
+        {
+            await ImportAsync(tenantId);
+            return true;
+        }
+    }
+    catch (TimeoutException)
+    {
+        return false; // another import for this tenant is still running
+    }
 }
 ```
 
@@ -264,11 +394,75 @@ public async Task<bool> TryAcquireWithRetryAsync(TimeSpan timeout, int maxRetrie
 }
 ```
 
+## Non-Blocking Attempts (`Try*`)
+
+Where a zero timeout answers "can I have it right now?" by *throwing* `TimeoutException` on a miss, the
+`Try*` methods answer the same question by *returning* `false`. They are synchronous, never allocate an
+exception or a faulted `ValueTask`, and there is nothing to await — the call either succeeds immediately
+or it doesn't. Reach for them on paths that shed work rather than queue it, where contention is an
+expected outcome instead of an exceptional one.
+
+| Primitive | Non-blocking attempt | Consumes on success? |
+|-----------|----------------------|----------------------|
+| `AsyncLock` | `bool TryLock(out Releaser)` | Yes — dispose the releaser to release |
+| `AsyncKeyedLock<TKey>` | `bool TryLock(TKey, out Releaser)` | Yes — dispose the releaser to release |
+| `AsyncSemaphore` | `bool TryWait()` | Yes — call `Release()` exactly once on success |
+| `AsyncAutoResetEvent` | `bool TryWait()` | Yes — consumes the pending signal, exactly as a completed `WaitAsync()` would |
+| `AsyncManualResetEvent` | `bool TryWait()` | No — non-consuming, identical to reading `IsSet` |
+| `AsyncCountdownEvent` | `bool TryWait()` | No — non-consuming, identical to reading `IsSet` |
+| `AsyncReaderWriterLock` | `bool TryReaderLock(out Releaser)`, `bool TryUpgradeableReaderLock(out Releaser)`, `bool TryWriterLock(out Releaser)` | Yes — dispose the releaser to release |
+| `AsyncReaderWriterLock.Releaser` | `bool TryUpgradeToWriterLock(out Releaser)` on an upgradeable releaser | Yes — dispose the returned releaser to demote back |
+| `AsyncExchange<T>` | `bool TryExchange(T, out T)` | Pairs only with a party already waiting; never occupies the slot otherwise |
+
+Semantics worth calling out:
+
+- **`AsyncAutoResetEvent.TryWait()` consumes the signal.** That is what separates it from `IsSet`, which
+  only peeks and lets two callers both proceed on one signal. Prefer `TryWait()` whenever the answer
+  decides who does the work.
+- **`AsyncManualResetEvent.TryWait()` / `AsyncCountdownEvent.TryWait()` do not consume anything** — a
+  manual-reset event and a countdown hold their state until explicitly reset. These are exact aliases of
+  `IsSet`, provided for naming symmetry.
+- **`AsyncReaderWriterLock` honours writer priority on the try path too.** `TryReaderLock` and
+  `TryUpgradeableReaderLock` decline while a writer is queued, even though the lock is only read-held, so
+  a caller polling in a loop cannot starve a writer. `TryUpgradeableReaderLock` also declines while
+  another upgradeable reader holds the lock (only one is allowed at a time).
+- **A failed `Try*` hands back `default`.** For the releaser-returning overloads that means a releaser
+  with no associated lock — do not dispose it. In `DEBUG` builds disposing a default `AsyncLock.Releaser`
+  or `AsyncReaderWriterLock.Releaser` throws `InvalidOperationException` to catch the mistake; release
+  builds ignore it.
+
+```csharp
+// Opportunistic cache refresh — skip entirely if another writer is active
+if (_rwLock.TryWriterLock(out var releaser))
+{
+    using (releaser)
+    {
+        RebuildCache();
+    }
+}
+
+// Rate limiter that reports "busy" instead of throwing or awaiting
+public bool TryHandle(Request request)
+{
+    if (!_permits.TryWait())
+    {
+        return false; // shed load
+    }
+
+    try { Process(request); }
+    finally { _permits.Release(); }
+    return true;
+}
+```
+
 ## Performance Characteristics by Primitive
 
 - **AsyncLock**: O(1) acquire when uncontended, FIFO queue for waiters
+- **AsyncKeyedLock**: O(1) acquire per key when uncontended; one administrative lock guards the key registry
 - **AsyncAutoResetEvent**: O(1) Set/Wait, FIFO queue for single waiter release
 - **AsyncManualResetEvent**: O(n) Set broadcast to all n waiters, O(1) Reset
+- **AsyncConditionVariable**: O(1) Signal/Wait; releases and re-acquires the paired `AsyncLock` on every return path
+- **AsyncExchange&lt;T&gt;**: O(1) — the arriving party never suspends and returns a synchronously-completed `ValueTask<T>`
 
 ## Best Practices
 
@@ -386,9 +580,13 @@ var evt = new AsyncAutoResetEvent(
 - [AsyncManualResetEvent](asyncmanualresetevent.md)
 - [AsyncReaderWriterLock](asyncreaderwriterlock.md)
 - [AsyncLock](asynclock.md)
+- [AsyncKeyedLock](asynckeyedlock.md)
+- [AsyncReentrantLock](asyncreentrantlock.md)
 - [AsyncCountdownEvent](asynccountdownevent.md)
 - [AsyncBarrier](asyncbarrier.md)
 - [AsyncSemaphore](asyncsemaphore.md)
+- [AsyncConditionVariable](asyncconditionvariable.md)
+- [AsyncExchange](asyncexchange.md)
 - [Benchmarks](benchmarks.md)
 
 ---

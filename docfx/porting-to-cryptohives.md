@@ -5,8 +5,10 @@ the `CryptoHives.Foundation.*` NuGet packages.
 
 **Goal:** replace BCL async synchronization primitives with the allocation-free CryptoHives
 `ValueTask`-based primitives, replace ad-hoc buffer/stream/pool code with the `Memory`
-ArrayPool-based primitives, and replace hashing with the managed, deterministic
-`Security.Cryptography` hash implementations — **without changing observable behavior**.
+ArrayPool-based primitives, and replace hashing and post-quantum code with the managed,
+deterministic `Security.Cryptography` implementations — **without changing observable behavior**.
+MAC, KDF and cipher ports follow the same rules; their member lists are in the
+[package porting guide](https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/PORTING.md).
 
 Follow these instructions exactly. Do not invent APIs. If a source pattern has no clean
 mapping below, leave it unchanged and record it in the "Unmapped" report at the end.
@@ -25,7 +27,7 @@ mapping below, leave it unchanged and record it in the "Unmapped" report at the 
    `ValueTask`/`ValueTask<T>`. It may be awaited **exactly once** and must never be stored
    in a field, awaited twice, `.Result`-ed, or passed to `Task.WhenAll`/`WhenAny`. The
    `CryptoHives.Foundation.Threading.Analyzers` package enforces this — **add it and treat
-   its diagnostics as the source of truth** (see §2.4).
+   its diagnostics as the source of truth** (see §2.5).
 4. Match surrounding code style: nullable is enabled, warnings are errors in this repo;
    any code you add must compile clean under `TreatWarningsAsErrors=true`.
 
@@ -40,7 +42,7 @@ Add the packages the port actually uses. Package IDs:
 | Async primitives (`AsyncLock`, `AsyncSemaphore`, …) | `CryptoHives.Foundation.Threading` |
 | Analyzer that enforces correct `ValueTask` usage | `CryptoHives.Foundation.Threading.Analyzers` |
 | Buffers / streams / object pools | `CryptoHives.Foundation.Memory` |
-| Managed hashes / MAC / KDF / KEM | `CryptoHives.Foundation.Security.Cryptography` |
+| Managed hashes, MAC, KDF, ciphers, KEM, signatures | `CryptoHives.Foundation.Security.Cryptography` |
 
 In each consuming `.csproj`:
 
@@ -71,13 +73,22 @@ If the target project uses Central Package Management (`Directory.Packages.props
 |---|---|---|
 | `private readonly object _gate = new();` + `lock (_gate) { … }` guarding **async** work | `AsyncLock` + `using (await _lock.LockAsync())` | Only when you need to `await` inside the critical section. Pure-sync `lock` blocks that never await should stay as `lock`. |
 | `SemaphoreSlim(1, 1)` used as a mutex | `AsyncLock` | Analyzer flags this as **CHT009**. |
-| `SemaphoreSlim(n, …)` used for concurrency limiting | `AsyncSemaphore(n)` | |
-| `ManualResetEventSlim` / TCS-based manual gate awaited async | `AsyncManualResetEvent` | |
-| `AutoResetEvent` semantics, async | `AsyncAutoResetEvent` | |
-| `CountdownEvent` awaited async | `AsyncCountdownEvent` | |
+| `SemaphoreSlim(n, …)` used for concurrency limiting | `AsyncSemaphore(n)` | `sem.Wait(0)` / `WaitAsync(0)` → `TryWait()`. |
+| `ManualResetEventSlim` / TCS-based manual gate awaited async | `AsyncManualResetEvent` | `mre.IsSet` / `Wait(0)` → `IsSet` or the equivalent `TryWait()` (non-consuming). |
+| `AutoResetEvent` semantics, async | `AsyncAutoResetEvent` | `are.WaitOne(0)` → `TryWait()`, which **consumes** the signal (unlike `IsSet`, which only peeks). |
+| `CountdownEvent` awaited async | `AsyncCountdownEvent` | `cde.Wait(0)` → `IsSet` or the equivalent `TryWait()` (non-consuming). |
 | `Barrier` awaited async | `AsyncBarrier` | |
-| `ReaderWriterLockSlim` awaited async | `AsyncReaderWriterLock` | |
-| `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` (single-key) | `AsyncLock` | Verify the source did not rely on reentrancy. |
+| `ReaderWriterLockSlim` awaited async | `AsyncReaderWriterLock` | `TryEnterReadLock(0)` / `TryEnterUpgradeableReadLock(0)` / `TryEnterWriteLock(0)` → `TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock` (all `out Releaser`); the upgrade probe is `Releaser.TryUpgradeToWriterLock`. |
+| `Monitor.Wait` / `Monitor.Pulse` awaited async | `AsyncConditionVariable` | Pairs with an `AsyncLock`; re-check the predicate in a `while` loop — signals are not stored. |
+| Java's `Exchanger<V>` (no BCL equivalent) | `AsyncExchange<T>` | Two-party rendezvous, not a queue; see `System.Threading.Channels` if buffering is needed instead. |
+| `Dictionary<TKey, SemaphoreSlim>` / a registry of one lock per key | `AsyncKeyedLock<TKey>` | Distinct keys never block each other; released keys stay cached, so repeat acquisitions allocate nothing. |
+| `AsyncKeyedLock` (the third-party package), `KeyedSemaphores`, `AsyncDuplicateLock` | `AsyncKeyedLock<TKey>` | Same per-key semantics, without the striping some libraries use. |
+| `Nito.AsyncEx.AsyncLock`, `NeoSmart.AsyncLock`, `AsyncKeyedLock` used without keys | `AsyncLock` | Verify the source did not rely on reentrancy. |
+| `lock` / `Monitor` re-entered from a nested call, once the code is async | `AsyncReentrantLock` | Experimental: suppress `CHTEXP001` to use it. Prefer narrowing the locked region. Never wrap `LockAsync` in an `async` method: the caller then no longer counts as holding the lock, and its next nested acquisition deadlocks. See [AsyncReentrantLock](packages/threading/asyncreentrantlock.md). |
+| `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | DotNext releases with an explicit `Release()`; here the lock is released by disposing the `Releaser`, so wrap the critical section in `using`. |
+| `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern for reader and writer locks; upgradeable readers are a distinct mode here. |
+| `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | The same-named type in this package | DotNext's types are net10.0-only; these run on every target down to net462. |
+| `DotNext.Threading.AsyncExchanger<T>` | `AsyncExchange<T>` | Same two-party rendezvous. |
 
 ### 2.2 `AsyncLock` — exact usage
 
@@ -100,6 +111,9 @@ Signatures actually present:
   - `timeout` throws `TimeoutException` if it elapses; `TimeSpan.Zero` throws immediately if
     the lock is held; `Timeout.InfiniteTimeSpan` waits forever.
 - `bool IsTaken { get; }`
+- `bool TryLock(out Releaser releaser)` — acquires only if the lock is free right now; never
+  waits, never allocates, never throws. Replaces `Monitor.TryEnter` / `SemaphoreSlim.Wait(0)`.
+  On `false` the `out` releaser is `default` — **do not dispose it** (throws in `DEBUG`).
 
 Rules:
 - **`AsyncLock` is NOT recursive.** If the original lock was taken re-entrantly (same call
@@ -134,28 +148,64 @@ Signatures actually present:
   (throws `TimeoutException` / `OperationCanceledException`)
 - `void Release()` / `void Release(int releaseCount)`
 - `int CurrentCount { get; }`
+- `bool TryWait()` — takes a permit only if one is available right now; synchronous, never
+  allocates, never throws. On `true` you still owe exactly one `Release()`. This **is** the
+  direct replacement for `SemaphoreSlim.Wait(0)` / `WaitAsync(0)`.
 
 Note: there is **no** `SemaphoreSlim`-style bool-returning `WaitAsync(timeout)`. The BCL
 pattern `if (await sem.WaitAsync(timeout)) { … }` must be rewritten to try/catch on
-`TimeoutException`, or use a `CancellationToken`.
+`TimeoutException`, or use a `CancellationToken`. For a pure zero-timeout probe
+(`WaitAsync(0)`), use `TryWait()` instead.
 
-### 2.4 Enforce correctness with the analyzer
+### 2.4 `AsyncKeyedLock<TKey>` — exact usage
 
-After porting, build. The analyzer emits (see `CLAUDE.md` for the full table):
+```csharp
+private readonly AsyncKeyedLock<string> _locks = new();
+
+public async Task UpdateAsync(string id, CancellationToken ct)
+{
+    using (await _locks.LockAsync(id, ct))      // other ids proceed in parallel
+    {
+        await MutateAsync(id);
+    }
+}
+```
+
+Signatures actually present:
+
+- `AsyncKeyedLock(IEqualityComparer<TKey>? comparer = null, IGetPooledManualResetValueTaskSource<Releaser>? pool = null, int maxIdleEntries = 128, int maxRetainedWaiters = 128)`
+- `ValueTask<Releaser> LockAsync(TKey key, CancellationToken cancellationToken = default)`
+- `ValueTask<Releaser> LockAsync(TKey key, TimeSpan timeout, CancellationToken cancellationToken = default)`
+- `bool TryLock(TKey key, out Releaser releaser)` — never waits and never allocates
+- `bool IsInUse(TKey key)` / `int Count { get; }` — best-effort diagnostics, not synchronization
+
+Rules:
+- **Not reentrant**, exactly like `AsyncLock`: re-acquiring the same key on one call stack deadlocks.
+- Hold **one instance** for the lifetime of the component. A new instance per call gets its own
+  registry and serializes nothing.
+- `maxIdleEntries` bounds key cardinality and `maxRetainedWaiters` bounds simultaneous contention;
+  past either the lock still works, it just stops being allocation-free.
+
+### 2.5 Enforce correctness with the analyzer
+
+After porting, build. The analyzer emits (full descriptions:
+<https://cryptohives.github.io/Foundation/packages/threading.analyzers/index.html>):
 
 | ID | Meaning — fix |
 |---|---|
-| CHT001 (Error) | `ValueTask` awaited multiple times — await once, capture the result. |
+| CHT001 (Error) | `ValueTask` consumed multiple times — consume once, capture the result. |
 | CHT002 (Warn) | `.GetAwaiter().GetResult()` on `ValueTask` — make the caller async and `await`. |
 | CHT003 (Warn) | `ValueTask` stored in a field — don't; await it locally. |
-| CHT004 (Error) | `AsTask()` called multiple times. |
 | CHT005 (Warn) | `.Result` on a `ValueTask` — `await` instead. |
-| CHT006 (Warn) | `ValueTask` passed to `WhenAll`/`WhenAny` — call `.AsTask()` once first, or restructure. |
+| CHT007 (Info) | `AsTask()` stored before the primitive signals — await the `ValueTask` directly. |
 | CHT008 (Warn) | `ValueTask` not awaited/consumed. |
 | CHT009 (Info) | `SemaphoreSlim(1,1)` — switch to `AsyncLock`. |
 | CHT010 (Warn) | `ValueTask` captured in a lambda/closure. |
+| CHT011 (Warn) | `async` method only forwards an awaited `ValueTask` — return it directly. |
+| CHT012 (Info) | `async` `ValueTask` wrapper boxes a state machine when it suspends. |
+| CHT013 (Warn) | `async` method returns an `AsyncReentrantLock` releaser — the caller's next nested acquisition deadlocks. |
 
-Resolve every CHT00x before considering the async phase done. Do not suppress them to make
+Resolve every CHT0xx before considering the async phase done. Do not suppress them to make
 the build pass unless a human explicitly approves a specific instance.
 
 ---
@@ -184,11 +234,22 @@ Critical rules:
 - It is `IDisposable` and rents from `ArrayPool<T>.Shared`. **Always `using`** it so pooled
   arrays are returned. Never let one escape its scope.
 - The `ReadOnlySequence<T>` from `GetReadOnlySequence()` is **only valid until the next
-  write or `Dispose()`**. Fully consume/copy it before disposing. Do not return it to a
-  caller that outlives the `using`.
-- For sensitive data, construct with `new ArrayPoolBufferWriter<byte>(clearArray: true,
-  defaultChunksize, maxChunkSize)` so buffers are zeroed on return.
-- Chunk sizing: default 256, grows (doubling) to max 65536; override via the ctor.
+  write or `Dispose()`**. Fully consume/copy it before disposing. When the payload has to
+  outlive the `using`, do not copy it — return `writer.LeaseSequence()` instead. The lease
+  is a `readonly struct` carrying the sequence and the writer that owns it, so the caller
+  disposes one thing and costs nothing over borrowing.
+- For sensitive data, pass `clearArray: true` so buffers are zeroed on return —
+  `new ArrayPoolBufferWriter<byte>(clearArray: true, defaultChunkBytes, maxChunkBytes)`, or
+  better, declare it once on a provider (below) rather than at each call site.
+- Chunk sizing is in **bytes, not elements**: default 256, doubling to a 65,536 ceiling.
+  The writer divides by `sizeof(T)` to decide how many elements fit, which is what keeps a
+  chunk off the large object heap whatever `T` is.
+- The writer itself is poolable. `ObjectPools.RentBufferWriter<byte>()` gives a writer that
+  returns *itself* on dispose, not just its buffers; an
+  `ArrayPoolBufferWriterProvider<byte>` holds one immutable settings profile and rents from
+  the shared pool, so many profiles cost no extra instances.
+- **Never touch a writer after disposing it.** A pooled instance does not throw
+  `ObjectDisposedException` — it silently becomes whatever the next renter is doing.
 
 ### 3.2 `ArrayPoolMemoryStream` — pooled `MemoryStream`
 
@@ -196,6 +257,14 @@ Replace `new MemoryStream()` used as a scratch/accumulation buffer where the all
 one large backing array is wasteful. It is a `MemoryStream` subclass backed by pooled
 `ArrayPool<byte>` segments, so it is a drop-in for APIs typed as `MemoryStream`/`Stream`.
 `using` it (it returns segments on `Dispose`).
+
+The same two rules as the writer apply: `GetReadOnlySequence()` is borrowed and
+`LeaseSequence()` lets the payload leave the scope, and `clearArray: true` on any owning
+constructor zeroes the buffers on release — on truncation by `SetLength` as well as on
+disposal. It cannot hand out its internal storage as one contiguous array, so `GetBuffer()` throws and
+`TryGetBuffer()` returns `false`; reach for the sequence instead. `ToArray()` *is* overridden and
+works across segments — it copies rather than exposes, so use it only when an owned `byte[]` is
+genuinely required, not on a hot path.
 
 ### 3.3 `ReadOnlySequenceMemoryStream` — read-only `Stream` over an existing sequence
 
@@ -215,9 +284,14 @@ StringBuilder sb = owner.PooledObject;
 // … use sb …
 ```
 
-For your own pools:
+For your own pools — `PoolFactory` builds one from a factory and a reset delegate, including
+for types this package does not reference:
 ```csharp
-using var owner = new ObjectOwner<MyType>(myObjectPool);
+ObjectPool<MyType> pool = PoolFactory.CreatePool(
+    create: () => new MyType(),
+    reset: obj => { obj.Clear(); return true; });
+
+using var owner = new ObjectOwner<MyType>(pool);
 MyType obj = owner.PooledObject;
 ```
 
@@ -227,6 +301,11 @@ Critical rules:
   can double-return. Do not copy it around.
 - Whatever you got from `PooledObject` must not be used after the `using` scope ends (it has
   been returned to the pool).
+- A `reset` delegate returning `false` makes the pool **drop** the instance, not dispose it.
+  If `T` holds unmanaged or pooled resources, dispose them in `reset` before returning `false`.
+- Object pools are **not** trimmed under memory pressure — `DefaultObjectPool<T>` holds what
+  it has for the life of the process. Bound it with `maximumRetained`. Rented *arrays* are
+  different: `ArrayPool<T>.Shared` trims itself on a gen-2 GC callback.
 
 ### 3.5 `ISegmentOwner<T>` — segment ownership primitives
 
@@ -270,7 +349,7 @@ if (seg.TrySetSegment(offset: 16, length: 64))
 // AllocatedSegment<T> — wraps an existing GC-managed array, no pool
 byte[] raw = new byte[256];
 using ISegmentOwner<byte> alloc = AllocatedSegment<byte>.Create(raw);
-Process(alloc.Segment.AsSpan());
+Process(alloc);
 // only the wrapper is cleared on Dispose; the array itself is unchanged
 
 // EmptySegment<T> — null-object sentinel
@@ -296,8 +375,10 @@ void Process(ISegmentOwner<byte> owner)
   no-op by design; treat it as an immutable sentinel value, not as a resource to manage.
 - **Indexer `this[int i]` is offset-aware.** `owner[i]` accesses `Segment.Array[i + Segment.Offset]`.
   After `TrySetSegment(offset, length)`, index 0 is element `offset` in the original array.
-- For sensitive data, prefer `PooledSegment<T>` (which clears the array on return in DEBUG
-  builds) or ensure you zero the span manually before disposing.
+- For sensitive data, rent with `PooledSegment<T>.Rent(length, clearArray: true)`, which
+  zeroes the whole backing array as it returns to the pool. Debug builds zero every returned
+  buffer regardless, but that is a use-after-return diagnostic, **not** a security control —
+  do not verify a wipe in Debug and ship a Release build that never asked for one.
 
 ---
 
@@ -306,8 +387,8 @@ void Process(ISegmentOwner<byte> owner)
 `using CryptoHives.Foundation.Security.Cryptography.Hash;`
 
 These are fully managed, deterministic, cross-platform implementations that **extend
-`System.Security.Cryptography.HashAlgorithm`**, so they are drop-in wherever a
-`HashAlgorithm` is expected. Use them to replace BouncyCastle digests, third-party hash
+`System.Security.Cryptography.HashAlgorithm`** (all but `ParallelHash` and
+`IncrementalParallelHash`), so they are drop-in wherever a `HashAlgorithm` is expected. Use them to replace BouncyCastle digests, third-party hash
 libs, or `System.Security.Cryptography` types when you want managed determinism across all
 target frameworks (including legacy TFMs where the BCL lacks e.g. SHA-3).
 
@@ -372,7 +453,26 @@ After the first `Squeeze`, the state is finalized — no more `Absorb`. Map any
 supports, or the default managed CryptoHives implementation otherwise. For a straight port,
 prefer the concrete-class static `HashData` calls (§4.1) for clarity.
 
-### 4.6 Do NOT touch cryptographic correctness
+### 4.6 Secret handling — replace `Array.Clear` and `SequenceEqual`
+
+`using CryptoHives.Foundation.Security.Cryptography;`
+
+| Source pattern | Replace with |
+|---|---|
+| `Array.Clear(key, 0, key.Length)` on key material, a password, a PRK or plaintext | `CryptographicOperations.ZeroMemory(key)` |
+| `SequenceEqual` / `==` / early-exit loop comparing a MAC or tag | `CryptographicOperations.FixedTimeEquals(expected, actual)` |
+| `System.Security.Cryptography.CryptographicOperations.*` | the same call from this namespace |
+
+A clear on a buffer nothing reads again is a dead store the compiler may delete; an early-exit
+compare leaks how many leading bytes matched. Both helpers are marked so the optimizer cannot do
+either. They also work on `net462`/`net472`/`netstandard2.0`, where the in-box type does not exist
+at all, and `ZeroMemory` has `char` overloads the in-box type has never offered — the only supported
+way to erase a password or PEM text held in `char` storage.
+
+Importing both this namespace and `System.Security.Cryptography` gives `CS0104` on the shared type
+name; alias one side with `using Bcl = System.Security.Cryptography;`.
+
+### 4.7 Do NOT touch cryptographic correctness
 
 Do not change algorithm choice, key sizes, IV/nonce handling, digest length, or padding as
 part of this port. Swap the *implementation type* only. If the source uses a broken/weak
@@ -381,18 +481,54 @@ do not "upgrade" it silently.
 
 ---
 
+### 4.8 Post-quantum: ML-KEM, ML-DSA, SLH-DSA
+
+`MLKem` (`.Kem`), `MLDsa` and `SlhDsa` (`.Dsa`) mirror the names and signatures of the .NET 10
+in-box types, so the algorithm operations port as a `using` swap and `IsSupported` is always
+`true` — down to net462, with no CNG or OpenSSL dependency.
+
+**The key-format members are where a port needs attention.** Three differences are deliberate, and
+each is a compile error rather than a silent behaviour change:
+
+- **No password is taken as a `string`.** `ImportEncryptedPkcs8PrivateKey(string, byte[])` and the
+  four other `string`-password overloads do not exist. A `string` cannot be overwritten, so
+  passwords are `ReadOnlySpan<char>` or `ReadOnlySpan<byte>` and the caller owns storage it can
+  clear. `"pw"` → `"pw".AsSpan()` compiles; holding the password in a `char[]` you clear in a
+  `finally` is the actual port.
+- **Character and byte passwords are not interchangeable, and confusing them does not throw** — it
+  derives a different key and looks like a wrong password much later. Characters are encoded by the
+  scheme (UTF-8 for PBES2, big-endian UTF-16 for the legacy PKCS#12 reads); bytes are the KDF input
+  verbatim.
+- **`PbeOptions` replaces `PbeParameters`**, and `string ExportPkcs8PrivateKeyPem()` is replaced by
+  `GetPkcs8PrivateKeyPemSize()` + `TryExportPkcs8PrivateKeyPem(Span<char>, out int)`.
+
+Erase those buffers with **`CryptographicOperations.ZeroMemory`**, not `Array.Clear` or
+`Span<T>.Clear()` — a clear on a buffer nothing reads again is a dead store a compiler may delete.
+The package exposes its own (`CryptoHives.Foundation.Security.Cryptography`) because the in-box type
+does not exist below .NET Standard 2.1 and has no character overload on any .NET version.
+
+Full member lists, the porting table and the reasoning:
+[package porting guide](https://github.com/CryptoHives/Foundation/blob/main/src/Security/Cryptography/PORTING.md)
+and
+[Erasable Memory](packages/security/cryptography/erasable-memory.md).
+
+---
+
 ## 5. Procedure & verification
 
 Work phase by phase; build + test after each:
 
 1. **Wire packages** (§1). Restore/build.
-2. **Async** (§2): swap primitives, add the analyzer, drive CHT00x to zero.
+2. **Async** (§2): swap primitives, add the analyzer, drive CHT0xx to zero.
 3. **Memory** (§3): swap buffer/stream/pool patterns; verify every new type is `using`-scoped.
 4. **Hashing** (§4): swap hash implementations; confirm identical digests.
+5. **Post-quantum** (§4.8), if present: swap the algorithm types, then fix the key-format call
+   sites the compiler flags — passwords to spans, `PbeParameters` to `PbeOptions`, the plaintext
+   PEM export to its `TryExport` form.
 
 Verification checklist:
 - [ ] Solution builds clean under `TreatWarningsAsErrors=true`.
-- [ ] Zero unresolved `CHT001`–`CHT010` diagnostics.
+- [ ] Zero unresolved `CHT001`–`CHT013` diagnostics.
 - [ ] All existing tests pass. For hashing, add/keep a test asserting the new digest equals
       a known-answer vector or the pre-port output for representative inputs.
 - [ ] No `ValueTask` stored in a field, awaited twice, `.Result`-ed, or `WhenAll`-ed.

@@ -1,10 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using System;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Computes AES-GMAC (Galois Message Authentication Code) as defined in
@@ -130,12 +131,15 @@ public sealed class AesGmac : IDisposable
     /// <param name="associatedData">The data to verify.</param>
     /// <param name="expectedTag">The expected authentication tag.</param>
     /// <returns>True if the tag is valid; otherwise false.</returns>
+    [SkipLocalsInit]
     public bool VerifyTag(ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> expectedTag)
     {
         Span<byte> computedTag = stackalloc byte[TagSizeBytes];
         ComputeTag(nonce, associatedData, computedTag);
 
-        return CryptographicEquals(computedTag, expectedTag);
+        bool authentic = CryptographicEquals(computedTag, expectedTag);
+        CryptographicOperations.ZeroMemory(computedTag);
+        return authentic;
     }
 
     /// <inheritdoc/>
@@ -153,7 +157,10 @@ public sealed class AesGmac : IDisposable
     /// </summary>
     private static bool CryptographicEquals(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b)
     {
-        if (a.Length != b.Length) return false;
+        if (a.Length != b.Length)
+        {
+            return false;
+        }
 
         int diff = 0;
         for (int i = 0; i < a.Length; i++)

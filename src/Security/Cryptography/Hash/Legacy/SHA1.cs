@@ -1,12 +1,15 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Computes the SHA-1 hash for the input data.
@@ -24,8 +27,13 @@ using System.Runtime.CompilerServices;
 /// </para>
 /// </remarks>
 [Obsolete("SHA-1 is cryptographically weak and should not be used for security purposes.")]
-public sealed class SHA1 : HashAlgorithm
+public sealed partial class SHA1 : HashAlgorithm
 {
+    /// <summary>
+    /// The default optimization to use for Blake3 based algorithms.
+    /// </summary>
+    internal const SimdSupport Sha1Default = SimdSupport.All;
+
     /// <summary>
     /// The hash size in bits.
     /// </summary>
@@ -44,6 +52,9 @@ public sealed class SHA1 : HashAlgorithm
     private readonly byte[] _buffer;
     private readonly uint[] _state;
     private readonly uint[] _w;
+#if NET8_0_OR_GREATER
+    private readonly SimdSupport _simdSupport;
+#endif
     private long _bytesProcessed;
     private int _bufferLength;
     private bool _disposed;
@@ -51,13 +62,39 @@ public sealed class SHA1 : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="SHA1"/> class.
     /// </summary>
-    public SHA1()
+    public SHA1() : this(Sha1Default)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SHA1"/> class with forced SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    internal SHA1(SimdSupport simdSupport)
     {
         HashSizeValue = HashSizeBits;
         _buffer = new byte[BlockSizeBytes];
         _state = new uint[5];
         _w = new uint[80];
+#if NET8_0_OR_GREATER
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
+#endif
         Initialize();
+    }
+
+    /// <summary>
+    /// Gets the SIMD instruction sets supported by SHA-1 on the current platform.
+    /// </summary>
+    internal new static SimdSupport SimdSupport
+    {
+        get
+        {
+            var support = SimdSupport.None;
+#if NET8_0_OR_GREATER
+            if (IsArmSha1Supported) support |= SimdSupport.ArmSha1;
+#endif
+            return support;
+        }
     }
 
     /// <inheritdoc/>
@@ -72,6 +109,13 @@ public sealed class SHA1 : HashAlgorithm
     /// <returns>A new SHA-1 hash algorithm instance.</returns>
 #pragma warning disable CS0618 // Type or member is obsolete
     public static new SHA1 Create() => new();
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="SHA1"/> class with specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <returns>A new SHA-1 hash algorithm instance.</returns>
+    internal static SHA1 Create(SimdSupport simdSupport) => new(simdSupport);
 #pragma warning restore CS0618
 
     /// <summary>
@@ -93,6 +137,28 @@ public sealed class SHA1 : HashAlgorithm
     /// <returns>A new byte array containing the SHA-1 hash.</returns>
 #pragma warning disable CS0618 // Type or member is obsolete
     public static byte[] HashData(ReadOnlySpan<byte> source)
+        => HashAlgorithmPool<SHA1>.HashData(source);
+#pragma warning restore CS0618
+
+    /// <summary>
+    /// Computes the SHA-1 hash of <paramref name="source"/> and writes it into <paramref name="destination"/>.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value. Must be at least <see cref="HashSizeBytes"/> bytes.</param>
+    /// <param name="bytesWritten">When this method returns, the number of bytes written into <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was large enough; otherwise, <see langword="false"/>.</returns>
+#pragma warning disable CS0618 // Type or member is obsolete
+    public static bool TryHashData(in ReadOnlySequence<byte> source, Span<byte> destination, out int bytesWritten)
+        => HashAlgorithmPool<SHA1>.TryHashData(source, destination, out bytesWritten);
+#pragma warning restore CS0618
+
+    /// <summary>
+    /// Computes the SHA-1 hash of <paramref name="source"/> and returns it as a new byte array.
+    /// </summary>
+    /// <param name="source">The (possibly multi-segment) input sequence to hash.</param>
+    /// <returns>A new byte array containing the SHA-1 hash.</returns>
+#pragma warning disable CS0618 // Type or member is obsolete
+    public static byte[] HashData(in ReadOnlySequence<byte> source)
         => HashAlgorithmPool<SHA1>.HashData(source);
 #pragma warning restore CS0618
 
@@ -165,10 +231,7 @@ public sealed class SHA1 : HashAlgorithm
         PadAndFinalize();
 
         // Output 5 words (20 bytes) in big-endian
-        for (int i = 0; i < 5; i++)
-        {
-            BinaryPrimitives.WriteUInt32BigEndian(destination.Slice(i * sizeof(UInt32)), _state[i]);
-        }
+        BinarySpans.WriteUInt32BigEndian(_state.AsSpan(0, 5), destination);
 
         bytesWritten = HashSizeBytes;
         return true;
@@ -190,31 +253,43 @@ public sealed class SHA1 : HashAlgorithm
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void ProcessBlock(ReadOnlySpan<byte> block)
     {
+        // The schedule and the chaining value are both fixed-size readonly arrays
+        // allocated in the constructor; take the references once so the 80-round
+        // expansion does not re-check a length the JIT cannot see behind a field load.
+        Debug.Assert(_state.Length >= 5, "chaining value must hold the full state");
+        Debug.Assert(_w.Length >= 80, "message schedule must hold 80 words");
+        ref uint sPtr = ref MemoryMarshalEx.GetArrayDataReference(_state);
+        ref uint wPtr = ref MemoryMarshalEx.GetArrayDataReference(_w);
+
+#if NET8_0_OR_GREATER
+        if (IsArmSha1Supported && (_simdSupport & SimdSupport.ArmSha1) != 0)
+        {
+            ProcessBlockArm(block, _state);
+            return;
+        }
+#endif
         unchecked
         {
             // Parse block into 16 32-bit words (big-endian)
-            for (int i = 0; i < 16; i++)
-            {
-                _w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
-            }
+            BinarySpans.ReadUInt32BigEndian(block.Slice(0, BlockSizeBytes), _w);
 
             // Extend 16 words to 80 words
             for (int i = 16; i < 80; i++)
             {
-                _w[i] = BitOperations.RotateLeft(_w[i - 3] ^ _w[i - 8] ^ _w[i - 14] ^ _w[i - 16], 1);
+                Unsafe.Add(ref wPtr, i) = BitOperations.RotateLeft(Unsafe.Add(ref wPtr, i - 3) ^ Unsafe.Add(ref wPtr, i - 8) ^ Unsafe.Add(ref wPtr, i - 14) ^ Unsafe.Add(ref wPtr, i - 16), 1);
             }
 
-            uint a = _state[0];
-            uint b = _state[1];
-            uint c = _state[2];
-            uint d = _state[3];
-            uint e = _state[4];
+            uint a = Unsafe.Add(ref sPtr, 0);
+            uint b = Unsafe.Add(ref sPtr, 1);
+            uint c = Unsafe.Add(ref sPtr, 2);
+            uint d = Unsafe.Add(ref sPtr, 3);
+            uint e = Unsafe.Add(ref sPtr, 4);
 
             // Round 1: 0-19
             for (int i = 0; i < 20; i++)
             {
                 uint f = (b & c) | (~b & d);
-                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x5a827999 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x5a827999 + Unsafe.Add(ref wPtr, i);
                 e = d;
                 d = c;
                 c = BitOperations.RotateLeft(b, 30);
@@ -226,7 +301,7 @@ public sealed class SHA1 : HashAlgorithm
             for (int i = 20; i < 40; i++)
             {
                 uint f = b ^ c ^ d;
-                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x6ed9eba1 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x6ed9eba1 + Unsafe.Add(ref wPtr, i);
                 e = d;
                 d = c;
                 c = BitOperations.RotateLeft(b, 30);
@@ -238,7 +313,7 @@ public sealed class SHA1 : HashAlgorithm
             for (int i = 40; i < 60; i++)
             {
                 uint f = (b & c) | (b & d) | (c & d);
-                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x8f1bbcdc + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0x8f1bbcdc + Unsafe.Add(ref wPtr, i);
                 e = d;
                 d = c;
                 c = BitOperations.RotateLeft(b, 30);
@@ -250,7 +325,7 @@ public sealed class SHA1 : HashAlgorithm
             for (int i = 60; i < 80; i++)
             {
                 uint f = b ^ c ^ d;
-                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0xca62c1d6 + _w[i];
+                uint temp = BitOperations.RotateLeft(a, 5) + f + e + 0xca62c1d6 + Unsafe.Add(ref wPtr, i);
                 e = d;
                 d = c;
                 c = BitOperations.RotateLeft(b, 30);
@@ -258,11 +333,11 @@ public sealed class SHA1 : HashAlgorithm
                 a = temp;
             }
 
-            _state[0] += a;
-            _state[1] += b;
-            _state[2] += c;
-            _state[3] += d;
-            _state[4] += e;
+            Unsafe.Add(ref sPtr, 0) += a;
+            Unsafe.Add(ref sPtr, 1) += b;
+            Unsafe.Add(ref sPtr, 2) += c;
+            Unsafe.Add(ref sPtr, 3) += d;
+            Unsafe.Add(ref sPtr, 4) += e;
         }
     }
 

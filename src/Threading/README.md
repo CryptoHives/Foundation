@@ -20,14 +20,18 @@ Namespace: `CryptoHives.Foundation.Threading.Async.Pooled`
 | Class | Description | 
 |-------|-------------|
 | [AsyncLock](https://cryptohives.github.io/Foundation/packages/threading/asynclock.html) | Pooled async mutual exclusion lock
+| [AsyncKeyedLock&lt;TKey&gt;](https://cryptohives.github.io/Foundation/packages/threading/asynckeyedlock.html) | Pooled per-key async exclusive lock (different keys never block each other)
+| [AsyncReentrantLock](https://cryptohives.github.io/Foundation/packages/threading/asyncreentrantlock.html) | Async exclusive lock that a nested call on the same flow can re-acquire (experimental, opt in with `CHTEXP001`)
 | [AsyncAutoResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncautoresetevent.html) | Pooled async auto-reset event (one waiter per signal)
 | [AsyncManualResetEvent](https://cryptohives.github.io/Foundation/packages/threading/asyncmanualresetevent.html) | Pooled async manual-reset event (all waiters per signal)
 | [AsyncSemaphore](https://cryptohives.github.io/Foundation/packages/threading/asyncsemaphore.html) | Pooled async semaphore with configurable permit count
 | [AsyncCountdownEvent](https://cryptohives.github.io/Foundation/packages/threading/asynccountdownevent.html) | Pooled async countdown event (signals when count reaches zero)
 | [AsyncBarrier](https://cryptohives.github.io/Foundation/packages/threading/asyncbarrier.html) | Pooled async barrier (synchronizes multiple participants)
 | [AsyncReaderWriterLock](https://cryptohives.github.io/Foundation/packages/threading/asyncreaderwriterlock.html) | Pooled async reader-writer lock (multiple readers or single writer)
+| [AsyncConditionVariable](https://cryptohives.github.io/Foundation/packages/threading/asyncconditionvariable.html) | Pooled async condition variable (wait until a condition guarded by an `AsyncLock` holds)
+| [AsyncExchange&lt;T&gt;](https://cryptohives.github.io/Foundation/packages/threading/asyncexchange.html) | Pooled two-party rendezvous that swaps a value between two tasks
 
-All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>`, which keeps per-operation allocations out of high-throughput code paths.
+All primitives are backed by `ObjectPool<T>` and return `ValueTask<T>`, which keeps per-operation allocations out of high-throughput code paths. The exception is the experimental `AsyncReentrantLock`, which allocates on every acquisition to track reentrancy through an `AsyncLocal`.
 
 ### Pooling Support Classes
 
@@ -50,10 +54,11 @@ Namespace: `CryptoHives.Foundation.Threading.Pools`
 ## ✨ Key Features
 
 - **Pooled primitives** — synchronization objects backed by `Microsoft.Extensions.ObjectPool`
-- **`ValueTask`-based APIs** — minimal to no allocations thanks to object pooling
+- **`ValueTask`-based APIs** — minimal to no allocations thanks to object pooling; pooled primitives retain a bounded number of objects, so allocation-free behaviour holds while the workload fits the pool (see [Sizing the caches](#sizing-the-caches) for `AsyncKeyedLock<TKey>`, the one primitive where the bound is worth sizing deliberately)
 - **`CancellationToken` support** — full cancellation across all primitives, allocation-free on modern .NET
 - **`ConfigureAwait` support** — works naturally with `.ConfigureAwait(false)` in library code
 - **Timeouts** — every lock acquisition method accepts a timeout; a timed-out wait throws `TimeoutException`, a cancelled one throws `OperationCanceledException`
+- **Non-blocking attempts** — `AsyncLock.TryLock`, `AsyncKeyedLock.TryLock`, `AsyncSemaphore.TryWait`, `AsyncAutoResetEvent.TryWait`, `AsyncManualResetEvent.TryWait`, `AsyncCountdownEvent.TryWait`, `AsyncReaderWriterLock.TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock` / `Releaser.TryUpgradeToWriterLock`, and `AsyncExchange<T>.TryExchange` all probe synchronously without allocating an exception or a `ValueTask`
 - **Configurable continuations** — control whether continuations run synchronously or asynchronously
 - **Custom pools** — supply your own `IGetPooledManualResetValueTaskSource<T>` (or `ObjectPool<T>`) for fine-grained control
 - **Drop-in replacement** — swap the namespace, keep the same `using`-based patterns
@@ -88,6 +93,50 @@ public async Task DoWorkAsync(CancellationToken ct)
 }
 ```
 
+### Per-Key Exclusion — `AsyncKeyedLock<TKey>`
+
+```csharp
+private readonly AsyncKeyedLock<string> _locksByAccount = new();
+
+public async Task TransferAsync(string accountId, CancellationToken ct)
+{
+    using (await _locksByAccount.LockAsync(accountId, ct).ConfigureAwait(false))
+    {
+        // Only one operation per accountId; other accounts proceed in parallel
+        await ApplyTransferAsync(accountId).ConfigureAwait(false);
+    }
+}
+```
+
+#### Sizing the caches
+
+`AsyncKeyedLock<TKey>` is allocation-free while a workload fits inside two caps, and degrades
+gracefully — not catastrophically — past either. Both default to `128`.
+
+| Cap | Bounds | Past the cap |
+|-----|--------|--------------|
+| `maxIdleEntries` | **key cardinality** — the keys that are hot at the same time | Each acquisition of an unmapped key takes over the least recently idled entry and allocates a fresh dictionary node (~48 B/key). The entry itself is still reused. |
+| `maxRetainedWaiters` | **simultaneous contention** — waiters queued at one moment, summed across all keys | Each waiter beyond the cap is allocated and then discarded rather than returned to the pool. |
+
+A released key stays mapped as an *idle* entry rather than being torn down, so locking and releasing
+the same key repeatedly allocates **nothing at all**. That is what makes the common case free — and
+it is also why `maxIdleEntries` should span the hot key set rather than the total number of distinct
+keys ever seen. Retention is bounded by the keys actually used, so a generous cap costs a lock with
+few keys nothing.
+
+Each entry supplies one waiter itself and the pool covers the rest, so a lock with 4 keys and 100
+waiters behind each needs 396 pooled waiters — at the default, such a burst allocates on 268 of them.
+
+```csharp
+// Sized to the workload: ~2000 hot tenants, up to ~500 waiters queued at peak
+private readonly AsyncKeyedLock<string> _locksByTenant =
+    new(maxIdleEntries: 2048, maxRetainedWaiters: 512);
+```
+
+> **Note:** the default waiter pool is shared process-wide per closed `TKey`, so every
+> `AsyncKeyedLock<string>` in the process draws on one budget. Passing `maxRetainedWaiters` is also
+> what gives an instance a private pool.
+
 ### Producer-Consumer — `AsyncAutoResetEvent`
 
 ```csharp
@@ -112,7 +161,7 @@ public async Task<Item> DequeueAsync(CancellationToken ct)
 ### Broadcast — `AsyncManualResetEvent`
 
 ```csharp
-private readonly AsyncManualResetEvent _ready = new(initialState: false);
+private readonly AsyncManualResetEvent _ready = new(set: false);
 
 public async Task InitializeAsync()
 {
@@ -146,6 +195,40 @@ public async Task FetchAsync(CancellationToken ct)
 }
 ```
 
+### Fan-Out/Fan-In — `AsyncCountdownEvent`
+
+```csharp
+private readonly AsyncCountdownEvent _countdown = new(initialCount: 3);
+
+// Each worker signals when its share of the work is done
+public void WorkerCompleted() => _countdown.Signal();
+
+// Coordinator waits until every worker has signalled
+public async Task WaitForWorkersAsync(CancellationToken ct)
+{
+    await _countdown.WaitAsync(ct).ConfigureAwait(false);
+    // All 3 workers completed
+}
+```
+
+### Multi-Phase Synchronization — `AsyncBarrier`
+
+```csharp
+private readonly AsyncBarrier _barrier = new(participantCount: 3,
+    postPhaseAction: b => Console.WriteLine($"Phase {b.CurrentPhase} completed by all participants"));
+
+public async Task ParticipantWorkAsync(int participantId, CancellationToken ct)
+{
+    await DoPhase1WorkAsync(participantId).ConfigureAwait(false);
+
+    // Blocks until every participant has arrived; the post-phase action then
+    // runs once before all participants are released together
+    await _barrier.SignalAndWaitAsync(ct).ConfigureAwait(false);
+
+    await DoPhase2WorkAsync(participantId).ConfigureAwait(false);
+}
+```
+
 ### Read-Write Separation — `AsyncReaderWriterLock`
 
 ```csharp
@@ -163,6 +246,114 @@ public async Task WriteAsync(Data data, CancellationToken ct)
         _cache.Set(data);
 }
 ```
+
+### Wait-Until-Condition — `AsyncConditionVariable`
+
+Pairs with an `AsyncLock`: a wait atomically releases the lock, suspends, and re-acquires it before
+returning — on every return path, including cancellation. Any number of callers can wait for a
+shared resource to reach a specific state; the condition is arbitrary state protected by the lock:
+
+```csharp
+private readonly AsyncLock _lock = new();
+private readonly AsyncConditionVariable _ready = new();
+private ConnectionState _state = ConnectionState.Disconnected;
+
+// The reconnect loop is the only writer of _state.
+private async Task ReconnectLoopAsync(CancellationToken ct)
+{
+    while (!ct.IsCancellationRequested)
+    {
+        try
+        {
+            await ConnectAsync(ct).ConfigureAwait(false);
+
+            using (await _lock.LockAsync(ct).ConfigureAwait(false))
+            {
+                _state = ConnectionState.Ready;
+                _ready.SignalAll();   // every caller waiting for readiness wakes up
+            }
+
+            await RunUntilDisconnectedAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            using (await _lock.LockAsync(CancellationToken.None).ConfigureAwait(false))
+                _state = ConnectionState.Disconnected;
+        }
+    }
+}
+
+// Any caller can wait for the connection to become ready before using it.
+public async Task<T> SendAsync<T>(Func<Task<T>> operation, CancellationToken ct)
+{
+    using (await _lock.LockAsync(ct).ConfigureAwait(false))
+    {
+        while (_state != ConnectionState.Ready)
+            await _ready.WaitAsync(_lock, ct).ConfigureAwait(false);
+    }
+
+    return await operation().ConfigureAwait(false);   // outside the lock
+}
+```
+
+### Two-Party Rendezvous — `AsyncExchange<T>`
+
+Two peer workers, doing the same job, meeting at the rendezvous every round to swap their current
+item for the other's — neither is a producer or a consumer, and nothing is ever buffered between
+rounds. This is the async counterpart of Java's `Exchanger<V>`, which the BCL has no equivalent of.
+
+```csharp
+private readonly AsyncExchange<Item> _rendezvous = new();
+
+public async Task RunPeerAsync(CancellationToken ct)
+{
+    Item mine = ComputeNextItem();
+
+    while (!ct.IsCancellationRequested)
+    {
+        Item theirs = await _rendezvous.ExchangeAsync(mine, ct).ConfigureAwait(false);
+
+        CrossCheck(mine, theirs);
+        mine = ComputeNextItem();
+    }
+}
+
+// Both peers run the exact same method - there is no asymmetric role to assign.
+_ = Task.Run(() => RunPeerAsync(ct));
+_ = Task.Run(() => RunPeerAsync(ct));
+```
+
+### Non-Blocking Attempts — `Try*`
+
+Every acquiring primitive exposes a synchronous `Try*` probe that returns `false` instead of throwing
+`TimeoutException` on a miss — no exception, no faulted `ValueTask`, nothing to await. Use them on paths
+that shed work rather than queue it.
+
+```csharp
+// Opportunistic cache rebuild — skipped entirely if the lock is busy
+if (_rwLock.TryWriterLock(out var releaser))
+{
+    using (releaser)
+    {
+        RebuildCache();
+    }
+}
+
+// Rate limiter that reports "busy" instead of awaiting
+if (_permits.TryWait())
+{
+    try { Handle(request); }
+    finally { _permits.Release(); }
+}
+else
+{
+    Reject(request);
+}
+```
+
+`AsyncAutoResetEvent.TryWait()` **consumes** the signal (like a completed `WaitAsync()`), whereas
+`AsyncManualResetEvent.TryWait()` and `AsyncCountdownEvent.TryWait()` are non-consuming aliases of `IsSet`.
+A failed releaser-returning `Try*` hands back `default` — never dispose it.
 
 ### Custom Pool
 
@@ -186,7 +377,7 @@ var evt = new AsyncAutoResetEvent(
 2. **Avoid calling `AsTask()` before the primitive signals.** With `RunContinuationsAsynchronously=true` (the default), storing the result of `AsTask()` too early causes a severe performance hit. Await the `ValueTask` directly wherever you can.
 3. **Always await or discard a waiter.** If it's left unconsumed, the underlying `IValueTaskSource` never makes it back to the pool.
 
-The bundled **Threading.Analyzers** package enforces these rules at compile time.
+The separate **Threading.Analyzers** package enforces these rules at compile time.
 
 ---
 
@@ -195,7 +386,7 @@ The bundled **Threading.Analyzers** package enforces these rules at compile time
 | Resource | Link |
 |----------|------|
 | Full package documentation | [cryptohives.github.io/Foundation/packages/threading](https://cryptohives.github.io/Foundation/packages/threading/index.html) |
-| API reference | [cryptohives.github.io/Foundation/api](https://cryptohives.github.io/Foundation/api/index.html) |
+| API reference | [cryptohives.github.io/…/api/…Threading.Async.Pooled](https://cryptohives.github.io/Foundation/api/CryptoHives.Foundation.Threading.Async.Pooled.html) |
 | Benchmarks | [cryptohives.github.io/Foundation/packages/threading/benchmarks](https://cryptohives.github.io/Foundation/packages/threading/benchmarks.html) |
 | Threading.Analyzers | [cryptohives.github.io/Foundation/packages/threading.analyzers](https://cryptohives.github.io/Foundation/packages/threading.analyzers/index.html) |
 | Source repository | [github.com/CryptoHives/Foundation](https://github.com/CryptoHives/Foundation) |
@@ -204,10 +395,12 @@ The bundled **Threading.Analyzers** package enforces these rules at compile time
 
 ## 🚨 Security Policy
 
-If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
+If you discover a vulnerability, please don't open a public issue — report it privately through [GitHub's private vulnerability reporting](https://github.com/CryptoHives/Foundation/security/advisories/new). The [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) has the details.
 
 ---
 
 ## ⚖️ License
 
-MIT — © 2026 The Keepers of the CryptoHives
+MIT OR Apache-2.0 — © 2026 The Keepers of the CryptoHives
+
+See [Choosing a license](https://github.com/CryptoHives/Foundation#-choosing-a-license) for how to record which one you use.

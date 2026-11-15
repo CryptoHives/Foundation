@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -19,7 +19,7 @@ public sealed class AesGcm192 : AesGcm
     /// Initializes a new instance of the <see cref="AesGcm192"/> class.
     /// </summary>
     /// <param name="key">The 24-byte AES key.</param>
-    public AesGcm192(ReadOnlySpan<byte> key) : this(SimdSupport.All, key)
+    public AesGcm192(ReadOnlySpan<byte> key) : this(AesCore.AesDefault, key)
     {
     }
 

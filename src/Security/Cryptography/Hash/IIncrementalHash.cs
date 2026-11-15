@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
@@ -26,8 +26,8 @@ using System.Buffers;
 /// </para>
 /// <para>
 /// All input-accepting overloads accept any unmanaged value type. The bytes are mixed in
-/// memory-layout order, including any padding. Only <see cref="byte"/> is guaranteed to
-/// produce identical results across all platforms and runtimes.
+/// memory-layout order, in host byte order, including any padding. Only <see cref="byte"/> is
+/// guaranteed to produce identical results across all platforms and runtimes.
 /// </para>
 /// <para>
 /// Higher-level consumers such as <see cref="HashAlgorithm"/> wrap implementations of this
@@ -109,7 +109,7 @@ internal interface IIncrementalHash<TR> : IDisposable
     /// <remarks>
     /// This method does not alter the internal state. Call <see cref="Reset"/> afterwards
     /// to prepare the instance for a new computation, or continue appending data.
-    /// </remarks>
+    /// </remarks> 
     bool TryGetCurrentHash(Span<byte> destination, out int bytesWritten);
 
     /// <summary>

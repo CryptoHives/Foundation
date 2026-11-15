@@ -1,11 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers;
-using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -13,7 +13,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 #endif
-using System.Threading;
 
 /// <summary>
 /// Core state for the BLAKE3 hash computation.
@@ -64,10 +63,31 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// </summary>
     private const int KeySizeWords = KeySizeBytes / sizeof(uint);
 
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Words between one parent's child-CV pair and the next: a parent's 64-byte block is
+    /// its two children's chaining values laid end to end.
+    /// </summary>
+    private const int ParentStrideWords = 2 * KeySizeWords;
+#endif
+
     /// <summary>
     /// The block size in uint words for internal usage.
     /// </summary>
     private const int BlockSizeWords = BlockSizeBytes / sizeof(uint);
+
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// The number of 64-byte compression blocks in one 1024-byte chunk.
+    /// </summary>
+    /// <remarks>
+    /// Every chunk kernel walks exactly this many blocks, with the first carrying
+    /// <see cref="FlagChunkStart"/> and the last <see cref="FlagChunkEnd"/>. Guarded
+    /// because only the SIMD kernels count blocks this way; the scalar path below
+    /// walks the chunk buffer by length instead.
+    /// </remarks>
+    private const int BlocksPerChunk = ChunkSizeBytes / BlockSizeBytes;
+#endif
 
     // BLAKE3 flags
     internal const uint FlagChunkStart = 1 << 0;
@@ -118,6 +138,15 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private readonly uint _baseFlags;
     private readonly SimdSupport _simdSupport;
 
+    // Both are read by IsFresh on every TryComputeHash, so they belong in the hot
+    // cluster even though they are only *written* by the XOF and bulk-SIMD paths —
+    // left at their declaration sites they pulled two further cache lines into a
+    // call that otherwise touches only the first.
+    private bool _squeezed;
+#if NET8_0_OR_GREATER
+    private bool _hasPendingCv;
+#endif
+
     private fixed uint _keyWords[KeySizeWords];
     private fixed uint _cv[KeySizeWords];
 
@@ -128,21 +157,23 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     private uint _rootFlags;
 
 #if NET8_0_OR_GREATER
-    // Chaining value for a chunk that a bulk SIMD batch computed but couldn't yet
+    // Chaining value of a chunk or subtree that a bulk SIMD batch computed but couldn't yet
     // commit to the tree — unknown at the time whether it's the true last
     // chunk (see FinalizeRoot). Distinct from _cv, the in-progress accumulator
     // for a chunk still being buffered byte-by-byte.
     private fixed uint _pendingCv[KeySizeWords];
-    private bool _hasPendingCv;
+
+    // Tree level of the subtree _pendingCv stands for: 0 for a single chunk, higher when an
+    // aligned subtree drained the input and only its right half was held back.
+    private int _pendingLevel;
 #endif
 
     // Bulk buffers (streaming/multi-chunk path only)
     private fixed byte _chunkBuffer[ChunkSizeBytes];
-    private fixed uint _cvStackBuf[MaxStackDepth * 8];
+    private fixed uint _cvStackBuf[MaxStackDepth * KeySizeWords];
 
     // XOF squeeze state (only touched when output exceeds one block)
     private fixed byte _squeezeBuf[BlockSizeBytes];
-    public bool _squeezed;
     private ulong _outputCounter;
     private int _squeezeOffset;
 
@@ -155,30 +186,66 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
     internal Blake3State(SimdSupport simdSupport, int outputBytes)
+        : this(simdSupport, outputBytes, baseFlags: 0)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Blake3State"/> struct seeded with the
+    /// standard IV and an explicit domain-separation flag.
+    /// </summary>
+    /// <remarks>
+    /// Plain hashing passes no flag. The first pass of derive-key passes
+    /// <see cref="FlagDeriveKeyContext"/>: it hashes the context string under the same IV as a
+    /// plain hash, differing only in that flag.
+    /// </remarks>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="baseFlags">The domain-separation flag mixed into every compression.</param>
+    internal Blake3State(SimdSupport simdSupport, int outputBytes, uint baseFlags)
     {
         _outputBytes = outputBytes;
-        _baseFlags = 0;
+        _baseFlags = baseFlags;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
 
         InitializeHash();
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Blake3State"/> struct for standard hashing.
+    /// Initializes a new instance of the <see cref="Blake3State"/> struct for keyed hashing.
     /// </summary>
     /// <param name="simdSupport">The SIMD instruction sets to use.</param>
     /// <param name="outputBytes">The desired output size in bytes.</param>
-    /// <param name="key"></param>
+    /// <param name="key">The 32-byte key.</param>
     internal Blake3State(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key)
+        : this(simdSupport, outputBytes, key, FlagKeyedHash)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Blake3State"/> struct from an explicit key
+    /// and domain-separation flag.
+    /// </summary>
+    /// <remarks>
+    /// Both of BLAKE3's keyed modes have the same shape -- 32 key words replacing the IV, plus a
+    /// flag mixed into every compression -- and differ only in that flag. Keyed hashing passes
+    /// <see cref="FlagKeyedHash"/> with the caller's key; the second pass of derive-key passes
+    /// <see cref="FlagDeriveKeyMaterial"/> with the context key produced by the first pass.
+    /// </remarks>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="outputBytes">The desired output size in bytes.</param>
+    /// <param name="key">The 32-byte key words.</param>
+    /// <param name="baseFlags">The domain-separation flag mixed into every compression.</param>
+    internal Blake3State(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key, uint baseFlags)
     {
         _outputBytes = outputBytes;
-        _baseFlags = FlagKeyedHash;
+        _baseFlags = baseFlags;
         _simdSupport = SimdSupport.None;
 #if NET8_0_OR_GREATER
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
 #endif
 
         fixed (Blake3State* core = &this)
@@ -189,7 +256,60 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         InitializeKeyed();
     }
 
+    /// <summary>
+    /// Derives the 32-byte context key that seeds the second pass of BLAKE3 derive-key mode.
+    /// </summary>
+    /// <remarks>
+    /// This is the spec's first pass: hash the context string under the standard IV with
+    /// <see cref="FlagDeriveKeyContext"/>, taking exactly 32 bytes of output regardless of the
+    /// output size the caller asked for. Context strings are hard-coded application constants
+    /// and far below one chunk, so the one-shot path covers this without any streaming
+    /// bookkeeping. The temporary state is zeroed before it goes out of scope.
+    /// </remarks>
+    /// <param name="simdSupport">The SIMD instruction sets to use.</param>
+    /// <param name="contextUtf8">The UTF-8 encoded context string.</param>
+    /// <param name="contextKey">Receives the 32-byte context key.</param>
+    internal static void DeriveContextKey(SimdSupport simdSupport, ReadOnlySpan<byte> contextUtf8, Span<byte> contextKey)
+    {
+        var context = new Blake3State(simdSupport, KeySizeBytes, FlagDeriveKeyContext);
+        try
+        {
+            context.TryHashOneShot(contextUtf8, contextKey, out _, out _);
+        }
+        finally
+        {
+            context.Dispose();
+        }
+    }
+
     public bool Squeezed => _squeezed;
+
+    /// <summary>
+    /// Gets whether no input has been absorbed and no output squeezed since the last
+    /// reset — i.e. the state is exactly as <c>ResetCommonState</c> leaves it.
+    /// </summary>
+    /// <remarks>
+    /// The precondition of <see cref="TryHashOneShot"/>, which cannot continue an
+    /// in-progress tree. <c>_outputCounter</c> and <c>_squeezeOffset</c> are deliberately
+    /// not tested: both are only written inside a squeeze, which sets <c>_squeezed</c>
+    /// first, and they sit far enough into the struct to cost a second cache line here. A
+    /// field added to <c>ResetCommonState</c> belongs here too unless it is implied the
+    /// same way.
+    /// </remarks>
+    public bool IsFresh
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get =>
+            _chunkBufferLength == 0
+            && _chunkCounter == 0
+            && _blocksCompressed == 0
+            && _cvStackDepth == 0
+            && !_squeezed
+#if NET8_0_OR_GREATER
+            && !_hasPendingCv
+#endif
+            ;
+    }
 
     /// <inheritdoc/>
     public void Reset(bool keyedMode)
@@ -223,6 +343,23 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
         bytesWritten = _outputBytes;
 
+        // The first 32 output bytes are v[i] ^ v[i+8] of root block 0 - the same fold a
+        // chaining value gets - so the root compresses straight into a CV-sized buffer.
+        if (!_squeezed && _outputBytes <= DefaultHashSizeBytes)
+        {
+            fixed (Blake3State* core = &this)
+            fixed (byte* dst = destination)
+            {
+                FinalizeRoot(core);
+                _squeezed = true;
+                uint* cv = stackalloc uint[KeySizeWords];
+                Unsafe.CopyBlock(cv, core->_rootCv, KeySizeBytes);
+                CompressWordBlock(cv, core->_rootBlock, _rootBlockLen, 0, _rootFlags);
+                WriteCvLittleEndian(cv, dst, _outputBytes);
+                return true;
+            }
+        }
+
         if (!_squeezed && _outputBytes <= BlockSizeBytes)
         {
             fixed (Blake3State* core = &this)
@@ -252,27 +389,66 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// any data first (matching the same precondition as constructing a new
     /// instance). For inputs of at most one chunk, this compresses directly from
     /// <paramref name="source"/> with no <c>_chunkBuffer</c> copy at all — the
-    /// dominant fixed cost of the streaming path at small sizes. Larger inputs
-    /// reuse the existing batched <see cref="Append(ReadOnlySpan{byte})"/>/<see cref="TryGetCurrentHash"/>
+    /// dominant fixed cost of the streaming path at small sizes — and for a
+    /// digest of at most 32 bytes it also skips the counter-mode staging a
+    /// resumable squeeze would need (see <see cref="HashChunkRoot32"/>). Larger
+    /// inputs reuse the existing batched <see cref="Append(ReadOnlySpan{byte})"/>/<see cref="TryGetCurrentHash"/>
     /// machinery, which already amortizes any bookkeeping over many chunks.
     /// </remarks>
-    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    /// <param name="source">The input data to hash.</param>
+    /// <param name="destination">The buffer to receive the hash value.</param>
+    /// <param name="bytesWritten">The number of bytes written into <paramref name="destination"/>.</param>
+    /// <param name="stateDirty">
+    /// Whether the call left the state needing a reset. Not inferable from
+    /// <see cref="IsFresh"/>: <see cref="HashChunkRoot32"/> dirties <c>_cv</c> without
+    /// touching any scalar that predicate tests.
+    /// </param>
+    public bool TryHashOneShot(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten, out bool stateDirty)
     {
         if (destination.Length < _outputBytes)
         {
             bytesWritten = 0;
+            stateDirty = false;
             return false;
         }
 
         bytesWritten = _outputBytes;
 
+        // Unkeyed 32-byte digest of at most one chunk: constant-state kernels that touch
+        // no field, so nothing to reset. Exactly 32, not at most: both store a full 32.
+        if (_baseFlags == 0
+            && _outputBytes == DefaultHashSizeBytes
+            && source.Length <= ChunkSizeBytes)
+        {
+            fixed (byte* srcPtr = source)
+            fixed (byte* dstPtr = destination)
+            {
+#if NET8_0_OR_GREATER
+                if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
+                {
+                    HashRootIv32Ssse3(srcPtr, source.Length, dstPtr);
+                }
+                else
+#endif
+                {
+                    // NEON uses the scalar compressor for single-block work (see
+                    // CompressBlock); the downlevel TFMs have no SIMD path.
+                    HashRootIv32Scalar(srcPtr, source.Length, dstPtr);
+                }
+            }
+
+            stateDirty = false;
+            return true;
+        }
+
+        stateDirty = true;
         if (source.Length <= ChunkSizeBytes)
         {
             TryHashOneShotSingleChunk(source, destination);
             return true;
         }
 
-        Append(source);
+        Append(source, true);
         return TryGetCurrentHash(destination, out bytesWritten);
     }
 
@@ -286,6 +462,18 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         {
             fixed (byte* srcPtr = source)
             {
+                // The overwhelmingly common shape: a plain digest of at most 32 bytes, which
+                // needs neither the counter-mode staging nor the second half of an output
+                // block. See HashChunkRoot32.
+                if (_outputBytes <= DefaultHashSizeBytes)
+                {
+                    fixed (byte* dstPtr = destination)
+                    {
+                        HashChunkRoot32(core, srcPtr, source.Length, dstPtr);
+                        return;
+                    }
+                }
+
                 SaveChunkAsRoot(core, srcPtr, source.Length);
             }
 
@@ -297,11 +485,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             }
             else
             {
-                // Prime the squeeze buffer exactly as the (!_squeezed) branch of
-                // Squeeze() would, then mark squeezed so it resumes from here
-                // instead of re-deriving the root from _chunkBuffer.
-                SqueezeRootBlock(core, 0, core->_squeezeBuf);
-
+                // The root is already saved, so mark the state squeezed and let
+                // Squeeze() resume from here instead of re-deriving it from
+                // _chunkBuffer. No block is primed: Squeeze() produces blocks
+                // lazily and buffers one only for a trailing partial read, so
+                // priming here would just compute a block it would recompute.
                 _squeezed = true;
                 _outputCounter = 0;
                 _squeezeOffset = 0;
@@ -326,18 +514,28 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    public void Append(ReadOnlySpan<byte> source)
+    {
+        Append(source, false);
+    }
+
+    /// <summary>
+    /// Absorbs <paramref name="source"/>, optionally as the last input of the hash.
+    /// </summary>
     /// <remarks>
-    /// <c>[SkipLocalsInit]</c>: the <c>batchCvs</c> stack buffers (up to 2 KB,
-    /// otherwise zeroed on every batched call) are fully overwritten by the SIMD
-    /// chunk kernels before the commit loops read them.
-    /// <c>AggressiveOptimization</c>: this method's own batch-loop scaffolding
-    /// (offset arithmetic, tier dispatch) would otherwise run under quick-JIT
-    /// (Tier 0) on early calls before tiering-up or OSR promotes it, even though
-    /// the SIMD kernels it calls are already forced to full optimization.
+    /// <c>SkipLocalsInit</c> because the SIMD kernels fully overwrite the <c>batchCvs</c>
+    /// stack buffer before the commit loops read it; <c>AggressiveOptimization</c> because
+    /// the batch-loop scaffolding would otherwise run under quick-JIT on early calls.
     /// </remarks>
+    /// <param name="source">The bytes to absorb.</param>
+    /// <param name="isFinal">
+    /// Whether no further input follows, which lets a trailing partial chunk be compressed
+    /// in a lane of the last SIMD batch instead of block by block.
+    /// </param>
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
-    public void Append(ReadOnlySpan<byte> source)
+    private void Append(ReadOnlySpan<byte> source, bool isFinal)
     {
         fixed (Blake3State* core = &this)
         fixed (byte* srcPtr = source)
@@ -351,9 +549,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // bytes prove it wasn't the final chunk, so commit it now.
             if (_hasPendingCv && length > 0)
             {
-                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * 8, core->_pendingCv, KeySizeWords * (uint)sizeof(uint));
-                AddChunkToTree(core);
-                _chunkCounter++;
+                Unsafe.CopyBlock(core->_cvStackBuf + _cvStackDepth * KeySizeWords, core->_pendingCv, KeySizeBytes);
+                AddSubtreeToTree(core, _pendingLevel);
+                _chunkCounter += 1UL << _pendingLevel;
                 _hasPendingCv = false;
             }
 
@@ -364,65 +562,59 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
             // The batched paths only apply at a chunk boundary. The scalar
             // loop's finalize step jumps back here if unaligned buffers
-            //  are processed and the chunk buffer is empty again.
+            // are processed and the chunk buffer is empty again.
         RestartBatching:
             if (_chunkBufferLength == 0)
             {
                 // Helps to not JIT this branch on Arm
-                if (Avx512F.IsSupported)
+                if (Avx512F.IsSupported && ((_simdSupport & SimdSupport.Avx512F) != 0))
                 {
                     // Groups of 16 independent chunks compressed together. A
-                    // batch that exactly drains the input holds back its last
-                    // chunk as pending instead of committing it (see FinalizeRoot).
-                    if ((_simdSupport & SimdSupport.Avx512F) != 0 &&
-                        length - offset >= Avx512BatchSizeBytes)
+                    // batch or group that exactly drains the input holds back its
+                    // right half as pending instead of committing it (see FinalizeRoot).
+                    if (length - offset >= Avx512BatchSizeBytes)
                     {
                         // 64-chunk subtree groups: 4 batches reduce to one CV,
-                        // one tree push per 64 KB. Strictly-greater guard keeps
-                        // the group clear of the message tail.
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                            length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        // one tree push per 64 KB.
+                        // Alignment is loop-invariant once true (adding exactly 64 to a
+                        // multiple of 64 leaves one), so it is tested once here and the
+                        // loop over further groups lives inside.
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx512Batch,
-                                Avx512BatchSizeBytes, batchCvs, &CompressChunksPartialAvx512);
+                            offset = CompressSubtreeGroupsAvx512(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Avx512BatchSizeBytes)
                         {
-                            CompressChunksPartialAvx512(srcPtr + offset, ChunksPerAvx512Batch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+                            CompressChunks16Avx512(srcPtr + offset, Avx512ChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx512BatchSizeBytes == length;
 
-                            if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx512Batch - 1)) == 0)
+                            if (drainsRemainingInput && (_chunkCounter & (Avx512ChunksPerBatch / 2 - 1)) == 0)
+                            {
+                                // Both 8-chunk halves are complete aligned subtrees, whether or
+                                // not the batch itself is aligned to 16.
+                                ReduceChunkCvsToHalvesAvx2(batchCvs, core->_keyWords, Avx512ChunksPerBatch, _baseFlags);
+                                DeferRightHalf(core, batchCvs, Avx512BatchLevel - 1);
+                                return;
+                            }
+
+                            if (!drainsRemainingInput && (_chunkCounter & (Avx512ChunksPerBatch - 1)) == 0)
                             {
                                 // Complete, aligned 16-chunk subtree, not the
                                 // tail: reduce and push one tree node instead
                                 // of 16 serial single-chunk commits.
-                                ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx512Batch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 4);
-                                _chunkCounter += ChunksPerAvx512Batch;
+                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, Avx512ChunksPerBatch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, Avx512BatchLevel);
+                                _chunkCounter += Avx512ChunksPerBatch;
                             }
                             else
                             {
-                                int firstChunk = 0;
-                                if (drainsRemainingInput && (_chunkCounter & (ChunksPerAvx2Batch - 1)) == 0)
-                                {
-                                    // Even in the final batch, the first 8 chunks form
-                                    // an aligned complete subtree (chunks 8..15 follow
-                                    // them, so none can be the message tail): reduce
-                                    // them wide; only the last 7 commit serially. The
-                                    // in-place reduction never writes past the first
-                                    // 8 CV slots, so CVs 8..15 stay intact.
-                                    ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
-                                    PushSubtreeCv(core, batchCvs, 3);
-                                    _chunkCounter += ChunksPerAvx2Batch;
-                                    firstChunk = ChunksPerAvx2Batch;
-                                }
-
-                                int chunksToCommit = drainsRemainingInput ? ChunksPerAvx512Batch - 1 : ChunksPerAvx512Batch;
+                                int chunksToCommit = drainsRemainingInput ? Avx512ChunksPerBatch - 1 : Avx512ChunksPerBatch;
 
                                 // Draining means offset == length; return directly.
-                                if (CommitBatchChunks(core, batchCvs, firstChunk, chunksToCommit, drainsRemainingInput))
+                                if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
                                 {
                                     return;
                                 }
@@ -432,51 +624,56 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // AVX-512 partial batch: 9..15 chunks via the 16-way kernel
-                    if ((_simdSupport & SimdSupport.Avx512F) != 0 &&
-                        length - offset >= (ChunksPerAvx2Batch + 1) * ChunkSizeBytes)
+                    // Partial batch: 9..15 chunks in a single 16-lane pass. Up to 8 chunks fall
+                    // through to the AVX2 branch, where the 8-lane kernels cover them.
+                    if (length - offset >= (Avx2ChunksPerBatch + 1) * ChunkSizeBytes)
                     {
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialAvx512);
+                        offset += CommitPartialBatchAvx512(core, srcPtr, offset, length, batchCvs, isFinal);
                     }
                 }
 
                 // Helps to not JIT this branch if unsupported
-                if (Avx2.IsSupported || Avx512F.IsSupported)
+                if ((Avx2.IsSupported || Avx512F.IsSupported) &&
+                    (_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
                 {
                     // AVX2 8-chunk batches: primary path on AVX2-only hardware
-                    if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
-                        length - offset >= Avx2BatchSizeBytes)
+                    if (length - offset >= Avx2BatchSizeBytes)
                     {
                         // 64-chunk subtree groups 
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                               length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerAvx2Batch,
-                                Avx2BatchSizeBytes, batchCvs, &CompressChunksPartialAvx2);
+                            offset = CompressSubtreeGroupsAvx2(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= Avx2BatchSizeBytes)
                         {
-                            CompressChunksPartialAvx2(
+                            CompressChunks8Avx2(
                                 srcPtr + offset,
-                                ChunksPerAvx2Batch,
+                                Avx2ChunksPerBatch,
                                 core->_keyWords,
                                 batchCvs,
                                 _chunkCounter,
                                 _baseFlags);
 
                             bool drainsRemainingInput = offset + Avx2BatchSizeBytes == length;
+                            if (drainsRemainingInput && (_chunkCounter & (Avx2ChunksPerBatch / 2 - 1)) == 0)
+                            {
+                                ReduceChunkCvsToHalvesAvx2(batchCvs, core->_keyWords, Avx2ChunksPerBatch, _baseFlags);
+                                DeferRightHalf(core, batchCvs, Avx2BatchLevel - 1);
+                                return;
+                            }
 
-                            if (!drainsRemainingInput && (_chunkCounter & (ChunksPerAvx2Batch - 1)) == 0)
+                            if (!drainsRemainingInput && (_chunkCounter & (Avx2ChunksPerBatch - 1)) == 0)
                             {
                                 // Complete aligned 8-chunk subtree, not the tail.
-                                ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerAvx2Batch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 3);
-                                _chunkCounter += ChunksPerAvx2Batch;
+                                ReduceChunkCvsToSubtreeCvAvx2(core, batchCvs, core->_keyWords, Avx2ChunksPerBatch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, Avx2BatchLevel);
+                                _chunkCounter += Avx2ChunksPerBatch;
                             }
                             else
                             {
-                                int chunksToCommit = drainsRemainingInput ? ChunksPerAvx2Batch - 1 : ChunksPerAvx2Batch;
+                                int chunksToCommit = drainsRemainingInput ? Avx2ChunksPerBatch - 1 : Avx2ChunksPerBatch;
 
                                 // Draining means offset == length; return directly.
                                 if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
@@ -489,55 +686,119 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         }
                     }
 
-                    // Partial batch: 2..7 chunks via the 8-way kernel with surplus
-                    // lanes ignoring real data — beats per-chunk from 2 chunks up.
-                    // Counters may be unaligned here, so CVs commit per-chunk.
-                    if ((_simdSupport & (SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0 &&
-                        length - offset >= 2 * ChunkSizeBytes)
+                    // Partial batch: 2..7 chunks, or one chunk and a partial chunk of a final
+                    // input, by the pair, two-chain or 8-lane kernel (see CommitPartialBatchAvx2).
+                    if (length - offset >= 2 * ChunkSizeBytes ||
+                        (isFinal && length - offset > ChunkSizeBytes + BlockSizeBytes))
                     {
-                        // At most 7 chunks remain. Below 5, the 4-lane kernel
-                        // beats the 8-lane one
-
-                        int fullChunks = (length - offset) / ChunkSizeBytes;
-                        delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel = fullChunks <= 4
-                            ? &CompressChunksPartial4Avx2
-                            : &CompressChunksPartialAvx2;
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, kernel);
+                        offset += CommitPartialBatchAvx2(core, srcPtr, offset, length, batchCvs, isFinal);
                     }
                 }
 
-                // Helps to not JIT this branch on Arm
-                if (AdvSimd.Arm64.IsSupported)
+                // Helps to not JIT this branch where SSSE3 is unavailable
+                if (Ssse3.IsSupported && ((_simdSupport & SimdSupport.Ssse3) != 0))
+                {
+                    // SSSE3 4-chunk batches.
+                    //
+                    // Like NEON and unlike AVX2, this tier reduces four CVs per subtree
+                    // rather than eight, using CompressParents4Ssse3 — the 8-lane
+                    // reduce needs Vector256 and is unavailable here.
+                    if (length - offset >= Ssse3BatchSizeBytes)
+                    {
+                        // 64-chunk subtree groups: 16 batches reduce to one CV,
+                        // so the tree only sees one push per 64 KB instead of 64.
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        {
+                            offset = CompressSubtreeGroupsSsse3(core, srcPtr, offset, length, batchCvs);
+                        }
+
+                        while (length - offset >= Ssse3BatchSizeBytes)
+                        {
+                            CompressChunksPartial4Ssse3(
+                                srcPtr + offset,
+                                Ssse3ChunksPerBatch,
+                                core->_keyWords,
+                                batchCvs,
+                                _chunkCounter,
+                                _baseFlags);
+
+                            bool drainsRemainingInput = offset + Ssse3BatchSizeBytes == length;
+                            if (drainsRemainingInput && (_chunkCounter & (Ssse3ChunksPerBatch / 2 - 1)) == 0)
+                            {
+                                ReduceChunkCvsToHalvesSsse3(batchCvs, core->_keyWords, Ssse3ChunksPerBatch, _baseFlags);
+                                DeferRightHalf(core, batchCvs, Ssse3BatchLevel - 1);
+                                return;
+                            }
+
+                            if (!drainsRemainingInput && (_chunkCounter & (Ssse3ChunksPerBatch - 1)) == 0)
+                            {
+                                // Complete aligned 4-chunk subtree, not the tail:
+                                // fold the four CVs into one before pushing.
+                                ReduceChunkCvsToSubtreeCvSsse3(core, batchCvs, core->_keyWords, Ssse3ChunksPerBatch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, Ssse3BatchLevel);
+                                _chunkCounter += Ssse3ChunksPerBatch;
+                                offset += Ssse3BatchSizeBytes;
+                                continue;
+                            }
+
+                            int chunksToCommit = drainsRemainingInput ? Ssse3ChunksPerBatch - 1 : Ssse3ChunksPerBatch;
+
+                            // Draining means offset == length; return directly.
+                            if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
+                            {
+                                return;
+                            }
+
+                            offset += Ssse3BatchSizeBytes;
+                        }
+                    }
+
+                    // SSSE3 partial batch: 3 chunks via the 4-way kernel with one ignored lane,
+                    // or 2 where the CPU has the 32-register file. Elsewhere 2 chunks did not
+                    // repay the transpose cost, as on the NEON tier.
+                    if (length - offset >= (Avx512F.VL.IsSupported ? 2 : 3) * ChunkSizeBytes)
+                    {
+                        offset += CommitPartialBatchSsse3(core, srcPtr, offset, length, batchCvs);
+                    }
+                }
+
+                // Helps to not JIT this branch on x64
+                if (AdvSimd.Arm64.IsSupported && ((_simdSupport & SimdSupport.Neon) != 0))
                 {
                     // NEON 4-chunk batches: same subtree-group strategy as AVX2
                     // above, one register width down (4 lanes vs. 8).
-                    if ((_simdSupport & SimdSupport.Neon) != 0 &&
-                        length - offset >= NeonBatchSizeBytes)
+                    if (length - offset >= NeonBatchSizeBytes)
                     {
                         // 64-chunk subtree groups
-                        while ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
-                               length - offset > ChunksPerSubtreeGroup * ChunkSizeBytes)
+                        if ((_chunkCounter & (ChunksPerSubtreeGroup - 1)) == 0 &&
+                            length - offset >= ChunksPerSubtreeGroup * ChunkSizeBytes)
                         {
-                            offset = CompressSubtreeGroup(core, srcPtr, offset, ChunksPerNeonBatch,
-                                NeonBatchSizeBytes, batchCvs, &CompressChunksPartialNeon);
+                            offset = CompressSubtreeGroupsNeon(core, srcPtr, offset, length, batchCvs);
                         }
 
                         while (length - offset >= NeonBatchSizeBytes)
                         {
-                            CompressChunksPartialNeon(srcPtr + offset, ChunksPerNeonBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
+                            CompressChunksPartialNeon(srcPtr + offset, NeonChunksPerBatch, core->_keyWords, batchCvs, _chunkCounter, _baseFlags);
 
                             bool drainsRemainingInput = offset + NeonBatchSizeBytes == length;
+                            if (drainsRemainingInput && (_chunkCounter & (NeonChunksPerBatch / 2 - 1)) == 0)
+                            {
+                                ReduceChunkCvsToHalvesNeon(batchCvs, core->_keyWords, NeonChunksPerBatch, _baseFlags);
+                                DeferRightHalf(core, batchCvs, NeonBatchLevel - 1);
+                                return;
+                            }
 
-                            if (!drainsRemainingInput && (_chunkCounter & (ChunksPerNeonBatch - 1)) == 0)
+                            if (!drainsRemainingInput && (_chunkCounter & (NeonChunksPerBatch - 1)) == 0)
                             {
                                 // Complete aligned 4-chunk subtree, not the tail.
-                                ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerNeonBatch, _baseFlags);
-                                PushSubtreeCv(core, batchCvs, 2);
-                                _chunkCounter += ChunksPerNeonBatch;
+                                ReduceChunkCvsToSubtreeCvNeon(core, batchCvs, core->_keyWords, NeonChunksPerBatch, _baseFlags);
+                                PushSubtreeCv(core, batchCvs, NeonBatchLevel);
+                                _chunkCounter += NeonChunksPerBatch;
                             }
                             else
                             {
-                                int chunksToCommit = drainsRemainingInput ? ChunksPerNeonBatch - 1 : ChunksPerNeonBatch;
+                                int chunksToCommit = drainsRemainingInput ? NeonChunksPerBatch - 1 : NeonChunksPerBatch;
 
                                 // Draining means offset == length; return directly.
                                 if (CommitBatchChunks(core, batchCvs, 0, chunksToCommit, drainsRemainingInput))
@@ -554,11 +815,10 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                     // with one ignored lane. The 2-chunk case benchmarked
                     // slower than scalar (fixed transpose/spill cost not repaid
                     // by 2 chunks), so it falls through to the scalar loop instead.
-                    if ((_simdSupport & SimdSupport.Neon) != 0 &&
-                        length - offset >= 3 * ChunkSizeBytes)
+                    if (length - offset >= 3 * ChunkSizeBytes)
                     {
                         // At most 3 chunks remain here (3,072..4,095 bytes).
-                        offset += CommitPartialBatch(core, srcPtr, offset, length, batchCvs, &CompressChunksPartialNeon);
+                        offset += CommitPartialBatch3Neon(core, srcPtr, offset, length, batchCvs);
                     }
                 }
             }
@@ -567,16 +827,18 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // single chunk processing
             while (offset < length)
             {
-                // If chunk buffer is full, finalize the chunk
-                if (_chunkBufferLength == ChunkSizeBytes)
+                int chunkBytesAbsorbed = (_blocksCompressed * BlockSizeBytes) + _chunkBufferLength;
+
+                // If chunk is complete, finalize it
+                if (chunkBytesAbsorbed == ChunkSizeBytes)
                 {
-                    FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * 8);
+                    FinalizeChunk(core, core->_cvStackBuf + _cvStackDepth * KeySizeWords);
 
                     AddChunkToTree(core);
                     _chunkCounter++;
                     _chunkBufferLength = 0;
                     _blocksCompressed = 0;
-                    Unsafe.CopyBlock(core->_cv, core->_keyWords, KeySizeWords * (uint)sizeof(uint));
+                    Unsafe.CopyBlock(core->_cv, core->_keyWords, KeySizeBytes);
 
 #if NET8_0_OR_GREATER
                     // The buffer is empty again and more chunks remain for batching
@@ -585,9 +847,26 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
                         goto RestartBatching;
                     }
 #endif
+                    chunkBytesAbsorbed = 0;
                 }
 
-                int toCopy = Math.Min(ChunkSizeBytes - _chunkBufferLength, length - offset);
+                // Whole blocks go straight from the input into the running CV, bypassing the
+                // buffer, as long as at least one byte of this chunk stays behind: the block
+                // holding the chunk's last byte is compressed at finalization, with ChunkEnd.
+                if (_chunkBufferLength == 0)
+                {
+                    int blocks = (Math.Min(length - offset, ChunkSizeBytes - chunkBytesAbsorbed) - 1) / BlockSizeBytes;
+                    if (blocks > 0)
+                    {
+                        uint flags = _blocksCompressed == 0 ? _baseFlags | FlagChunkStart : _baseFlags;
+                        CompressBlocks(core->_cv, srcPtr + offset, blocks, BlockSizeBytes, _chunkCounter, flags);
+                        _blocksCompressed += blocks;
+                        chunkBytesAbsorbed += blocks * BlockSizeBytes;
+                        offset += blocks * BlockSizeBytes;
+                    }
+                }
+
+                int toCopy = Math.Min(ChunkSizeBytes - chunkBytesAbsorbed, length - offset);
                 Unsafe.CopyBlockUnaligned(
                     ref core->_chunkBuffer[_chunkBufferLength],
                     ref srcPtr[offset],
@@ -599,36 +878,6 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
 #if NET8_0_OR_GREATER
-    /// <summary>
-    /// Shared tail handling for a SIMD tier's partial batch (fewer full chunks
-    /// remaining than one whole batch, but enough to beat serial per-chunk
-    /// compression): compresses them all via <paramref name="partialKernel"/>,
-    /// commits every chunk but the last, and holds the last back as pending if
-    /// it exactly drains the input (see <see cref="FinalizeRoot"/>).
-    /// </summary>
-    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
-    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
-    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the remaining full chunks start.</param>
-    /// <param name="length">Total length of the current <c>Append</c> call's input.</param>
-    /// <param name="scratch">Caller-owned scratch buffer for the partial kernel's output CVs.</param>
-    /// <param name="partialKernel">The tier-specific partial-batch compression kernel to call.</param>
-    /// <returns>The number of bytes consumed (<c>fullChunks * ChunkSizeBytes</c>).</returns>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private int CommitPartialBatch(
-        Blake3State* core, byte* srcPtr, int offset, int length, uint* scratch,
-        delegate*<byte*, int, uint*, uint*, ulong, uint, void> partialKernel)
-    {
-        int fullChunks = (length - offset) / ChunkSizeBytes;
-        bool drainsRemainingInput = offset + fullChunks * ChunkSizeBytes == length;
-
-        uint* partialCvs = scratch;
-        partialKernel(srcPtr + offset, fullChunks, core->_keyWords, partialCvs, _chunkCounter, _baseFlags);
-
-        int chunksToCommit = drainsRemainingInput ? fullChunks - 1 : fullChunks;
-        CommitBatchChunks(core, partialCvs, 0, chunksToCommit, drainsRemainingInput);
-
-        return fullChunks * ChunkSizeBytes;
-    }
 
     /// <summary>
     /// Commits CVs <c>[firstChunk, chunksToCommit)</c> from a compressed batch
@@ -646,9 +895,9 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         for (int i = firstChunk; i < chunksToCommit; i++)
         {
             Unsafe.CopyBlock(
-                core->_cvStackBuf + _cvStackDepth * 8,
+                core->_cvStackBuf + _cvStackDepth * KeySizeWords,
                 batchCvs + i * KeySizeWords,
-                KeySizeWords * (uint)sizeof(uint));
+                KeySizeBytes);
             AddChunkToTree(core);
             _chunkCounter++;
         }
@@ -658,7 +907,8 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             Unsafe.CopyBlock(
                 core->_pendingCv,
                 batchCvs + chunksToCommit * KeySizeWords,
-                KeySizeWords * (uint)sizeof(uint));
+                KeySizeBytes);
+            _pendingLevel = 0;
             _hasPendingCv = true;
             return true;
         }
@@ -667,64 +917,36 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     }
 
     /// <summary>
+    /// Commits an aligned subtree that ends exactly at the end of the input, given as the
+    /// CVs of its two halves: the left half goes onto the tree, the right half is held back
+    /// as pending, because it becomes the root's right child if no more input follows.
+    /// </summary>
+    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
+    /// <param name="halves">The two half-subtree CVs, left then right (16 words).</param>
+    /// <param name="level">Tree level of each half; <c>_chunkCounter</c> must be at the left half's first chunk.</param>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void DeferRightHalf(Blake3State* core, uint* halves, int level)
+    {
+        PushSubtreeCv(core, halves, level);
+        _chunkCounter += 1UL << level;
+        Unsafe.CopyBlock(core->_pendingCv, halves + KeySizeWords, KeySizeBytes);
+        _pendingLevel = level;
+        _hasPendingCv = true;
+    }
+
+    /// <summary>
     /// Copies a reduced subtree CV onto the tree stack and pushes it —
     /// the shared tail of every "aligned subtree" branch across the SIMD
-    /// batch loops and <see cref="CompressSubtreeGroup"/>.
+    /// batch loops and each tier's <c>CompressSubtreeGroups*</c>.
     /// </summary>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void PushSubtreeCv(Blake3State* core, uint* cvs, int level)
     {
         Unsafe.CopyBlock(
-            core->_cvStackBuf + _cvStackDepth * 8,
+            core->_cvStackBuf + _cvStackDepth * KeySizeWords,
             cvs,
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         AddSubtreeToTree(core, level);
-    }
-
-    /// <summary>
-    /// Shared body for every SIMD tier's 64-chunk subtree-group loop: runs
-    /// <c>ChunksPerSubtreeGroup / batchWidth</c> kernel batches into
-    /// <paramref name="batchCvs"/>, reduces all 64 CVs to one subtree CV, and
-    /// pushes it — so the reduction and tree push are paid once per 64 KB.
-    /// </summary>
-    /// <param name="core">Pointer to the same instance as <see langword="this"/>.</param>
-    /// <param name="srcPtr">Pointer to the start of the current <c>Append</c> call's input.</param>
-    /// <param name="offset">Byte offset into <paramref name="srcPtr"/> where the group starts.</param>
-    /// <param name="batchWidth">The tier's chunk-parallel width (4, 8, or 16).</param>
-    /// <param name="batchSizeBytes"><c>batchWidth * ChunkSizeBytes</c>.</param>
-    /// <param name="batchCvs">Caller-owned scratch buffer, at least 64 CVs (512 words) long.</param>
-    /// <param name="kernel">The tier-specific partial-batch compression kernel to call.</param>
-    /// <returns><paramref name="offset"/> advanced by <c>ChunksPerSubtreeGroup * ChunkSizeBytes</c>.</returns>
-    [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private int CompressSubtreeGroup(
-        Blake3State* core, byte* srcPtr, int offset, int batchWidth, int batchSizeBytes,
-        uint* batchCvs, delegate*<byte*, int, uint*, uint*, ulong, uint, void> kernel)
-    {
-        for (int b = 0; b < ChunksPerSubtreeGroup / batchWidth; b++)
-        {
-            kernel(
-                srcPtr + offset,
-                batchWidth,
-                core->_keyWords,
-                batchCvs + b * batchWidth * KeySizeWords,
-                _chunkCounter + (ulong)(b * batchWidth),
-                _baseFlags);
-            offset += batchSizeBytes;
-        }
-
-        // hardcoding, so the JIT can remove
-        if (AdvSimd.Arm64.IsSupported)
-        {
-            ReduceChunkCvsToSubtreeCvNeon(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-        }
-        else
-        {
-            ReduceChunkCvsToSubtreeCvAvx2(batchCvs, core->_keyWords, ChunksPerSubtreeGroup, _baseFlags);
-        }
-
-        PushSubtreeCv(core, batchCvs, 6);
-        _chunkCounter += ChunksPerSubtreeGroup;
-        return offset;
     }
 #endif
 
@@ -733,16 +955,16 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     {
         fixed (Blake3State* core = &this)
         {
-            Unsafe.InitBlockUnaligned(core->_keyWords, 0, KeySizeWords * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_cv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_keyWords, 0, KeySizeBytes);
+            Unsafe.InitBlockUnaligned(core->_cv, 0, KeySizeBytes);
             Unsafe.InitBlockUnaligned(core->_chunkBuffer, 0, ChunkSizeBytes);
-            Unsafe.InitBlockUnaligned(core->_cvStackBuf, 0, MaxStackDepth * 8 * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_rootBlock, 0, BlockSizeWords * (uint)sizeof(uint));
-            Unsafe.InitBlockUnaligned(core->_rootCv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_cvStackBuf, 0, MaxStackDepth * KeySizeBytes);
+            Unsafe.InitBlockUnaligned(core->_rootBlock, 0, BlockSizeBytes);
+            Unsafe.InitBlockUnaligned(core->_rootCv, 0, KeySizeBytes);
             Unsafe.InitBlockUnaligned(core->_squeezeBuf, 0, BlockSizeBytes);
             _cvStackDepth = 0;
 #if NET8_0_OR_GREATER
-            Unsafe.InitBlockUnaligned(core->_pendingCv, 0, KeySizeWords * (uint)sizeof(uint));
+            Unsafe.InitBlockUnaligned(core->_pendingCv, 0, KeySizeBytes);
             _hasPendingCv = false;
 #endif
         }
@@ -753,11 +975,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _keyWords[0]),
             ref Unsafe.As<uint, byte>(ref MemoryMarshal.GetReference(IV)),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _cv[0]),
             ref Unsafe.As<uint, byte>(ref MemoryMarshal.GetReference(IV)),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         ResetCommonState();
     }
 
@@ -766,7 +988,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         Unsafe.CopyBlock(
             ref Unsafe.As<uint, byte>(ref _cv[0]),
             ref Unsafe.As<uint, byte>(ref _keyWords[0]),
-            KeySizeWords * (uint)sizeof(uint));
+            KeySizeBytes);
         ResetCommonState();
     }
 
@@ -784,21 +1006,47 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 #endif
     }
 
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Compresses the last block of a trailing partial chunk whose preceding blocks a SIMD
+    /// pass already folded into <paramref name="cv"/>, and stores the chunk's CV.
+    /// </summary>
+    /// <param name="tail">The last block's bytes.</param>
+    /// <param name="length">Number of bytes at <paramref name="tail"/>, 1..64.</param>
+    /// <param name="cv">The chaining value after the preceding blocks; overwritten.</param>
+    /// <param name="counter">The chunk's index.</param>
+    /// <param name="destination">Receives the chunk's CV.</param>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void FinishTailChunk(byte* tail, int length, uint* cv, ulong counter, uint* destination)
+    {
+        byte* block = stackalloc byte[BlockSizeBytes];
+        Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
+        Unsafe.CopyBlockUnaligned(ref *block, ref *tail, (uint)length);
+
+        CompressBlock(cv, block, (uint)length, counter, _baseFlags | FlagChunkEnd);
+        Unsafe.CopyBlock(destination, cv, KeySizeBytes);
+    }
+#endif
+
     // [SkipLocalsInit]: the block buffer is zeroed per chunk by localsinit but only
     // needed as padding for a partial last block — zeroed explicitly there instead.
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     private void FinalizeChunk(Blake3State* core, uint* destination)
     {
-        // Compute last block boundary via integer math, same as SaveChunkAsRootFromSource.
+        // Compute last block boundary via integer math, same as SaveChunkAsRoot.
         int lastBlockOffset = (_chunkBufferLength <= BlockSizeBytes) ? 0
             : (_chunkBufferLength - 1) / BlockSizeBytes * BlockSizeBytes;
         int lastBlockLen = _chunkBufferLength - lastBlockOffset;
 
         uint flags = _baseFlags;
-        if (_blocksCompressed == 0) flags |= FlagChunkStart;
+        if (_blocksCompressed == 0)
+        {
+            flags |= FlagChunkStart;
+        }
 
-        // All blocks except the last: batched into a single CompressBlock call
+        // All blocks except the last: batched into a single CompressBlocks call
         // (same chunk counter for every block — only the flags differ across
         // blocks of the same chunk) — one load/store of the running CV instead
         // of one per block.
@@ -815,23 +1063,21 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
 
         uint finalFlags = flags | FlagChunkEnd;
-        if (lastBlockLen == BlockSizeBytes)
-        {
-            CompressBlock(core->_cv, p, (uint)lastBlockLen, _chunkCounter, finalFlags);
-        }
-        else
+        if (lastBlockLen != BlockSizeBytes)
         {
             // Partial last block: zero-pad the tail explicitly (SkipLocalsInit)
             byte* block = stackalloc byte[BlockSizeBytes];
+            Unsafe.InitBlockUnaligned(block, 0, BlockSizeBytes);
             Unsafe.CopyBlockUnaligned(ref *block, ref *p, (uint)lastBlockLen);
-            Unsafe.InitBlockUnaligned(block + lastBlockLen, 0, (uint)(BlockSizeBytes - lastBlockLen));
 
-            CompressBlock(core->_cv, block, (uint)lastBlockLen, _chunkCounter, finalFlags);
+            p = block;
         }
+
+        CompressBlock(core->_cv, p, (uint)lastBlockLen, _chunkCounter, finalFlags);
 
         _blocksCompressed++;
 
-        Unsafe.CopyBlock(destination, core->_cv, KeySizeWords * (uint)sizeof(uint));
+        Unsafe.CopyBlock(destination, core->_cv, KeySizeBytes);
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -858,7 +1104,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
             // The two sibling CVs are adjacent stack slots — exactly the
             // contiguous 64-byte parent block ComputeParentCv reads; the
             // merge lands in-place in left's slot.
-            uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * 8;
+            uint* left = core->_cvStackBuf + (_cvStackDepth - 2) * KeySizeWords;
             ComputeParentCv(left, core->_keyWords, left);
 
             _cvStackDepth--;
@@ -876,26 +1122,79 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
     /// In-place merges (<paramref name="destination"/> == <paramref name="children"/>)
     /// are safe since both compress paths finish reading before writing.
     /// </remarks>
-    [SkipLocalsInit]
-    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
     private void ComputeParentCv(uint* children, uint* key, uint* destination)
     {
         uint flags = _baseFlags | FlagParent;
-        uint* cv = stackalloc uint[KeySizeWords];
-        Unsafe.CopyBlock(cv, key, KeySizeWords * (uint)sizeof(uint));
-        CompressBlock(cv, (byte*)children, BlockSizeBytes, 0, flags);
-        Unsafe.CopyBlock(destination, cv, KeySizeWords * (uint)sizeof(uint));
+#if NET8_0_OR_GREATER
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
+        {
+            CompressParentSsse3(key, children, destination, flags);
+            return;
+        }
+#endif
+
+        ComputeParentCvPortable(children, key, destination, flags);
     }
 
-    // Single/few-block work (parent merges, one chunk via FinalizeChunk/
-    // SaveChunkAsRoot) has no independent work to spread across NEON's lanes,
-    // so row-vectorizing it benchmarked slower than scalar — NEON-tier
-    // instances use the scalar kernel here too, same as no-SIMD instances.
+    // Kept out of line: its staging buffer would otherwise put a stack cookie on every caller.
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private void ComputeParentCvPortable(uint* children, uint* key, uint* destination, uint flags)
+    {
+        uint* cv = stackalloc uint[KeySizeWords];
+        Unsafe.CopyBlock(cv, key, KeySizeBytes);
+        CompressWordBlock(cv, children, BlockSizeBytes, 0, flags);
+        Unsafe.CopyBlock(destination, cv, KeySizeBytes);
+    }
+
+    /// <summary>
+    /// Compresses a message block held as 16 host-order words rather than as bytes.
+    /// </summary>
+    /// <remarks>
+    /// The compressors read their block as little-endian bytes, which a word block already is
+    /// on little-endian hosts; elsewhere it is staged through its little-endian encoding.
+    /// </remarks>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private void CompressWordBlock(uint* cv, uint* words, uint blockLen, ulong counter, uint flags)
+    {
+        byte* block = (byte*)words;
+        if (!BitConverter.IsLittleEndian)
+        {
+            byte* staged = stackalloc byte[BlockSizeBytes];
+            BinarySpans.WriteUInt32LittleEndian(words, staged, BlockSizeWords);
+            block = staged;
+        }
+
+        CompressBlock(cv, block, blockLen, counter, flags);
+    }
+
+    /// <summary>
+    /// Writes the first <paramref name="length"/> bytes, at most 32, of a chaining value's
+    /// little-endian encoding.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void WriteCvLittleEndian(uint* cv, byte* destination, int length)
+    {
+        int fullWords = length / sizeof(uint);
+        BinarySpans.WriteUInt32LittleEndian(cv, destination, fullWords);
+
+        int tail = length % sizeof(uint);
+        if (tail > 0)
+        {
+            BinaryStore.WriteUInt32LittleEndianTruncated(cv[fullWords], destination + (fullWords * sizeof(uint)), tail);
+        }
+    }
+
+    // Single-block work has no independent work to spread across NEON's lanes, and
+    // row-vectorizing it measured slower than scalar, so the NEON tier uses scalar here.
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     private void CompressBlock(uint* cv, byte* block, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             CompressBlockSsse3(cv, block, blockLen, counter, flags);
         }
@@ -908,10 +1207,11 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
 
     // See CompressBlock — same reasoning applies here.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Static only on targets without the SIMD path; keep one signature across TFMs.")]
     private void CompressBlocks(uint* cv, byte* block, int blocks, uint blockLen, ulong counter, uint flags)
     {
 #if NET8_0_OR_GREATER
-        if ((_simdSupport & (SimdSupport.Ssse3 | SimdSupport.Avx2 | SimdSupport.Avx512F)) != 0)
+        if (Ssse3.IsSupported && (_simdSupport & SimdSupport.Ssse3) != 0)
         {
             CompressBlocksSsse3(cv, block, blocks, blockLen, counter, flags);
         }
@@ -922,7 +1222,7 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
     }
 
-    // [SkipLocalsInit]: v0..v7 are fully assigned from cv below before any read.
+    // [SkipLocalsInit]: m is fully written from the block before each compression.
     // v0..v15 are named locals rather than a stackalloc'd array, passed by ref
     // into a force-inlined Compress: named locals only avoid the array's
     // memory traffic if Compress is actually inlined, since byref params to a
@@ -965,6 +1265,86 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
         }
     }
 
+    /// <summary>
+    /// Hashes a complete unkeyed message of at most one chunk straight into
+    /// <paramref name="destination"/>, which must hold at least
+    /// <see cref="DefaultHashSizeBytes"/> bytes.
+    /// </summary>
+    /// <remarks>
+    /// Scalar twin of <c>HashRootIv32Ssse3</c>, for targets with no 128-bit single-block
+    /// compressor: the NEON tier (see <see cref="CompressBlock"/>) and the downlevel TFMs.
+    /// Constant IV and zero counter, CV in locals across the chunk, final block assembled
+    /// word by word. Touches no field of this struct, so the caller needs no reset.
+    /// </remarks>
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
+    private static void HashRootIv32Scalar(byte* src, int length, byte* destination)
+    {
+        uint cv0 = IV0, cv1 = IV1, cv2 = IV2, cv3 = IV3;
+        uint cv4 = IV4, cv5 = IV5, cv6 = IV6, cv7 = IV7;
+
+        uint* m = stackalloc uint[BlockSizeWords];
+
+        int pos = 0;
+        uint startFlag = FlagChunkStart;
+
+        // Strictly greater: an exact multiple of 64 ends on a full block and never
+        // reaches the word-assembly path.
+        while (length - pos > BlockSizeBytes)
+        {
+            BinarySpans.ReadUInt32LittleEndian(src + pos, m, BlockSizeWords);
+            CompressRootBlockScalar(
+                ref cv0, ref cv1, ref cv2, ref cv3, ref cv4, ref cv5, ref cv6, ref cv7,
+                m, BlockSizeBytes, startFlag);
+
+            pos += BlockSizeBytes;
+
+            // Doubles as the "is first block" carrier for the tail's flags.
+            startFlag = 0;
+        }
+
+        int lastLen = length - pos;
+        BinaryLoad.ReadUInt32LittleEndianPadded(src + pos, lastLen, m, BlockSizeWords);
+        CompressRootBlockScalar(
+            ref cv0, ref cv1, ref cv2, ref cv3, ref cv4, ref cv5, ref cv6, ref cv7,
+            m, (uint)lastLen, startFlag | FlagChunkEnd | FlagRoot);
+
+        // Root output block 0's low eight words are the whole digest.
+        BinaryStore.WriteUInt32LittleEndian(destination, cv0);
+        BinaryStore.WriteUInt32LittleEndian(destination + 4, cv1);
+        BinaryStore.WriteUInt32LittleEndian(destination + 8, cv2);
+        BinaryStore.WriteUInt32LittleEndian(destination + 12, cv3);
+        BinaryStore.WriteUInt32LittleEndian(destination + 16, cv4);
+        BinaryStore.WriteUInt32LittleEndian(destination + 20, cv5);
+        BinaryStore.WriteUInt32LittleEndian(destination + 24, cv6);
+        BinaryStore.WriteUInt32LittleEndian(destination + 28, cv7);
+    }
+
+    /// <summary>
+    /// Compresses one root-chunk block, CV in locals and the counter folded away as zero.
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    private static void CompressRootBlockScalar(
+        ref uint cv0, ref uint cv1, ref uint cv2, ref uint cv3,
+        ref uint cv4, ref uint cv5, ref uint cv6, ref uint cv7,
+        uint* m, uint blockLen, uint flags)
+    {
+        uint v0 = cv0, v1 = cv1, v2 = cv2, v3 = cv3;
+        uint v4 = cv4, v5 = cv5, v6 = cv6, v7 = cv7;
+        uint v8 = IV0, v9 = IV1, v10 = IV2, v11 = IV3;
+        uint v12 = 0, v13 = 0;
+        uint v14 = blockLen;
+        uint v15 = flags;
+
+        Compress(
+            ref v0, ref v1, ref v2, ref v3, ref v4, ref v5, ref v6, ref v7,
+            ref v8, ref v9, ref v10, ref v11, ref v12, ref v13, ref v14, ref v15,
+            m);
+
+        cv0 = v0 ^ v8; cv1 = v1 ^ v9; cv2 = v2 ^ v10; cv3 = v3 ^ v11;
+        cv4 = v4 ^ v12; cv5 = v5 ^ v13; cv6 = v6 ^ v14; cv7 = v7 ^ v15;
+    }
+
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static void Compress(
        ref uint v0, ref uint v1, ref uint v2, ref uint v3,
@@ -974,89 +1354,116 @@ internal unsafe partial struct Blake3State : IIncrementalHash<bool>
        uint* m)
     {
         // Round 1
-        G(ref v0, ref v4, ref v8, ref v12, m[0], m[1]);
-        G(ref v1, ref v5, ref v9, ref v13, m[2], m[3]);
-        G(ref v2, ref v6, ref v10, ref v14, m[4], m[5]);
-        G(ref v3, ref v7, ref v11, ref v15, m[6], m[7]);
-        G(ref v0, ref v5, ref v10, ref v15, m[8], m[9]);
-        G(ref v1, ref v6, ref v11, ref v12, m[10], m[11]);
-        G(ref v2, ref v7, ref v8, ref v13, m[12], m[13]);
-        G(ref v3, ref v4, ref v9, ref v14, m[14], m[15]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[0], m[2], m[4], m[6], m[1], m[3], m[5], m[7]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[8], m[10], m[12], m[14], m[9], m[11], m[13], m[15]);
 
         // Round 2
-        G(ref v0, ref v4, ref v8, ref v12, m[2], m[6]);
-        G(ref v1, ref v5, ref v9, ref v13, m[3], m[10]);
-        G(ref v2, ref v6, ref v10, ref v14, m[7], m[0]);
-        G(ref v3, ref v7, ref v11, ref v15, m[4], m[13]);
-        G(ref v0, ref v5, ref v10, ref v15, m[1], m[11]);
-        G(ref v1, ref v6, ref v11, ref v12, m[12], m[5]);
-        G(ref v2, ref v7, ref v8, ref v13, m[9], m[14]);
-        G(ref v3, ref v4, ref v9, ref v14, m[15], m[8]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[2], m[3], m[7], m[4], m[6], m[10], m[0], m[13]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[1], m[12], m[9], m[15], m[11], m[5], m[14], m[8]);
 
         // Round 3
-        G(ref v0, ref v4, ref v8, ref v12, m[3], m[4]);
-        G(ref v1, ref v5, ref v9, ref v13, m[10], m[12]);
-        G(ref v2, ref v6, ref v10, ref v14, m[13], m[2]);
-        G(ref v3, ref v7, ref v11, ref v15, m[7], m[14]);
-        G(ref v0, ref v5, ref v10, ref v15, m[6], m[5]);
-        G(ref v1, ref v6, ref v11, ref v12, m[9], m[0]);
-        G(ref v2, ref v7, ref v8, ref v13, m[11], m[15]);
-        G(ref v3, ref v4, ref v9, ref v14, m[8], m[1]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[3], m[10], m[13], m[7], m[4], m[12], m[2], m[14]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[6], m[9], m[11], m[8], m[5], m[0], m[15], m[1]);
 
         // Round 4
-        G(ref v0, ref v4, ref v8, ref v12, m[10], m[7]);
-        G(ref v1, ref v5, ref v9, ref v13, m[12], m[9]);
-        G(ref v2, ref v6, ref v10, ref v14, m[14], m[3]);
-        G(ref v3, ref v7, ref v11, ref v15, m[13], m[15]);
-        G(ref v0, ref v5, ref v10, ref v15, m[4], m[0]);
-        G(ref v1, ref v6, ref v11, ref v12, m[11], m[2]);
-        G(ref v2, ref v7, ref v8, ref v13, m[5], m[8]);
-        G(ref v3, ref v4, ref v9, ref v14, m[1], m[6]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[10], m[12], m[14], m[13], m[7], m[9], m[3], m[15]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[4], m[11], m[5], m[1], m[0], m[2], m[8], m[6]);
 
         // Round 5
-        G(ref v0, ref v4, ref v8, ref v12, m[12], m[13]);
-        G(ref v1, ref v5, ref v9, ref v13, m[9], m[11]);
-        G(ref v2, ref v6, ref v10, ref v14, m[15], m[10]);
-        G(ref v3, ref v7, ref v11, ref v15, m[14], m[8]);
-        G(ref v0, ref v5, ref v10, ref v15, m[7], m[2]);
-        G(ref v1, ref v6, ref v11, ref v12, m[5], m[3]);
-        G(ref v2, ref v7, ref v8, ref v13, m[0], m[1]);
-        G(ref v3, ref v4, ref v9, ref v14, m[6], m[4]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[12], m[9], m[15], m[14], m[13], m[11], m[10], m[8]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[7], m[5], m[0], m[6], m[2], m[3], m[1], m[4]);
 
         // Round 6
-        G(ref v0, ref v4, ref v8, ref v12, m[9], m[14]);
-        G(ref v1, ref v5, ref v9, ref v13, m[11], m[5]);
-        G(ref v2, ref v6, ref v10, ref v14, m[8], m[12]);
-        G(ref v3, ref v7, ref v11, ref v15, m[15], m[1]);
-        G(ref v0, ref v5, ref v10, ref v15, m[13], m[3]);
-        G(ref v1, ref v6, ref v11, ref v12, m[0], m[10]);
-        G(ref v2, ref v7, ref v8, ref v13, m[2], m[6]);
-        G(ref v3, ref v4, ref v9, ref v14, m[4], m[7]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[9], m[11], m[8], m[15], m[14], m[5], m[12], m[1]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[13], m[0], m[2], m[4], m[3], m[10], m[6], m[7]);
 
         // Round 7
-        G(ref v0, ref v4, ref v8, ref v12, m[11], m[15]);
-        G(ref v1, ref v5, ref v9, ref v13, m[5], m[0]);
-        G(ref v2, ref v6, ref v10, ref v14, m[1], m[9]);
-        G(ref v3, ref v7, ref v11, ref v15, m[8], m[6]);
-        G(ref v0, ref v5, ref v10, ref v15, m[14], m[10]);
-        G(ref v1, ref v6, ref v11, ref v12, m[2], m[12]);
-        G(ref v2, ref v7, ref v8, ref v13, m[3], m[4]);
-        G(ref v3, ref v4, ref v9, ref v14, m[7], m[13]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v4, ref v5, ref v6, ref v7,
+           ref v8, ref v9, ref v10, ref v11,
+           ref v12, ref v13, ref v14, ref v15,
+           m[11], m[5], m[1], m[8], m[15], m[0], m[9], m[6]);
+        G4(ref v0, ref v1, ref v2, ref v3,
+           ref v5, ref v6, ref v7, ref v4,
+           ref v10, ref v11, ref v8, ref v9,
+           ref v15, ref v12, ref v13, ref v14,
+           m[14], m[2], m[3], m[7], m[10], m[12], m[4], m[13]);
     }
 
+    // Four independent G's advanced one step at a time rather than one G after another: the JIT
+    // emits statements in source order, so this is what places independent work side by side.
+    // The message word is added before b, the value produced last, to keep one add off the chain.
     [MethodImpl(MethodImplOptionsEx.HotPath)]
-    private static void G(ref uint a, ref uint b, ref uint c, ref uint d, uint mx, uint my)
+    private static void G4(
+        ref uint a0, ref uint a1, ref uint a2, ref uint a3,
+        ref uint b0, ref uint b1, ref uint b2, ref uint b3,
+        ref uint c0, ref uint c1, ref uint c2, ref uint c3,
+        ref uint d0, ref uint d1, ref uint d2, ref uint d3,
+        uint mx0, uint mx1, uint mx2, uint mx3,
+        uint my0, uint my1, uint my2, uint my3)
     {
         unchecked
         {
-            a = a + b + mx;
-            d = BitOperations.RotateRight(d ^ a, 16);
-            c = c + d;
-            b = BitOperations.RotateRight(b ^ c, 12);
-            a = a + b + my;
-            d = BitOperations.RotateRight(d ^ a, 8);
-            c = c + d;
-            b = BitOperations.RotateRight(b ^ c, 7);
+            a0 = a0 + mx0 + b0; a1 = a1 + mx1 + b1; a2 = a2 + mx2 + b2; a3 = a3 + mx3 + b3;
+            d0 = BitOperations.RotateRight(d0 ^ a0, 16); d1 = BitOperations.RotateRight(d1 ^ a1, 16);
+            d2 = BitOperations.RotateRight(d2 ^ a2, 16); d3 = BitOperations.RotateRight(d3 ^ a3, 16);
+            c0 += d0; c1 += d1; c2 += d2; c3 += d3;
+            b0 = BitOperations.RotateRight(b0 ^ c0, 12); b1 = BitOperations.RotateRight(b1 ^ c1, 12);
+            b2 = BitOperations.RotateRight(b2 ^ c2, 12); b3 = BitOperations.RotateRight(b3 ^ c3, 12);
+            a0 = a0 + my0 + b0; a1 = a1 + my1 + b1; a2 = a2 + my2 + b2; a3 = a3 + my3 + b3;
+            d0 = BitOperations.RotateRight(d0 ^ a0, 8); d1 = BitOperations.RotateRight(d1 ^ a1, 8);
+            d2 = BitOperations.RotateRight(d2 ^ a2, 8); d3 = BitOperations.RotateRight(d3 ^ a3, 8);
+            c0 += d0; c1 += d1; c2 += d2; c3 += d3;
+            b0 = BitOperations.RotateRight(b0 ^ c0, 7); b1 = BitOperations.RotateRight(b1 ^ c1, 7);
+            b2 = BitOperations.RotateRight(b2 ^ c2, 7); b3 = BitOperations.RotateRight(b3 ^ c3, 7);
         }
     }
 }

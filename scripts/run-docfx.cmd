@@ -1,6 +1,6 @@
 @echo off
 REM SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-REM SPDX-License-Identifier: MIT
+REM SPDX-License-Identifier: MIT OR Apache-2.0
 
 REM run-docfx.cmd - Wrapper for run-docfx.ps1
 REM Usage: scripts\run-docfx.cmd [options]

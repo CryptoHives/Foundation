@@ -34,16 +34,19 @@ Or as a development-only dependency (no runtime reference):
 
 | ID | Severity | Description |
 |----|----------|-------------|
-| [CHT001](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT001.html) | Error | `ValueTask` awaited multiple times |
+| [CHT001](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT001.html) | Error | `ValueTask` consumed multiple times |
 | [CHT002](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT002.html) | Warning | `ValueTask.GetAwaiter().GetResult()` used (blocking) |
 | [CHT003](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT003.html) | Warning | `ValueTask` stored in a field |
-| [CHT004](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT004.html) | Error | `ValueTask.AsTask()` called multiple times |
 | [CHT005](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT005.html) | Warning | `ValueTask.Result` accessed directly |
-| [CHT006](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT006.html) | Warning | `ValueTask` passed to a potentially unsafe method |
 | [CHT007](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT007.html) | Info | `AsTask()` stored before signaling (causes a performance hit) |
 | [CHT008](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT008.html) | Warning | `ValueTask` not awaited or consumed |
 | [CHT009](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT009.html) | Info | `SemaphoreSlim(1, 1)` used as an async lock; consider `AsyncLock` instead |
-| [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Error | `ValueTask` captured in a lambda/closure |
+| [CHT010](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT010.html) | Warning | `ValueTask` captured in a lambda/closure |
+| [CHT011](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT011.html) | Warning | `async` method only forwards an awaited `ValueTask` |
+| [CHT012](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT012.html) | Info | `async` `ValueTask` wrapper boxes a state machine when it suspends |
+| [CHT013](https://cryptohives.github.io/Foundation/packages/threading.analyzers/CHT013.html) | Warning | `async` method returns an `AsyncReentrantLock` releaser, hiding the hold from its caller |
+
+CHT001, CHT005 and CHT008 overlap the .NET SDK's [CA2012](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2012), so with both enabled a line can be reported by each. The other rules have no CA2012 counterpart.
 
 ---
 
@@ -62,7 +65,7 @@ vt.GetAwaiter().GetResult(); // Warning: undefined behavior
 // CHT003: Stored in field — Warning
 private ValueTask _task; // Warning: may be consumed multiple times
 
-// CHT004: Multiple AsTask() — Error
+// CHT001 also covers repeated AsTask(): converting twice consumes twice — Error
 ValueTask vt = GetValueTask();
 var t1 = vt.AsTask();
 var t2 = vt.AsTask(); // Error: already consumed
@@ -71,19 +74,34 @@ var t2 = vt.AsTask(); // Error: already consumed
 ValueTask<int> vt = GetValueTask();
 int result = vt.Result; // Warning: undefined behavior
 
-// CHT006: Passed to unsafe method — Warning
-await Task.WhenAll(GetValueTask()); // Warning: use AsTask() or Preserve()
-
-// CHT007: AsTask() before signaling — Info (performance)
-Task t = someAsyncLock.LockAsync().AsTask();
-// ... other work ...
-await t; // Info: storing AsTask() before signal causes 10–100x slowdown
+// CHT007: AsTask() stored, then awaited once later — Info (performance)
+Task t = _event.WaitAsync().AsTask(); // Info: allocates a Task the single await doesn't need
+_event.Set();
+await t;
 
 // CHT008: Unconsumed — Warning
 GetValueTask(); // Warning: result not awaited or discarded
 
 // CHT009: SemaphoreSlim(1, 1) as async lock — Info
 private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1); // Info: consider AsyncLock
+
+// CHT010: Captured in a closure — Warning
+ValueTask vt = GetValueTask();
+Func<Task> f = async () => await vt; // Warning: the closure may run more than once
+
+// CHT011: async only forwards — Warning
+async ValueTask<int> GetAsync() => await GetValueTaskOfInt(); // Warning: return it directly
+
+// CHT012: async ValueTask wrapper around cleanup — Info
+async ValueTask<int> GetAsync()
+{
+    try { return await GetValueTaskOfInt(); } // Info: boxes a state machine when it suspends
+    finally { Cleanup(); }
+}
+
+// CHT013: Releaser returned from an async method — Warning
+async ValueTask<AsyncReentrantLock.Releaser> EnterAsync()
+    => await _reentrantLock.LockAsync(); // Warning: the caller's nested LockAsync deadlocks
 ```
 
 ## ✅ Correct Patterns
@@ -113,6 +131,16 @@ await Task.WhenAll(
 
 // Explicit discard
 _ = GetValueTask();
+
+// Closure: convert once, capture the Task
+Task t = GetValueTask().AsTask();
+Func<Task> f = () => t;
+
+// Forwarding: return the ValueTask without async
+ValueTask<int> GetAsync() => GetValueTaskOfInt();
+
+// AsyncReentrantLock: return the ValueTask from LockAsync without async
+ValueTask<AsyncReentrantLock.Releaser> EnterAsync() => _reentrantLock.LockAsync();
 ```
 
 ---
@@ -126,12 +154,14 @@ Most diagnostics come with a code fix:
 | CHT001 | Convert to `AsTask()` at declaration; use `Preserve()` |
 | CHT002 | Convert to `await`; use `AsTask()` before `GetAwaiter().GetResult()` |
 | CHT003 | Change field type to `Task` |
-| CHT004 | Store `AsTask()` result in a variable |
 | CHT005 | Convert to `await`; use `AsTask().Result` |
 | CHT007 | Await the `ValueTask` directly |
 | CHT008 | Add `await`; discard explicitly with `_ =` |
 | CHT009 | Replace `SemaphoreSlim(1,1)` with `AsyncLock` |
 | CHT010 | Convert to `AsTask()` at declaration; use `Preserve()` |
+| CHT011 | Remove `async` and return the `ValueTask` directly |
+| CHT012 | Pool the state machine box (.NET 6+ only; a partial mitigation) |
+| CHT013 | None; return the `ValueTask` from `LockAsync` directly (the CHT011 fix does this when it applies) |
 
 ---
 
@@ -169,10 +199,12 @@ valueTask.GetAwaiter().GetResult(); // intentional blocking call
 
 ## 🚨 Security Policy
 
-If you discover a vulnerability, please don't open a public issue — follow the process on the [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) instead.
+If you discover a vulnerability, please don't open a public issue — report it privately through [GitHub's private vulnerability reporting](https://github.com/CryptoHives/Foundation/security/advisories/new). The [CryptoHives Security Page](https://github.com/CryptoHives/.github/blob/main/SECURITY.md) has the details.
 
 ---
 
 ## ⚖️ License
 
-MIT — © 2026 The Keepers of the CryptoHives
+MIT OR Apache-2.0 — © 2026 The Keepers of the CryptoHives
+
+See [Choosing a license](https://github.com/CryptoHives/Foundation#-choosing-a-license) for how to record which one you use.

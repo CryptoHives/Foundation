@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Threading.Pools;
 
@@ -12,11 +12,8 @@ using System.Threading.Tasks.Sources;
 /// An abstract implementation of <see cref="IValueTaskSource{T}"/>.
 /// </summary>
 /// <remarks>
-/// This class is a sealed implementation of <see cref="IValueTaskSource{T}"/> and provides methods to
-/// manage the lifecycle of a task-like operation. It allows resetting and signaling the completion of the operation,
-/// and supports querying the status and retrieving the result. In addition, an implementation can set the owner
-/// instance to return the instance to the pool when it is no longer needed.
-/// This class is designed for direct use with <see cref="WaiterQueue{T}"/> to store the derived waiters allocation free.
+/// Derived waiters link directly into <see cref="WaiterQueue{T}"/>, so queuing one allocates nothing.
+/// An implementation may set an owner to return the instance to its pool once it is no longer needed.
 /// The <see cref="IResettable"/> interface is implemented to allow resetting the state of the instance for reuse
 /// by an implementation of an <see cref="ObjectPool"/> that uses the <see cref="DefaultObjectPool{T}"/> implementation.
 /// </remarks>
@@ -71,17 +68,36 @@ public abstract class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValu
     /// Gets or sets the <see cref="TimeoutTimer"/> used to enforce a timeout on the wait operation.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Set to a non-<see langword="null"/> value when the waiter is created with a timeout.
     /// The timer is disposed and cleared by <see cref="TryReset"/> when the waiter is recycled.
+    /// </para>
+    /// <para>
+    /// <b>Assign this after leaving the owner's lock, not inside it.</b> Creating a timer takes the
+    /// runtime's process-global timer queue lock and allocates, which is the one cost in those critical
+    /// sections that the library cannot bound - and the primitives' spin lock is tuned on the premise
+    /// that everything it guards is a few pointer writes.
+    /// </para>
+    /// <para>
+    /// This is safe for the same reason <see cref="CancellationTokenRegistration"/> is already assigned
+    /// outside the lock. A waiter is recycled only by <see cref="TryReset"/>, which runs from
+    /// <see cref="GetResult"/>, which is reachable only through the <see cref="System.Threading.Tasks.ValueTask"/>
+    /// the enqueueing method has not returned yet. So between releasing the lock and returning that
+    /// <see cref="System.Threading.Tasks.ValueTask"/>, the waiter is owned exclusively by the enqueueing
+    /// thread: another thread may <see cref="SetResult"/> it, but cannot reset it, so
+    /// <see cref="Version"/> is stable and the timer cannot be disposed underneath the assignment.
+    /// </para>
+    /// <para>
+    /// A waiter completed inside that window still gets a timer, which fires and finds either a version
+    /// mismatch or a waiter no longer in the queue, and does nothing - the stale-callback case
+    /// <see cref="TimeoutState{T}"/> already exists to handle.
+    /// </para>
     /// </remarks>
     public abstract ITimer? TimeoutTimer { get; set; }
 
     /// <summary>
     /// Signals the completion of an operation, setting the result to T.
     /// </summary>
-    /// <remarks>
-    /// This method is typically used to indicate that an asynchronous operation has completed successfully.
-    /// </remarks>
     public abstract void SetResult(T result);
 
     /// <summary>

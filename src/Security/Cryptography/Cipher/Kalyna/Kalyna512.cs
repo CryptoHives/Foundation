@@ -1,10 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Kalyna-512 symmetric cipher implementation (DSTU 7624:2014).
@@ -36,8 +36,8 @@ public sealed class Kalyna512 : SymmetricCipher
     {
         BlockSizeValue = BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(256, 256, 0), new KeySizes(512, 512, 0)];
-        LegalBlockSizesValue = [new KeySizes(BlockSizeBits, BlockSizeBits, 0)];
+        LegalKeySizesValue = LegalSizes.Bits256Or512;
+        LegalBlockSizesValue = LegalSizes.Bits256;
     }
 
     /// <inheritdoc/>
@@ -54,7 +54,7 @@ public sealed class Kalyna512 : SymmetricCipher
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             if (value.Length != KeySizeBytes)
-                throw new CryptographicException($"Invalid key size: {value.Length * 8} bits. Expected: {KeySizeBits} bits.");
+                throw new OS.CryptographicException($"Invalid key size: {value.Length * 8} bits. Expected: {KeySizeBits} bits.");
 
             KeySizeValue = KeySizeBits;
             KeyValue = (byte[])value.Clone();
@@ -68,13 +68,13 @@ public sealed class Kalyna512 : SymmetricCipher
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new KalynaCipherTransform(key, iv, encrypting: true, Mode, Padding, BlockSizeBytes);
+        return new KalynaCipherTransform(key, iv, encrypting: true, Mode, Padding, FeedbackSize / 8, BlockSizeBytes);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new KalynaCipherTransform(key, iv, encrypting: false, Mode, Padding, BlockSizeBytes);
+        return new KalynaCipherTransform(key, iv, encrypting: false, Mode, Padding, FeedbackSize / 8, BlockSizeBytes);
     }
 }

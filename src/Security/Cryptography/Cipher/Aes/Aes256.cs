@@ -1,10 +1,10 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// AES-256 symmetric cipher implementation.
@@ -56,7 +56,7 @@ public sealed class Aes256 : SymmetricCipher
     /// <summary>
     /// Initializes a new instance of the <see cref="Aes256"/> class.
     /// </summary>
-    public Aes256() : this(SimdSupport.All)
+    public Aes256() : this(AesCore.AesDefault)
     {
     }
 
@@ -66,11 +66,11 @@ public sealed class Aes256 : SymmetricCipher
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     internal Aes256(SimdSupport simdSupport)
     {
-        _simdSupport = simdSupport & SimdSupport;
+        _simdSupport = simdSupport.WithImplicit() & SimdSupport;
         BlockSizeValue = AesCore.BlockSizeBits;
         KeySizeValue = KeySizeBits;
-        LegalKeySizesValue = [new KeySizes(256, 256, 0)];
-        LegalBlockSizesValue = [new KeySizes(128, 128, 0)];
+        LegalKeySizesValue = LegalSizes.Bits256;
+        LegalBlockSizesValue = LegalSizes.Bits128;
     }
 
     /// <summary>
@@ -101,13 +101,13 @@ public sealed class Aes256 : SymmetricCipher
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new AesCipherTransform(_simdSupport, key, iv, encrypting: true, Mode, Padding);
+        return AesCipherTransform.Create(_simdSupport, key, iv, encrypting: true, Mode, Padding, FeedbackSize / 8);
     }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherDecryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {
         ValidateKeySize(key.Length * 8);
-        return new AesCipherTransform(_simdSupport, key, iv, encrypting: false, Mode, Padding);
+        return AesCipherTransform.Create(_simdSupport, key, iv, encrypting: false, Mode, Padding, FeedbackSize / 8);
     }
 }

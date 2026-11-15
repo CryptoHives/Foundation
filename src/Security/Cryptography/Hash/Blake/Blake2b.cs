@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable IDE1006 // Naming rule violation - IV and Sigma are standard cryptographic constant names per RFC 7693
 #pragma warning disable CS0414  // _simdSupport is read inside #if NET8_0_OR_GREATER guard
@@ -29,6 +29,21 @@ using System.Buffers;
 public sealed class Blake2b : HashAlgorithm
 {
     /// <summary>
+    /// The default optimization to use for Blake2b based algorithms. Excludes
+    /// <see cref="SimdSupport.Neon"/>: the NEON kernel benchmarks consistently
+    /// slower than the scalar fallback at every input size, so it must not be
+    /// selected by default even though it is compiled in (<c>EXPERIMENTAL</c> is on
+    /// by default - see <c>common.props</c>). It remains reachable via the internal
+    /// <see cref="Create(SimdSupport, int)"/> factory for benchmarking.
+    /// </summary>
+    /// <remarks>
+    /// Named explicitly rather than written as <see cref="SimdSupport.All"/> minus the
+    /// unwanted set: the constructor runs <c>WithImplicit</c> over this value, and that
+    /// derives <see cref="SimdSupport.Neon"/> back from the AArch64 flags <c>All</c> carries.
+    /// </remarks>
+    internal const SimdSupport Blake2bDefault = SimdSupport.Avx2;
+
+    /// <summary>
     /// The maximum hash size in bits.
     /// </summary>
     public const int MaxHashSizeBits = Blake2bState.MaxHashSizeBits;
@@ -56,7 +71,7 @@ public sealed class Blake2b : HashAlgorithm
     /// <summary>
     /// Initializes a new instance of the <see cref="Blake2b"/> class with default output size (64 bytes).
     /// </summary>
-    public Blake2b() : this(SimdSupport.All, MaxHashSizeBytes, null)
+    public Blake2b() : this(Blake2bDefault, MaxHashSizeBytes, null)
     {
     }
 
@@ -64,7 +79,7 @@ public sealed class Blake2b : HashAlgorithm
     /// Initializes a new instance of the <see cref="Blake2b"/> class with specified output size.
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
-    public Blake2b(int outputBytes) : this(SimdSupport.All, outputBytes, null)
+    public Blake2b(int outputBytes) : this(Blake2bDefault, outputBytes, null)
     {
     }
 
@@ -73,7 +88,7 @@ public sealed class Blake2b : HashAlgorithm
     /// </summary>
     /// <param name="outputBytes">The desired output size in bytes (1-64).</param>
     /// <param name="key">The optional key for keyed hashing (MAC mode). Must be 0-<see cref="MaxKeySizeBytes"/> bytes.</param>
-    public Blake2b(int outputBytes, ReadOnlySpan<byte> key) : this(SimdSupport.All, outputBytes, key)
+    public Blake2b(int outputBytes, ReadOnlySpan<byte> key) : this(Blake2bDefault, outputBytes, key)
     {
     }
 
@@ -85,7 +100,7 @@ public sealed class Blake2b : HashAlgorithm
     /// <param name="simdSupport">The SIMD instruction sets to use. Use <see cref="SimdSupport.None"/> for scalar-only.</param>
     internal Blake2b(SimdSupport simdSupport, int outputBytes, ReadOnlySpan<byte> key)
     {
-        if (outputBytes < 1 || outputBytes > MaxHashSizeBytes)
+        if (outputBytes is < 1 or > MaxHashSizeBytes)
         {
             throw new ArgumentOutOfRangeException(nameof(outputBytes),
                 $"Output size must be between 1 and {MaxHashSizeBytes} bytes.");
@@ -217,6 +232,31 @@ public sealed class Blake2b : HashAlgorithm
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Blake2b));
         _core.Reset(_key);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Routes a whole-message hash through the one-shot path, which knows the total length up
+    /// front. Anything already appended to this instance, and any keyed instance, falls back to
+    /// the base streaming implementation; both paths leave the instance freshly initialized.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    public override bool TryComputeHash(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesWritten)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(Blake2b));
+
+        if (!_core.IsFresh)
+        {
+            return base.TryComputeHash(source, destination, out bytesWritten);
+        }
+
+        if (!_core.TryHashOneShot(source, destination, out bytesWritten))
+        {
+            return false;
+        }
+
+        Initialize();
+        return true;
     }
 
     /// <inheritdoc/>

@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Hash.Blake;
 
@@ -7,6 +7,8 @@ using Cryptography.Tests.Hash;
 using CryptoHives.Foundation.Security.Cryptography.Hash;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using CH = CryptoHives.Foundation.Security.Cryptography;
 
@@ -128,6 +130,104 @@ public class Blake3Tests
     }
 
     /// <summary>
+    /// Cross-validates the SSSE3 chunk-parallel batching path against the scalar
+    /// reference across sizes chosen to land on and around 4-chunk (4096-byte)
+    /// batch boundaries, plus the 3-chunk partial-batch threshold.
+    /// </summary>
+    /// <remarks>
+    /// The SSSE3 tier shares <c>CompressChunksPartial4Avx2</c> with the AVX2 tier's
+    /// partial batches, but drives it as its primary path and commits every batch
+    /// per chunk (no aligned-subtree shortcut), so the commit bookkeeping here is
+    /// not covered by <see cref="Avx2BatchingMatchesScalarReference"/>.
+    /// </remarks>
+    /// <param name="inputLength">The length of the input.</param>
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(1024)]      // exactly 1 chunk: below every batched path
+    [TestCase(1025)]
+    [TestCase(2048)]
+    [TestCase(3071)]      // just under the 3-chunk partial-batch threshold
+    [TestCase(3072)]      // exactly 3 chunks: partial batch, nothing committable
+    [TestCase(3073)]      // smallest partial batch with a committable chunk
+    [TestCase(4095)]
+    [TestCase(4096)]      // exactly 1 batch
+    [TestCase(4097)]      // 1 batch + 1 byte
+    [TestCase(5120)]
+    [TestCase(7168)]
+    [TestCase(8191)]
+    [TestCase(8192)]      // exactly 2 batches
+    [TestCase(8193)]
+    [TestCase(10000)]
+    [TestCase(12288)]     // exactly 3 batches
+    [TestCase(16384)]     // exactly 4 batches
+    [TestCase(16385)]
+    [TestCase(65536)]     // crosses the 64-chunk subtree-group size the other tiers use
+    [TestCase(65537)]
+    [TestCase(100000)]
+    [TestCase(131072)]
+    [TestCase(131072 + 37)]
+    [TestCase(262144)]
+    [TestCase(1000000)]
+    public void Ssse3BatchingMatchesScalarReference(int inputLength)
+    {
+        if ((Blake3.SimdSupport & CH.SimdSupport.Ssse3) == 0)
+        {
+            Assert.Ignore("SSSE3 not supported on this platform.");
+        }
+
+        byte[] input = GenerateTestInput(inputLength);
+
+        using var scalar = Blake3.Create(
+            CH.SimdSupport.None, 32);
+        using var ssse3 = Blake3.Create(
+            CH.SimdSupport.Ssse3, 32);
+
+        byte[] expected = scalar.ComputeHash(input);
+        byte[] actual = ssse3.ComputeHash(input);
+
+        Assert.That(actual, Is.EqualTo(expected), $"SSSE3 batching mismatch at {inputLength} bytes");
+    }
+
+    /// <summary>
+    /// Same as <see cref="Ssse3BatchingMatchesScalarReference"/> but exercises the
+    /// streaming <c>Append</c> path with writes that straddle chunk and batch
+    /// boundaries, so the batched path has to compose with buffered state.
+    /// </summary>
+    /// <param name="inputLength">The length of the input.</param>
+    /// <param name="writeSize">The size of each streaming write.</param>
+    [TestCase(16385, 97)]
+    [TestCase(12288, 1024)]
+    [TestCase(100000, 4001)]
+    [TestCase(65536, 3072)]
+    public void Ssse3BatchingMatchesScalarReferenceStreaming(int inputLength, int writeSize)
+    {
+        if ((Blake3.SimdSupport & CH.SimdSupport.Ssse3) == 0)
+        {
+            Assert.Ignore("SSSE3 not supported on this platform.");
+        }
+
+        byte[] input = GenerateTestInput(inputLength);
+
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+        using var ssse3 = Blake3.Create(CH.SimdSupport.Ssse3, 32);
+
+        for (int offset = 0; offset < inputLength; offset += writeSize)
+        {
+            int count = Math.Min(writeSize, inputLength - offset);
+            scalar.Absorb(input.AsSpan(offset, count));
+            ssse3.Absorb(input.AsSpan(offset, count));
+        }
+
+        byte[] expected = new byte[32];
+        byte[] actual = new byte[32];
+        scalar.Squeeze(expected);
+        ssse3.Squeeze(actual);
+
+        Assert.That(actual, Is.EqualTo(expected),
+            $"SSSE3 streaming mismatch at {inputLength} bytes, writes of {writeSize}");
+    }
+
+    /// <summary>
     /// Cross-validates the AVX2 chunk-parallel batching path (<c>CompressChunksPartialAvx2</c>)
     /// against the scalar reference implementation across sizes chosen to land on and
     /// around 8-chunk (8192-byte) batch boundaries, since none of the official test
@@ -143,6 +243,9 @@ public class Blake3Tests
     [TestCase(2049)]      // smallest partial batch: 2 committable chunks + 1 byte
     [TestCase(3072)]
     [TestCase(3073)]
+    [TestCase(3137)]      // 3 chunks + a tail of one complete block and one byte
+    [TestCase(3500)]
+    [TestCase(4095)]      // 3 chunks + a tail of 15 complete blocks
     [TestCase(4096)]
     [TestCase(4097)]
     [TestCase(5120)]
@@ -153,9 +256,16 @@ public class Blake3Tests
     [TestCase(8194)]
     [TestCase(9216)]      // 1 batch + 1 full chunk
     [TestCase(10000)]
+    [TestCase(10240)]     // 1 batch + a 2-chunk tail: the pair kernel at a nonzero counter
+    [TestCase(10241)]     // same, with a byte following so both pair CVs commit
+    [TestCase(11263)]     // largest 2-chunk tail before the 3-chunk kernel takes over
+    [TestCase(11264)]     // 1 batch + a 3-chunk tail
+    [TestCase(11764)]     // 1 batch + 3 chunks + a partial chunk
+    [TestCase(12288)]     // 1 batch + a 4-chunk tail
     [TestCase(16383)]
     [TestCase(16384)]     // exactly 2 batches
     [TestCase(16385)]     // 2 batches + 1 byte
+    [TestCase(18432)]     // 2 batches + a 2-chunk tail
     [TestCase(24576)]     // exactly 3 batches
     [TestCase(24577)]
     [TestCase(65536)]
@@ -339,7 +449,7 @@ public class Blake3Tests
     }
 
     /// <summary>
-    /// Cross-validates the AVX-512 16-chunk batching path (<c>CompressChunksPartialAvx512</c>)
+    /// Cross-validates the AVX-512 16-chunk batching path (<c>CompressChunks16Avx512</c>)
     /// against the scalar reference implementation across sizes chosen to land on and
     /// around 16-chunk (16384-byte) batch boundaries, plus AVX2-boundary sizes to cover
     /// the AVX-512 → AVX2 tail handoff.
@@ -356,6 +466,8 @@ public class Blake3Tests
     [TestCase(16383)]
     [TestCase(16384)]     // exactly 1 batch
     [TestCase(16385)]     // 1 batch + 1 byte
+    [TestCase(18432)]     // 1 batch + a 2-chunk tail: the pair kernel at a nonzero counter
+    [TestCase(18433)]     // same, with a byte following so both pair CVs commit
     [TestCase(24576)]     // 1 batch + 1 AVX2 batch
     [TestCase(24577)]
     [TestCase(32768)]     // exactly 2 batches
@@ -392,7 +504,7 @@ public class Blake3Tests
     /// flag isolated (no explicit AVX2 flag). Since AVX-512 hardware implies AVX2,
     /// the Append fast path still batches 8 KB tails through the AVX2 loop and
     /// 9-15 chunk tails through the dedicated AVX-512 partial-batch kernel
-    /// (see <c>CompressChunksPartialAvx512</c>); only sub-8 KB tails go
+    /// (see <c>CompressChunks16Avx512</c>); only sub-8 KB tails go
     /// through the per-chunk path.
     /// </summary>
     /// <param name="inputLength">The length of the input.</param>
@@ -458,6 +570,63 @@ public class Blake3Tests
         Assert.That(avx512.Hash, Is.EqualTo(scalar.Hash), $"AVX-512 streaming mismatch at {inputLength} bytes / {writeSize}-byte writes");
     }
 
+    private static IEnumerable<int> OneShotTrailingPartialChunkLengths()
+    {
+        int[] tails = [0, 1, 64, 65, 128, 500, 784, 1023];
+        foreach (int prefixChunks in new[] { 0, 16 })
+        {
+            for (int chunks = 1; chunks <= 16; chunks++)
+            {
+                foreach (int tail in tails)
+                {
+                    yield return ((prefixChunks + chunks) * 1024) + tail;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Cross-validates one-shot hashing of an input that ends in a partial chunk, which the
+    /// SIMD tiers compress in a lane of the last batch, against the scalar reference.
+    /// </summary>
+    /// <param name="inputLength">The length of the input.</param>
+    [TestCaseSource(nameof(OneShotTrailingPartialChunkLengths))]
+    public void OneShotTrailingPartialChunkMatchesScalarReference(int inputLength)
+    {
+        byte[] input = GenerateTestInput(inputLength);
+
+        foreach (int outputBytes in new[] { 32, 100 })
+        {
+            using var scalar = Blake3.Create(CH.SimdSupport.None, outputBytes);
+            byte[] expected = new byte[outputBytes];
+            Assert.That(scalar.TryComputeHash(input, expected, out _), Is.True);
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Ssse3) != 0)
+            {
+                using var ssse3 = Blake3.Create(CH.SimdSupport.Ssse3, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(ssse3.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"SSSE3 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Avx2) != 0)
+            {
+                using var avx2 = Blake3.Create(CH.SimdSupport.Avx2, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(avx2.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"AVX2 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
+
+            if ((Blake3.SimdSupport & CH.SimdSupport.Avx512F) != 0)
+            {
+                using var avx512 = Blake3.Create(CH.SimdSupport.Avx512F | CH.SimdSupport.Avx2, outputBytes);
+                byte[] actual = new byte[outputBytes];
+                Assert.That(avx512.TryComputeHash(input, actual, out _), Is.True);
+                Assert.That(actual, Is.EqualTo(expected), $"AVX-512 mismatch at {inputLength} bytes / {outputBytes}-byte output");
+            }
+        }
+    }
+
     /// <summary>
     /// Cross-validates <see cref="Blake3.TryHashOneShot"/> (and the static
     /// <see cref="Blake3.TryHashData(ReadOnlySpan{byte}, Span{byte}, out int)"/>
@@ -478,7 +647,10 @@ public class Blake3Tests
     [TestCase(1023)]
     [TestCase(1024)]   // exactly one chunk: last size handled by the single-chunk branch
     [TestCase(1025)]   // one byte over: first size handled by the multi-chunk branch
+    [TestCase(2048)]   // exactly two chunks: the AVX2 pair kernel, nothing committable
+    [TestCase(2049)]   // two chunks + 1 byte: both pair CVs commit
     [TestCase(8192)]
+    [TestCase(10240)]  // 1 batch + a 2-chunk tail: the pair kernel at a nonzero counter
     [TestCase(16385)]
     [TestCase(100000)]
     public void TryHashOneShotMatchesScalarReference(int inputLength)
@@ -522,7 +694,9 @@ public class Blake3Tests
     [TestCase(511)]      // 7 full blocks + 63 bytes: largest remainder still with no full group
     [TestCase(512)]      // exactly 8 blocks: exactly one full AVX2 group, zero remainder
     [TestCase(513)]      // one full AVX2 group + 1 byte into a 9th block
-    [TestCase(576)]      // 9 blocks: one full AVX2 group + 1 remainder block
+    [TestCase(576)]      // 9 blocks: one full AVX2 group, zero remainder
+    [TestCase(640)]      // 10 blocks: one full group + a 1-block tail (single-lane branch)
+    [TestCase(704)]      // 11 blocks: one full group + a 2-block tail (smallest wide tail)
     [TestCase(1000)]
     [TestCase(1024)]     // exactly 16 blocks: two full AVX2 groups, zero remainder
     [TestCase(1025)]     // two full AVX2 groups + 1 byte into a 17th block
@@ -564,6 +738,66 @@ public class Blake3Tests
         }
     }
 
+    /// <summary>
+    /// Squeezes in irregular chunk sizes and compares against a single call. The
+    /// byte-at-a-time test above only ever drains one byte per call, so it never
+    /// combines a partial drain, a run of whole blocks, and a fresh partial inside
+    /// one sequence - which is precisely the interaction the buffer-validity
+    /// invariant governs (<c>_squeezeBuf</c> holds block <c>_outputCounter</c> if
+    /// and only if <c>_squeezeOffset &gt; 0</c>). A lazily produced block that is
+    /// skipped, produced twice, or produced with the wrong counter shows up here.
+    /// </summary>
+    /// <param name="chunks">The sequence of squeeze lengths to request.</param>
+    [TestCase(new[] { 1, 63, 1 })]                 // lands exactly on a block boundary, then restarts
+    [TestCase(new[] { 63, 2, 63 })]                // straddles two boundaries
+    [TestCase(new[] { 7, 100, 3 })]                // partial, multi-block, partial
+    [TestCase(new[] { 64, 64, 1 })]                // whole blocks with no buffer, then a partial
+    [TestCase(new[] { 1, 640, 5 })]                // partial, wide batched run, partial
+    [TestCase(new[] { 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5 })]  // repeatedly crossing
+    [TestCase(new[] { 128, 1, 127, 1 })]           // exact multiples interleaved with single bytes
+    public void SqueezeInIrregularChunksMatchesSingleCall(int[] chunks)
+    {
+        byte[] input = GenerateTestInput(37);
+        int total = 0;
+        foreach (int c in chunks)
+        {
+            total += c;
+        }
+
+        foreach (CH.SimdSupport tier in new[]
+        {
+            CH.SimdSupport.None,
+            CH.SimdSupport.Ssse3,
+            CH.SimdSupport.Avx2,
+            CH.SimdSupport.Avx512F,
+            CH.SimdSupport.Neon,
+        })
+        {
+            if (tier != CH.SimdSupport.None && (Blake3.SimdSupport & tier) == 0)
+            {
+                continue;
+            }
+
+            using var single = Blake3.Create(tier, 32);
+            single.Absorb(input);
+            byte[] expected = new byte[total];
+            single.Squeeze(expected);
+
+            using var chunked = Blake3.Create(tier, 32);
+            chunked.Absorb(input);
+            byte[] actual = new byte[total];
+            int offset = 0;
+            foreach (int c in chunks)
+            {
+                chunked.Squeeze(actual.AsSpan(offset, c));
+                offset += c;
+            }
+
+            Assert.That(actual, Is.EqualTo(expected),
+                $"Squeeze mismatch for chunks [{string.Join(",", chunks)}], tier {tier}");
+        }
+    }
+
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(64)]
@@ -585,10 +819,87 @@ public class Blake3Tests
     }
 
     /// <summary>
+    /// Sweeps the requested output size across the branch boundary inside
+    /// <c>TryHashOneShotSingleChunk</c>: at or below 32 bytes it writes the root fold
+    /// straight out (<c>HashChunkRoot32</c>), above that it stages counter-mode state and
+    /// squeezes. Both must agree with the streaming reference, and a truncated digest must
+    /// be a prefix of a longer one — that prefix property is what makes skipping the
+    /// second half of the output block sound.
+    /// </summary>
+    /// <param name="outputBytes">The requested digest size.</param>
+    [TestCase(1)]
+    [TestCase(16)]
+    [TestCase(31)]
+    [TestCase(32)]    // last size on the direct-root branch
+    [TestCase(33)]    // first size that still needs the counter-mode staging
+    [TestCase(48)]
+    [TestCase(64)]    // exactly one output block
+    [TestCase(65)]    // first size needing a second output block
+    public void TryHashOneShotHonoursOutputSizeAroundTheRootBranch(int outputBytes)
+    {
+        foreach (int inputLength in new[] { 0, 1, 63, 64, 65, 1023, 1024 })
+        {
+            byte[] input = GenerateTestInput(inputLength);
+
+            using var scalar = Blake3.Create(CH.SimdSupport.None, outputBytes);
+            byte[] expected = scalar.ComputeHash(input);
+
+            using var oneShot = Blake3.Create(outputBytes);
+            byte[] actual = new byte[outputBytes];
+            Assert.That(oneShot.TryHashOneShot(input, actual, out int bytesWritten), Is.True);
+            Assert.That(bytesWritten, Is.EqualTo(outputBytes));
+            Assert.That(actual, Is.EqualTo(expected),
+                $"One-shot mismatch at {inputLength} bytes in, {outputBytes} bytes out");
+
+            // A shorter digest is the longer one truncated.
+            using var longer = Blake3.Create(128);
+            byte[] longerHash = new byte[128];
+            Assert.That(longer.TryHashOneShot(input, longerHash, out _), Is.True);
+            // AsSpan().ToArray() rather than a range indexer: array range slicing needs
+            // RuntimeHelpers.GetSubArray, which the net48 leg does not have.
+            Assert.That(actual, Is.EqualTo(longerHash.AsSpan(0, outputBytes).ToArray()),
+                $"Truncation mismatch at {inputLength} bytes in, {outputBytes} bytes out");
+        }
+    }
+
+    /// <summary>
+    /// Every digest of at most 32 bytes - written straight from the root chaining value rather
+    /// than from an output block - is the 64-byte digest truncated, keyed or not, on both
+    /// sides of the one-chunk boundary.
+    /// </summary>
+    /// <param name="outputBytes">The digest size in bytes.</param>
+    [Test]
+    public void ShortDigestIsTheLongDigestTruncated([Range(1, 32)] int outputBytes)
+    {
+        byte[] key = GenerateTestInput(Blake3.KeySizeBytes);
+        foreach (byte[] input in new[] { 0, 5, 1024, 1025, 4096 }.Select(GenerateTestInput))
+        {
+            using var shortHash = Blake3.Create(outputBytes);
+            using var longHash = Blake3.Create(64);
+            AssertTruncated(shortHash, longHash, input, outputBytes);
+
+            using var shortKeyed = Blake3.CreateKeyed(key, outputBytes);
+            using var longKeyed = Blake3.CreateKeyed(key, 64);
+            AssertTruncated(shortKeyed, longKeyed, input, outputBytes);
+        }
+
+        static void AssertTruncated(Blake3 shortHash, Blake3 longHash, byte[] input, int outputBytes)
+        {
+            byte[] expected = longHash.ComputeHash(input).AsSpan(0, outputBytes).ToArray();
+            Assert.That(shortHash.ComputeHash(input), Is.EqualTo(expected), $"{input.Length} bytes in");
+
+            shortHash.Initialize();
+            byte[] oneShot = new byte[outputBytes];
+            Assert.That(shortHash.TryHashOneShot(input, oneShot, out _), Is.True);
+            Assert.That(oneShot, Is.EqualTo(expected), $"one-shot, {input.Length} bytes in");
+        }
+    }
+
+    /// <summary>
     /// Verifies <see cref="Blake3.TryHashOneShot"/> can be called repeatedly on the
     /// same instance (it must leave the instance freshly initialized for reuse,
-    /// matching <c>TryComputeHash</c>'s auto-reset contract), since the benchmark's
-    /// <c>Blake3SimdOneShotAdapter</c> reuses one instance across many calls.
+    /// matching <c>TryComputeHash</c>'s auto-reset contract), since
+    /// <c>ParameterizedHashBenchmark</c> reuses one instance across many calls.
     /// </summary>
     [Test]
     public void TryHashOneShotIsReusableAcrossCalls()
@@ -612,6 +923,46 @@ public class Blake3Tests
 
         Assert.That(oneShot.TryHashOneShot(large, actual, out _), Is.True);
         Assert.That(actual.ToArray(), Is.EqualTo(expectedLarge));
+    }
+
+    /// <summary>
+    /// <see cref="Blake3.TryComputeHash"/> takes the <see cref="Blake3.TryHashOneShot"/>
+    /// fast path only from a freshly initialized state. When data has already been
+    /// appended it must fall back to the base streaming implementation and still hash
+    /// the concatenation, exactly as it did before the override existed.
+    /// </summary>
+    [TestCase(1, 1)]
+    [TestCase(100, 100)]
+    [TestCase(1023, 1)]
+    [TestCase(1024, 1024)]
+    [TestCase(5000, 20000)]
+    public void TryComputeHashAfterAppendDataHashesTheConcatenation(int prefixLength, int suffixLength)
+    {
+        byte[] prefix = GenerateTestInput(prefixLength);
+        byte[] suffix = GenerateTestInput(suffixLength);
+
+        byte[] concatenated = new byte[prefixLength + suffixLength];
+        prefix.CopyTo(concatenated, 0);
+        suffix.CopyTo(concatenated, prefixLength);
+
+        using var reference = Blake3.Create(CH.SimdSupport.None, 32);
+        byte[] expected = reference.ComputeHash(concatenated);
+
+        using var hash = Blake3.Create();
+        hash.AppendData(prefix);
+
+        Span<byte> actual = stackalloc byte[32];
+        Assert.That(hash.TryComputeHash(suffix, actual, out int bytesWritten), Is.True);
+        Assert.That(bytesWritten, Is.EqualTo(32));
+        Assert.That(actual.ToArray(), Is.EqualTo(expected),
+            "TryComputeHash after AppendData must continue the stream, not restart it");
+
+        // The auto-reset contract still holds on the fallback path.
+        using var freshReference = Blake3.Create(CH.SimdSupport.None, 32);
+        byte[] suffixOnly = freshReference.ComputeHash(suffix);
+        Assert.That(hash.TryComputeHash(suffix, actual, out _), Is.True);
+        Assert.That(actual.ToArray(), Is.EqualTo(suffixOnly),
+            "instance must be freshly initialized after the fallback path");
     }
 
     /// <summary>
@@ -676,15 +1027,19 @@ public class Blake3Tests
 
     /// <summary>
     /// Cross-validates <see cref="Blake3.TryHashOneShot"/> across every SIMD tier
-    /// this platform supports, mirroring how <c>ParameterizedHashBenchmark</c>
-    /// dispatches to it for the "CryptoHives-*" benchmark rows (see
-    /// <c>ParameterizedHashBenchmark.TryComputeHash</c>), so the per-tier fast-path
-    /// wiring is covered by correctness tests just like the streaming path already is.
+    /// this platform supports. <see cref="Blake3.TryComputeHash"/> overrides the base
+    /// streaming implementation to route whole-message hashes here, so this is the path
+    /// the "CryptoHives-*" benchmark rows take — covered by correctness tests just like
+    /// the streaming path already is.
     /// </summary>
     [TestCase(0)]
     [TestCase(1)]
+    [TestCase(63)]
+    [TestCase(64)]
     [TestCase(1024)]
     [TestCase(1025)]
+    [TestCase(2048)]
+    [TestCase(10240)]
     [TestCase(100000)]
     public void TryHashOneShotMatchesScalarReferenceAcrossSimdTiers(int inputLength)
     {
@@ -694,18 +1049,233 @@ public class Blake3Tests
         byte[] expected = scalar.ComputeHash(input);
 
         Span<byte> actual = stackalloc byte[32];
-        foreach (var flag in new[] { CH.SimdSupport.None, CH.SimdSupport.Ssse3, CH.SimdSupport.Avx2, CH.SimdSupport.Avx512F, CH.SimdSupport.Neon })
+        foreach (var flag in AlgorithmRegistry.GetSimdVariantFlags(Blake3.SimdSupport).Prepend(CH.SimdSupport.None))
         {
-            if (flag != CH.SimdSupport.None && (Blake3.SimdSupport & flag) == 0)
-            {
-                continue;
-            }
-
             using var tier = Blake3.Create(flag, 32);
             Assert.That(tier.TryHashOneShot(input, actual, out int bytesWritten), Is.True, $"tier {flag}");
             Assert.That(bytesWritten, Is.EqualTo(32), $"tier {flag}");
             Assert.That(actual.ToArray(), Is.EqualTo(expected), $"One-shot mismatch at {inputLength} bytes, tier {flag}");
         }
+    }
+
+    /// <summary>
+    /// Sweeps every whole chunk count from 1 to 17, plus a ragged tail, through every SIMD
+    /// tier this platform supports.
+    /// </summary>
+    /// <remarks>
+    /// Each tier's batch threshold sits at a different chunk count, so only a sweep over
+    /// counts covers the dispatch; the enumerated sizes elsewhere hit some boundaries on
+    /// whichever tier happens to be active.
+    /// </remarks>
+    [Test]
+    public void BatchingMatchesScalarReferenceAtEveryChunkCount()
+    {
+        const int chunkSizeBytes = 1024;
+
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+        Span<byte> actual = stackalloc byte[32];
+        int tiersExercised = 0;
+
+        foreach (var flag in AlgorithmRegistry.GetSimdVariantFlags(Blake3.SimdSupport))
+        {
+            tiersExercised++;
+            using var tier = Blake3.Create(flag, 32);
+
+            for (int chunks = 1; chunks <= 17; chunks++)
+            {
+                // Exact multiple, then one byte over: the second forces the "is this the
+                // message tail" decision the commit paths branch on.
+                foreach (int length in new[] { chunks * chunkSizeBytes, (chunks * chunkSizeBytes) + 1 })
+                {
+                    byte[] input = GenerateTestInput(length);
+                    byte[] expected = scalar.ComputeHash(input);
+
+                    Assert.That(tier.TryHashOneShot(input, actual, out int bytesWritten), Is.True, $"tier {flag}");
+                    Assert.That(bytesWritten, Is.EqualTo(32), $"tier {flag}");
+                    Assert.That(actual.ToArray(), Is.EqualTo(expected),
+                        $"Mismatch at {chunks} chunks ({length} bytes), tier {flag}");
+                }
+            }
+        }
+
+        if (tiersExercised == 0)
+        {
+            Assert.Ignore("No SIMD tier is supported on this platform, so there is no batch ladder to sweep.");
+        }
+    }
+
+    /// <summary>
+    /// Sweeps <b>every</b> input length from 0 to one byte past a chunk through the
+    /// one-shot path, rather than the handful of boundary sizes the
+    /// <c>[TestCase]</c> fixtures above cover.
+    /// </summary>
+    /// <remarks>
+    /// The unkeyed 32-byte path dispatches through a three-way length ladder
+    /// (<c>&lt;= 64</c> single block, <c>&lt;= 128</c> two blocks, <c>&lt;= 1024</c> fused
+    /// chunk loop), and its register-only block padding takes a different shape for every
+    /// value of <c>length</c> mod 16 — a whole 128-bit lane, a wholly absent lane, and a
+    /// straddling word assembled byte by byte. An enumerated list of sizes cannot cover
+    /// that; only the sweep can.
+    /// </remarks>
+    [Test]
+    public void OneShotMatchesScalarReferenceAtEveryLengthUpToAChunk()
+    {
+        const int chunkSizeBytes = 1024;
+
+        byte[] input = GenerateTestInput(chunkSizeBytes + 1);
+        Span<byte> actual = stackalloc byte[32];
+
+        // ComputeHash is the streaming path, so the reference stays independent of both
+        // one-shot kernels even when the scalar tier is under test.
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+
+        // Both kernels: they pad on different moduli (16-byte lane vs 4-byte word).
+        using var simdTier = Blake3.Create();
+        using var scalarTier = Blake3.Create(CH.SimdSupport.None, 32);
+
+        foreach (var (name, hash) in new[] { ("SIMD", simdTier), ("scalar", scalarTier) })
+        {
+            for (int length = 0; length <= chunkSizeBytes + 1; length++)
+            {
+                byte[] expected = scalar.ComputeHash(input.AsSpan(0, length).ToArray());
+
+                Assert.That(hash.TryHashOneShot(input.AsSpan(0, length), actual, out int bytesWritten), Is.True);
+                Assert.That(bytesWritten, Is.EqualTo(32), $"{name} tier, length {length}");
+                Assert.That(actual.ToArray(), Is.EqualTo(expected),
+                    $"One-shot mismatch at {length} bytes, {name} tier");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The unkeyed 32-byte kernel writes its answer as two unaligned 128-bit stores
+    /// straight into the caller's buffer, so it must tolerate a destination at any
+    /// alignment and must not touch a byte outside the digest.
+    /// </summary>
+    /// <param name="inputLength">The length of the input, one per ladder branch.</param>
+    [TestCase(0)]
+    [TestCase(4)]
+    [TestCase(64)]
+    [TestCase(65)]
+    [TestCase(128)]
+    [TestCase(129)]
+    [TestCase(1024)]
+    public void OneShotWritesOnlyTheDigestAtAnUnalignedDestination(int inputLength)
+    {
+        byte[] input = GenerateTestInput(inputLength);
+
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+        byte[] expected = scalar.ComputeHash(input);
+
+        // Both kernels: two 128-bit writes vs eight 4-byte ones.
+        using var simdTier = Blake3.Create();
+        using var scalarTier = Blake3.Create(CH.SimdSupport.None, 32);
+
+        foreach (var (name, hash) in new[] { ("SIMD", simdTier), ("scalar", scalarTier) })
+        {
+            // One byte of lead-in puts the destination off every useful alignment, and the
+            // trailing slack catches a store that runs past the digest.
+            for (int offset = 0; offset <= 3; offset++)
+            {
+                byte[] buffer = new byte[offset + 32 + 8];
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    buffer[i] = 0xA5;
+                }
+
+                Assert.That(
+                    hash.TryHashOneShot(input, buffer.AsSpan(offset, 32), out int bytesWritten),
+                    Is.True);
+                Assert.That(bytesWritten, Is.EqualTo(32), $"{name} tier, offset {offset}");
+                Assert.That(buffer.AsSpan(offset, 32).ToArray(), Is.EqualTo(expected),
+                    $"One-shot mismatch at {inputLength} bytes, {name} tier, destination offset {offset}");
+
+                for (int i = 0; i < offset; i++)
+                {
+                    Assert.That(buffer[i], Is.EqualTo(0xA5), $"{name} tier wrote before the destination at {i}");
+                }
+
+                for (int i = offset + 32; i < buffer.Length; i++)
+                {
+                    Assert.That(buffer[i], Is.EqualTo(0xA5), $"{name} tier wrote past the destination at {i}");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// A keyed instance carries <c>FlagKeyedHash</c> and starts from the caller's key
+    /// rather than the IV, so it must keep the general one-shot path over the whole
+    /// length ladder the unkeyed kernel claims.
+    /// </summary>
+    /// <param name="inputLength">The length of the input.</param>
+    [TestCase(0)]
+    [TestCase(4)]
+    [TestCase(63)]
+    [TestCase(64)]
+    [TestCase(65)]
+    [TestCase(128)]
+    [TestCase(129)]
+    [TestCase(1023)]
+    [TestCase(1024)]
+    [TestCase(1025)]
+    public void KeyedOneShotMatchesScalarReferenceAcrossTheLadder(int inputLength)
+    {
+        byte[] input = GenerateTestInput(inputLength);
+        byte[] key = GenerateTestInput(32);
+
+        using var scalar = Blake3.CreateKeyed(CH.SimdSupport.None, key, 32);
+        byte[] expected = scalar.ComputeHash(input);
+
+        using var keyed = Blake3.CreateKeyed(key);
+        Span<byte> actual = stackalloc byte[32];
+        Assert.That(keyed.TryHashOneShot(input, actual, out int bytesWritten), Is.True);
+        Assert.That(bytesWritten, Is.EqualTo(32));
+        Assert.That(actual.ToArray(), Is.EqualTo(expected), $"Keyed one-shot mismatch at {inputLength} bytes");
+    }
+
+    /// <summary>
+    /// The unkeyed 32-byte kernel touches no field of the state, so
+    /// <see cref="Blake3.TryHashOneShot"/> skips the <c>Initialize()</c> every other path
+    /// needs. This pins that the skip is safe: an instance that took it must still be
+    /// usable for streaming, for a differently shaped one-shot, and for the fast path
+    /// again, in any order.
+    /// </summary>
+    [Test]
+    public void OneShotThatSkipsInitializeLeavesTheInstanceReusable()
+    {
+        byte[] small = GenerateTestInput(4);          // the fast path
+        byte[] medium = GenerateTestInput(700);       // the fast path, fused chunk loop
+        byte[] large = GenerateTestInput(20000);      // the multi-chunk fallback
+
+        using var scalar = Blake3.Create(CH.SimdSupport.None, 32);
+        byte[] expectedSmall = scalar.ComputeHash(small);
+        byte[] expectedMedium = scalar.ComputeHash(medium);
+        byte[] expectedLarge = scalar.ComputeHash(large);
+        byte[] expectedConcat = scalar.ComputeHash([.. small, .. medium]);
+
+        using var hash = Blake3.Create();
+        Span<byte> actual = stackalloc byte[32];
+
+        // Fast path, then the same instance streaming: the skipped Initialize() must not
+        // have left _cv or any bookkeeping scalar carrying the previous message.
+        Assert.That(hash.TryComputeHash(small, actual, out _), Is.True);
+        Assert.That(actual.ToArray(), Is.EqualTo(expectedSmall));
+
+        hash.AppendData(small);
+        Assert.That(hash.TryComputeHash(medium, actual, out _), Is.True);
+        Assert.That(actual.ToArray(), Is.EqualTo(expectedConcat),
+            "streaming after a skipped reset must continue the stream, not restart it");
+
+        // Fast path again, then the multi-chunk fallback, then back.
+        Assert.That(hash.TryComputeHash(medium, actual, out _), Is.True);
+        Assert.That(actual.ToArray(), Is.EqualTo(expectedMedium));
+
+        Assert.That(hash.TryComputeHash(large, actual, out _), Is.True);
+        Assert.That(actual.ToArray(), Is.EqualTo(expectedLarge));
+
+        Assert.That(hash.TryComputeHash(small, actual, out _), Is.True);
+        Assert.That(actual.ToArray(), Is.EqualTo(expectedSmall));
     }
 
     /// <summary>
@@ -751,6 +1321,130 @@ public class Blake3Tests
                         .SetName($"OfficialTestVectors({factory.Name}, {length})");
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// An <c>Absorb</c> that ends exactly on an aligned batch or 64-chunk group holds back the
+    /// right half of that subtree, not just its last chunk. Checks every SIMD tier against the
+    /// scalar reference when the input stops there, and when more input follows at, just past,
+    /// or well beyond the boundary, including extended output.
+    /// </summary>
+    /// <param name="firstLength">Length of the first absorb, which ends on the subtree boundary.</param>
+    /// <param name="secondLength">Length of the absorb that follows it; 0 for none.</param>
+    [TestCase(4096, 0)]
+    [TestCase(4096, 1)]
+    [TestCase(4096, 4096)]
+    [TestCase(8192, 0)]
+    [TestCase(8192, 1)]
+    [TestCase(8192, 1024)]
+    [TestCase(8192, 16384)]     // the 16-chunk AVX-512 batch then drains at a counter of 8, not 16
+    [TestCase(12288, 4096)]
+    [TestCase(16384, 0)]
+    [TestCase(16384, 1)]
+    [TestCase(16384, 16384)]
+    [TestCase(24576, 8192)]
+    [TestCase(65536, 0)]
+    [TestCase(65536, 1)]
+    [TestCase(65536, 3072)]
+    [TestCase(65536, 65536)]
+    [TestCase(131072, 0)]
+    [TestCase(131072, 1025)]
+    [TestCase(196608, 65536)]
+    public void DrainedAlignedSubtreeMatchesScalarReference(int firstLength, int secondLength)
+    {
+        byte[] input = GenerateTestInput(firstLength + secondLength);
+
+        foreach (CH.SimdSupport tier in new[]
+        {
+            CH.SimdSupport.Ssse3,
+            CH.SimdSupport.Avx2,
+            CH.SimdSupport.Avx512F | CH.SimdSupport.Avx2,
+            CH.SimdSupport.Neon,
+        })
+        {
+            if ((Blake3.SimdSupport & tier) != tier)
+            {
+                continue;
+            }
+
+            foreach (int outputLength in new[] { 32, 200 })
+            {
+                using var scalar = Blake3.Create(CH.SimdSupport.None, outputLength);
+                using var simd = Blake3.Create(tier, outputLength);
+
+                scalar.Absorb(input);
+                simd.Absorb(input.AsSpan(0, firstLength));
+                if (secondLength > 0)
+                {
+                    simd.Absorb(input.AsSpan(firstLength, secondLength));
+                }
+
+                byte[] expected = new byte[outputLength];
+                byte[] actual = new byte[outputLength];
+                scalar.Squeeze(expected);
+                simd.Squeeze(actual);
+
+                Assert.That(actual, Is.EqualTo(expected),
+                    $"{tier} mismatch for {firstLength} + {secondLength} bytes, {outputLength}-byte output");
+            }
+        }
+    }
+
+    /// <summary>
+    /// <c>Absorb</c> compresses whole blocks of a chunk straight from its input and buffers only
+    /// the rest. Checks every tier, scalar included, against BouncyCastle, with write sizes that
+    /// start and end mid-block, on block boundaries and exactly on the chunk's last byte.
+    /// </summary>
+    /// <param name="inputLength">The total input length.</param>
+    /// <param name="writeSize">The size of each absorb.</param>
+    [TestCase(64, 64)]
+    [TestCase(65, 64)]
+    [TestCase(1024, 1024)]
+    [TestCase(1024, 960)]
+    [TestCase(1025, 1)]
+    [TestCase(1100, 1023)]
+    [TestCase(2048, 1088)]
+    [TestCase(2048, 97)]
+    [TestCase(3000, 1500)]
+    [TestCase(5000, 1024)]
+    [TestCase(5000, 2049)]
+    [TestCase(10000, 4097)]
+    [TestCase(40000, 777)]
+    public void StreamingMatchesBouncyCastle(int inputLength, int writeSize)
+    {
+        byte[] input = GenerateTestInput(inputLength);
+
+        var reference = new Org.BouncyCastle.Crypto.Digests.Blake3Digest(256);
+        reference.BlockUpdate(input, 0, input.Length);
+        byte[] expected = new byte[100];
+        reference.OutputFinal(expected, 0, expected.Length);
+
+        foreach (CH.SimdSupport tier in new[]
+        {
+            CH.SimdSupport.None,
+            CH.SimdSupport.Ssse3,
+            CH.SimdSupport.Avx2,
+            CH.SimdSupport.Avx512F | CH.SimdSupport.Avx2,
+            CH.SimdSupport.Neon,
+        })
+        {
+            if ((Blake3.SimdSupport & tier) != tier)
+            {
+                continue;
+            }
+
+            using var blake3 = Blake3.Create(tier, expected.Length);
+            for (int offset = 0; offset < inputLength; offset += writeSize)
+            {
+                blake3.Absorb(input.AsSpan(offset, Math.Min(writeSize, inputLength - offset)));
+            }
+
+            byte[] actual = new byte[expected.Length];
+            blake3.Squeeze(actual);
+
+            Assert.That(actual, Is.EqualTo(expected),
+                $"{tier} mismatch at {inputLength} bytes, writes of {writeSize}");
         }
     }
 

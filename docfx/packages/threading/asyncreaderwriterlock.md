@@ -194,6 +194,72 @@ Asynchronously acquires a writer lock, or throws `TimeoutException` if the timeo
 | `TimeSpan.Zero` and contested | No (immediate exception) |
 | Finite positive timeout | Yes — one instance, disposed on await |
 
+An already-cancelled token is checked before the zero timeout, on every acquisition method here and on `UpgradeToWriterLockAsync`: passing both a cancelled token and `TimeSpan.Zero` throws `OperationCanceledException` carrying that token, not a `TimeoutException`. This matches the other primitives in the package.
+
+### TryReaderLock / TryUpgradeableReaderLock / TryWriterLock
+
+```csharp
+public bool TryReaderLock(out Releaser releaser)
+public bool TryUpgradeableReaderLock(out Releaser releaser)
+public bool TryWriterLock(out Releaser releaser)
+```
+
+Attempt to acquire the corresponding lock without waiting. Each returns `true` and a live releaser on success, or `false` and `default(Releaser)` on a miss.
+
+Synchronous and non-throwing by design: unlike the timeout overloads with `TimeSpan.Zero`, a failed attempt never allocates an exception or a faulted `ValueTask<Releaser>` — there is nothing to await in the first place.
+
+**Semantics**:
+
+| Method | Succeeds when | Declines when |
+|---|---|---|
+| `TryReaderLock` | No writer holds or is queued, reader limit not reached | A writer holds or is waiting, or the reader limit is reached |
+| `TryUpgradeableReaderLock` | No writer holds or is queued, no other upgradeable reader is active, reader limit not reached | A writer holds or is waiting, another upgradeable reader is active, or the reader limit is reached |
+| `TryWriterLock` | The lock is completely uncontested | Any reader or writer currently holds it |
+
+- **Writer priority is honoured on the try path.** `TryReaderLock` and `TryUpgradeableReaderLock` decline while a writer is queued, even though the lock is only read-held, so a caller polling in a loop cannot starve a writer.
+- **Do not dispose the releaser from a failed attempt.** It is `default(Releaser)` and represents no acquired lock. In `DEBUG` builds disposing it throws `InvalidOperationException`; release builds ignore it.
+
+**Example**:
+
+```csharp
+// Rebuild a cache only if nobody else is reading or writing right now
+if (_rwLock.TryWriterLock(out var releaser))
+{
+    using (releaser)
+    {
+        RebuildCache();
+    }
+}
+```
+
+### Releaser.TryUpgradeToWriterLock
+
+```csharp
+public bool TryUpgradeToWriterLock(out Releaser releaser)
+```
+
+Attempts the upgrade of an upgradeable reader to an exclusive writer lock without waiting. Available only on a releaser obtained from `UpgradeableReaderLockAsync` / `TryUpgradeableReaderLock`.
+
+**Returns**: `true` and an upgraded-writer releaser if no other reader currently holds the lock; `false` otherwise.
+
+Non-throwing for contention — it simply returns `false` while other readers are still active — but calling it on a releaser that is **not** in the upgradeable reader state is a programming error and throws `InvalidOperationException`, matching `UpgradeToWriterLockAsync`.
+
+On success the original upgradeable-reader releaser stays valid: dispose the returned upgraded-writer releaser to drop back to the upgradeable reader lock, then dispose the original to release it entirely.
+
+```csharp
+using (var upgradeable = ...)          // TryUpgradeableReaderLock succeeded
+{
+    if (upgradeable.TryUpgradeToWriterLock(out var writer))
+    {
+        using (writer)
+        {
+            MutateState();
+        }
+        // back to upgradeable-reader mode here
+    }
+}
+```
+
 ### Allocation Behavior
 
 Immediate lock acquisitions via the fast path are completely allocation-free using atomic operations. When the lock is contended, waiting without a timeout is allocation-free on .NET 6.0+ (using `UnsafeRegister` for cancellation), while older frameworks may allocate for cancellation registration. Specifying a finite timeout allocates a timer that is automatically disposed when the operation completes. Exception and task allocations occur only if a timeout actually elapses or cancellation is triggered; successful acquisitions are otherwise allocation-free. Pooled `IValueTaskSource<Releaser>` instances are reused to minimize allocation pressure across repeated lock operations.
@@ -226,13 +292,17 @@ using (await _rwLock.ReaderLockAsync())
 // Lock is automatically released
 ```
 
-When the `Releaser` originated from `UpgradeableReaderLockAsync`, it also exposes:
+When the `Releaser` originated from `UpgradeableReaderLockAsync` / `TryUpgradeableReaderLock`, it also exposes:
 
 ```csharp
 public ValueTask<Releaser> UpgradeToWriterLockAsync(CancellationToken cancellationToken = default)
+public ValueTask<Releaser> UpgradeToWriterLockAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+public bool TryUpgradeToWriterLock(out Releaser releaser)
 ```
 
-This upgrades the currently held upgradeable reader to an exclusive writer lock.
+These upgrade the currently held upgradeable reader to an exclusive writer lock — awaiting, awaiting with a bound, or without waiting at all. See [Releaser.TryUpgradeToWriterLock](#releasertryupgradetowriterlock).
+
+A default `Releaser` (handed back by a failed `TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock`) represents no acquired lock. Do not dispose it; in `DEBUG` builds `Dispose()` throws `InvalidOperationException` to catch the mistake.
 
 ## Fairness and Priority
 
@@ -249,31 +319,31 @@ This upgrades the currently held upgradeable reader to an exclusive writer lock.
 
 ## Benchmark Results
 
-The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLockSlim`, `Nito.AsyncEx.AsyncReaderWriterLock`, `Proto.Promises.Threading.AsyncReaderWriterLock`, `Microsoft.VisualStudio.Threading.AsyncReaderWriterLock`, and a reference implementation. Not all implementations support every lock mode; the set of compared implementations varies per benchmark.
+The following benchmarks compare `AsyncReaderWriterLock` against `ReaderWriterLockSlim`, `Nito.AsyncEx.AsyncReaderWriterLock`, `Proto.Promises.Threading.AsyncReaderWriterLock`, `Microsoft.VisualStudio.Threading.AsyncReaderWriterLock`, `DotNext.Threading.AsyncReaderWriterLock` (net10.0 only, reader and writer locks only - it has no per-acquisition releaser, and no distinct upgradeable-reader mode), and a reference implementation. Not all implementations support every lock mode; the set of compared implementations varies per benchmark.
 
 ### Reader Lock Benchmark
 
 Measures the performance of acquiring and releasing reader locks with varying numbers of nested acquisitions. At the lowest iteration count (Iterations = 0), the pooled implementation achieves lower latency than Proto.Promises; from Iterations = 1 onward, Proto.Promises achieves lower per-operation latency, reflecting a lower per-lock-call overhead at the cost of a slightly higher fixed invocation overhead. Both operate with zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency at all iteration counts.
 
-[View live Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=ReaderLock)
+[View live Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=ReaderLock&mode=trend)
 
 ### Writer Lock Benchmark
 
 Measures the performance of acquiring and releasing a single writer lock. Proto.Promises achieves lower uncontended latency than the pooled implementation, with both operating at zero allocations. Nito.AsyncEx allocates per acquisition. VS.Threading allocates per acquisition and shows substantially higher latency.
 
-[View live Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=WriterLock)
+[View live Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=WriterLock&mode=trend)
 
 ### Upgradeable Reader Lock Benchmark
 
 Measures the performance of acquiring an upgradeable reader lock in combination with varying numbers of additional reader locks. At the lowest iteration count (Iterations = 0), the pooled implementation is marginally faster; Proto.Promises achieves lower per-operation latency as the number of additional reader locks increases. Both operate with zero allocations. VS.Threading allocates per acquisition and shows substantially higher latency across all iteration counts.
 
-[View live Upgradeable Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradeableReaderLock)
+[View live Upgradeable Reader Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradeableReaderLock&mode=trend)
 
 ### Upgraded Writer Lock Benchmark
 
 Measures the performance of acquiring an upgradeable reader lock, holding additional reader locks concurrently, then upgrading to an exclusive writer lock. The pooled implementation is marginally faster at the lowest iteration count (Iterations = 0); Proto.Promises achieves lower per-operation latency as the number of held reader locks increases. Both operate with zero allocations. VS.Threading allocates proportionally to the number of held reader locks and shows substantially higher latency across all configurations.
 
-[View live Upgraded Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradedWriterLock)
+[View live Upgraded Writer Lock benchmark results and trend history →](benchmark-trends/index.html#platform=windows-x64-amd-ryzen-5-7600x&family=AsyncRWLock&method=UpgradedWriterLock&mode=trend)
 
 ### Benchmark Analysis
 
@@ -297,7 +367,7 @@ Measures the performance of acquiring an upgradeable reader lock, holding additi
 
 ## Best Practices
 
-### ✓ DO: Use timeout overloads to bound lock-wait time
+### Use timeout overloads to bound lock-wait time
 
 ```csharp
 try
@@ -327,6 +397,7 @@ catch (TimeoutException)
 | Allocation overhead | Minimal (pooled) | None (sync) |
 | Writer priority | Yes | Configurable |
 | Cancellation | Full support | None |
+| Non-blocking attempt | `TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock` / `Releaser.TryUpgradeToWriterLock` | `TryEnter*` methods |
 
 ## See Also
 
@@ -334,9 +405,13 @@ catch (TimeoutException)
 - [AsyncAutoResetEvent](asyncautoresetevent.md) - Auto-reset event variant
 - [AsyncManualResetEvent](asyncmanualresetevent.md) - Manual-reset event variant
 - [AsyncLock](asynclock.md) - Async mutual exclusion lock
+- [AsyncKeyedLock](asynckeyedlock.md) - Per-key async exclusion
+- [AsyncReentrantLock](asyncreentrantlock.md) - Async lock a nested call on the same flow can re-acquire (experimental)
 - [AsyncCountdownEvent](asynccountdownevent.md) - Async countdown event
 - [AsyncBarrier](asyncbarrier.md) - Async barrier synchronization primitive
 - [AsyncSemaphore](asyncsemaphore.md) - Async semaphore primitive
+- [AsyncConditionVariable](asyncconditionvariable.md) - Wait until a condition guarded by an AsyncLock holds
+- [AsyncExchange](asyncexchange.md) - Two-party value rendezvous
 - [Benchmarks](benchmarks.md) - Benchmark description
 
 ---

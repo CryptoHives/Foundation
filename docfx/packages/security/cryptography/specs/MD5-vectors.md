@@ -1,6 +1,6 @@
-﻿# MD5 Test Vectors (RFC 1321)
+# MD5 Test Vectors (RFC 1321)
 
-## ⚠️ Security Warning
+## Security Warning
 
 **MD5 is cryptographically broken and should NOT be used for security purposes.**
 
@@ -32,7 +32,7 @@ For security applications, use SHA-256 or stronger algorithms.
 
 ## References
 
-- RFC 1321: https://www.ietf.org/rfc/rfc1321.txt
+- [RFC 1321](https://www.ietf.org/rfc/rfc1321.txt)
 - BouncyCastle MD5Digest: Used as reference implementation
 
 ## Known Vulnerabilities

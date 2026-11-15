@@ -1,12 +1,12 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Cipher.Aes;
 
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
-using System.Security.Cryptography;
+using OS = System.Security.Cryptography;
 
 /// <summary>
 /// Tests for <see cref="AesKeyWrapPad"/> (RFC 5649) and AES Key Wrap (RFC 3394).
@@ -169,6 +169,9 @@ public class AesKeyWrapPadTests
     [TestCase(24, Description = "24 bytes — three full semiblocks")]
     [TestCase(32, Description = "32 bytes — four full semiblocks")]
     [TestCase(255, Description = "255 bytes — large key")]
+    [TestCase(504, Description = "504 bytes — largest wrapped key unwrapped on the stack")]
+    [TestCase(505, Description = "505 bytes — first wrapped key unwrapped in a pooled buffer")]
+    [TestCase(4000, Description = "4000 bytes — pooled buffer")]
     public void KwpRoundTrip(int keyLength)
     {
         byte[] kek = FromHex("000102030405060708090A0B0C0D0E0F");
@@ -187,6 +190,9 @@ public class AesKeyWrapPadTests
     [TestCase(24, Description = "24 bytes — three semiblocks")]
     [TestCase(32, Description = "32 bytes — four semiblocks")]
     [TestCase(256, Description = "256 bytes — large key")]
+    [TestCase(504, Description = "504 bytes — largest wrapped key unwrapped on the stack")]
+    [TestCase(512, Description = "512 bytes — first wrapped key unwrapped in a pooled buffer")]
+    [TestCase(4000, Description = "4000 bytes — pooled buffer")]
     public void KwRoundTrip(int keyLength)
     {
         byte[] kek = FromHex("000102030405060708090A0B0C0D0E0F1011121314151617");
@@ -287,7 +293,7 @@ public class AesKeyWrapPadTests
         // Corrupt a byte
         wrapped[wrapped.Length / 2] ^= 0xFF;
 
-        Assert.Throws<CryptographicException>(() => kwp.UnwrapKey(wrapped));
+        Assert.Throws<OS.CryptographicException>(() => kwp.UnwrapKey(wrapped));
     }
 
     [Test]
@@ -302,7 +308,7 @@ public class AesKeyWrapPadTests
         // Corrupt a byte
         wrapped[0] ^= 0xFF;
 
-        Assert.Throws<CryptographicException>(() => kwp.UnwrapKeyNoPad(wrapped));
+        Assert.Throws<OS.CryptographicException>(() => kwp.UnwrapKeyNoPad(wrapped));
     }
 
     [Test]
@@ -318,7 +324,7 @@ public class AesKeyWrapPadTests
 
         byte[] wrapped = kwp1.WrapKey(key);
 
-        Assert.Throws<CryptographicException>(() => kwp2.UnwrapKey(wrapped));
+        Assert.Throws<OS.CryptographicException>(() => kwp2.UnwrapKey(wrapped));
     }
 
     [Test]
@@ -333,7 +339,7 @@ public class AesKeyWrapPadTests
         Assert.That(wrapped, Has.Length.EqualTo(16), "Single semiblock case produces 16-byte output");
 
         wrapped[0] ^= 0xFF;
-        Assert.Throws<CryptographicException>(() => kwp.UnwrapKey(wrapped));
+        Assert.Throws<OS.CryptographicException>(() => kwp.UnwrapKey(wrapped));
     }
 
     // ========================================================================

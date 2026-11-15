@@ -45,8 +45,9 @@
   <PropertyGroup>
     <PackageIcon>images/logo.jpg</PackageIcon>
     <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <PackageLicenseFile>licenses/LICENSE.txt</PackageLicenseFile>
+    <!-- Neither MIT nor Apache-2.0 imposes an obligation worth an install-time prompt; requiring acceptance only adds friction. -->
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageLicenseExpression>MIT OR Apache-2.0</PackageLicenseExpression>
     <PackageReleaseNotes>$(RepositoryUrl)/releases</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- Per-package READMEs: each project may override PackageReadmeSourceFile to point to its own README.md -->
@@ -54,13 +55,15 @@
     <PackageTags>CryptoHives</PackageTags>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == 'MIT'">
-    <None Include="$(MSBuildThisFileDirectory)/licenses/CryptoHives MIT license.txt" Pack="true" Visible="false" PackagePath="$(PackageLicenseFile)"/>
-  </ItemGroup>
-  
-  <ItemGroup Condition="'$(IsPackable)' != 'false' AND '$(PackageLicenseExpression)' == ''">
-    <None Include="$(MSBuildThisFileDirectory)/LICENSE" Pack="true" PackagePath="$(PackageLicenseFile)"/>
-  </ItemGroup>
+  <!-- NuGet only renames a packed file whose source has the target's extension, and LICENSE-MIT /
+       LICENSE-APACHE have none, so the package copies are written under their .txt names first. -->
+  <Target Name="PackCryptoHivesLicenseFiles" BeforeTargets="_GetPackageFiles" Condition="'$(IsPackable)' != 'false'">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)LICENSE-MIT" DestinationFiles="$(IntermediateOutputPath)CryptoHives MIT license.txt" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)LICENSE-APACHE" DestinationFiles="$(IntermediateOutputPath)CryptoHives Apache 2.0 license.txt" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <None Include="$(IntermediateOutputPath)CryptoHives MIT license.txt;$(IntermediateOutputPath)CryptoHives Apache 2.0 license.txt" Pack="true" Visible="false" PackagePath="" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)/nuget/logo.jpg" Pack="true" Visible="false" PackagePath="$(PackageIcon)"/>
@@ -88,11 +91,34 @@
     <AssemblyOriginatorKeyFile>$(StrongNameKeyFile)</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(SignAssembly)' == 'true'">
+    <!-- The strong name signing public key -->
+    <PublicKey>002400000480000094000000060200000024000052534131000400000100010079ff8565b99f24</PublicKey>
+    <PublicKey>$(PublicKey)7c1b8461da6d8abfd37f7a34babee05d2144d3621e239dd97c51784549a7a1e5016a5a32a80cba</PublicKey>
+    <PublicKey>$(PublicKey)cecfe588452577ce462c92cd1ed7cb6641e0e376d18a5a36b876b73b2a5e57fdae91a08ca5e14c</PublicKey>
+    <PublicKey>$(PublicKey)10beb5f15fb09bf55c26d26d6dd6f315e247a6c228cacf73973cee4e6756be163f939752753bc1</PublicKey>
+    <PublicKey>$(PublicKey)cd6047dc</PublicKey>
+  </PropertyGroup>
+
   <PropertyGroup>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
+
+  <!-- Point at this version's notes in releases/. The file is keyed by the NuGet package version
+       rather than the release tag: tags carry the fourth assembly version part that NuGet drops
+       (0.6.79.4022 vs 0.6.79, see .github/workflows/test-published-packages.yml), and only the
+       package version is available here - the pack step passes PackageVersion and nothing else.
+       Nerdbank.GitVersioning computes it in a target, well after this file is evaluated, hence the
+       deferral to pack time. Links to main, not to the tag: the notes are written and committed
+       after the release is cut, so the tagged commit does not contain them. If the version is
+       somehow unset, the PackageReleaseNotes fallback above keeps a working URL. -->
+  <Target Name="SetVersionedReleaseNotes" BeforeTargets="GenerateNuspec">
+    <PropertyGroup Condition="'$(PackageVersion)' != ''">
+      <PackageReleaseNotes>$(RepositoryUrl)/blob/main/releases/$(PackageVersion).md</PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>
 </Project>
 

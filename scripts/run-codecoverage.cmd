@@ -1,6 +1,6 @@
 @echo off
 REM SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-REM SPDX-License-Identifier: MIT
+REM SPDX-License-Identifier: MIT OR Apache-2.0
 
 REM run-codecoverage.cmd - Wrapper for run-codecoverage.ps1
 REM Usage: scripts\run-codecoverage.cmd [options]

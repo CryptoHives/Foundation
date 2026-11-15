@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace Cryptography.Tests.Cipher;
 
@@ -49,7 +49,7 @@ public class CipherRandomSizeTests
         foreach (int size in BoundarySizes)
         {
             // Fresh nonce per encrypt to satisfy BC's nonce-reuse check
-            byte[] nonce = GenerateBytes(cipher.NonceSizeBytes, rng);
+            byte[] nonce = GenerateNonce(cipher, rng);
             AeadRoundTrip(cipher, nonce, aad, size, rng,
                 $"{impl.Name} at size {size}");
         }
@@ -66,7 +66,7 @@ public class CipherRandomSizeTests
 
         for (int i = 0; i < RandomIterations; i++)
         {
-            byte[] nonce = GenerateBytes(cipher.NonceSizeBytes, rng);
+            byte[] nonce = GenerateNonce(cipher, rng);
             int size = rng.Next(0, MaxRandomSize + 1);
             AeadRoundTrip(cipher, nonce, aad, size, rng,
                 $"{impl.Name} at random size {size} (iteration {i})");
@@ -82,7 +82,7 @@ public class CipherRandomSizeTests
 
         for (int i = 0; i < RandomIterations; i++)
         {
-            byte[] nonce = GenerateBytes(cipher.NonceSizeBytes, rng);
+            byte[] nonce = GenerateNonce(cipher, rng);
             int size = rng.Next(0, MaxRandomSize + 1);
             int aadSize = rng.Next(0, 1024);
             byte[] aad = GenerateBytes(aadSize, rng);
@@ -102,7 +102,7 @@ public class CipherRandomSizeTests
 
         foreach (int size in new[] { 1, 16, 17, 128, 129, 1024 })
         {
-            byte[] nonce = GenerateBytes(cipher.NonceSizeBytes, rng);
+            byte[] nonce = GenerateNonce(cipher, rng);
             byte[] plaintext = GenerateBytes(size, rng);
             byte[] ciphertext = new byte[size];
             byte[] tag = new byte[cipher.TagSizeBytes];
@@ -235,6 +235,14 @@ public class CipherRandomSizeTests
         Assert.That(decrypted, Is.EqualTo(plaintext), $"Decryption mismatch: {context}");
     }
 
+    // MGM takes a 127-bit nonce, so the top bit stays clear; no other AEAD minds that.
+    private static byte[] GenerateNonce(IAeadCipher cipher, Random rng)
+    {
+        byte[] nonce = GenerateBytes(cipher.NonceSizeBytes, rng);
+        nonce[0] &= 0x7F;
+        return nonce;
+    }
+
     private static byte[] GenerateBytes(int size, Random rng)
     {
         byte[] bytes = new byte[size];
@@ -250,7 +258,13 @@ public class CipherRandomSizeTests
     [
         "AES-128-GCM", "AES-192-GCM", "AES-256-GCM",
         "AES-128-CCM", "AES-192-CCM", "AES-256-CCM",
-        "ChaCha20-Poly1305", "XChaCha20-Poly1305"
+        "AES-128-GCM-SIV", "AES-256-GCM-SIV",
+        "ChaCha20-Poly1305", "XChaCha20-Poly1305",
+        "ARIA-128-GCM", "ARIA-192-GCM", "ARIA-256-GCM",
+        "ARIA-128-CCM", "ARIA-192-CCM", "ARIA-256-CCM",
+        "Camellia-128-GCM", "Camellia-192-GCM", "Camellia-256-GCM",
+        "Camellia-128-CCM", "Camellia-192-CCM", "Camellia-256-CCM",
+        "SM4-GCM", "SM4-CCM", "SEED-GCM", "Kuznyechik-GCM", "Kuznyechik-MGM", "Magma-MGM"
     ];
 
     private static readonly string[] StreamFamilies = ["ChaCha20"];

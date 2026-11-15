@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2026 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Cipher;
 
@@ -92,31 +92,42 @@ internal ref struct Poly1305Core
     {
         int offset = 0;
 
+#if NET8_0_OR_GREATER
+        // The accumulator stays in locals across the loop: field-held, it takes a store and a
+        // reload on the critical path of every block.
+        ulong h0 = _h0, h1 = _h1, h2 = _h2;
         while (offset + BlockSize <= data.Length)
         {
-#if NET8_0_OR_GREATER
-            AddFullBlock64(data.Slice(offset), ref _h0, ref _h1, ref _h2);
-            MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
-#else
-            ProcessFullBlock32(data.Slice(offset, BlockSize),
-                ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
-                _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
-#endif
+            AddFullBlock64(data.Slice(offset), ref h0, ref h1, ref h2);
+            MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
             offset += BlockSize;
         }
 
         int remaining = data.Length - offset;
         if (remaining > 0)
         {
-#if NET8_0_OR_GREATER
-            AddPartialBlock64(data.Slice(offset), ref _h0, ref _h1, ref _h2);
-            MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
+            AddPartialBlock64(data.Slice(offset), ref h0, ref h1, ref h2);
+            MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
+        }
+
+        _h0 = h0; _h1 = h1; _h2 = h2;
 #else
+        while (offset + BlockSize <= data.Length)
+        {
+            ProcessFullBlock32(data.Slice(offset, BlockSize),
+                ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
+                _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
+            offset += BlockSize;
+        }
+
+        int remaining = data.Length - offset;
+        if (remaining > 0)
+        {
             ProcessPartialBlock32(data.Slice(offset, remaining),
                 ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
                 _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
-#endif
         }
+#endif
     }
 
     /// <summary>
@@ -133,34 +144,42 @@ internal ref struct Poly1305Core
     {
         int offset = 0;
 
+#if NET8_0_OR_GREATER
+        ulong h0 = _h0, h1 = _h1, h2 = _h2;
         while (offset + BlockSize <= data.Length)
         {
-#if NET8_0_OR_GREATER
-            AddFullBlock64(data.Slice(offset), ref _h0, ref _h1, ref _h2);
-            MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
-#else
-            ProcessFullBlock32(data.Slice(offset, BlockSize),
-                ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
-                _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
-#endif
+            AddFullBlock64(data.Slice(offset), ref h0, ref h1, ref h2);
+            MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
             offset += BlockSize;
         }
 
         int remaining = data.Length - offset;
         if (remaining > 0)
         {
-            Span<byte> padded = stackalloc byte[BlockSize];
-            padded.Clear();
-            data.Slice(offset, remaining).CopyTo(padded);
-#if NET8_0_OR_GREATER
-            AddFullBlock64(padded, ref _h0, ref _h1, ref _h2);
-            MulReduce64(ref _h0, ref _h1, ref _h2, _r0, _r1, _r2, _s1, _s2);
+            BinaryLoad.ReadUInt64PairLittleEndianPadded(data.Slice(offset, remaining), out ulong m0, out ulong m1);
+            AddFullBlock64(m0, m1, ref h0, ref h1, ref h2);
+            MulReduce64(ref h0, ref h1, ref h2, _r0, _r1, _r2, _s1, _s2);
+        }
+
+        _h0 = h0; _h1 = h1; _h2 = h2;
 #else
-            ProcessFullBlock32(padded,
+        while (offset + BlockSize <= data.Length)
+        {
+            ProcessFullBlock32(data.Slice(offset, BlockSize),
                 ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
                 _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
-#endif
+            offset += BlockSize;
         }
+
+        int remaining = data.Length - offset;
+        if (remaining > 0)
+        {
+            BinaryLoad.ReadUInt64PairLittleEndianPadded(data.Slice(offset, remaining), out ulong m0, out ulong m1);
+            ProcessFullBlock32((uint)m0, (uint)(m0 >> 32), (uint)m1, (uint)(m1 >> 32),
+                ref _h0, ref _h1, ref _h2, ref _h3, ref _h4,
+                _r0, _r1, _r2, _r3, _r4, _s1, _s2, _s3, _s4);
+        }
+#endif
     }
 
     /// <summary>
@@ -215,6 +234,7 @@ internal ref struct Poly1305Core
     /// All padding zeros align each section to a 16-byte boundary, so every block
     /// is processed as a full block (with hibit set).
     /// </remarks>
+    [SkipLocalsInit]
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ComputeAeadTag(
         ReadOnlySpan<byte> key,
@@ -235,12 +255,14 @@ internal ref struct Poly1305Core
 #if NET8_0_OR_GREATER
         ulong lenLo = (ulong)aad.Length;
         ulong lenHi = (ulong)ciphertext.Length;
-        core._h0 += lenLo & Mask44;
-        core._h1 += ((lenLo >> 44) | (lenHi << 20)) & Mask44;
-        core._h2 += ((lenHi >> 24)) & Mask42;
-        core._h2 += 1UL << 40;
-        MulReduce64(ref core._h0, ref core._h1, ref core._h2,
+        ulong h0 = core._h0, h1 = core._h1, h2 = core._h2;
+        h0 += lenLo & Mask44;
+        h1 += ((lenLo >> 44) | (lenHi << 20)) & Mask44;
+        h2 += ((lenHi >> 24)) & Mask42;
+        h2 += 1UL << 40;
+        MulReduce64(ref h0, ref h1, ref h2,
             core._r0, core._r1, core._r2, core._s1, core._s2);
+        Finalize64(h0, h1, h2, core._padLo, core._padHi, tag);
 #else
         Span<byte> lengths = stackalloc byte[BlockSize];
         BinaryPrimitives.WriteUInt64LittleEndian(lengths, (ulong)aad.Length);
@@ -249,9 +271,8 @@ internal ref struct Poly1305Core
             ref core._h0, ref core._h1, ref core._h2, ref core._h3, ref core._h4,
             core._r0, core._r1, core._r2, core._r3, core._r4,
             core._s1, core._s2, core._s3, core._s4);
-#endif
-
         core.Finalize(tag);
+#endif
     }
 
     // ================================================================
@@ -299,11 +320,26 @@ internal ref struct Poly1305Core
         uint r0, uint r1, uint r2, uint r3, uint r4,
         uint s1, uint s2, uint s3, uint s4)
     {
-        uint b0 = BinaryPrimitives.ReadUInt32LittleEndian(block);
-        uint b1 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(1 * sizeof(uint)));
-        uint b2 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(2 * sizeof(uint)));
-        uint b3 = BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(3 * sizeof(uint)));
+        ProcessFullBlock32(
+            BinaryPrimitives.ReadUInt32LittleEndian(block),
+            BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(1 * sizeof(uint))),
+            BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(2 * sizeof(uint))),
+            BinaryPrimitives.ReadUInt32LittleEndian(block.Slice(3 * sizeof(uint))),
+            ref h0, ref h1, ref h2, ref h3, ref h4,
+            r0, r1, r2, r3, r4, s1, s2, s3, s4);
+    }
 
+    /// <summary>
+    /// Accumulates a single full 16-byte block, already split into four little-endian
+    /// words, and performs multiply-reduce (donna-32).
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    internal static void ProcessFullBlock32(
+        uint b0, uint b1, uint b2, uint b3,
+        ref uint h0, ref uint h1, ref uint h2, ref uint h3, ref uint h4,
+        uint r0, uint r1, uint r2, uint r3, uint r4,
+        uint s1, uint s2, uint s3, uint s4)
+    {
         h0 += b0 & 0x03ffffff;
         h1 += ((b0 >> 26) | (b1 << 6)) & 0x03ffffff;
         h2 += ((b1 >> 20) | (b2 << 12)) & 0x03ffffff;
@@ -324,15 +360,11 @@ internal ref struct Poly1305Core
         uint r0, uint r1, uint r2, uint r3, uint r4,
         uint s1, uint s2, uint s3, uint s4)
     {
-        Span<byte> padded = stackalloc byte[BlockSize];
-        padded.Clear();
-        block.CopyTo(padded);
-        padded[block.Length] = 0x01;
-
-        uint b0 = BinaryPrimitives.ReadUInt32LittleEndian(padded);
-        uint b1 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(1 * sizeof(uint)));
-        uint b2 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(2 * sizeof(uint)));
-        uint b3 = BinaryPrimitives.ReadUInt32LittleEndian(padded.Slice(3 * sizeof(uint)));
+        BinaryLoad.ReadUInt64PairLittleEndianPadded(block, 0x01, out ulong m0, out ulong m1);
+        uint b0 = (uint)m0;
+        uint b1 = (uint)(m0 >> 32);
+        uint b2 = (uint)m1;
+        uint b3 = (uint)(m1 >> 32);
 
         h0 += b0 & 0x03ffffff;
         h1 += ((b0 >> 26) | (b1 << 6)) & 0x03ffffff;
@@ -452,8 +484,20 @@ internal ref struct Poly1305Core
     internal static void AddFullBlock64(ReadOnlySpan<byte> block,
         ref ulong h0, ref ulong h1, ref ulong h2)
     {
-        ulong m0 = BinaryPrimitives.ReadUInt64LittleEndian(block);
-        ulong m1 = BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(sizeof(ulong)));
+        AddFullBlock64(
+            BinaryPrimitives.ReadUInt64LittleEndian(block),
+            BinaryPrimitives.ReadUInt64LittleEndian(block.Slice(sizeof(ulong))),
+            ref h0, ref h1, ref h2);
+    }
+
+    /// <summary>
+    /// Adds a 16-byte block, already split into two little-endian words, to the
+    /// accumulator with hibit set (donna-64).
+    /// </summary>
+    [MethodImpl(MethodImplOptionsEx.HotPath)]
+    internal static void AddFullBlock64(ulong m0, ulong m1,
+        ref ulong h0, ref ulong h1, ref ulong h2)
+    {
         h0 += m0 & Mask44;
         h1 += ((m0 >> 44) | (m1 << 20)) & Mask44;
         h2 += ((m1 >> 24) & Mask42) | (1UL << 40);
@@ -466,13 +510,7 @@ internal ref struct Poly1305Core
     internal static void AddPartialBlock64(ReadOnlySpan<byte> block,
         ref ulong h0, ref ulong h1, ref ulong h2)
     {
-        Span<byte> padded = stackalloc byte[BlockSize];
-        padded.Clear();
-        block.CopyTo(padded);
-        padded[block.Length] = 0x01;
-
-        ulong m0 = BinaryPrimitives.ReadUInt64LittleEndian(padded);
-        ulong m1 = BinaryPrimitives.ReadUInt64LittleEndian(padded.Slice(sizeof(ulong)));
+        BinaryLoad.ReadUInt64PairLittleEndianPadded(block, 0x01, out ulong m0, out ulong m1);
         h0 += m0 & Mask44;
         h1 += ((m0 >> 44) | (m1 << 20)) & Mask44;
         h2 += (m1 >> 24) & Mask42;
@@ -481,6 +519,10 @@ internal ref struct Poly1305Core
     /// <summary>
     /// Multiplies h by r modulo 2¹³⁰ − 5 using 9 widening 64×64→128-bit multiplies (donna-64).
     /// </summary>
+    /// <remarks>
+    /// Pass the accumulator in locals, never by reference to fields: the Mono JIT miscompiles the
+    /// comparison carries on field-held state.
+    /// </remarks>
     [MethodImpl(MethodImplOptionsEx.HotPath)]
     internal static void MulReduce64(
         ref ulong h0, ref ulong h1, ref ulong h2,

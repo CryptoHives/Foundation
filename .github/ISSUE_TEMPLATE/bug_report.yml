@@ -36,7 +36,7 @@ body:
     attributes:
       label: Package version
       description: The NuGet package version, or the commit SHA if built from source.
-      placeholder: "0.6.23"
+      placeholder: "0.7.37"
     validations:
       required: true
   - type: input

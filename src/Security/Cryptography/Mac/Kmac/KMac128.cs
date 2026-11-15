@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 namespace CryptoHives.Foundation.Security.Cryptography.Mac;
 
@@ -50,7 +50,7 @@ public sealed class KMac128 : KeccakKMacCore
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization string S.</param>
     public KMac128(byte[] key, int outputBytes = DefaultOutputBits / 8, string? customization = null)
-        : base(RateBytes, SimdSupport.KeccakDefault, key, outputBytes, customization)
+        : base(RateBytes, KeccakDefault, key, outputBytes, customization)
     {
     }
 
@@ -61,7 +61,7 @@ public sealed class KMac128 : KeccakKMacCore
     /// <param name="outputBytes">The desired output size in bytes.</param>
     /// <param name="customization">Optional customization bytes S.</param>
     public KMac128(byte[] key, int outputBytes, byte[] customization)
-        : base(RateBytes, SimdSupport.KeccakDefault, key, outputBytes, customization)
+        : base(RateBytes, KeccakDefault, key, outputBytes, customization)
     {
     }
 

@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable IDE1006 // Naming rule violation - K is a standard cryptographic constant name per FIPS 180-4
 
@@ -7,6 +7,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -73,21 +74,22 @@ internal static class SHA512Core
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ProcessBlock(ReadOnlySpan<byte> block, Span<ulong> state)
     {
+        Debug.Assert(state.Length >= 8, "chaining value must hold the full state");
+        ref ulong sPtr = ref MemoryMarshal.GetReference(state);
+
         Span<ulong> w = stackalloc ulong[Rounds];
+        ref ulong wPtr = ref MemoryMarshal.GetReference(w);
 
         unchecked
         {
             // Prepare message schedule - load first 16 words from block
-            for (int i = 0; i < 16; i++)
-            {
-                w[i] = BinaryPrimitives.ReadUInt64BigEndian(block.Slice(i * sizeof(UInt64)));
-            }
+            BinarySpans.ReadUInt64BigEndian(block.Slice(0, BlockSizeBytes), w);
 
             // Extend message schedule W[16..79]
-            for (int i = 16; i < Rounds; i++)
+            for (nuint i = 16; i < Rounds; i++)
             {
-                ulong w15 = w[i - 15];
-                ulong w2 = w[i - 2];
+                ulong w15 = Unsafe.Add(ref wPtr, i - 15);
+                ulong w2 = Unsafe.Add(ref wPtr, i - 2);
 
                 // σ0(x) = ROTR^1(x) XOR ROTR^8(x) XOR SHR^7(x)
                 ulong s0 = BitOperations.RotateRight(w15, 1) ^ BitOperations.RotateRight(w15, 8) ^ (w15 >> 7);
@@ -95,25 +97,23 @@ internal static class SHA512Core
                 // σ1(x) = ROTR^19(x) XOR ROTR^61(x) XOR SHR^6(x)
                 ulong s1 = BitOperations.RotateRight(w2, 19) ^ BitOperations.RotateRight(w2, 61) ^ (w2 >> 6);
 
-                w[i] = w[i - 16] + s0 + w[i - 7] + s1;
+                Unsafe.Add(ref wPtr, i) = Unsafe.Add(ref wPtr, i - 16) + s0 + Unsafe.Add(ref wPtr, i - 7) + s1;
             }
 
             // Initialize working variables
-            ulong a = state[0];
-            ulong b = state[1];
-            ulong c = state[2];
-            ulong d = state[3];
-            ulong e = state[4];
-            ulong f = state[5];
-            ulong g = state[6];
-            ulong h = state[7];
+            ulong a = Unsafe.Add(ref sPtr, 0);
+            ulong b = Unsafe.Add(ref sPtr, 1);
+            ulong c = Unsafe.Add(ref sPtr, 2);
+            ulong d = Unsafe.Add(ref sPtr, 3);
+            ulong e = Unsafe.Add(ref sPtr, 4);
+            ulong f = Unsafe.Add(ref sPtr, 5);
+            ulong g = Unsafe.Add(ref sPtr, 6);
+            ulong h = Unsafe.Add(ref sPtr, 7);
 
             // 8 Unrolled compression rounds with implicit variable rotation
-#if NET8_0_OR_GREATER
-            ref ulong kPtr = ref MemoryMarshal.GetArrayDataReference(K);
-            ref ulong wPtr = ref MemoryMarshal.GetReference(w);
+            ref ulong kPtr = ref MemoryMarshalEx.GetArrayDataReference(K);
 
-            for (int i = 0; i < Rounds; i += 8)
+            for (nuint i = 0; i < Rounds; i += 8)
             {
                 Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, Unsafe.Add(ref kPtr, i + 0), Unsafe.Add(ref wPtr, i + 0));
                 Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, Unsafe.Add(ref kPtr, i + 1), Unsafe.Add(ref wPtr, i + 1));
@@ -124,29 +124,16 @@ internal static class SHA512Core
                 Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, Unsafe.Add(ref kPtr, i + 6), Unsafe.Add(ref wPtr, i + 6));
                 Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, Unsafe.Add(ref kPtr, i + 7), Unsafe.Add(ref wPtr, i + 7));
             }
-#else
-            for (int i = 0; i < Rounds; i += 8)
-            {
-                Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, K[i + 0], w[i + 0]);
-                Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, K[i + 1], w[i + 1]);
-                Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, K[i + 2], w[i + 2]);
-                Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, K[i + 3], w[i + 3]);
-                Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, K[i + 4], w[i + 4]);
-                Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, K[i + 5], w[i + 5]);
-                Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, K[i + 6], w[i + 6]);
-                Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, K[i + 7], w[i + 7]);
-            }
-#endif
 
             // Add compressed chunk to current hash value
-            state[0] += a;
-            state[1] += b;
-            state[2] += c;
-            state[3] += d;
-            state[4] += e;
-            state[5] += f;
-            state[6] += g;
-            state[7] += h;
+            Unsafe.Add(ref sPtr, 0) += a;
+            Unsafe.Add(ref sPtr, 1) += b;
+            Unsafe.Add(ref sPtr, 2) += c;
+            Unsafe.Add(ref sPtr, 3) += d;
+            Unsafe.Add(ref sPtr, 4) += e;
+            Unsafe.Add(ref sPtr, 5) += f;
+            Unsafe.Add(ref sPtr, 6) += g;
+            Unsafe.Add(ref sPtr, 7) += h;
         }
     }
 

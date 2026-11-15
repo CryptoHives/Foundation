@@ -1,5 +1,5 @@
 ﻿// SPDX-FileCopyrightText: 2025 The Keepers of the CryptoHives
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 #pragma warning disable IDE1006 // Naming rule violation - K is a standard cryptographic constant name per FIPS 180-4
 
@@ -7,6 +7,7 @@ namespace CryptoHives.Foundation.Security.Cryptography.Hash;
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -24,6 +25,11 @@ using System.Runtime.InteropServices;
 /// </remarks>
 internal static partial class SHA256Core
 {
+    /// <summary>
+    /// The default optimization to use for Blake3 based algorithms.
+    /// </summary>
+    internal const SimdSupport Sha256Default = SimdSupport.All;
+
     /// <summary>
     /// The number of rounds in the SHA-256 compression function.
     /// </summary>
@@ -61,43 +67,42 @@ internal static partial class SHA256Core
     [MethodImpl(MethodImplOptionsEx.OptimizedLoop)]
     public static void ProcessBlock(ReadOnlySpan<byte> block, Span<uint> state)
     {
+        Debug.Assert(state.Length >= 8, "chaining value must hold the full state");
+        ref uint sPtr = ref MemoryMarshal.GetReference(state);
+
         Span<uint> w = stackalloc uint[64];
+        ref uint wPtr = ref MemoryMarshal.GetReference(w);
 
         unchecked
         {
             // Prepare message schedule - first 16 words from input
-            for (int i = 0; i < 16; i++)
-            {
-                w[i] = BinaryPrimitives.ReadUInt32BigEndian(block.Slice(i * sizeof(UInt32)));
-            }
+            BinarySpans.ReadUInt32BigEndian(block.Slice(0, BlockSizeBytes), w);
 
             // Extend message schedule W[16..63]
-            for (int i = 16; i < 64; i++)
+            for (nuint i = 16; i < 64; i++)
             {
-                uint w15 = w[i - 15];
-                uint w2 = w[i - 2];
+                uint w15 = Unsafe.Add(ref wPtr, i - 15);
+                uint w2 = Unsafe.Add(ref wPtr, i - 2);
                 uint s0 = BitOperations.RotateRight(w15, 7) ^ BitOperations.RotateRight(w15, 18) ^ (w15 >> 3);
                 uint s1 = BitOperations.RotateRight(w2, 17) ^ BitOperations.RotateRight(w2, 19) ^ (w2 >> 10);
-                w[i] = w[i - 16] + s0 + w[i - 7] + s1;
+                Unsafe.Add(ref wPtr, i) = Unsafe.Add(ref wPtr, i - 16) + s0 + Unsafe.Add(ref wPtr, i - 7) + s1;
             }
 
             // Initialize working variables
-            uint a = state[0];
-            uint b = state[1];
-            uint c = state[2];
-            uint d = state[3];
-            uint e = state[4];
-            uint f = state[5];
-            uint g = state[6];
-            uint h = state[7];
+            uint a = Unsafe.Add(ref sPtr, 0);
+            uint b = Unsafe.Add(ref sPtr, 1);
+            uint c = Unsafe.Add(ref sPtr, 2);
+            uint d = Unsafe.Add(ref sPtr, 3);
+            uint e = Unsafe.Add(ref sPtr, 4);
+            uint f = Unsafe.Add(ref sPtr, 5);
+            uint g = Unsafe.Add(ref sPtr, 6);
+            uint h = Unsafe.Add(ref sPtr, 7);
 
             // 8 Unrolled compression rounds with implicit variable rotation
-#if NET8_0_OR_GREATER
-            ref uint kPtr = ref MemoryMarshal.GetArrayDataReference(K);
-            ref uint wPtr = ref MemoryMarshal.GetReference(w);
+            ref uint kPtr = ref MemoryMarshalEx.GetArrayDataReference(K);
 
             // notes: unroll only a single round of variable rotation to improve IL generation and cache locality
-            for (int i = 0; i < Rounds; i += 8)
+            for (nuint i = 0; i < Rounds; i += 8)
             {
                 Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, Unsafe.Add(ref kPtr, i + 0), Unsafe.Add(ref wPtr, i + 0));
                 Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, Unsafe.Add(ref kPtr, i + 1), Unsafe.Add(ref wPtr, i + 1));
@@ -108,29 +113,16 @@ internal static partial class SHA256Core
                 Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, Unsafe.Add(ref kPtr, i + 6), Unsafe.Add(ref wPtr, i + 6));
                 Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, Unsafe.Add(ref kPtr, i + 7), Unsafe.Add(ref wPtr, i + 7));
             }
-#else
-            for (int i = 0; i < Rounds; i += 8)
-            {
-                Round(ref a, ref b, ref c, ref d, ref e, ref f, ref g, ref h, K[i + 0], w[i + 0]);
-                Round(ref h, ref a, ref b, ref c, ref d, ref e, ref f, ref g, K[i + 1], w[i + 1]);
-                Round(ref g, ref h, ref a, ref b, ref c, ref d, ref e, ref f, K[i + 2], w[i + 2]);
-                Round(ref f, ref g, ref h, ref a, ref b, ref c, ref d, ref e, K[i + 3], w[i + 3]);
-                Round(ref e, ref f, ref g, ref h, ref a, ref b, ref c, ref d, K[i + 4], w[i + 4]);
-                Round(ref d, ref e, ref f, ref g, ref h, ref a, ref b, ref c, K[i + 5], w[i + 5]);
-                Round(ref c, ref d, ref e, ref f, ref g, ref h, ref a, ref b, K[i + 6], w[i + 6]);
-                Round(ref b, ref c, ref d, ref e, ref f, ref g, ref h, ref a, K[i + 7], w[i + 7]);
-            }
-#endif
 
             // Add compressed chunk to current hash value
-            state[0] += a;
-            state[1] += b;
-            state[2] += c;
-            state[3] += d;
-            state[4] += e;
-            state[5] += f;
-            state[6] += g;
-            state[7] += h;
+            Unsafe.Add(ref sPtr, 0) += a;
+            Unsafe.Add(ref sPtr, 1) += b;
+            Unsafe.Add(ref sPtr, 2) += c;
+            Unsafe.Add(ref sPtr, 3) += d;
+            Unsafe.Add(ref sPtr, 4) += e;
+            Unsafe.Add(ref sPtr, 5) += f;
+            Unsafe.Add(ref sPtr, 6) += g;
+            Unsafe.Add(ref sPtr, 7) += h;
         }
     }
 
