@@ -12,7 +12,7 @@ using System.Buffers;
 /// Tests for the <see cref="RandomNumberGenerator"/> polyfill.
 /// </summary>
 [TestFixture]
-[NonParallelizable]
+[Parallelizable(ParallelScope.All)]
 public class RandomNumberGeneratorTests
 {
     [Test]

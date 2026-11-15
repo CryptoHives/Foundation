@@ -33,6 +33,7 @@ using System.Threading.Tasks;
 /// </para>
 /// </remarks>
 [TestFixture]
+[NonParallelizable]
 [Config(typeof(ThreadingConfig))]
 [BenchmarkCategory("AsyncAutoResetEvent")]
 public class AsyncAutoResetEventSetThenWaitBenchmark : AsyncAutoResetEventBaseBenchmark

@@ -12,6 +12,7 @@ using System;
 /// hardware-accelerated paths bypass entirely on x64 and Arm64.
 /// </summary>
 [TestFixture]
+[Parallelizable(ParallelScope.All)]
 public class AesScalarTableTests
 {
     // FIPS-197 Appendix B / C.1 known-answer vector for AES-128.

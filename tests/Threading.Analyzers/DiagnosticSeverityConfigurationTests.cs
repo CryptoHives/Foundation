@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 /// These analyzers have no such mechanism.
 /// </remarks>
 [TestFixture]
+[Parallelizable(ParallelScope.All)]
 public class DiagnosticSeverityConfigurationTests
 {
     private const string BlockingGetResultCode = @"

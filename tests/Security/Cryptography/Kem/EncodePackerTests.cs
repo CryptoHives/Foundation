@@ -19,6 +19,7 @@ using System;
 /// most likely to mangle.
 /// </remarks>
 [TestFixture]
+[Parallelizable(ParallelScope.All)]
 public class EncodePackerTests
 {
     private const int RandomSeed = 0x4B454D50;

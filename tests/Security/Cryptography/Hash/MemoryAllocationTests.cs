@@ -14,7 +14,7 @@ using System.Linq;
 /// Measures and reports heap memory allocated by each hash algorithm constructor.
 /// </summary>
 [TestFixture]
-[NonParallelizable]
+[Parallelizable(ParallelScope.All)]
 public class MemoryAllocationTests
 {
     /// <summary>
