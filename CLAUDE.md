@@ -15,7 +15,7 @@ dotnet pack src/Security/Cryptography/Cryptography.csproj -c Release
 dotnet test /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>
 ```
 
-Target frameworks are centrally controlled by `targets.props` and vary by IDE/OS. On macOS, only `net10.0` is targeted.
+Target frameworks are centrally controlled by `targets.props` and vary by IDE/OS. On macOS, only `net11.0` is targeted. net11.0+ builds compile with `runtime-async=on` unless `/p:RuntimeAsync=false` is passed.
 
 ## Code Constraints (enforced globally via `common.props`)
 

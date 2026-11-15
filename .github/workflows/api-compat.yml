@@ -39,7 +39,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.x
+          dotnet-version: 11.x
 
       - name: Install Microsoft.DotNet.ApiCompat.Tool
         run: dotnet tool install --global Microsoft.DotNet.ApiCompat.Tool

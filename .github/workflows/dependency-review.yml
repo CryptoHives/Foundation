@@ -69,7 +69,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       # Restore (not build) is TFM-agnostic for packages, so the net4x/netstandard
       # projects resolve fine on Linux; only building them would need targeting packs.

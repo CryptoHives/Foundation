@@ -8,7 +8,7 @@
 [CmdletBinding()]
 param(
     [Parameter(HelpMessage = "Target framework to test (e.g., net10.0, net8.0, net48)")]
-    [ValidateSet("net10.0", "net8.0", "net48")]
+    [ValidateSet("net11.0", "net10.0", "net8.0", "net48")]
     [string]$Framework = "net10.0",
 
     [Parameter(HelpMessage = "Specific test project to run (e.g., Threading, Memory, or empty for all)")]

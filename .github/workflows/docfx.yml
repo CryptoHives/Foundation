@@ -75,11 +75,11 @@ jobs:
     - name: Dotnet Setup
       uses: actions/setup-dotnet@v6
       with:
-        # 8.x for docfx itself, which ships a net8.0 tool; 10.x so the API metadata step can load
-        # the projects, whose target frameworks include net10.0.
+        # 8.x for docfx itself, which ships a net8.0 tool; 11.x so the API metadata step can load
+        # the projects, whose target frameworks include net11.0.
         dotnet-version: |
           8.x
-          10.x
+          11.x
 
     - name: Python Setup
       uses: actions/setup-python@v7

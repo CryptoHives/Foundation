@@ -88,10 +88,10 @@ param(
     [string[]]$Filter = @("*"),
 
     [Parameter(HelpMessage = "Target framework to build against (e.g., net10.0, net8.0)")]
-    [ValidateSet("net10.0", "net8.0", "net48")]
+    [ValidateSet("net11.0", "net10.0", "net8.0", "net48")]
     [string]$Framework = "net10.0",
 
-    [Parameter(HelpMessage = "Comma-separated list of runtimes to benchmark (e.g., 'net10.0', 'net10.0,net8.0')")]
+    [Parameter(HelpMessage = "Comma-separated list of runtimes to benchmark (e.g., 'net10.0', 'net10.0,net8.0'); empty runs in process on the -Framework runtime")]
     [string]$Runtimes = "net10.0",
 
     [Parameter(HelpMessage = "Build configuration")]
@@ -117,6 +117,9 @@ param(
 
     [Parameter(HelpMessage = "Shutdown dotnet build servers after run to avoid lingering MSBuild node-reuse processes")]
     [switch]$ShutdownBuildServers,
+
+    [Parameter(HelpMessage = "Build net11.0+ with classic compiler-generated async state machines instead of runtime-async")]
+    [switch]$NoRuntimeAsync,
 
     # Deliberately not [ValidateSet]: pwsh -File (which the .cmd wrapper uses)
     # passes arguments as literal strings, so "AVX512,AVX2" arrives as one token and
@@ -161,8 +164,8 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - Project — Threading | Cryptography - select one"
     Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
     Write-Host "   - Filter — one or more string globs applied to full benchmark name — \"*\"  "
-    Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
-    Write-Host "   - Runtimes — comma list (e.g. \"net10.0, net8.0\") — \"net10.0\"  "
+    Write-Host "   - Framework — net11.0 | net10.0 | net8.0 | net48 — net10.0  "
+    Write-Host "   - Runtimes — comma list (e.g. \"net10.0, net8.0\"), empty runs in process on the -Framework runtime — \"net10.0\"  "
     Write-Host "   - Configuration — Release | Debug — Release  "
     Write-Host "   - Verbosity — q | m | n | d | diag — n  "
     Write-Host "   - List — switch (show benchmarks) — off  "
@@ -170,6 +173,7 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
     Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
     Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
+    Write-Host "   - NoRuntimeAsync — switch (net11.0+: compiler state machines instead of runtime-async) — off  "
     Write-Host "   - DisableIsa — AVX512 | AVX2 | SSE42 | SSSE3 | AES | AdvSimd (comma list) — none  "
     Write-Host "   - PinToCore — one or more 0-based logical CPUs (e.g. 4 or 4,6) — none (unpinned)  "
     Write-Host "   - PowerPlan — UserPowerPlan | Balanced | PowerSaver | HighPerformance | UltimatePerformance | GUID — none (BDN forces HighPerformance)  "
@@ -464,6 +468,9 @@ Write-Host "  Filter:        $filterDisplay"
 Write-Host "  Framework:     $Framework"
 Write-Host "  Runtimes:      $Runtimes"
 Write-Host "  Configuration: $Configuration"
+if ($NoRuntimeAsync) {
+    Write-Host "  RuntimeAsync:  off"
+}
 try {
     $resolvedTestProject = (Resolve-Path -LiteralPath $testProject -ErrorAction Stop).Path
 }
@@ -650,6 +657,12 @@ function Set-BenchmarkEnv {
     [Environment]::SetEnvironmentVariable($Name, $Value)
 }
 
+# An environment variable rather than /p:, because BenchmarkDotNet rebuilds the project in a
+# child process that never sees the properties given to dotnet run.
+if ($NoRuntimeAsync) {
+    Set-BenchmarkEnv -Name "RuntimeAsync" -Value "false"
+}
+
 if ($requestedIsa.Count -gt 0) {
     Write-Host "ISA mask requested: $($requestedIsa -join ', ')" -ForegroundColor Yellow
     foreach ($isa in $requestedIsa) {
@@ -792,8 +805,15 @@ else {
             $dotnetArgs += [string]$pattern
         }
     }
-    $dotnetArgs += "--runtimes"
-    $dotnetArgs += [string]$Runtimes
+    # An empty -Runtimes runs in process, for a framework BenchmarkDotNet has no moniker for yet:
+    # its out-of-process toolchain rejects an unrecognised host runtime during validation.
+    if ([string]::IsNullOrWhiteSpace($Runtimes)) {
+        $dotnetArgs += "--inProcess"
+    }
+    else {
+        $dotnetArgs += "--runtimes"
+        $dotnetArgs += [string]$Runtimes
+    }
 }
 
 # Add any extra arguments

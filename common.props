@@ -32,6 +32,16 @@
     <EnableExperimentalAlgorithms>true</EnableExperimentalAlgorithms>
   </PropertyGroup>
 
+  <!-- Async methods are compiled by the JIT instead of Roslyn state machines; /p:RuntimeAsync=false builds the classic form. -->
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0')) AND '$(RuntimeAsync)' != 'false'">
+    <Features>$(Features);runtime-async=on</Features>
+  </PropertyGroup>
+
+  <!-- Features is not part of the incremental compile check; without this, toggling RuntimeAsync reuses the stale assembly. -->
+  <ItemGroup>
+    <CoreCompileCache Include="$(Features)" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(EnableExperimentalAlgorithms)' == 'true'">
     <DefineConstants>$(DefineConstants);EXPERIMENTAL</DefineConstants>
   </PropertyGroup>
