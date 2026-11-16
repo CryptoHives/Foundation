@@ -29,7 +29,7 @@ using System.Threading;
 /// a smaller group and simply contribute fewer rows, instead of being emulated into an unfair comparison.
 /// </para>
 /// </remarks>
-public partial class CancellationType : IFormattable
+public partial class CancellationType : IFormattable, IEquatable<CancellationType>
 {
     /// <summary>
     /// A timeout long enough that it never elapses during a benchmark, so what gets measured is the cost
@@ -151,6 +151,23 @@ public partial class CancellationType : IFormattable
     public override string ToString()
     {
         return Description;
+    }
+
+    // BenchmarkDotNet groups report rows by argument equality, so the ProtoPromise variants must
+    // equal the variant of the same name to share its group and baseline.
+    public bool Equals(CancellationType? other)
+    {
+        return other is not null && string.Equals(Description, other.Description, StringComparison.Ordinal);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is CancellationType other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return StringComparer.Ordinal.GetHashCode(Description);
     }
 }
 
