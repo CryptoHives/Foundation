@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     param_label TEXT,              -- e.g. '10' (contention level; NULL for non-parameterized benchmarks)
     param_value INTEGER,           -- 10 (for numeric sort/filter; NULL alongside label)
     mean_ns     REAL    NOT NULL,
-    stddev_ns   REAL,              -- usually NULL: ThreadingConfig hides the StdDev/Error columns
+    stddev_ns   REAL,              -- NULL for the earlier runs, recorded while ThreadingConfig hid StdDev/Error
     allocated_bytes REAL,
     -- The report's Ratio column, kept solely to identify the declared baseline: every Threading
     -- benchmark marks one method `[Benchmark(Baseline = true)]`, and BenchmarkDotNet records that

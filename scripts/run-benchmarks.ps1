@@ -118,6 +118,10 @@ param(
     [Parameter(HelpMessage = "Shutdown dotnet build servers after run to avoid lingering MSBuild node-reuse processes")]
     [switch]$ShutdownBuildServers,
 
+    [Parameter(HelpMessage = "Number of separate benchmark processes per case (BenchmarkDotNet LaunchCount); 0 keeps BenchmarkDotNet's default of one. Three averages out per-process effects such as code alignment, at three times the run time")]
+    [ValidateRange(0, 10)]
+    [int]$LaunchCount = 0,
+
     [Parameter(HelpMessage = "Build net11.0+ with classic compiler-generated async state machines instead of runtime-async")]
     [switch]$NoRuntimeAsync,
 
@@ -173,6 +177,7 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
     Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
     Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
+    Write-Host "   - LaunchCount — int (0..10), processes per benchmark case; 0 keeps BenchmarkDotNet's default of 1 — 0  "
     Write-Host "   - NoRuntimeAsync — switch (net11.0+: compiler state machines instead of runtime-async) — off  "
     Write-Host "   - DisableIsa — AVX512 | AVX2 | SSE42 | SSSE3 | AES | AdvSimd (comma list) — none  "
     Write-Host "   - PinToCore — one or more 0-based logical CPUs (e.g. 4 or 4,6) — none (unpinned)  "
@@ -883,6 +888,11 @@ if ($null -ne $affinityMask) {
     $dotnetArgs += [string]$affinityMask
 }
 
+if ($LaunchCount -gt 0 -and -not $List) {
+    $dotnetArgs += "--launchCount"
+    $dotnetArgs += [string]$LaunchCount
+}
+
 if ($addArtifactsArg -and -not $List) {
     $dotnetArgs += "--artifacts"
     $dotnetArgs += $artifactsDir
@@ -924,6 +934,7 @@ if (-not $List) {
         pinToCore        = if ($pinnedCores.Count -gt 0) { @($pinnedCores | Sort-Object -Unique) } else { $null }
         powerPlan        = if ($PowerPlan) { $PowerPlan } else { $null }
         cooldownSeconds  = $CooldownSeconds
+        launchCount      = if ($LaunchCount -gt 0) { $LaunchCount } else { $null }
         dryRun           = [bool]$DryRun
         codeCommit       = if ($headCommit) { $headCommit.Trim() } else { $null }
         workingTreeClean = if ($headCommit) { -not $trackedChanges } else { $null }
