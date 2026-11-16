@@ -71,6 +71,7 @@ dlldata.c
 
 # Benchmark Results
 BenchmarkRun*.log
+**/.bdn/
 **/BenchmarkDotNet.Artifacts/results/**
 !**/BenchmarkDotNet.Artifacts/results/*.md
 

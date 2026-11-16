@@ -3,7 +3,7 @@
 
 # run-benchmarks.ps1
 # Runs BenchmarkDotNet benchmarks for the Threading or Cryptography libraries
-# Usage: .\scripts\run-benchmarks.ps1 -Project Threading [-Filter "*AsyncLock*"] [-Framework net10.0]
+# Usage: .\scripts\run-benchmarks.ps1 -Project Threading [-Filter "*AsyncLock*"] [-Framework net11.0]
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE  (runs Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3)
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher  (runs SM4, ARIA, Camellia, Kuznyechik, Magma, Kalyna, SEED)
@@ -87,12 +87,12 @@ param(
     [Parameter(HelpMessage = "Filter for benchmark names (e.g., '*AsyncLock*', '*SHA256*')")]
     [string[]]$Filter = @("*"),
 
-    [Parameter(HelpMessage = "Target framework to build against (e.g., net10.0, net8.0)")]
+    [Parameter(HelpMessage = "Target framework to build against (e.g., net11.0, net10.0)")]
     [ValidateSet("net11.0", "net10.0", "net8.0", "net48")]
-    [string]$Framework = "net10.0",
+    [string]$Framework = "net11.0",
 
-    [Parameter(HelpMessage = "Comma-separated list of runtimes to benchmark (e.g., 'net10.0', 'net10.0,net8.0'); empty runs in process on the -Framework runtime")]
-    [string]$Runtimes = "net10.0",
+    [Parameter(HelpMessage = "Comma-separated list of runtimes to benchmark (e.g., 'net11.0', 'net11.0,net10.0'); empty runs in process on the -Framework runtime")]
+    [string]$Runtimes = "net11.0",
 
     [Parameter(HelpMessage = "Build configuration")]
     [ValidateSet("Release", "Debug")]
@@ -164,8 +164,8 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - Project — Threading | Cryptography - select one"
     Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
     Write-Host "   - Filter — one or more string globs applied to full benchmark name — \"*\"  "
-    Write-Host "   - Framework — net11.0 | net10.0 | net8.0 | net48 — net10.0  "
-    Write-Host "   - Runtimes — comma list (e.g. \"net10.0, net8.0\"), empty runs in process on the -Framework runtime — \"net10.0\"  "
+    Write-Host "   - Framework — net11.0 | net10.0 | net8.0 | net48 — net11.0  "
+    Write-Host "   - Runtimes — comma list (e.g. \"net10.0, net8.0\"), empty runs in process on the -Framework runtime — \"net11.0\"  "
     Write-Host "   - Configuration — Release | Debug — Release  "
     Write-Host "   - Verbosity — q | m | n | d | diag — n  "
     Write-Host "   - List — switch (show benchmarks) — off  "

@@ -26,7 +26,7 @@
   <ItemGroup Label="Tests">
     <PackageVersion Include="AsyncKeyedLock" Version="8.1.2" />
     <PackageVersion Include="AsyncUtilities" Version="1.1.1" />
-    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.16.0-preview.2" />
     <PackageVersion Include="Blake3" Version="3.0.2" />
     <PackageVersion Include="Blake3.Managed" Version="1.10.0" />
     <PackageVersion Include="Blake3.Native" Version="3.0.2" />

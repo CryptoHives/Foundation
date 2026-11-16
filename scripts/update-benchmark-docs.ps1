@@ -27,7 +27,7 @@ param(
     [string]$CodeCommit,
 
     [Parameter(HelpMessage = "Target framework the benchmarks ran under. Must match run-benchmarks.ps1 -Framework, since the competitor package versions are read from that framework's resolved dependency graph.")]
-    [string]$TargetFramework = "net10.0",
+    [string]$TargetFramework = "net11.0",
 
     [Parameter(HelpMessage = "Free-text note on settings the reports do not capture (for example: 'High performance plan, max processor state 99% (boost off)'). Written to machine-spec.md and run.json.")]
     [string]$Comment,
