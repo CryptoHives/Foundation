@@ -264,7 +264,7 @@ the 4n-byte private key and the 2n-byte public key, both zeroed on `Dispose`.
    ```
 2. Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
    ```
-   cryptography/<code-commit>/<platform>/<framework>/
+   cryptography/<code-commit>/<platform>/<framework>[-<run-config>]/
        run.json          what the numbers measure, and against which library versions
        machine-spec.md   the machine and runtime they were measured on
        <scenario>.md     one report per benchmark class
@@ -279,14 +279,22 @@ the 4n-byte private key and the 2n-byte public key, both zeroed on `Dispose`.
    (`-Runtimes "net8.0, net10.0"`) works too and needs neither: BenchmarkDotNet emits a `Runtime` column
    when the runtime varies, and each row is recorded against its own framework.
 
+   A run that varies more than the framework is a run configuration of its own and gets its own
+   directory, `<framework>-<run-config>`: `classic-async` for `-NoRuntimeAsync` on net11.0 and later,
+   `isa-<tier>` for `-DisableIsa`, named after the tier the masked run actually measures (`isa-avx2`
+   for `-DisableIsa AVX512`), and `inprocess` for an empty `-Runtimes`. `run-benchmarks.ps1` writes such
+   a run to `BenchmarkDotNet.Artifacts/<run-config>/` with a `run-config.json` recording the settings,
+   the commit built and the start time; record it with `-RunConfig <run-config>`, as the script prints.
+   The dashboards list it as a build of its own beside the default one.
+
    Write the reports into a worktree of that branch:
    ```powershell
    git worktree add ../foundation-bench benchmarks
    .\scripts\update-benchmark-docs.ps1 -Project Cryptography -DestDir ../foundation-bench/cryptography
    ```
    The script derives a platform id from the report's machine-spec preamble (override with `-PlatformId`
-   for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass
-   `-CodeCommit` when recording after the fact. It never commits or pushes: review the result and commit
+   for self-reported machines) and writes `run.json`, taking the code commit from `run-config.json`, or
+   from `HEAD` for a run without one — pass `-CodeCommit` to override it. It never commits or pushes: review the result and commit
    in that worktree when the run is worth keeping.
 
    A new benchmark class also needs an entry in `scripts/update-benchmark-docs.ps1`, which maps report

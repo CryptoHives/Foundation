@@ -776,6 +776,61 @@ if ($pinnedCores.Count -gt 0) {
     }
 }
 
+# ---------------------------------------------------------------------------
+# Run configuration: what this run varies beyond the framework, which the reports do not show.
+# ---------------------------------------------------------------------------
+
+# The tier the masked run really measures, from the probe rather than from the switches, so
+# masking AVX512 on an AVX-512 host and running unmasked on an AVX2-only host both say avx2.
+function Get-IsaTier {
+    param([hashtable]$Resolved)
+    foreach ($tier in "AVX512", "AVX2", "SSE42", "SSSE3", "AdvSimd") {
+        if ($Resolved[$tier]) { return $tier.ToLowerInvariant() }
+    }
+    return "scalar"
+}
+
+$runtimeAsyncApplies = ($Framework -match '^net(\d+)\.') -and ([int]$Matches[1] -ge 11)
+$configTags = @()
+if ($NoRuntimeAsync -and $runtimeAsyncApplies) { $configTags += "classic-async" }
+if ($requestedIsa.Count -gt 0) {
+    $isaTag = "isa-" + (Get-IsaTier -Resolved $resolved)
+    if ($requestedIsa -contains "AES") { $isaTag += "-noaes" }
+    $configTags += $isaTag
+}
+if ([string]::IsNullOrWhiteSpace($Runtimes)) { $configTags += "inprocess" }
+$runConfig = $configTags -join "-"
+
+# Each configuration gets its own artifacts directory, so reports of a default run and of a
+# masked one never mix in one results directory that is then recorded as one run.
+$artifactsDir = $null
+$customArtifacts = $false
+if ($ExtraArgs) {
+    $artifactsIndex = [array]::IndexOf([string[]]$ExtraArgs, "--artifacts")
+    if ($artifactsIndex -ge 0 -and $artifactsIndex + 1 -lt $ExtraArgs.Count) {
+        $artifactsDir = [string]$ExtraArgs[$artifactsIndex + 1]
+        $customArtifacts = $true
+        if (-not [System.IO.Path]::IsPathRooted($artifactsDir)) {
+            $artifactsDir = Join-Path $resolvedTestProject $artifactsDir
+        }
+    }
+}
+$addArtifactsArg = $false
+if (-not $artifactsDir) {
+    $artifactsDir = Join-Path $resolvedTestProject "BenchmarkDotNet.Artifacts"
+    if ($runConfig) {
+        $artifactsDir = Join-Path $artifactsDir $runConfig
+        $addArtifactsArg = $true
+    }
+}
+$resultsPath = Join-Path $artifactsDir "results"
+
+if ($runConfig) {
+    Write-Host "Run configuration: $runConfig" -ForegroundColor Yellow
+    Write-Host "  artifacts: $artifactsDir" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
 # Build the command arguments
 $dotnetArgs = @(
     "run"
@@ -828,6 +883,11 @@ if ($null -ne $affinityMask) {
     $dotnetArgs += [string]$affinityMask
 }
 
+if ($addArtifactsArg -and -not $List) {
+    $dotnetArgs += "--artifacts"
+    $dotnetArgs += $artifactsDir
+}
+
 # Show command. Quote any argument a shell would otherwise treat specially (wildcards,
 # whitespace, etc.) so this line is safe to copy-paste and re-run directly - the actual
 # invocation below uses Start-Process -ArgumentList and never goes through a shell, so it
@@ -844,6 +904,36 @@ if ($DryRun) {
     $dotnetArgs += "Dry"
     Write-Host "[DRY RUN] Running all benchmarks with minimal iterations (Job.Dry)" -ForegroundColor Yellow
     Write-Host ""
+}
+
+# Read back by update-benchmark-docs.ps1, which records it into the run's run.json. Written before
+# the run starts, so reports older than startedAt can be told apart from this run's.
+$runSettingsFile = Join-Path $resultsPath "run-config.json"
+$runSettings = $null
+if (-not $List) {
+    $headCommit = git -C $resolvedTestProject rev-parse --verify --quiet HEAD 2>$null
+    $trackedChanges = git -C $resolvedTestProject status --porcelain --untracked-files=no 2>$null
+    $runSettings = [ordered]@{
+        runConfig        = $runConfig
+        framework        = $Framework
+        runtimes         = $Runtimes
+        configuration    = $Configuration
+        runtimeAsync     = if ($runtimeAsyncApplies) { -not $NoRuntimeAsync } else { $null }
+        inProcess        = [string]::IsNullOrWhiteSpace($Runtimes)
+        isa              = if ($requestedIsa.Count -gt 0) { [ordered]@{ disabled = @($requestedIsa); resolved = $isaLine } } else { $null }
+        pinToCore        = if ($pinnedCores.Count -gt 0) { @($pinnedCores | Sort-Object -Unique) } else { $null }
+        powerPlan        = if ($PowerPlan) { $PowerPlan } else { $null }
+        cooldownSeconds  = $CooldownSeconds
+        dryRun           = [bool]$DryRun
+        codeCommit       = if ($headCommit) { $headCommit.Trim() } else { $null }
+        workingTreeClean = if ($headCommit) { -not $trackedChanges } else { $null }
+        command          = $cmdDisplay
+        startedAt        = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        completedAt      = $null
+    }
+    New-Item -ItemType Directory -Force -Path $resultsPath | Out-Null
+    [System.IO.File]::WriteAllText($runSettingsFile, ($runSettings | ConvertTo-Json -Depth 4) + "`n",
+                                   (New-Object System.Text.UTF8Encoding $false))
 }
 
 # Change to test project directory and run
@@ -891,20 +981,28 @@ try {
         exit $exitCode
     }
 
+    if ($runSettings) {
+        $runSettings.completedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        [System.IO.File]::WriteAllText($runSettingsFile, ($runSettings | ConvertTo-Json -Depth 4) + "`n",
+                                       (New-Object System.Text.UTF8Encoding $false))
+    }
+
     Write-Host ""
     Write-Host "========================================"
     Write-Host " Benchmarks completed successfully!"
     Write-Host "========================================"
     Write-Host ""
     Write-Host "Results saved to:"
-    $resultsPath = Join-Path $resolvedTestProject 'BenchmarkDotNet.Artifacts' 'results'
     Write-Host "  $resultsPath"
     Write-Host ""
-    
+
     # Recording is a separate, deliberate step: not every local run is worth keeping as history.
+    $recordArgs = "-Project $Project"
+    if ($addArtifactsArg) { $recordArgs += " -RunConfig $runConfig" }
+    elseif ($customArtifacts) { $recordArgs += " -SourceDir `"$resultsPath`"" }
     Write-Host "To record this run into the archive on the benchmarks branch:"
     Write-Host "  git worktree add ../foundation-bench benchmarks"
-    Write-Host "  .\scripts\update-benchmark-docs.ps1 -Project $Project -DestDir ../foundation-bench/$($Project.ToLowerInvariant())"
+    Write-Host "  .\scripts\update-benchmark-docs.ps1 $recordArgs -DestDir ../foundation-bench/$($Project.ToLowerInvariant())"
     Write-Host ""
     Write-Host "Then commit in that worktree. To rebuild the dashboard database locally:"
     Write-Host "  .\scripts\build-trends-database.ps1"
