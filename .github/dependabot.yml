@@ -12,20 +12,20 @@ updates:
     open-pull-requests-limit: 10
     labels: 
       - "nuget"
-    # 11.x drops the net8.0 assets; stay on 10.x while net8.0 is targeted.
+    # Directory.Packages.props holds a 10.x and an 11.x line per target; keep each on its major.
     ignore:
       - dependency-name: "Microsoft.Bcl.AsyncInterfaces"
-        versions: [">= 11.0.0"]
+        update-types: ["version-update:semver-major"]
       - dependency-name: "Microsoft.Bcl.Memory"
-        versions: [">= 11.0.0"]
+        update-types: ["version-update:semver-major"]
       - dependency-name: "Microsoft.Bcl.TimeProvider"
-        versions: [">= 11.0.0"]
+        update-types: ["version-update:semver-major"]
       - dependency-name: "Microsoft.Extensions.ObjectPool"
-        versions: [">= 11.0.0"]
+        update-types: ["version-update:semver-major"]
       - dependency-name: "System.Formats.Asn1"
-        versions: [">= 11.0.0"]
+        update-types: ["version-update:semver-major"]
       - dependency-name: "System.Text.Json"
-        versions: [">= 11.0.0"]
+        update-types: ["version-update:semver-major"]
     groups:
       build-tooling:
         applies-to: version-updates
