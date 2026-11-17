@@ -12,6 +12,20 @@ updates:
     open-pull-requests-limit: 10
     labels: 
       - "nuget"
+    # 11.x drops the net8.0 assets; stay on 10.x while net8.0 is targeted.
+    ignore:
+      - dependency-name: "Microsoft.Bcl.AsyncInterfaces"
+        versions: [">= 11.0.0"]
+      - dependency-name: "Microsoft.Bcl.Memory"
+        versions: [">= 11.0.0"]
+      - dependency-name: "Microsoft.Bcl.TimeProvider"
+        versions: [">= 11.0.0"]
+      - dependency-name: "Microsoft.Extensions.ObjectPool"
+        versions: [">= 11.0.0"]
+      - dependency-name: "System.Formats.Asn1"
+        versions: [">= 11.0.0"]
+      - dependency-name: "System.Text.Json"
+        versions: [">= 11.0.0"]
     groups:
       build-tooling:
         applies-to: version-updates
