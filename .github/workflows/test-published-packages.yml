@@ -137,11 +137,11 @@ jobs:
         # Without the strong-name key only Memory can be built against the signed packages,
         # so the matrix narrows to it rather than failing every leg on CS0281.
         csproj: ${{ needs.resolve.outputs.signing == 'true' && fromJSON('[{"name":"Threading","folder":"./tests"},{"name":"Memory","folder":"./tests"},{"name":"Cryptography","folder":"./tests/Security"}]') || fromJSON('[{"name":"Memory","folder":"./tests"}]') }}
-        # The packages ship net462/net472/netstandard2.0/netstandard2.1/net8.0/net10.0; these
-        # three TFMs cover the modern assets plus the .NET Framework ones (through net48).
+        # The packages ship net462/net472/netstandard2.0/netstandard2.1/net8.0/net10.0/net11.0;
+        # these three TFMs cover the two newest assets plus the .NET Framework ones (through net48).
         framework:
+          - 'net11.0'
           - 'net10.0'
-          - 'net8.0'
           - 'net48'
         exclude:
           # .NET Framework only builds on Windows.
@@ -174,8 +174,8 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
-          8.0.x
           10.0.x
+          11.0.x
 
     - name: Restore the strong-name key
       if: ${{ needs.resolve.outputs.signing == 'true' }}

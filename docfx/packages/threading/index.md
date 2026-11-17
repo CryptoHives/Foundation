@@ -29,8 +29,9 @@ Most popular async synchronization libraries allocate a `Task` and/or `TaskCompl
 dotnet add package CryptoHives.Foundation.Threading
 ```
 
-**Target frameworks:** `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0`. No
-dependency on any other CryptoHives package.
+**Target frameworks:** `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0`, `net11.0`.
+No dependency on any other CryptoHives package. The `net11.0` build is compiled with runtime
+async, so its methods carry no compiler-generated state machines; consumers need no setting for it.
 
 > **Note:** This package does not include [Threading Analyzers](../threading.analyzers/index.md) automatically.
 

@@ -201,7 +201,7 @@ The benchmarks compare various `AsyncLock` implementations:
 - AsyncNonKeyedLocker: An implementation from the AsyncKeyedLock.AsyncNonKeyedLocker library which uses SemaphoreSlim internally
 - SemaphoreSlim: The .NET built-in synchronization primitive
 - VS.Threading AsyncSemaphore: The Microsoft.VisualStudio.Threading semaphore used as a lock-compatible baseline
-- DotNextAsyncExclusiveLock (net10.0 only): The `DotNext.Threading.AsyncExclusiveLock` implementation, which has no disposable releaser - callers call `Release()` explicitly
+- DotNextAsyncExclusiveLock (net10.0 and later): The `DotNext.Threading.AsyncExclusiveLock` implementation, which has no disposable releaser - callers call `Release()` explicitly
 
 ### Single Lock Benchmark
 

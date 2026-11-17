@@ -252,6 +252,7 @@ appear side by side rather than only those from a fixed set of CI hosts.
 
 ## Platform Support
 
+- .NET 11.0
 - .NET 10.0
 - .NET 8.0
 - .NET Framework 4.7.2 (Cryptography only)

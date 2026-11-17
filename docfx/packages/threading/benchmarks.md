@@ -103,8 +103,14 @@ From repository root:
   # Filter to specific benchmarks
   .\scripts\run-benchmarks.ps1 -Filter "*AsyncLock*"
 
-  # Run on specific framework and runtime
+  # Run on another framework and runtime (the default is net11.0)
   .\scripts\run-benchmarks.ps1 -Framework net10.0 -Runtimes net10.0
+
+  # Build net11.0 with compiler-generated state machines instead of runtime async
+  .\scripts\run-benchmarks.ps1 -NoRuntimeAsync
+
+  # Run each case in three processes, to average out per-process effects
+  .\scripts\run-benchmarks.ps1 -LaunchCount 3
 
   # List available benchmarks
   .\scripts\run-benchmarks.ps1 -List
@@ -120,14 +126,14 @@ From repository root:
 
   ```cmd
   cd tests\Threading
-  dotnet run -c Release --framework net10.0 -- --runtimes net10.0 --filter "*AsyncLock*"
+  dotnet run -c Release --framework net11.0 -- --runtimes net11.0 --filter "*AsyncLock*"
   ```
 
 Notes:
 - Use `Release` builds for meaningful results.
 - All benchmarks are also run as tests in NUnit to validate correctness.
 - The test runner disables some BenchmarkDotNet validators because the test assembly references NUnit; keep the provided `ManualConfig` in `tests/Common/Main.cs`.
-- Switch computer to high-performance power mode and close other applications for more stable results.
+- BenchmarkDotNet switches to the High performance power plan for the run and restores the previous plan afterwards; `-PowerPlan` overrides it. Close other applications for more stable results.
 - Benchmarks are non-parallelizable; run them on an otherwise idle machine for stable output.
 
 ### Where results appear

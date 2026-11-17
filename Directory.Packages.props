@@ -15,8 +15,10 @@
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>
   <!--
-    Runtime packages, versioned by target. Below net11.0 some 11.x packages fall back to their
-    netstandard2.0 assets, which on net8.0 clash with in-box types such as TimeProvider.
+    Microsoft Runtime packages which diverged over time, versioned by target. 
+    Below net11.0 some 11.x packages fall back to their netstandard2.0 assets, 
+    which on net8.0 clash with in-box types such as TimeProvider. 
+    So the 10.x LTS version is used instead.
   -->
   <ItemGroup Label="Runtime" Condition="'$(TargetFramework)' != '' AND $([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="11.0.0" />
@@ -25,6 +27,7 @@
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="11.0.0" />
     <PackageVersion Include="System.Formats.Asn1" Version="11.0.0" />
     <PackageVersion Include="System.Text.Json" Version="11.0.0" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
   </ItemGroup>
   <ItemGroup Label="Runtime (pre-net11.0)" Condition="'$(TargetFramework)' == '' OR !$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.15" />
@@ -33,6 +36,7 @@
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.15" />
     <PackageVersion Include="System.Formats.Asn1" Version="10.0.15" />
     <PackageVersion Include="System.Text.Json" Version="10.0.15" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
   </ItemGroup>
   <!--
     Referenced only by tests/*.csproj, never shipped as a dependency of a
@@ -72,7 +76,6 @@
     <PackageVersion Include="OpenGost.Security.Cryptography" Version="0.3.0" />
     <PackageVersion Include="ProtoPromise" Version="3.5.2" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
-    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
   </ItemGroup>
   <!--
     Repo-wide build tooling, pulled in via common.props/version.props <- Directory.Build.props. 

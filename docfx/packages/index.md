@@ -6,7 +6,7 @@ _description: The four independent CryptoHives.Foundation NuGet packages — Mem
 # Packages
 
 The CryptoHives .NET Foundation is a set of independent NuGet packages — take only the one you need.
-All of them target `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0` and `net10.0`
+All of them target `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0` and `net11.0`
 (the cryptography package adds `net472`), and none of them depend on each other.
 
 | Package | What it gives you | NuGet |

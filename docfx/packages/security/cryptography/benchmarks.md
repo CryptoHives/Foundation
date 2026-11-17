@@ -260,7 +260,7 @@ the 4n-byte private key and the 2n-byte public key, both zeroed on `Dispose`.
 
    # Direct invocation
    cd tests/Security/Cryptography
-   dotnet run -c Release --framework net10.0 -- --filter *SHA256*
+   dotnet run -c Release --framework net11.0 -- --filter *SHA256*
    ```
 2. Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
    ```
@@ -316,7 +316,7 @@ the 4n-byte private key and the 2n-byte public key, both zeroed on `Dispose`.
    the benchmark project's resolved NuGet graph. The dashboard shows that version in each point's
    tooltip, and marks any compared row whose library differs between the two runs — a series can step
    because the library it measures shipped a release, independently of any change here. Pass
-   `-TargetFramework` if the benchmarks did not run on the default `net10.0`.
+   `-TargetFramework` if the benchmarks did not run on the default `net11.0`.
 3. The dashboard database is a derived artifact, not a tracked file — SQLite rewrites pages throughout on
    every change, so committing it added a fresh multi-megabyte blob per rebuild for data that is fully
    reproducible from the archive. The docs workflow builds it, and so can you:

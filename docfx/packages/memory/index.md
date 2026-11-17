@@ -17,7 +17,7 @@ a consumer without copying it at all. This package packages those patterns as dr
 memory and an opt-in `clearArray` flag on every type that owns it, for callers holding key
 material. It complements the modern .NET memory APIs rather than replacing them.
 
-**Target frameworks:** `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0`. No
+**Target frameworks:** `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0`, `net11.0`. No
 dependency on any other CryptoHives package.
 
 ## Installation
