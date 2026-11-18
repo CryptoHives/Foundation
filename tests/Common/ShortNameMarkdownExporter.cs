@@ -44,7 +44,8 @@ public sealed class ShortNameMarkdownExporter : IExporter
     public async ValueTask ExportAsync(Summary summary, ILogger logger, CancellationToken cancellationToken)
     {
         var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
-        var filePath = Path.Combine(summary.ResultsDirectoryPath, Path.GetFileName($"{typeName}-report.md"));
+        var fileName = Path.GetFileName($"{typeName}-report.md");
+        var filePath = Path.Join(summary.ResultsDirectoryPath, fileName);
 
         using (var writer = new CancelableStreamWriter(File.Create(filePath)))
         {
