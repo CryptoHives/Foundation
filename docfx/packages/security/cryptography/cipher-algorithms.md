@@ -425,18 +425,19 @@ public sealed class Aes256 : SymmetricCipher
 > - ECB mode is insecure for multi-block data — use CBC or CTR
 > - CBC mode requires unpredictable IVs and is vulnerable to padding oracle attacks without authentication
 
+`Create(key)` fixes the key for the instance's lifetime: `Key`, `KeySize` and `GenerateKey` then throw, so
+the key can be used but neither read back nor replaced. `Create()` keeps the settable `SymmetricAlgorithm`
+behaviour for code that assigns `Key` later.
+
 **Usage — CTR Mode (Recommended):**
 ```csharp
 using CryptoHives.Foundation.Security.Cryptography.Cipher;
 
-// Create AES-256 in CTR mode
-using var aes = Aes256.Create();
+// Create AES-256 in CTR mode; the 32-byte key is fixed for the instance's lifetime
+using var aes = Aes256.Create(key);
 aes.Mode = CipherMode.CTR;
 aes.Padding = PaddingMode.None; // CTR does not require padding
-
-// Set key and IV
-aes.Key = new byte[32]; // 256-bit key
-aes.IV = new byte[16]; // 128-bit nonce/counter
+aes.IV = nonce; // 128-bit nonce/counter
 
 // Single-operation
 byte[] ciphertext = aes.Encrypt(plaintext);
@@ -445,10 +446,9 @@ byte[] decrypted = aes.Decrypt(ciphertext);
 
 **Usage — CBC Mode:**
 ```csharp
-using var aes = Aes128.Create();
+using var aes = Aes128.Create(key); // 128-bit key
 aes.Mode = CipherMode.CBC;
 aes.Padding = PaddingMode.PKCS7;
-aes.Key = new byte[16]; // 128-bit key
 aes.GenerateIV(); // Random IV
 
 byte[] ciphertext = aes.Encrypt(plaintext);
@@ -457,11 +457,10 @@ byte[] decrypted = aes.Decrypt(ciphertext);
 
 **Usage — Streaming (ICipherTransform):**
 ```csharp
-using var aes = Aes256.Create();
+using var aes = Aes256.Create(key);
 aes.Mode = CipherMode.CTR;
 aes.Padding = PaddingMode.None;
-aes.Key = new byte[32];
-aes.IV = new byte[16];
+aes.IV = nonce;
 
 // Create transform for incremental encryption
 using var encryptor = aes.CreateEncryptor();
