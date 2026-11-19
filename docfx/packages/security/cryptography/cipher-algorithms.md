@@ -341,7 +341,7 @@ Key wrap algorithms are specialized ciphers for protecting cryptographic keys (K
 ### AES Key Wrap / Key Wrap with Padding
 
 ```csharp
-public sealed class AesKeyWrapPad : IDisposable
+public class AesKeyWrapPad : IDisposable
 ```
 
 **Standards:**
@@ -354,6 +354,7 @@ public sealed class AesKeyWrapPad : IDisposable
 - RFC 3394 input requirements: at least 16 bytes and multiple of 8 bytes
 - RFC 5649 input requirements: 1 byte or more (arbitrary length)
 - Deterministic wrapping (same KEK + input → same wrapped output)
+- Member names and overloads match the key wrap methods on `System.Security.Cryptography.Aes` (.NET 10 for KWP, .NET 11 for KW), and the output is byte-identical
 
 **Usage (RFC 5649, padded):**
 ```csharp
@@ -362,8 +363,8 @@ byte[] keyMaterial = new byte[37]; // arbitrary length
 
 using var kwp = new AesKeyWrapPad(kek);
 
-byte[] wrapped = kwp.WrapKey(keyMaterial);
-byte[] unwrapped = kwp.UnwrapKey(wrapped);
+byte[] wrapped = kwp.EncryptKeyWrapPadded(keyMaterial);
+byte[] unwrapped = kwp.DecryptKeyWrapPadded(wrapped);
 ```
 
 **Usage (RFC 3394, no padding):**
@@ -373,8 +374,20 @@ byte[] keyMaterial = new byte[32]; // must be multiple of 8
 
 using var kw = new AesKeyWrapPad(kek);
 
-byte[] wrapped = kw.WrapKeyNoPad(keyMaterial);
-byte[] unwrapped = kw.UnwrapKeyNoPad(wrapped);
+byte[] wrapped = kw.EncryptKeyWrap(keyMaterial);
+byte[] unwrapped = kw.DecryptKeyWrap(wrapped);
+```
+
+**Usage (caller-provided buffers, no allocation):**
+```csharp
+Span<byte> wrapped = stackalloc byte[AesKeyWrapPad.GetKeyWrapPaddedLength(keyMaterial.Length)];
+kwp.EncryptKeyWrapPadded(keyMaterial, wrapped);
+
+Span<byte> unwrapped = stackalloc byte[wrapped.Length - 8];
+if (kwp.TryDecryptKeyWrapPadded(wrapped, unwrapped, out int written))
+{
+    // use unwrapped.Slice(0, written), then CryptographicOperations.ZeroMemory(unwrapped)
+}
 ```
 
 > [!NOTE]

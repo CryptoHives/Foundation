@@ -8,6 +8,7 @@ using CryptoHives.Foundation.Security.Cryptography.Cipher;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using Bcl = System.Security.Cryptography;
 
 /// <summary>
 /// Benchmarks for AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649).
@@ -52,10 +53,13 @@ public class AesKeyWrapBenchmark
     /// </summary>
     private const string PadFamily = "AES-KWP";
 
-    private AesKeyWrapPad _kwp = null!;
+    private IDisposable _owner = null!;
+    private KeyWrapOperation _wrap = null!;
+    private KeyWrapOperation _unwrap = null!;
     private byte[] _keyMaterial = null!;
     private byte[] _wrapped = null!;
-    private bool _padded;
+
+    private delegate byte[] KeyWrapOperation(ReadOnlySpan<byte> input);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AesKeyWrapBenchmark"/> class.
@@ -84,8 +88,8 @@ public class AesKeyWrapBenchmark
     /// </summary>
     /// <remarks>
     /// Built here rather than in <c>CipherAlgorithmRegistry</c> because key wrapping is not a
-    /// <c>SymmetricCipher</c> mode and has no registry entry; there is also only the one
-    /// implementation, since neither BouncyCastle nor the OS is measured for this.
+    /// <c>SymmetricCipher</c> mode and has no registry entry. <see cref="Bcl.Aes"/> gained KWP in
+    /// .NET 10 and KW in .NET 11, so each OS row appears from that release on.
     /// </remarks>
     public static IEnumerable<CipherAlgorithmType> Algorithms()
     {
@@ -93,6 +97,14 @@ public class AesKeyWrapBenchmark
             NoPadFamily, $"{NoPadFamily} (CryptoHives)", CreateKeyWrap, isAead: false);
         yield return new CipherAlgorithmType(
             PadFamily, $"{PadFamily} (CryptoHives)", CreateKeyWrap, isAead: false);
+#if NET11_0_OR_GREATER
+        yield return new CipherAlgorithmType(
+            NoPadFamily, $"{NoPadFamily} (OS)", CreateOSAes, isAead: false);
+#endif
+#if NET10_0_OR_GREATER
+        yield return new CipherAlgorithmType(
+            PadFamily, $"{PadFamily} (OS)", CreateOSAes, isAead: false);
+#endif
     }
 
     /// <summary>
@@ -113,17 +125,40 @@ public class AesKeyWrapBenchmark
     [GlobalSetup]
     public void GlobalSetup()
     {
-        _padded = TestCipherAlgorithm.Category == PadFamily;
+        bool padded = TestCipherAlgorithm.Category == PadFamily;
 
         var random = new Random(RandomSeed);
 
         // RFC 3394 requires key material that is a whole number of 64-bit blocks; RFC 5649
         // exists precisely to lift that, so the padded case uses a length that is not.
-        _keyMaterial = new byte[_padded ? 37 : 32];
+        _keyMaterial = new byte[padded ? 37 : 32];
         random.NextBytes(_keyMaterial);
 
-        _kwp = (AesKeyWrapPad)TestCipherAlgorithm.Create();
-        _wrapped = _padded ? _kwp.WrapKey(_keyMaterial) : _kwp.WrapKeyNoPad(_keyMaterial);
+        object implementation = TestCipherAlgorithm.Create();
+        _owner = (IDisposable)implementation;
+        switch (implementation)
+        {
+            case AesKeyWrapPad kwp:
+                _wrap = padded ? kwp.EncryptKeyWrapPadded : kwp.EncryptKeyWrap;
+                _unwrap = padded ? kwp.DecryptKeyWrapPadded : kwp.DecryptKeyWrap;
+                break;
+#if NET11_0_OR_GREATER
+            case Bcl.Aes aes when !padded:
+                _wrap = aes.EncryptKeyWrap;
+                _unwrap = aes.DecryptKeyWrap;
+                break;
+#endif
+#if NET10_0_OR_GREATER
+            case Bcl.Aes aes when padded:
+                _wrap = aes.EncryptKeyWrapPadded;
+                _unwrap = aes.DecryptKeyWrapPadded;
+                break;
+#endif
+            default:
+                throw new NotSupportedException(implementation.GetType().FullName);
+        }
+
+        _wrapped = _wrap(_keyMaterial);
     }
 
     /// <summary>
@@ -133,7 +168,7 @@ public class AesKeyWrapBenchmark
     [GlobalCleanup]
     public void GlobalCleanup()
     {
-        _kwp.Dispose();
+        _owner.Dispose();
     }
 
     /// <summary>
@@ -151,8 +186,7 @@ public class AesKeyWrapBenchmark
     /// Benchmarks key wrapping.
     /// </summary>
     [Benchmark(Description = "Wrap")]
-    public byte[] Wrap()
-        => _padded ? _kwp.WrapKey(_keyMaterial) : _kwp.WrapKeyNoPad(_keyMaterial);
+    public byte[] Wrap() => _wrap(_keyMaterial);
 
     /// <summary>
     /// Verifies that unwrapping recovers the original key material.
@@ -169,17 +203,33 @@ public class AesKeyWrapBenchmark
     /// Benchmarks key unwrapping.
     /// </summary>
     [Benchmark(Description = "Unwrap")]
-    public byte[] Unwrap()
-        => _padded ? _kwp.UnwrapKey(_wrapped) : _kwp.UnwrapKeyNoPad(_wrapped);
+    public byte[] Unwrap() => _unwrap(_wrapped);
 
     /// <summary>
-    /// Creates a key wrapper under a deterministic 256-bit key encryption key.
+    /// Creates a key wrapper under the deterministic key encryption key.
     /// </summary>
-    private static AesKeyWrapPad CreateKeyWrap()
+    private static AesKeyWrapPad CreateKeyWrap() => new AesKeyWrapPad(CreateKek());
+
+#if NET10_0_OR_GREATER
+    /// <summary>
+    /// Creates the in-box AES under the same key encryption key as <see cref="CreateKeyWrap"/>.
+    /// </summary>
+    private static Bcl.Aes CreateOSAes()
+    {
+        var aes = Bcl.Aes.Create();
+        aes.Key = CreateKek();
+        return aes;
+    }
+#endif
+
+    /// <summary>
+    /// Creates a deterministic 256-bit key encryption key.
+    /// </summary>
+    private static byte[] CreateKek()
     {
         var random = new Random(RandomSeed);
         byte[] kek = new byte[32];
         random.NextBytes(kek);
-        return new AesKeyWrapPad(kek);
+        return kek;
     }
 }

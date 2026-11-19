@@ -45,7 +45,7 @@ public sealed class ShortNameMarkdownExporter : IExporter
     {
         var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
         var fileName = Path.GetFileName($"{typeName}-report.md");
-        var filePath = Path.Join(summary.ResultsDirectoryPath, fileName);
+        var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
 
         using (var writer = new CancelableStreamWriter(File.Create(filePath)))
         {
