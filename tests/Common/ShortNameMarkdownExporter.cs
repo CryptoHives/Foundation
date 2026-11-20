@@ -4,11 +4,13 @@
 #pragma warning disable CA1050 // Declare types in namespaces
 
 using BenchmarkDotNet.Exporters;
+using BenchmarkDotNet.Helpers;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Reports;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 /// <summary>
 /// Markdown exporter that writes each benchmark report under the short name of the class that was
@@ -35,32 +37,21 @@ public sealed class ShortNameMarkdownExporter : IExporter
     /// </summary>
     public static readonly ShortNameMarkdownExporter Default = new();
 
-    private readonly IExporter _inner = MarkdownExporter.GitHub;
+    private readonly ExporterBase _inner = (ExporterBase)MarkdownExporter.GitHub;
 
     public string Name => "ShortMarkdown";
 
-    public IEnumerable<string> ExportToFiles(Summary summary, ILogger consoleLogger)
+    public async ValueTask ExportAsync(Summary summary, ILogger logger, CancellationToken cancellationToken)
     {
-        // Short class name, without the namespace.
         var typeName = summary.BenchmarksCases.FirstOrDefault()?.Descriptor.Type.Name ?? "Benchmark";
+        var fileName = Path.GetFileName($"{typeName}-report.md");
+        var filePath = Path.Combine(summary.ResultsDirectoryPath, fileName);
 
-        var fileName = $"{typeName}-report.md";
-        var safeFileName = Path.GetFileName(fileName);
-        var filePath = Path.IsPathRooted(safeFileName)
-                ? safeFileName
-                : Path.Combine(summary.ResultsDirectoryPath, safeFileName);
+        using (var writer = new CancelableStreamWriter(File.Create(filePath)))
+        {
+            await _inner.ExportAsync(summary, writer, cancellationToken).ConfigureAwait(false);
+        }
 
-        // Export using the inner exporter's logic.
-        using var writer = new StreamWriter(filePath);
-        using var logger = new StreamLogger(writer);
-        _inner.ExportToLog(summary, logger);
-
-        consoleLogger.WriteLine($"  // * Results exported to: {filePath}");
-        return [filePath];
-    }
-
-    public void ExportToLog(Summary summary, ILogger logger)
-    {
-        _inner.ExportToLog(summary, logger);
+        logger.WriteLine($"  // * Results exported to: {filePath}");
     }
 }

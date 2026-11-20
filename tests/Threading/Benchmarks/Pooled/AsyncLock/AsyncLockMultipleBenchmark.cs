@@ -249,7 +249,7 @@ public class AsyncLockMultipleBenchmark : AsyncLockBaseBenchmark
     /// This implementation uses Task-based primitives and allocates per queued waiter.
     /// </remarks>
     [Benchmark]
-    [BenchmarkCategory("Multiple", "Nito")]
+    [BenchmarkCategory("Multiple", "Nito.AsyncEx")]
     [ArgumentsSource(typeof(CancellationType), nameof(CancellationType.NoneNotCancelledGroup))]
     public async Task LockUnlockNitoMultipleAsync(CancellationType cancellationType)
     {

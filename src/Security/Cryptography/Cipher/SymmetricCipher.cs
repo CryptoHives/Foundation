@@ -27,8 +27,7 @@ using OS = System.Security.Cryptography;
 /// <para>
 /// <b>Usage pattern:</b>
 /// <code>
-/// using var aes = Aes256.Create();
-/// aes.Key = key;
+/// using var aes = Aes256.Create(key);
 /// aes.IV = iv;
 ///
 /// using var encryptor = aes.CreateEncryptor();
@@ -53,8 +52,12 @@ using OS = System.Security.Cryptography;
 /// </remarks>
 public abstract class SymmetricCipher : OS.SymmetricAlgorithm
 {
+    private const string FixedKeyNotExportableMessage = "The key was fixed at creation and cannot be exported.";
+    private const string FixedKeyNotChangeableMessage = "The key was fixed at creation and cannot be changed.";
+
     private CipherMode _mode = CipherMode.CBC;
     private PaddingMode _padding = PaddingMode.PKCS7;
+    private bool _keyFixed;
 
     /// <summary>
     /// Gets the name of the cipher algorithm.
@@ -118,11 +121,15 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
     /// Gets or sets the secret key for the cipher operation.
     /// </summary>
     /// <exception cref="ArgumentNullException">Value is null.</exception>
-    /// <exception cref="OS.CryptographicException">Value has an invalid size.</exception>
+    /// <exception cref="OS.CryptographicException">
+    /// Value has an invalid size, or the instance was created with a fixed key, which can be neither read nor replaced.
+    /// </exception>
     public override byte[] Key
     {
         get
         {
+            if (_keyFixed) throw new OS.CryptographicException(FixedKeyNotExportableMessage);
+
             if (KeyValue == null)
             {
                 GenerateKey();
@@ -133,9 +140,26 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
         set
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
+            if (_keyFixed) throw new OS.CryptographicException(FixedKeyNotChangeableMessage);
             ValidateKeySize(value.Length * 8);
             KeySizeValue = value.Length * 8;
             KeyValue = (byte[])value.Clone();
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the size of the secret key in bits.
+    /// </summary>
+    /// <exception cref="OS.CryptographicException">
+    /// The size is not legal for this algorithm, or the instance was created with a fixed key.
+    /// </exception>
+    public override int KeySize
+    {
+        get => base.KeySize;
+        set
+        {
+            if (_keyFixed) throw new OS.CryptographicException(FixedKeyNotChangeableMessage);
+            base.KeySize = value;
         }
     }
 
@@ -199,8 +223,10 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
     /// <summary>
     /// Generates a random key appropriate for this algorithm.
     /// </summary>
+    /// <exception cref="OS.CryptographicException">The instance was created with a fixed key.</exception>
     public override void GenerateKey()
     {
+        if (_keyFixed) throw new OS.CryptographicException(FixedKeyNotChangeableMessage);
         KeyValue = new byte[KeySizeValue / 8];
         Rng.RandomNumberGenerator.Fill(KeyValue);
     }
@@ -381,6 +407,34 @@ public abstract class SymmetricCipher : OS.SymmetricAlgorithm
         {
             throw new OS.CryptographicException($"Invalid IV size: {byteLength} bytes. Expected: {IVSize} bytes.");
         }
+    }
+
+    /// <summary>
+    /// Sets the key once, for the lifetime of the instance.
+    /// </summary>
+    /// <remarks>
+    /// Afterwards <see cref="Key"/>, <see cref="KeySize"/> and <see cref="GenerateKey"/> throw,
+    /// so the key can be used but neither read back nor replaced.
+    /// </remarks>
+    /// <param name="key">The secret key.</param>
+    /// <exception cref="OS.CryptographicException">The key size is invalid.</exception>
+    protected void FixKey(ReadOnlySpan<byte> key)
+    {
+        ValidateKeySize(key.Length * 8);
+        KeySizeValue = key.Length * 8;
+        KeyValue = key.ToArray();
+        _keyFixed = true;
+    }
+
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            ClearSensitiveData(KeyValue);
+        }
+
+        base.Dispose(disposing);
     }
 
     /// <summary>

@@ -38,10 +38,10 @@ using OS = System.Security.Cryptography;
 /// using var kwp = new AesKeyWrapPad(kek);
 ///
 /// // Wrap a key
-/// byte[] wrapped = kwp.WrapKey(keyToProtect);
+/// byte[] wrapped = kwp.EncryptKeyWrapPadded(keyToProtect);
 ///
 /// // Unwrap a key
-/// byte[] unwrapped = kwp.UnwrapKey(wrapped);
+/// byte[] unwrapped = kwp.DecryptKeyWrapPadded(wrapped);
 /// </code>
 /// </para>
 /// <para>
@@ -84,6 +84,22 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// Maximum number of round key words (AES-256: 4 × 15 = 60).
     /// </summary>
     private const int MaxRoundKeyWords = 60;
+
+    /// <summary>
+    /// Shortest key RFC 3394 wraps: two semiblocks.
+    /// </summary>
+    private const int MinKeyWrapPlaintext = 16;
+
+    /// <summary>
+    /// Longest key either algorithm wraps, so the wrapped length stays a positive <see cref="int"/>.
+    /// </summary>
+    private const int MaxPlaintextLength = 0x7FFF_FFF0;
+
+    private const string KeyWrapPlaintextLengthMessage = "Key material must be at least 16 bytes and a multiple of 8.";
+    private const string EmptyPlaintextMessage = "Key material must not be empty.";
+    private const string PlaintextTooLargeMessage = "Key material is too large to wrap.";
+    private const string OverlappingBuffersMessage = "The source and destination buffers overlap.";
+    private const string DestinationTooShortMessage = "Destination is too short.";
 
 #pragma warning disable CS0169 // The field '_buffers' is never used
     private KeyWrapBuffers _buffers;
@@ -163,198 +179,477 @@ public unsafe class AesKeyWrapPad : IDisposable
     internal static SimdSupport SimdSupport => AesCipherTransform.SimdSupport;
 
     /// <summary>
-    /// Wraps key material using AES Key Wrap with Padding (RFC 5649).
+    /// Gets the length of the RFC 3394 wrapped form of a key of the given length.
     /// </summary>
-    /// <param name="keyToWrap">The key material to wrap (1 or more bytes).</param>
-    /// <returns>The wrapped key. Length is input length rounded up to 8-byte boundary + 8 bytes.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="keyToWrap"/> is empty.</exception>
-    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
-    [SkipLocalsInit]
-    public byte[] WrapKey(ReadOnlySpan<byte> keyToWrap)
+    /// <param name="plaintextLengthInBytes">The length of the key to wrap.</param>
+    /// <returns>The wrapped length, <paramref name="plaintextLengthInBytes"/> + 8.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="plaintextLengthInBytes"/> is less than 16, not a multiple of 8, or too large.
+    /// </exception>
+    public static int GetKeyWrapLength(int plaintextLengthInBytes)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
-        if (keyToWrap.IsEmpty)
-            throw new ArgumentException("Key material must not be empty.", nameof(keyToWrap));
+        if (plaintextLengthInBytes < MinKeyWrapPlaintext || plaintextLengthInBytes % SemiblockSize != 0)
+            throw new ArgumentOutOfRangeException(nameof(plaintextLengthInBytes), KeyWrapPlaintextLengthMessage);
+        if (plaintextLengthInBytes > MaxPlaintextLength)
+            throw new ArgumentOutOfRangeException(nameof(plaintextLengthInBytes), PlaintextTooLargeMessage);
 
-        int mli = keyToWrap.Length;
-        int padLen = (SemiblockSize - (mli % SemiblockSize)) % SemiblockSize;
-        int paddedLen = mli + padLen;
+        return plaintextLengthInBytes + SemiblockSize;
+    }
 
-        // Build AIV: A65959A6 || MLI (big-endian)
-        Span<byte> aiv = stackalloc byte[SemiblockSize];
-        BinaryPrimitives.WriteUInt32BigEndian(aiv, AIVPrefix);
-        BinaryPrimitives.WriteUInt32BigEndian(aiv.Slice(4), (uint)mli);
+    /// <summary>
+    /// Gets the length of the RFC 5649 wrapped form of a key of the given length.
+    /// </summary>
+    /// <param name="plaintextLengthInBytes">The length of the key to wrap.</param>
+    /// <returns>The length rounded up to a multiple of 8, plus 8.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="plaintextLengthInBytes"/> is zero, negative, or too large.
+    /// </exception>
+    public static int GetKeyWrapPaddedLength(int plaintextLengthInBytes)
+    {
+        if (plaintextLengthInBytes <= 0)
+            throw new ArgumentOutOfRangeException(nameof(plaintextLengthInBytes), EmptyPlaintextMessage);
+        if (plaintextLengthInBytes > MaxPlaintextLength)
+            throw new ArgumentOutOfRangeException(nameof(plaintextLengthInBytes), PlaintextTooLargeMessage);
 
-        if (paddedLen == SemiblockSize)
-        {
-            // Special case: single semiblock — use single AES ECB encrypt
-            byte[] result = new byte[BlockSize];
-            Span<byte> block = stackalloc byte[BlockSize];
-            block.Clear();
-            aiv.CopyTo(block);
-            keyToWrap.CopyTo(block.Slice(SemiblockSize));
+        return (((plaintextLengthInBytes + SemiblockSize - 1) / SemiblockSize) + 1) * SemiblockSize;
+    }
 
-            EncryptBlockDispatch(block, result);
-            CryptographicOperations.ZeroMemory(block);
-            return result;
-        }
+    /// <summary>
+    /// Wraps a key with AES Key Wrap (RFC 3394).
+    /// </summary>
+    /// <param name="plaintext">The key to wrap; at least 16 bytes and a multiple of 8.</param>
+    /// <returns>The wrapped key, 8 bytes longer than <paramref name="plaintext"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="plaintext"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="plaintext"/> has an invalid length.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public byte[] EncryptKeyWrap(byte[] plaintext)
+    {
+        if (plaintext is null) throw new ArgumentNullException(nameof(plaintext));
+        return EncryptKeyWrap(new ReadOnlySpan<byte>(plaintext));
+    }
 
-        // General case: pad and apply RFC 3394 wrap with AIV
-        int n = paddedLen / SemiblockSize;
-        byte[] output = new byte[(n + 1) * SemiblockSize];
-
-        // Copy padded plaintext into R[1..n] (output[8..])
-        keyToWrap.CopyTo(output.AsSpan(SemiblockSize));
-        // Padding bytes are already zero from array allocation
-
-        WrapCore(aiv, output.AsSpan(), n);
+    /// <inheritdoc cref="EncryptKeyWrap(byte[])"/>
+    public byte[] EncryptKeyWrap(ReadOnlySpan<byte> plaintext)
+    {
+        byte[] output = new byte[GetKeyWrapCiphertextLength(plaintext)];
+        WrapNoPad(plaintext, output);
         return output;
     }
 
     /// <summary>
-    /// Unwraps key material using AES Key Wrap with Padding (RFC 5649).
+    /// Wraps a key with AES Key Wrap (RFC 3394) into a caller-provided buffer.
     /// </summary>
-    /// <param name="wrappedKey">The wrapped key to unwrap (minimum 16 bytes, multiple of 8).</param>
-    /// <returns>The original key material.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="wrappedKey"/> has invalid length.</exception>
-    /// <exception cref="OS.CryptographicException">Thrown when integrity check fails.</exception>
-    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
+    /// <param name="plaintext">The key to wrap; at least 16 bytes and a multiple of 8.</param>
+    /// <param name="destination">The buffer to receive the wrapped key; exactly <see cref="GetKeyWrapLength"/> bytes.</param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="plaintext"/> has an invalid length, or <paramref name="destination"/> is not exactly the wrapped length.
+    /// </exception>
+    /// <exception cref="OS.CryptographicException"><paramref name="plaintext"/> and <paramref name="destination"/> overlap.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public void EncryptKeyWrap(ReadOnlySpan<byte> plaintext, Span<byte> destination)
+    {
+        int requiredLength = GetKeyWrapCiphertextLength(plaintext);
+        if (destination.Length != requiredLength)
+            throw new ArgumentException($"Destination must be exactly {requiredLength} bytes.", nameof(destination));
+        if (plaintext.Overlaps(destination))
+            throw new OS.CryptographicException(OverlappingBuffersMessage);
+
+        WrapNoPad(plaintext, destination);
+    }
+
+    /// <summary>
+    /// Unwraps a key wrapped with AES Key Wrap (RFC 3394).
+    /// </summary>
+    /// <param name="ciphertext">The wrapped key; at least 24 bytes and a multiple of 8.</param>
+    /// <returns>The unwrapped key, 8 bytes shorter than <paramref name="ciphertext"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="ciphertext"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="ciphertext"/> has an invalid length.</exception>
+    /// <exception cref="OS.CryptographicException">The integrity check failed.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public byte[] DecryptKeyWrap(byte[] ciphertext)
+    {
+        if (ciphertext is null) throw new ArgumentNullException(nameof(ciphertext));
+        return DecryptKeyWrap(new ReadOnlySpan<byte>(ciphertext));
+    }
+
+    /// <inheritdoc cref="DecryptKeyWrap(byte[])"/>
+    public byte[] DecryptKeyWrap(ReadOnlySpan<byte> ciphertext)
+    {
+        byte[] output = new byte[GetKeyWrapPlaintextLength(ciphertext)];
+        UnwrapNoPad(ciphertext, output);
+        return output;
+    }
+
+    /// <summary>
+    /// Unwraps a key wrapped with AES Key Wrap (RFC 3394) into a caller-provided buffer.
+    /// </summary>
+    /// <param name="ciphertext">The wrapped key; at least 24 bytes and a multiple of 8.</param>
+    /// <param name="destination">The buffer to receive the unwrapped key.</param>
+    /// <returns>The number of bytes written to <paramref name="destination"/>.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="ciphertext"/> has an invalid length, or <paramref name="destination"/> is too short.
+    /// </exception>
+    /// <exception cref="OS.CryptographicException">
+    /// The buffers overlap, or the integrity check failed.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public int DecryptKeyWrap(ReadOnlySpan<byte> ciphertext, Span<byte> destination)
+    {
+        if (TryDecryptKeyWrap(ciphertext, destination, out int bytesWritten))
+            return bytesWritten;
+
+        throw new ArgumentException(DestinationTooShortMessage, nameof(destination));
+    }
+
+    /// <summary>
+    /// Attempts to unwrap a key wrapped with AES Key Wrap (RFC 3394) into a caller-provided buffer.
+    /// </summary>
+    /// <param name="ciphertext">The wrapped key; at least 24 bytes and a multiple of 8.</param>
+    /// <param name="destination">The buffer to receive the unwrapped key.</param>
+    /// <param name="bytesWritten">The number of bytes written to <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was long enough; otherwise <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="ciphertext"/> has an invalid length.</exception>
+    /// <exception cref="OS.CryptographicException">
+    /// The buffers overlap, or the integrity check failed.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public bool TryDecryptKeyWrap(ReadOnlySpan<byte> ciphertext, Span<byte> destination, out int bytesWritten)
+    {
+        int requiredLength = GetKeyWrapPlaintextLength(ciphertext);
+        if (destination.Length < requiredLength)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        if (ciphertext.Overlaps(destination))
+            throw new OS.CryptographicException(OverlappingBuffersMessage);
+
+        UnwrapNoPad(ciphertext, destination.Slice(0, requiredLength));
+        bytesWritten = requiredLength;
+        return true;
+    }
+
+    /// <summary>
+    /// Wraps a key with AES Key Wrap with Padding (RFC 5649).
+    /// </summary>
+    /// <param name="plaintext">The key to wrap; at least 1 byte.</param>
+    /// <returns>The wrapped key, <see cref="GetKeyWrapPaddedLength"/> bytes long.</returns>
+    /// <exception cref="ArgumentException"><paramref name="plaintext"/> is <see langword="null"/> or empty.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public byte[] EncryptKeyWrapPadded(byte[] plaintext)
+    {
+        if (plaintext is null || plaintext.Length == 0)
+            throw new ArgumentException(EmptyPlaintextMessage, nameof(plaintext));
+        return EncryptKeyWrapPadded(new ReadOnlySpan<byte>(plaintext));
+    }
+
+    /// <summary>
+    /// Wraps a key with AES Key Wrap with Padding (RFC 5649).
+    /// </summary>
+    /// <param name="plaintext">The key to wrap; at least 1 byte.</param>
+    /// <returns>The wrapped key, <see cref="GetKeyWrapPaddedLength"/> bytes long.</returns>
+    /// <exception cref="ArgumentException"><paramref name="plaintext"/> is empty.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public byte[] EncryptKeyWrapPadded(ReadOnlySpan<byte> plaintext)
+    {
+        byte[] output = new byte[GetKeyWrapPaddedCiphertextLength(plaintext)];
+        WrapPadded(plaintext, output);
+        return output;
+    }
+
+    /// <summary>
+    /// Wraps a key with AES Key Wrap with Padding (RFC 5649) into a caller-provided buffer.
+    /// </summary>
+    /// <param name="plaintext">The key to wrap; at least 1 byte.</param>
+    /// <param name="destination">The buffer to receive the wrapped key; exactly <see cref="GetKeyWrapPaddedLength"/> bytes.</param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="plaintext"/> is empty, or <paramref name="destination"/> is not exactly the wrapped length.
+    /// </exception>
+    /// <exception cref="OS.CryptographicException"><paramref name="plaintext"/> and <paramref name="destination"/> overlap.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public void EncryptKeyWrapPadded(ReadOnlySpan<byte> plaintext, Span<byte> destination)
+    {
+        int requiredLength = GetKeyWrapPaddedCiphertextLength(plaintext);
+        if (destination.Length != requiredLength)
+            throw new ArgumentException($"Destination must be exactly {requiredLength} bytes.", nameof(destination));
+        if (plaintext.Overlaps(destination))
+            throw new OS.CryptographicException(OverlappingBuffersMessage);
+
+        WrapPadded(plaintext, destination);
+    }
+
+    /// <summary>
+    /// Unwraps a key wrapped with AES Key Wrap with Padding (RFC 5649).
+    /// </summary>
+    /// <param name="ciphertext">The wrapped key; at least 16 bytes and a multiple of 8.</param>
+    /// <returns>The unwrapped key.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="ciphertext"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="ciphertext"/> has an invalid length.</exception>
+    /// <exception cref="OS.CryptographicException">The integrity check failed.</exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public byte[] DecryptKeyWrapPadded(byte[] ciphertext)
+    {
+        if (ciphertext is null) throw new ArgumentNullException(nameof(ciphertext));
+        return DecryptKeyWrapPadded(new ReadOnlySpan<byte>(ciphertext));
+    }
+
+    /// <inheritdoc cref="DecryptKeyWrapPadded(byte[])"/>
     [SkipLocalsInit]
-    public byte[] UnwrapKey(ReadOnlySpan<byte> wrappedKey)
+    public byte[] DecryptKeyWrapPadded(ReadOnlySpan<byte> ciphertext)
+    {
+        int maxOutput = GetKeyWrapPaddedPlaintextMaxLength(ciphertext);
+
+        byte[]? rented = null;
+        Span<byte> scratch = maxOutput <= MaxStackUnwrapBytes
+            ? stackalloc byte[MaxStackUnwrapBytes]
+            : (rented = ArrayPool<byte>.Shared.Rent(maxOutput));
+        scratch = scratch.Slice(0, maxOutput);
+        try
+        {
+            int written = UnwrapPadded(ciphertext, scratch);
+            return scratch.Slice(0, written).ToArray();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(scratch);
+            if (rented is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rented);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Unwraps a key wrapped with AES Key Wrap with Padding (RFC 5649) into a caller-provided buffer.
+    /// </summary>
+    /// <param name="ciphertext">The wrapped key; at least 16 bytes and a multiple of 8.</param>
+    /// <param name="destination">The buffer to receive the unwrapped key.</param>
+    /// <returns>The number of bytes written to <paramref name="destination"/>.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="ciphertext"/> has an invalid length, or <paramref name="destination"/> is too short.
+    /// </exception>
+    /// <exception cref="OS.CryptographicException">
+    /// The buffers overlap, or the integrity check failed.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    public int DecryptKeyWrapPadded(ReadOnlySpan<byte> ciphertext, Span<byte> destination)
+    {
+        if (TryDecryptKeyWrapPadded(ciphertext, destination, out int bytesWritten))
+            return bytesWritten;
+
+        throw new ArgumentException(DestinationTooShortMessage, nameof(destination));
+    }
+
+    /// <summary>
+    /// Attempts to unwrap a key wrapped with AES Key Wrap with Padding (RFC 5649) into a caller-provided buffer.
+    /// </summary>
+    /// <remarks>
+    /// The unwrapped length is known only after decryption, so a <paramref name="destination"/> shorter
+    /// than the ciphertext length minus 8 can still return <see langword="false"/>. One at least that
+    /// long always suffices and is unwrapped in place.
+    /// </remarks>
+    /// <param name="ciphertext">The wrapped key; at least 16 bytes and a multiple of 8.</param>
+    /// <param name="destination">The buffer to receive the unwrapped key.</param>
+    /// <param name="bytesWritten">The number of bytes written to <paramref name="destination"/>.</param>
+    /// <returns><see langword="true"/> if <paramref name="destination"/> was long enough; otherwise <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="ciphertext"/> has an invalid length.</exception>
+    /// <exception cref="OS.CryptographicException">
+    /// The buffers overlap, or the integrity check failed.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The instance has been disposed.</exception>
+    [SkipLocalsInit]
+    public bool TryDecryptKeyWrapPadded(ReadOnlySpan<byte> ciphertext, Span<byte> destination, out int bytesWritten)
+    {
+        int maxOutput = GetKeyWrapPaddedPlaintextMaxLength(ciphertext);
+        int minOutput = maxOutput - (SemiblockSize - 1);
+        if (destination.Length < minOutput)
+        {
+            bytesWritten = 0;
+            return false;
+        }
+
+        if (ciphertext.Overlaps(destination))
+            throw new OS.CryptographicException(OverlappingBuffersMessage);
+
+        if (destination.Length >= maxOutput)
+        {
+            bytesWritten = UnwrapPadded(ciphertext, destination.Slice(0, maxOutput));
+            return true;
+        }
+
+        Span<byte> scratch = stackalloc byte[MaxStackUnwrapBytes];
+        byte[]? rented = null;
+        if (maxOutput > MaxStackUnwrapBytes)
+        {
+            rented = ArrayPool<byte>.Shared.Rent(maxOutput);
+            scratch = rented;
+        }
+
+        scratch = scratch.Slice(0, maxOutput);
+        try
+        {
+            int written = UnwrapPadded(ciphertext, scratch);
+            if (written > destination.Length)
+            {
+                bytesWritten = 0;
+                return false;
+            }
+
+            scratch.Slice(0, written).CopyTo(destination);
+            bytesWritten = written;
+            return true;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(scratch);
+            if (rented is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rented);
+            }
+        }
+    }
+
+    private static int GetKeyWrapCiphertextLength(ReadOnlySpan<byte> plaintext)
+    {
+        if (plaintext.Length < MinKeyWrapPlaintext || plaintext.Length % SemiblockSize != 0)
+            throw new ArgumentException(KeyWrapPlaintextLengthMessage, nameof(plaintext));
+        if (plaintext.Length > MaxPlaintextLength)
+            throw new ArgumentException(PlaintextTooLargeMessage, nameof(plaintext));
+
+        return plaintext.Length + SemiblockSize;
+    }
+
+    private static int GetKeyWrapPlaintextLength(ReadOnlySpan<byte> ciphertext)
+    {
+        if (ciphertext.Length < MinKeyWrapPlaintext + SemiblockSize || ciphertext.Length % SemiblockSize != 0)
+            throw new ArgumentException("Wrapped key must be at least 24 bytes and a multiple of 8.", nameof(ciphertext));
+
+        return ciphertext.Length - SemiblockSize;
+    }
+
+    private static int GetKeyWrapPaddedCiphertextLength(ReadOnlySpan<byte> plaintext)
+    {
+        if (plaintext.IsEmpty)
+            throw new ArgumentException(EmptyPlaintextMessage, nameof(plaintext));
+        if (plaintext.Length > MaxPlaintextLength)
+            throw new ArgumentException(PlaintextTooLargeMessage, nameof(plaintext));
+
+        return GetKeyWrapPaddedLength(plaintext.Length);
+    }
+
+    private static int GetKeyWrapPaddedPlaintextMaxLength(ReadOnlySpan<byte> ciphertext)
+    {
+        if (ciphertext.Length < BlockSize || ciphertext.Length % SemiblockSize != 0)
+            throw new ArgumentException("Wrapped key must be at least 16 bytes and a multiple of 8.", nameof(ciphertext));
+
+        return ciphertext.Length - SemiblockSize;
+    }
+
+    /// <summary>
+    /// RFC 3394 wrap of a validated <paramref name="plaintext"/> into an exactly sized <paramref name="destination"/>.
+    /// </summary>
+    [SkipLocalsInit]
+    private void WrapNoPad(ReadOnlySpan<byte> plaintext, Span<byte> destination)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
-        if (wrappedKey.Length < BlockSize || wrappedKey.Length % SemiblockSize != 0)
-            throw new ArgumentException("Wrapped key must be at least 16 bytes and a multiple of 8.", nameof(wrappedKey));
 
-        int n = (wrappedKey.Length / SemiblockSize) - 1;
+        Span<byte> iv = stackalloc byte[SemiblockSize];
+        BinaryPrimitives.WriteUInt64BigEndian(iv, DefaultIV);
+
+        plaintext.CopyTo(destination.Slice(SemiblockSize));
+        WrapCore(iv, destination, plaintext.Length / SemiblockSize);
+    }
+
+    /// <summary>
+    /// RFC 5649 wrap of a validated <paramref name="plaintext"/> into an exactly sized <paramref name="destination"/>.
+    /// </summary>
+    [SkipLocalsInit]
+    private void WrapPadded(ReadOnlySpan<byte> plaintext, Span<byte> destination)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
+
+        Span<byte> aiv = stackalloc byte[SemiblockSize];
+        BinaryPrimitives.WriteUInt32BigEndian(aiv, AIVPrefix);
+        BinaryPrimitives.WriteUInt32BigEndian(aiv.Slice(4), (uint)plaintext.Length);
+
+        int n = (destination.Length / SemiblockSize) - 1;
+        if (n == 1)
+        {
+            // RFC 5649 §4.1: a single padded semiblock is one AES block, AIV || P.
+            Span<byte> block = stackalloc byte[BlockSize];
+            aiv.CopyTo(block);
+            block.Slice(SemiblockSize).Clear();
+            plaintext.CopyTo(block.Slice(SemiblockSize));
+
+            EncryptBlockDispatch(block, destination);
+            CryptographicOperations.ZeroMemory(block);
+            return;
+        }
+
+        Span<byte> r = destination.Slice(SemiblockSize);
+        plaintext.CopyTo(r);
+        r.Slice(plaintext.Length).Clear();
+        WrapCore(aiv, destination, n);
+    }
+
+    /// <summary>
+    /// RFC 3394 unwrap of a validated <paramref name="ciphertext"/> into <paramref name="destination"/>,
+    /// which is exactly 8 bytes shorter; cleared before the integrity failure is thrown.
+    /// </summary>
+    [SkipLocalsInit]
+    private void UnwrapNoPad(ReadOnlySpan<byte> ciphertext, Span<byte> destination)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
+
+        Span<byte> a = stackalloc byte[SemiblockSize];
+        ciphertext.Slice(0, SemiblockSize).CopyTo(a);
+        ciphertext.Slice(SemiblockSize).CopyTo(destination);
+
+        UnwrapCore(a, destination, destination.Length / SemiblockSize);
+
+        if (BinaryPrimitives.ReadUInt64BigEndian(a) != DefaultIV)
+        {
+            CryptographicOperations.ZeroMemory(destination);
+            throw new OS.CryptographicException("AES Key Wrap integrity check failed.");
+        }
+    }
+
+    /// <summary>
+    /// RFC 5649 unwrap of a validated <paramref name="ciphertext"/> into <paramref name="destination"/>,
+    /// which is exactly 8 bytes shorter; cleared before the integrity failure is thrown.
+    /// </summary>
+    /// <returns>The unwrapped key length, at the start of <paramref name="destination"/>.</returns>
+    [SkipLocalsInit]
+    private int UnwrapPadded(ReadOnlySpan<byte> ciphertext, Span<byte> destination)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
+
+        int n = destination.Length / SemiblockSize;
         Span<byte> a = stackalloc byte[SemiblockSize];
 
         if (n == 1)
         {
-            // Special case: single semiblock — use single AES ECB decrypt
             Span<byte> block = stackalloc byte[BlockSize];
-            try
-            {
-                DecryptBlockDispatch(wrappedKey, block);
-                block.Slice(0, SemiblockSize).CopyTo(a);
-                Span<byte> plaintext = block.Slice(SemiblockSize);
-
-                VerifyAiv(a, plaintext, n);
-                int mli = (int)BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
-                return plaintext.Slice(0, mli).ToArray();
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(block);
-            }
+            DecryptBlockDispatch(ciphertext, block);
+            block.Slice(0, SemiblockSize).CopyTo(a);
+            block.Slice(SemiblockSize).CopyTo(destination);
+            CryptographicOperations.ZeroMemory(block);
         }
-
-        // General case: RFC 3394 unwrap
-        byte[]? rented = null;
-        Span<byte> buffer = wrappedKey.Length <= MaxStackUnwrapBytes
-            ? stackalloc byte[MaxStackUnwrapBytes]
-            : (rented = ArrayPool<byte>.Shared.Rent(wrappedKey.Length));
-        buffer = buffer.Slice(0, wrappedKey.Length);
-        try
+        else
         {
-            wrappedKey.CopyTo(buffer);
-
-            UnwrapCore(a, buffer, n);
-
-            Span<byte> data = buffer.Slice(SemiblockSize);
-            VerifyAiv(a, data, n);
-            int msgLen = (int)BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
-            return data.Slice(0, msgLen).ToArray();
+            ciphertext.Slice(0, SemiblockSize).CopyTo(a);
+            ciphertext.Slice(SemiblockSize).CopyTo(destination);
+            UnwrapCore(a, destination, n);
         }
-        finally
+
+        if (!TryVerifyAiv(a, destination, n, out int mli))
         {
-            CryptographicOperations.ZeroMemory(buffer);
-            if (rented is not null)
-            {
-                ArrayPool<byte>.Shared.Return(rented);
-            }
+            CryptographicOperations.ZeroMemory(destination);
+            throw new OS.CryptographicException("AES Key Wrap with Padding integrity check failed.");
         }
-    }
 
-    /// <summary>
-    /// Wraps key material using AES Key Wrap (RFC 3394) without padding.
-    /// </summary>
-    /// <param name="keyToWrap">
-    /// The key material to wrap. Must be a multiple of 8 bytes and at least 16 bytes.
-    /// </param>
-    /// <returns>The wrapped key (input length + 8 bytes).</returns>
-    /// <exception cref="ArgumentException">
-    /// Thrown when <paramref name="keyToWrap"/> is less than 16 bytes or not a multiple of 8.
-    /// </exception>
-    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
-    [SkipLocalsInit]
-    public byte[] WrapKeyNoPad(ReadOnlySpan<byte> keyToWrap)
-    {
-        if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
-        if (keyToWrap.Length < 2 * SemiblockSize || keyToWrap.Length % SemiblockSize != 0)
-            throw new ArgumentException("Key material must be at least 16 bytes and a multiple of 8.", nameof(keyToWrap));
-
-        int n = keyToWrap.Length / SemiblockSize;
-        byte[] output = new byte[(n + 1) * SemiblockSize];
-
-        // Set default IV
-        Span<byte> iv = stackalloc byte[SemiblockSize];
-        BinaryPrimitives.WriteUInt64BigEndian(iv, DefaultIV);
-
-        // Copy plaintext into R[1..n]
-        keyToWrap.CopyTo(output.AsSpan(SemiblockSize));
-
-        WrapCore(iv, output.AsSpan(), n);
-        return output;
-    }
-
-    /// <summary>
-    /// Unwraps key material using AES Key Wrap (RFC 3394) without padding.
-    /// </summary>
-    /// <param name="wrappedKey">
-    /// The wrapped key to unwrap. Must be a multiple of 8 bytes and at least 24 bytes.
-    /// </param>
-    /// <returns>The original key material (wrapped key length - 8 bytes).</returns>
-    /// <exception cref="ArgumentException">
-    /// Thrown when <paramref name="wrappedKey"/> has invalid length.
-    /// </exception>
-    /// <exception cref="OS.CryptographicException">Thrown when integrity check fails.</exception>
-    /// <exception cref="ObjectDisposedException">Thrown when the instance has been disposed.</exception>
-    [SkipLocalsInit]
-    public byte[] UnwrapKeyNoPad(ReadOnlySpan<byte> wrappedKey)
-    {
-        if (_disposed) throw new ObjectDisposedException(nameof(AesKeyWrapPad));
-        if (wrappedKey.Length < 3 * SemiblockSize || wrappedKey.Length % SemiblockSize != 0)
-            throw new ArgumentException("Wrapped key must be at least 24 bytes and a multiple of 8.", nameof(wrappedKey));
-
-        int n = (wrappedKey.Length / SemiblockSize) - 1;
-        Span<byte> a = stackalloc byte[SemiblockSize];
-        byte[]? rented = null;
-        Span<byte> buffer = wrappedKey.Length <= MaxStackUnwrapBytes
-            ? stackalloc byte[MaxStackUnwrapBytes]
-            : (rented = ArrayPool<byte>.Shared.Rent(wrappedKey.Length));
-        buffer = buffer.Slice(0, wrappedKey.Length);
-        try
-        {
-            wrappedKey.CopyTo(buffer);
-
-            UnwrapCore(a, buffer, n);
-
-            // Verify default IV
-            ulong recovered = BinaryPrimitives.ReadUInt64BigEndian(a);
-            if (recovered != DefaultIV)
-                throw new OS.CryptographicException("AES Key Wrap integrity check failed.");
-
-            return buffer.Slice(SemiblockSize, n * SemiblockSize).ToArray();
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(buffer);
-            if (rented is not null)
-            {
-                ArrayPool<byte>.Shared.Return(rented);
-            }
-        }
+        return mli;
     }
 
     /// <summary>
@@ -400,21 +695,18 @@ public unsafe class AesKeyWrapPad : IDisposable
     }
 
     /// <summary>
-    /// RFC 3394 Section 2.2.2 — Key Unwrap core algorithm.
-    /// On entry, buffer contains [C0 || C1 || ... || Cn].
-    /// On exit, <paramref name="a"/> holds recovered A, buffer[8..] holds R[1..n].
+    /// RFC 3394 Section 2.2.2 — Key Unwrap core algorithm, in place.
+    /// On entry, <paramref name="a"/> holds C[0] and <paramref name="r"/> holds C[1..n].
+    /// On exit, <paramref name="a"/> holds the recovered A and <paramref name="r"/> holds R[1..n].
     /// </summary>
-    /// <param name="a">Output buffer for the recovered 8-byte integrity value.</param>
-    /// <param name="buffer">The ciphertext buffer: [C0 || C1 || ... || Cn].</param>
-    /// <param name="n">Number of 64-bit ciphertext semiblocks (excluding A).</param>
+    /// <param name="a">The 8-byte integrity value.</param>
+    /// <param name="r">The n semiblocks being unwrapped.</param>
+    /// <param name="n">Number of 64-bit semiblocks in <paramref name="r"/>.</param>
     [SkipLocalsInit]
-    private void UnwrapCore(Span<byte> a, Span<byte> buffer, int n)
+    private void UnwrapCore(Span<byte> a, Span<byte> r, int n)
     {
         Span<byte> block = stackalloc byte[BlockSize];
         Span<byte> b = stackalloc byte[BlockSize];
-
-        // A = C[0]
-        buffer.Slice(0, SemiblockSize).CopyTo(a);
 
         for (int j = 5; j >= 0; j--)
         {
@@ -424,7 +716,7 @@ public unsafe class AesKeyWrapPad : IDisposable
                 ulong aVal = BinaryPrimitives.ReadUInt64BigEndian(a);
                 ulong t = (ulong)(n * j + i);
                 BinaryPrimitives.WriteUInt64BigEndian(block, aVal ^ t);
-                buffer.Slice(i * SemiblockSize, SemiblockSize).CopyTo(block.Slice(SemiblockSize));
+                r.Slice((i - 1) * SemiblockSize, SemiblockSize).CopyTo(block.Slice(SemiblockSize));
 
                 DecryptBlockDispatch(block, b);
 
@@ -432,7 +724,7 @@ public unsafe class AesKeyWrapPad : IDisposable
                 b.Slice(0, SemiblockSize).CopyTo(a);
 
                 // R[i] = LSB(64, B)
-                b.Slice(SemiblockSize).CopyTo(buffer.Slice(i * SemiblockSize));
+                b.Slice(SemiblockSize).CopyTo(r.Slice((i - 1) * SemiblockSize));
             }
         }
 
@@ -446,27 +738,26 @@ public unsafe class AesKeyWrapPad : IDisposable
     /// <param name="a">The recovered 8-byte AIV.</param>
     /// <param name="data">The padded plaintext data.</param>
     /// <param name="n">Number of 64-bit semiblocks of padded data.</param>
-    /// <exception cref="OS.CryptographicException">Thrown when AIV verification fails.</exception>
-    private static void VerifyAiv(ReadOnlySpan<byte> a, ReadOnlySpan<byte> data, int n)
+    /// <param name="mli">The message length indicator, valid only when the check passes.</param>
+    /// <returns><see langword="true"/> if the AIV, length and padding are all valid.</returns>
+    private static bool TryVerifyAiv(ReadOnlySpan<byte> a, ReadOnlySpan<byte> data, int n, out int mli)
     {
-        // Check AIV prefix
         uint prefix = BinaryPrimitives.ReadUInt32BigEndian(a);
-        if (prefix != AIVPrefix)
-            throw new OS.CryptographicException("AES Key Wrap with Padding integrity check failed.");
+        uint length = BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
+        mli = (int)length;
 
-        // Check MLI range: n*8 - 7 <= m <= n*8
-        uint mli = BinaryPrimitives.ReadUInt32BigEndian(a.Slice(4));
+        // MLI range per RFC 5649 §3: 8n - 7 <= MLI <= 8n.
         uint maxLen = (uint)(n * SemiblockSize);
-        uint minLen = maxLen - 7;
-        if (mli < minLen || mli > maxLen)
-            throw new OS.CryptographicException("AES Key Wrap with Padding integrity check failed.");
+        if (prefix != AIVPrefix || length > maxLen || length < maxLen - (SemiblockSize - 1))
+            return false;
 
-        // Check padding bytes are all zero
-        for (int i = (int)mli; i < (int)maxLen; i++)
+        int padding = 0;
+        foreach (byte value in data.Slice(mli, (int)maxLen - mli))
         {
-            if (data[i] != 0)
-                throw new OS.CryptographicException("AES Key Wrap with Padding integrity check failed.");
+            padding |= value;
         }
+
+        return padding == 0;
     }
 
     [MethodImpl(MethodImplOptionsEx.HotPath)]
@@ -537,12 +828,11 @@ public unsafe class AesKeyWrapPad : IDisposable
 
         if (disposing)
         {
-            // Securely clear the round keys
             fixed (uint* encP = _buffers.EncKeys)
             fixed (uint* decP = _buffers.DecKeys)
             {
-                new Span<uint>(encP, MaxRoundKeyWords).Clear();
-                new Span<uint>(decP, MaxRoundKeyWords).Clear();
+                CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(new Span<uint>(encP, MaxRoundKeyWords)));
+                CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(new Span<uint>(decP, MaxRoundKeyWords)));
             }
         }
     }

@@ -18,30 +18,30 @@ public partial class CancellationType
     /// <summary>
     /// Provides a predefined array of cancellation type group representing None.
     /// </summary>
-    public static IEnumerable<object[]> ProtoPromisesNoneGroup()
+    public static IEnumerable<CancellationType> ProtoPromisesNoneGroup()
     {
-        yield return new object[] { ProtoPromisesNone };
+        yield return ProtoPromisesNone;
     }
 
     /// <summary>
     /// Provides a predefined array of cancellation type groups representing None and a not cancelled token.
     /// states.
     /// </summary>
-    public static IEnumerable<object[]> ProtoPromisesNoneNotCanceledGroup()
+    public static IEnumerable<CancellationType> ProtoPromisesNoneNotCanceledGroup()
     {
-        yield return new object[] { ProtoPromisesNone };
-        yield return new object[] { ProtoPromisesNotCancelled };
+        yield return ProtoPromisesNone;
+        yield return ProtoPromisesNotCancelled;
     }
 
     /// <summary>
     /// Provides a predefined array of cancellation type groups representing None, cancelled, and not cancelled token
     /// states.
     /// </summary>
-    public static IEnumerable<object[]> ProtoPromisesNoneCancelledNotCancelledGroup()
+    public static IEnumerable<CancellationType> ProtoPromisesNoneCancelledNotCancelledGroup()
     {
-        yield return new object[] { ProtoPromisesNone };
-        yield return new object[] { ProtoPromisesCancelled };
-        yield return new object[] { ProtoPromisesNotCancelled };
+        yield return ProtoPromisesNone;
+        yield return ProtoPromisesCancelled;
+        yield return ProtoPromisesNotCancelled;
     }
 
     public CancellationType(string description, Proto.Promises.CancelationToken cancelationToken)

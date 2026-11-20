@@ -16,6 +16,10 @@ frameworks is two different measurements that would otherwise share a directory 
 each other file by file. It is also the fallback source of the `framework` column: a report
 covering a single runtime carries no Runtime column, so the path is what names it.
 
+A run that varied more than the framework - built without runtime-async, or with a narrower
+instruction set masked in - appends that run configuration to the directory name, for example
+`net11.0-classic-async`, so it is a separate run rather than an overwrite of the default one.
+
 It lives on the `benchmarks` branch, kept out of main so that recording a run does not add to the
 working tree everyone clones. Point --archive at a worktree of that branch, or at any directory
 holding the same layout. Sibling of scripts/threading-benchmark-trends/import_run_archive.py -
@@ -39,6 +43,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 
@@ -53,6 +58,21 @@ from import_historical_markdown import (  # noqa: E402
 
 PACKAGE_DIR = "cryptography"
 NON_SCENARIO_FILES = {"machine-spec.md", "run.json", "README.md", "benchmarks.md"}
+
+
+# A framework directory names the target framework, followed by the run configuration when the
+# run varied anything else: 'net11.0', 'net11.0-classic-async', 'net11.0-isa-avx2'.
+_FRAMEWORK_DIR = re.compile(r"^(net\d+(?:\.\d+)?)(?:-(.+))?$")
+
+
+def split_framework_dir(name, metadata):
+    """(framework, run_config) of a run directory; run.json, where it says, wins over the name."""
+    match = _FRAMEWORK_DIR.match(name)
+    framework = metadata.get("framework") or (match.group(1) if match else name)
+    run_config = metadata.get("runConfig")
+    if run_config is None:
+        run_config = (match.group(2) or "") if match else ""
+    return framework, run_config
 
 
 def discover_runs(archive_root):
@@ -113,6 +133,12 @@ def main():
         schema_sql = handle.read()
 
     conn = sqlite3.connect(args.db)
+    # CREATE TABLE IF NOT EXISTS keeps the tables of a database built before run_config existed,
+    # and every insert below would then fail. The database is derived, so rebuild rather than migrate.
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(benchmark_results)")}
+    if existing and "run_config" not in existing:
+        conn.executescript("DROP TABLE benchmark_results; DROP TABLE IF EXISTS benchmark_runs; "
+                           "DROP TABLE IF EXISTS benchmark_run_packages;")
     conn.executescript(schema_sql)
 
     # Start from empty. The database is derived from the archive, so anything already in the file
@@ -134,7 +160,8 @@ def main():
 
     total_rows = 0
     total_runs = 0
-    for run_id, platform, framework, run_dir, metadata in discover_runs(args.archive):
+    for run_id, platform, framework_dir, run_dir, metadata in discover_runs(args.archive):
+        framework, run_config = split_framework_dir(framework_dir, metadata)
         run_date = metadata.get("recordedAt", "")
         commit_sha = metadata.get("codeCommit")
         branch = metadata.get("branch")
@@ -156,14 +183,14 @@ def main():
                     continue
                 conn.execute(
                     "INSERT OR REPLACE INTO benchmark_results "
-                    "(run_id, run_date, commit_sha, branch, platform, framework, category, "
+                    "(run_id, run_date, commit_sha, branch, platform, framework, run_config, category, "
                     " class_name, method, family, variant, data_size_label, data_size_bytes, "
                     " mean_ns, stddev_ns, allocated_bytes) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (run_id, run_date, commit_sha, branch, platform,
                      # A report covering several runtimes names each row's own; one covering a
                      # single runtime has no such column, so the directory is the authority.
-                     row["framework"] or framework,
+                     row["framework"] or framework, run_config,
                      category, class_name, row["method"], row["family"], row["variant"],
                      row["data_size_label"], row["data_size_bytes"], row["mean_ns"],
                      row["stddev_ns"], row["allocated_bytes"]))
@@ -175,15 +202,15 @@ def main():
         if environment and not args.dry_run:
             conn.execute(
                 "INSERT OR REPLACE INTO benchmark_runs "
-                "(run_id, platform, framework, run_date, commit_sha, branch, bdn_version, os, "
+                "(run_id, platform, framework, run_config, run_date, commit_sha, branch, bdn_version, os, "
                 " cpu, logical_cores, physical_cores, sdk_version, runtime_version, jit) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (run_id, platform, framework, run_date, commit_sha, branch,
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (run_id, platform, framework, run_config, run_date, commit_sha, branch,
                  environment["bdn_version"], environment["os"], environment["cpu"],
                  environment["logical_cores"], environment["physical_cores"],
                  environment["sdk_version"], environment["runtime_version"], environment["jit"]))
         elif not environment:
-            print(f"  [warn] {run_id}/{platform}/{framework}: no machine-spec.md; environment "
+            print(f"  [warn] {run_id}/{platform}/{framework_dir}: no machine-spec.md; environment "
                   f"not recorded", file=sys.stderr)
 
         # The versions of the libraries this run measured against, so a step in a competitor's
@@ -195,12 +222,12 @@ def main():
         if packages and not args.dry_run:
             conn.executemany(
                 "INSERT OR REPLACE INTO benchmark_run_packages "
-                "(run_id, platform, framework, package_id, version, source) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                [(run_id, platform, framework, package_id, str(version), packages_source)
+                "(run_id, platform, framework, run_config, package_id, version, source) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [(run_id, platform, framework, run_config, package_id, str(version), packages_source)
                  for package_id, version in sorted(packages.items())])
 
-        print(f"  [{'dry-run' if args.dry_run else 'ok'}] {run_id}/{platform}/{framework}: "
+        print(f"  [{'dry-run' if args.dry_run else 'ok'}] {run_id}/{platform}/{framework_dir}: "
               f"{run_rows} row(s)")
         total_rows += run_rows
         total_runs += 1

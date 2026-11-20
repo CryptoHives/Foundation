@@ -21,7 +21,7 @@ Confirmed directly against a real generated report (AsyncLockMultipleBenchmark-r
   just part of the raw implementation name, not a pattern to split further.
 - `family` genuinely varies row-by-row within one file: baseline comparisons (e.g. the built-in
   SemaphoreSlim) show their own real type name instead of the class's primitive name.
-- StdDev/Error are always hidden (ThreadingConfig.HideColumns), so stddev_ns is reliably NULL.
+- StdDev/Error were hidden (ThreadingConfig.HideColumns) in the earlier runs, so stddev_ns is NULL for those.
 - The contention-level [Params] axis is named either "Iterations" or "ParticipantCount"
   depending on the benchmark class (confirmed via grep across tests/Threading/Async/Pooled/*.cs).
 - CancellationToken state, where present, is a separate "cancellationType" column

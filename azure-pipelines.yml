@@ -100,6 +100,16 @@ stages:
       framework: net10.0
       configuration: Release
       jobnamesuffix: net100
+- stage: testnet110
+  dependsOn: [build]
+  displayName: 'Test .NET 11.0'
+  condition: and(succeeded(), ne(variables.ScheduledBuild, 'False'))
+  jobs:
+  - template: .azurepipelines/test.yml
+    parameters:
+      framework: net11.0
+      configuration: Release
+      jobnamesuffix: net110
 - stage: testnet462
   dependsOn: [build]
   displayName: 'Test .NET 4.6.2'

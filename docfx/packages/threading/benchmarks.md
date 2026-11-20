@@ -38,7 +38,7 @@ library's ratio to the fastest ranked implementation per primitive.
 Recorded runs live on the orphan **`benchmarks`** branch, one directory per run:
 
 ```
-threading/<code-commit>/<platform>/<framework>/
+threading/<code-commit>/<platform>/<framework>[-<run-config>]/
     run.json          what the numbers measure, and against which library versions
     machine-spec.md   the machine and runtime they were measured on
     <scenario>.md     one report per benchmark class
@@ -48,6 +48,8 @@ A run is keyed by the commit its binaries were built from, not by the commit tha
 
 The framework level below that does the same job for target frameworks: the same commit on the same machine under net10.0 and net8.0 is two runs, so the Table view can put them side by side exactly as it does two platforms. Pass `-Framework` to `run-benchmarks.ps1` and the matching `-TargetFramework` to `update-benchmark-docs.ps1`. A single run covering several runtimes at once (`-Runtimes "net8.0, net10.0"`) works too and needs neither: BenchmarkDotNet emits a `Runtime` column when the runtime varies, and each row is recorded against its own framework.
 
+A run that varies more than the framework is a run configuration of its own and gets its own directory, `<framework>-<run-config>`. `run-benchmarks.ps1` names it from its switches: `classic-async` for `-NoRuntimeAsync` on net11.0 and later, `isa-<tier>` for `-DisableIsa`, named after the tier the masked run actually measures (`isa-avx2` for `-DisableIsa AVX512`), and `inprocess` for an empty `-Runtimes`. Such a run writes to its own `BenchmarkDotNet.Artifacts/<run-config>/` directory, together with a `run-config.json` that records the settings, the commit built and when the run started. Record it with `-RunConfig <run-config>`, as the script prints at the end; the settings are copied into `run.json`, and the dashboards list it as a build of its own beside the default one.
+
 Run the benchmarks locally first (see below), then write the reports into a worktree of that branch:
 
 ```powershell
@@ -55,9 +57,9 @@ git worktree add ../foundation-bench benchmarks
 .\scripts\update-benchmark-docs.ps1 -Project Threading -DestDir ../foundation-bench/threading
 ```
 
-`update-benchmark-docs.ps1` derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported machines) and writes `run.json`, defaulting the code commit to `HEAD` — pass `-CodeCommit` when recording a run after the fact, or when `HEAD` has moved on since the run. It never commits or pushes: review the result and commit in that worktree when the run is worth keeping.
+`update-benchmark-docs.ps1` derives a platform id from the report's machine-spec preamble (override with `-PlatformId` for self-reported machines) and writes `run.json`, taking the code commit from `run-config.json`, or from `HEAD` for a run without one — pass `-CodeCommit` to override it. It never commits or pushes: review the result and commit in that worktree when the run is worth keeping.
 
-It also records the version of every third-party library the run measured against, read from the benchmark project's resolved NuGet graph. The dashboard shows that version in each point's tooltip, and marks any compared row whose library differs between the two runs — a series can step because the library it measures shipped a release, independently of any change here. Pass `-TargetFramework` if the benchmarks did not run on the default `net10.0`.
+It also records the version of every third-party library the run measured against, read from the benchmark project's resolved NuGet graph. The dashboard shows that version in each point's tooltip, and marks any compared row whose library differs between the two runs — a series can step because the library it measures shipped a release, independently of any change here. Pass `-TargetFramework` if the benchmarks did not run on the default `net11.0`.
 
 Pushing the branch does not republish the site on its own. The dashboard database is generated at build time rather than committed, so a new run becomes visible only when the docs workflow runs again — and a push to `benchmarks` cannot start it, because GitHub only runs workflows that exist in the pushed branch and that orphan branch carries no `.github/`. Publish it deliberately with `gh workflow run docfx.yml`, or let the next push to `main` pick it up.
 
@@ -101,8 +103,14 @@ From repository root:
   # Filter to specific benchmarks
   .\scripts\run-benchmarks.ps1 -Filter "*AsyncLock*"
 
-  # Run on specific framework and runtime
+  # Run on another framework and runtime (the default is net11.0)
   .\scripts\run-benchmarks.ps1 -Framework net10.0 -Runtimes net10.0
+
+  # Build net11.0 with compiler-generated state machines instead of runtime async
+  .\scripts\run-benchmarks.ps1 -NoRuntimeAsync
+
+  # Run each case in three processes, to average out per-process effects
+  .\scripts\run-benchmarks.ps1 -LaunchCount 3
 
   # List available benchmarks
   .\scripts\run-benchmarks.ps1 -List
@@ -118,14 +126,14 @@ From repository root:
 
   ```cmd
   cd tests\Threading
-  dotnet run -c Release --framework net10.0 -- --runtimes net10.0 --filter "*AsyncLock*"
+  dotnet run -c Release --framework net11.0 -- --runtimes net11.0 --filter "*AsyncLock*"
   ```
 
 Notes:
 - Use `Release` builds for meaningful results.
 - All benchmarks are also run as tests in NUnit to validate correctness.
 - The test runner disables some BenchmarkDotNet validators because the test assembly references NUnit; keep the provided `ManualConfig` in `tests/Common/Main.cs`.
-- Switch computer to high-performance power mode and close other applications for more stable results.
+- BenchmarkDotNet switches to the High performance power plan for the run and restores the previous plan afterwards; `-PowerPlan` overrides it. Close other applications for more stable results.
 - Benchmarks are non-parallelizable; run them on an otherwise idle machine for stable output.
 
 ### Where results appear

@@ -3,16 +3,21 @@
 
 # update-benchmark-docs.ps1
 # Records a BenchmarkDotNet run into the archive on the `benchmarks` branch, as
-# <package>/<code-commit>/<platform>/<framework>/. -DestDir names the package directory; the three
-# levels below it are derived from the commit under test and from the reports themselves.
-# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-SourceDir <path>] [-DestDir <path>]
-#            [-PlatformId <slug>] [-CodeCommit <sha>] [-TargetFramework <tfm>] [-Comment <text>] [-DryRun]
+# <package>/<code-commit>/<platform>/<framework>[-<run-config>]/. -DestDir names the package
+# directory; the levels below it come from the run-config.json run-benchmarks.ps1 writes next to
+# the reports, and from the reports themselves.
+# Usage: .\scripts\update-benchmark-docs.ps1 [-Project Threading] [-RunConfig <id>] [-SourceDir <path>]
+#            [-DestDir <path>] [-PlatformId <slug>] [-CodeCommit <sha>] [-TargetFramework <tfm>]
+#            [-Comment <text>] [-DryRun]
 
 [CmdletBinding()]
 param(
     [Parameter(HelpMessage = "Project to update (Threading or Cryptography)")]
     [ValidateSet("Threading", "Cryptography")]
     [string]$Project = "Threading",
+
+    [Parameter(HelpMessage = "Run configuration to record, as run-benchmarks.ps1 printed it (for example: classic-async, isa-avx2). Selects that configuration's results directory; omit for a default run.")]
+    [string]$RunConfig,
 
     [Parameter(HelpMessage = "Source directory containing BenchmarkDotNet results")]
     [string]$SourceDir,
@@ -27,7 +32,7 @@ param(
     [string]$CodeCommit,
 
     [Parameter(HelpMessage = "Target framework the benchmarks ran under. Must match run-benchmarks.ps1 -Framework, since the competitor package versions are read from that framework's resolved dependency graph.")]
-    [string]$TargetFramework = "net10.0",
+    [string]$TargetFramework = "net11.0",
 
     [Parameter(HelpMessage = "Free-text note on settings the reports do not capture (for example: 'High performance plan, max processor state 99% (boost off)'). Written to machine-spec.md and run.json.")]
     [string]$Comment,
@@ -310,6 +315,10 @@ $selectedConfig = $packageConfigurations[$Project]
 
 if (-not $PSBoundParameters.ContainsKey('SourceDir') -or [string]::IsNullOrWhiteSpace($SourceDir)) {
     $SourceDir = Join-Path $RepoRoot $selectedConfig.SourceDir
+    # run-benchmarks.ps1 gives every non-default configuration its own artifacts directory.
+    if ($RunConfig) {
+        $SourceDir = Join-Path (Join-Path (Split-Path $SourceDir) $RunConfig) "results"
+    }
 }
 
 if (-not $PSBoundParameters.ContainsKey('DestDir') -or [string]::IsNullOrWhiteSpace($DestDir)) {
@@ -360,6 +369,33 @@ if (-not (Test-Path $DestDir)) {
         New-Item -ItemType Directory -Force -Path $DestDir | Out-Null
     }
 }
+
+# What the run varied that the reports cannot show - runtime-async off, a masked instruction set -
+# as run-benchmarks.ps1 recorded it when the run started.
+$runSettingsFile = Join-Path $SourceDir "run-config.json"
+$runSettings = $null
+if (Test-Path $runSettingsFile) {
+    $runSettings = Get-Content -Raw -Path $runSettingsFile | ConvertFrom-Json
+    if ($runSettings.dryRun) {
+        Write-Host "ERROR: $runSettingsFile records a -DryRun; its single-iteration numbers are not recorded." -ForegroundColor Red
+        exit 1
+    }
+    if ($RunConfig -and $RunConfig -ne $runSettings.runConfig) {
+        Write-Host "ERROR: -RunConfig is '$RunConfig' but $runSettingsFile says '$($runSettings.runConfig)'." -ForegroundColor Red
+        exit 1
+    }
+    $RunConfig = [string]$runSettings.runConfig
+    if (-not $runSettings.completedAt) {
+        Write-Host "WARNING: run-config.json has no completion time; the run that wrote it failed or is still going." -ForegroundColor Yellow
+    }
+    if ($runSettings.workingTreeClean -eq $false) {
+        Write-Host "WARNING: the run was built from a working tree with uncommitted changes to tracked files." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "WARNING: no run-config.json in $SourceDir; recording as run configuration '$RunConfig' (empty means default)." -ForegroundColor Yellow
+}
+Write-Host "Run configuration: $(if ($RunConfig) { $RunConfig } else { '(default)' })"
+Write-Host ""
 
 # Function to normalize benchmark content (remove emphasis markers)
 function Normalize-BenchmarkContent {
@@ -581,24 +617,41 @@ function Get-BenchmarkPackageVersions {
 # still the fallback: BenchmarkDotNet drops the "Job=... Toolchain=..." line from the preamble as
 # soon as a job characteristic varies across the report, which is exactly the multi-runtime case,
 # and there the run has no single framework to name the directory with.
+#
+# BenchmarkDotNet 0.16 names the toolchain ("CsProjCore") rather than the framework, so only a
+# "net..." toolchain is taken as is. An in-process run has no Runtime= entry; it ran on the host.
 function Get-FrameworkFromMachineSpec {
     param([string]$MachineSpec)
 
-    if ($MachineSpec -match 'Toolchain=(\S+)') {
-        return $Matches[1]
+    $toolchain = if ($MachineSpec -match 'Toolchain=(\S+)') { $Matches[1] } else { $null }
+    if ($toolchain -match '^net\d') {
+        return $toolchain
     }
 
-    # No Toolchain line: fall back to the runtime display name, e.g. "Runtime=.NET Framework 4.8".
+    if ($toolchain -like 'InProcess*') {
+        if ($MachineSpec -match '\[Host\]\s*:\s*(\.NET(?: Framework)? \d+(?:\.\d+){1,3})') {
+            return ConvertTo-TargetFramework -RuntimeName $Matches[1]
+        }
+        return $null
+    }
+
+    # e.g. "Runtime=.NET 11.0" or "Runtime=.NET Framework 4.8".
     if ($MachineSpec -match 'Runtime=(\.NET(?: Framework)? \d+(?:\.\d+){1,2})') {
-        $version = $Matches[1]
-        if ($version -match '^\.NET Framework (.+)$') {
-            return "net" + ($Matches[1] -replace '\.', '')
-        }
-        if ($version -match '^\.NET (\d+)\.(\d+)') {
-            return "net$($Matches[1]).$($Matches[2])"
-        }
+        return ConvertTo-TargetFramework -RuntimeName $Matches[1]
     }
 
+    return $null
+}
+
+function ConvertTo-TargetFramework {
+    param([string]$RuntimeName)
+
+    if ($RuntimeName -match '^\.NET Framework (\d+(?:\.\d+)*)$') {
+        return "net" + ($Matches[1] -replace '\.', '')
+    }
+    if ($RuntimeName -match '^\.NET (\d+)\.(\d+)') {
+        return "net$($Matches[1]).$($Matches[2])"
+    }
     return $null
 }
 
@@ -647,14 +700,26 @@ function Resolve-CodeCommit {
     return $resolved.Trim()
 }
 
+# The commit run-benchmarks.ps1 built, which stays right when HEAD has moved since the run.
+$codeCommitSource = "-CodeCommit"
+if (-not $PSBoundParameters.ContainsKey('CodeCommit')) {
+    if ($runSettings -and $runSettings.codeCommit) {
+        $CodeCommit = $runSettings.codeCommit
+        $codeCommitSource = "run-config.json"
+    } else {
+        $codeCommitSource = "HEAD; pass -CodeCommit when recording a run after the fact"
+    }
+}
 $CodeCommit = Resolve-CodeCommit -Value $CodeCommit
+if ($PSBoundParameters.ContainsKey('CodeCommit') -and $runSettings -and $runSettings.codeCommit -and
+    $runSettings.codeCommit -ne $CodeCommit) {
+    Write-Host "WARNING: -CodeCommit $CodeCommit differs from the commit the run built, $($runSettings.codeCommit)." -ForegroundColor Yellow
+}
 # Ten characters, matching the run directories already in the archive.
 $codeCommitDir = $CodeCommit.Substring(0, 10)
 
 Write-Host "Code commit: $CodeCommit"
-if (-not $PSBoundParameters.ContainsKey('CodeCommit')) {
-    Write-Host "  (HEAD; pass -CodeCommit when recording a run after the fact)"
-}
+Write-Host "  ($codeCommitSource)"
 Write-Host ""
 
 Write-Host "Copying benchmark results..."
@@ -681,6 +746,11 @@ foreach ($mapping in $benchmarkMappings) {
     $targetName = $mapping.Target
 
     if (Test-Path $sourceFile) {
+        if ($runSettings -and $runSettings.startedAt -and
+            (Get-Item $sourceFile).LastWriteTimeUtc -lt ([datetime]$runSettings.startedAt).ToUniversalTime()) {
+            Write-Host "  [WARN] $($mapping.Source) predates the run in run-config.json; it comes from an earlier run." -ForegroundColor Yellow
+        }
+
         # Read source file as UTF-8 (BenchmarkDotNet outputs UTF-8)
         $content = [System.IO.File]::ReadAllText($sourceFile, [System.Text.Encoding]::UTF8)
 
@@ -710,9 +780,12 @@ foreach ($mapping in $benchmarkMappings) {
                 Write-Host "  [WARN] Reports were produced under '$resolvedFramework' but -TargetFramework is '$TargetFramework'. Recording as '$resolvedFramework'; pass the matching -TargetFramework so the package versions come from the right graph." -ForegroundColor Yellow
             }
 
-            $resolvedDestDir = Join-Path (Join-Path $destinationRoot $PlatformId) $resolvedFramework
+            # A configuration other than the default is its own run of that framework, not an
+            # overwrite of it: net11.0 and net11.0-classic-async measure different builds.
+            $frameworkDir = if ($RunConfig) { "$resolvedFramework-$RunConfig" } else { $resolvedFramework }
+            $resolvedDestDir = Join-Path (Join-Path $destinationRoot $PlatformId) $frameworkDir
             Ensure-Directory -Path $resolvedDestDir -DryRunMode:$DryRun
-            Write-Host "  [INFO] Recording under $PlatformId/$resolvedFramework" -ForegroundColor Cyan
+            Write-Host "  [INFO] Recording under $PlatformId/$frameworkDir" -ForegroundColor Cyan
         }
 
         if (-not $resolvedDestDir) {
@@ -786,6 +859,10 @@ if ($machineSpec -and $resolvedDestDir) {
         package    = $Project.ToLowerInvariant()
         platform   = $PlatformId
         framework  = $resolvedFramework
+        runConfig  = [string]$RunConfig
+    }
+    if ($runSettings) {
+        $runMetadata.runSettings = $runSettings
     }
 
     # The importer reads a `branch` alongside the commit, so record which branch the measured
@@ -816,7 +893,7 @@ if ($machineSpec -and $resolvedDestDir) {
     if ($Comment) {
         $runMetadata.comment = $Comment
     }
-    $runJsonContent = ($runMetadata | ConvertTo-Json -Depth 3) + "`n"
+    $runJsonContent = ($runMetadata | ConvertTo-Json -Depth 5) + "`n"
 
     if ($DryRun) {
         Write-Host "  [DRY RUN] Set-Content -Path $runJsonFile (code commit $CodeCommit)" -ForegroundColor Yellow

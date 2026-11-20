@@ -87,7 +87,7 @@ If the target project uses Central Package Management (`Directory.Packages.props
 | `lock` / `Monitor` re-entered from a nested call, once the code is async | `AsyncReentrantLock` | Experimental: suppress `CHTEXP001` to use it. Prefer narrowing the locked region. Never wrap `LockAsync` in an `async` method: the caller then no longer counts as holding the lock, and its next nested acquisition deadlocks. See [AsyncReentrantLock](packages/threading/asyncreentrantlock.md). |
 | `DotNext.Threading.AsyncExclusiveLock` | `AsyncLock` | DotNext releases with an explicit `Release()`; here the lock is released by disposing the `Releaser`, so wrap the critical section in `using`. |
 | `DotNext.Threading.AsyncReaderWriterLock` | `AsyncReaderWriterLock` | Same `Releaser` pattern for reader and writer locks; upgradeable readers are a distinct mode here. |
-| `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | The same-named type in this package | DotNext's types are net10.0-only; these run on every target down to net462. |
+| `DotNext.Threading.AsyncAutoResetEvent` / `AsyncManualResetEvent` / `AsyncCountdownEvent` / `AsyncBarrier` | The same-named type in this package | DotNext's types need net10.0 or later; these run on every target down to net462. |
 | `DotNext.Threading.AsyncExchanger<T>` | `AsyncExchange<T>` | Same two-party rendezvous. |
 
 ### 2.2 `AsyncLock` — exact usage

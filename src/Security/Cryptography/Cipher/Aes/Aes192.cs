@@ -80,6 +80,39 @@ public sealed class Aes192 : SymmetricCipher
     /// <returns>A new AES-192 cipher instance.</returns>
     internal static Aes192 Create(SimdSupport simdSupport) => new(simdSupport);
 
+    /// <summary>
+    /// Creates a new instance of the <see cref="Aes192"/> cipher whose key is fixed for its lifetime.
+    /// </summary>
+    /// <remarks>
+    /// The key can be used but not read back or replaced: <see cref="SymmetricCipher.Key"/>,
+    /// <see cref="SymmetricCipher.KeySize"/> and <see cref="SymmetricCipher.GenerateKey"/> throw.
+    /// </remarks>
+    /// <param name="key">The 24-byte secret key.</param>
+    /// <returns>A new AES-192 cipher instance.</returns>
+    /// <exception cref="OS.CryptographicException"><paramref name="key"/> is not 24 bytes.</exception>
+    public static Aes192 Create(ReadOnlySpan<byte> key) => Create(AesCore.AesDefault, key);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Aes192"/> cipher with a fixed key and specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The 24-byte secret key.</param>
+    /// <returns>A new AES-192 cipher instance.</returns>
+    internal static Aes192 Create(SimdSupport simdSupport, ReadOnlySpan<byte> key)
+    {
+        var aes = new Aes192(simdSupport);
+        try
+        {
+            aes.FixKey(key);
+            return aes;
+        }
+        catch
+        {
+            aes.Dispose();
+            throw;
+        }
+    }
+
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)
     {

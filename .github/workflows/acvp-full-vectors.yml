@@ -51,7 +51,7 @@ jobs:
 
     - uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '11.0.x'
 
     - uses: actions/setup-python@v7
       with:
@@ -68,7 +68,7 @@ jobs:
         CRYPTOHIVES_SLHDSA_ACVP_VECTORS: ${{ github.workspace }}/tests/Security/Cryptography/TestData/slhdsa-acvp-fips205.full.json.gz
       run: >
         dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj
-        -c Release --framework net10.0
+        -c Release --framework net11.0
         --filter "FullyQualifiedName~SlhDsaAcvpTests"
         --logger "console;verbosity=normal"
 
@@ -96,7 +96,7 @@ jobs:
 
     - uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '11.0.x'
 
     - uses: actions/setup-python@v7
       with:
@@ -113,7 +113,7 @@ jobs:
         CRYPTOHIVES_SLHDSA_PREHASH_ACVP_VECTORS: ${{ github.workspace }}/tests/Security/Cryptography/TestData/slhdsa-prehash-acvp-fips205.full.json.gz
       run: >
         dotnet test tests/Security/Cryptography/Cryptography.Tests.csproj
-        -c Release --framework net10.0
+        -c Release --framework net11.0
         --filter "FullyQualifiedName~PreHashAcvpTests"
         --logger "console;verbosity=normal"
 

@@ -15,7 +15,7 @@ dotnet pack src/Security/Cryptography/Cryptography.csproj -c Release
 dotnet test /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=<version>
 ```
 
-Target frameworks are centrally controlled by `targets.props` and vary by IDE/OS. On macOS, only `net10.0` is targeted.
+Target frameworks are centrally controlled by `targets.props` and vary by IDE/OS. On macOS, only `net11.0` is targeted. net11.0+ builds compile with `runtime-async=on` unless `/p:RuntimeAsync=false` is passed.
 
 ## Code Constraints (enforced globally via `common.props`)
 
@@ -107,7 +107,7 @@ The Roslyn analyzers (`CryptoHives.Foundation.Threading.Analyzers`, added separa
 - Add to an existing test file where one fits; no Arrange/Act/Assert comments
 - Cryptography tests use **BouncyCastle**, **NaCl.Core**, **HashifyNET**, and other reference implementations for cross-validation
 - Threading tests benchmark against **AsyncKeyedLock**, **Nito.AsyncEx**, **NeoSmart.AsyncLock**, **ProtoPromise**, **KeyedSemaphores**, **Dao.IndividualLock**, **AsyncUtilities**, **Microsoft.VisualStudio.Threading**, and (net10.0 only) **DotNext.Threading**
-- Benchmark runs are recorded on the orphan `benchmarks` branch as `<package>/<code-commit>/<platform>/<framework>/`, keyed by the commit measured rather than the commit recording it; the trends database under `docfx/**/benchmark-trends/` is generated from it at build time and is not committed. Each run's `run.json` also records the resolved version of every third-party library it measured against. Record with `update-benchmark-docs.ps1 -DestDir <archive worktree>`, rebuild locally with `build-trends-database.ps1`
+- Benchmark runs are recorded on the orphan `benchmarks` branch as `<package>/<code-commit>/<platform>/<framework>[-<run-config>]/`, keyed by the commit measured rather than the commit recording it; the trends database under `docfx/**/benchmark-trends/` is generated from it at build time and is not committed. Each run's `run.json` also records the resolved version of every third-party library it measured against, and the settings `run-benchmarks.ps1` wrote to `run-config.json` (runtime-async off, masked ISA, in-process) that name the `-<run-config>` suffix. Record with `update-benchmark-docs.ps1 -DestDir <archive worktree>`, rebuild locally with `build-trends-database.ps1`
 - `tests/Directory.Build.props` imports the root props and adds shared `GlobalSuppressions.cs`
 - Some test-only packages (e.g., `Konscious.Security.Cryptography.Blake2`, `Blake3`) are excluded when strong-name signing is active because they are not signed
 

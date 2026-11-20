@@ -28,10 +28,9 @@ using OS = System.Security.Cryptography;
 /// <para>
 /// <b>Example usage:</b>
 /// <code>
-/// using var aes = Aes256.Create();
+/// using var aes = Aes256.Create(key);
 /// aes.Mode = CipherMode.CBC;
 /// aes.Padding = PaddingMode.PKCS7;
-/// aes.GenerateKey();
 /// aes.GenerateIV();
 ///
 /// byte[] ciphertext = aes.Encrypt(plaintext);
@@ -96,6 +95,39 @@ public sealed class Aes256 : SymmetricCipher
     /// <param name="simdSupport">The SIMD instruction set to use.</param>
     /// <returns>A new AES-256 cipher instance.</returns>
     internal static Aes256 Create(SimdSupport simdSupport) => new(simdSupport);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Aes256"/> cipher whose key is fixed for its lifetime.
+    /// </summary>
+    /// <remarks>
+    /// The key can be used but not read back or replaced: <see cref="SymmetricCipher.Key"/>,
+    /// <see cref="SymmetricCipher.KeySize"/> and <see cref="SymmetricCipher.GenerateKey"/> throw.
+    /// </remarks>
+    /// <param name="key">The 32-byte secret key.</param>
+    /// <returns>A new AES-256 cipher instance.</returns>
+    /// <exception cref="OS.CryptographicException"><paramref name="key"/> is not 32 bytes.</exception>
+    public static Aes256 Create(ReadOnlySpan<byte> key) => Create(AesCore.AesDefault, key);
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Aes256"/> cipher with a fixed key and specified SIMD support.
+    /// </summary>
+    /// <param name="simdSupport">The SIMD instruction set to use.</param>
+    /// <param name="key">The 32-byte secret key.</param>
+    /// <returns>A new AES-256 cipher instance.</returns>
+    internal static Aes256 Create(SimdSupport simdSupport, ReadOnlySpan<byte> key)
+    {
+        var aes = new Aes256(simdSupport);
+        try
+        {
+            aes.FixKey(key);
+            return aes;
+        }
+        catch
+        {
+            aes.Dispose();
+            throw;
+        }
+    }
 
     /// <inheritdoc/>
     protected override ICipherTransform CreateCipherEncryptor(ReadOnlySpan<byte> key, ReadOnlySpan<byte> iv)

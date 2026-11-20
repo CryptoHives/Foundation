@@ -3,7 +3,7 @@
 
 # run-benchmarks.ps1
 # Runs BenchmarkDotNet benchmarks for the Threading or Cryptography libraries
-# Usage: .\scripts\run-benchmarks.ps1 -Project Threading [-Filter "*AsyncLock*"] [-Framework net10.0]
+# Usage: .\scripts\run-benchmarks.ps1 -Project Threading [-Filter "*AsyncLock*"] [-Framework net11.0]
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family SHA256
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family BLAKE  (runs Blake2b256, Blake2b512, Blake2s128, Blake2s256, Blake3)
 #        .\scripts\run-benchmarks.ps1 -Project Cryptography -Family RegionalCipher  (runs SM4, ARIA, Camellia, Kuznyechik, Magma, Kalyna, SEED)
@@ -87,12 +87,12 @@ param(
     [Parameter(HelpMessage = "Filter for benchmark names (e.g., '*AsyncLock*', '*SHA256*')")]
     [string[]]$Filter = @("*"),
 
-    [Parameter(HelpMessage = "Target framework to build against (e.g., net10.0, net8.0)")]
-    [ValidateSet("net10.0", "net8.0", "net48")]
-    [string]$Framework = "net10.0",
+    [Parameter(HelpMessage = "Target framework to build against (e.g., net11.0, net10.0)")]
+    [ValidateSet("net11.0", "net10.0", "net8.0", "net48")]
+    [string]$Framework = "net11.0",
 
-    [Parameter(HelpMessage = "Comma-separated list of runtimes to benchmark (e.g., 'net10.0', 'net10.0,net8.0')")]
-    [string]$Runtimes = "net10.0",
+    [Parameter(HelpMessage = "Comma-separated list of runtimes to benchmark (e.g., 'net11.0', 'net11.0,net10.0'); empty runs in process on the -Framework runtime")]
+    [string]$Runtimes = "net11.0",
 
     [Parameter(HelpMessage = "Build configuration")]
     [ValidateSet("Release", "Debug")]
@@ -117,6 +117,13 @@ param(
 
     [Parameter(HelpMessage = "Shutdown dotnet build servers after run to avoid lingering MSBuild node-reuse processes")]
     [switch]$ShutdownBuildServers,
+
+    [Parameter(HelpMessage = "Number of separate benchmark processes per case (BenchmarkDotNet LaunchCount); 0 keeps BenchmarkDotNet's default of one. Three averages out per-process effects such as code alignment, at three times the run time")]
+    [ValidateRange(0, 10)]
+    [int]$LaunchCount = 0,
+
+    [Parameter(HelpMessage = "Build net11.0+ with classic compiler-generated async state machines instead of runtime-async")]
+    [switch]$NoRuntimeAsync,
 
     # Deliberately not [ValidateSet]: pwsh -File (which the .cmd wrapper uses)
     # passes arguments as literal strings, so "AVX512,AVX2" arrives as one token and
@@ -161,8 +168,8 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - Project — Threading | Cryptography - select one"
     Write-Host "   - Family — many individual algorithms + group aliases (SHA2, SHA3, etc.) — none (null)  "
     Write-Host "   - Filter — one or more string globs applied to full benchmark name — \"*\"  "
-    Write-Host "   - Framework — net10.0 | net8.0 | net48 — net10.0  "
-    Write-Host "   - Runtimes — comma list (e.g. \"net10.0, net8.0\") — \"net10.0\"  "
+    Write-Host "   - Framework — net11.0 | net10.0 | net8.0 | net48 — net11.0  "
+    Write-Host "   - Runtimes — comma list (e.g. \"net10.0, net8.0\"), empty runs in process on the -Framework runtime — \"net11.0\"  "
     Write-Host "   - Configuration — Release | Debug — Release  "
     Write-Host "   - Verbosity — q | m | n | d | diag — n  "
     Write-Host "   - List — switch (show benchmarks) — off  "
@@ -170,6 +177,8 @@ if (-not $Project -or $PSBoundParameters.Count -eq 0) {
     Write-Host "   - ExtraArgs — string[] forwarded to BenchmarkDotNet — none  "
     Write-Host "   - TimeoutMinutes — int (0..1440), process timeout in minutes — 0 (disabled)  "
     Write-Host "   - ShutdownBuildServers — switch (runs 'dotnet build-server shutdown' after completion) — off  "
+    Write-Host "   - LaunchCount — int (0..10), processes per benchmark case; 0 keeps BenchmarkDotNet's default of 1 — 0  "
+    Write-Host "   - NoRuntimeAsync — switch (net11.0+: compiler state machines instead of runtime-async) — off  "
     Write-Host "   - DisableIsa — AVX512 | AVX2 | SSE42 | SSSE3 | AES | AdvSimd (comma list) — none  "
     Write-Host "   - PinToCore — one or more 0-based logical CPUs (e.g. 4 or 4,6) — none (unpinned)  "
     Write-Host "   - PowerPlan — UserPowerPlan | Balanced | PowerSaver | HighPerformance | UltimatePerformance | GUID — none (BDN forces HighPerformance)  "
@@ -464,6 +473,9 @@ Write-Host "  Filter:        $filterDisplay"
 Write-Host "  Framework:     $Framework"
 Write-Host "  Runtimes:      $Runtimes"
 Write-Host "  Configuration: $Configuration"
+if ($NoRuntimeAsync) {
+    Write-Host "  RuntimeAsync:  off"
+}
 try {
     $resolvedTestProject = (Resolve-Path -LiteralPath $testProject -ErrorAction Stop).Path
 }
@@ -650,6 +662,12 @@ function Set-BenchmarkEnv {
     [Environment]::SetEnvironmentVariable($Name, $Value)
 }
 
+# An environment variable rather than /p:, because BenchmarkDotNet rebuilds the project in a
+# child process that never sees the properties given to dotnet run.
+if ($NoRuntimeAsync) {
+    Set-BenchmarkEnv -Name "RuntimeAsync" -Value "false"
+}
+
 if ($requestedIsa.Count -gt 0) {
     Write-Host "ISA mask requested: $($requestedIsa -join ', ')" -ForegroundColor Yellow
     foreach ($isa in $requestedIsa) {
@@ -763,6 +781,61 @@ if ($pinnedCores.Count -gt 0) {
     }
 }
 
+# ---------------------------------------------------------------------------
+# Run configuration: what this run varies beyond the framework, which the reports do not show.
+# ---------------------------------------------------------------------------
+
+# The tier the masked run really measures, from the probe rather than from the switches, so
+# masking AVX512 on an AVX-512 host and running unmasked on an AVX2-only host both say avx2.
+function Get-IsaTier {
+    param([hashtable]$Resolved)
+    foreach ($tier in "AVX512", "AVX2", "SSE42", "SSSE3", "AdvSimd") {
+        if ($Resolved[$tier]) { return $tier.ToLowerInvariant() }
+    }
+    return "scalar"
+}
+
+$runtimeAsyncApplies = ($Framework -match '^net(\d+)\.') -and ([int]$Matches[1] -ge 11)
+$configTags = @()
+if ($NoRuntimeAsync -and $runtimeAsyncApplies) { $configTags += "classic-async" }
+if ($requestedIsa.Count -gt 0) {
+    $isaTag = "isa-" + (Get-IsaTier -Resolved $resolved)
+    if ($requestedIsa -contains "AES") { $isaTag += "-noaes" }
+    $configTags += $isaTag
+}
+if ([string]::IsNullOrWhiteSpace($Runtimes)) { $configTags += "inprocess" }
+$runConfig = $configTags -join "-"
+
+# Each configuration gets its own artifacts directory, so reports of a default run and of a
+# masked one never mix in one results directory that is then recorded as one run.
+$artifactsDir = $null
+$customArtifacts = $false
+if ($ExtraArgs) {
+    $artifactsIndex = [array]::IndexOf([string[]]$ExtraArgs, "--artifacts")
+    if ($artifactsIndex -ge 0 -and $artifactsIndex + 1 -lt $ExtraArgs.Count) {
+        $artifactsDir = [string]$ExtraArgs[$artifactsIndex + 1]
+        $customArtifacts = $true
+        if (-not [System.IO.Path]::IsPathRooted($artifactsDir)) {
+            $artifactsDir = Join-Path $resolvedTestProject $artifactsDir
+        }
+    }
+}
+$addArtifactsArg = $false
+if (-not $artifactsDir) {
+    $artifactsDir = Join-Path $resolvedTestProject "BenchmarkDotNet.Artifacts"
+    if ($runConfig) {
+        $artifactsDir = Join-Path $artifactsDir $runConfig
+        $addArtifactsArg = $true
+    }
+}
+$resultsPath = Join-Path $artifactsDir "results"
+
+if ($runConfig) {
+    Write-Host "Run configuration: $runConfig" -ForegroundColor Yellow
+    Write-Host "  artifacts: $artifactsDir" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
 # Build the command arguments
 $dotnetArgs = @(
     "run"
@@ -792,8 +865,15 @@ else {
             $dotnetArgs += [string]$pattern
         }
     }
-    $dotnetArgs += "--runtimes"
-    $dotnetArgs += [string]$Runtimes
+    # An empty -Runtimes runs in process, for a framework BenchmarkDotNet has no moniker for yet:
+    # its out-of-process toolchain rejects an unrecognised host runtime during validation.
+    if ([string]::IsNullOrWhiteSpace($Runtimes)) {
+        $dotnetArgs += "--inProcess"
+    }
+    else {
+        $dotnetArgs += "--runtimes"
+        $dotnetArgs += [string]$Runtimes
+    }
 }
 
 # Add any extra arguments
@@ -806,6 +886,16 @@ if ($ExtraArgs) {
 if ($null -ne $affinityMask) {
     $dotnetArgs += "--affinity"
     $dotnetArgs += [string]$affinityMask
+}
+
+if ($LaunchCount -gt 0 -and -not $List) {
+    $dotnetArgs += "--launchCount"
+    $dotnetArgs += [string]$LaunchCount
+}
+
+if ($addArtifactsArg -and -not $List) {
+    $dotnetArgs += "--artifacts"
+    $dotnetArgs += $artifactsDir
 }
 
 # Show command. Quote any argument a shell would otherwise treat specially (wildcards,
@@ -824,6 +914,37 @@ if ($DryRun) {
     $dotnetArgs += "Dry"
     Write-Host "[DRY RUN] Running all benchmarks with minimal iterations (Job.Dry)" -ForegroundColor Yellow
     Write-Host ""
+}
+
+# Read back by update-benchmark-docs.ps1, which records it into the run's run.json. Written before
+# the run starts, so reports older than startedAt can be told apart from this run's.
+$runSettingsFile = Join-Path $resultsPath "run-config.json"
+$runSettings = $null
+if (-not $List) {
+    $headCommit = git -C $resolvedTestProject rev-parse --verify --quiet HEAD 2>$null
+    $trackedChanges = git -C $resolvedTestProject status --porcelain --untracked-files=no 2>$null
+    $runSettings = [ordered]@{
+        runConfig        = $runConfig
+        framework        = $Framework
+        runtimes         = $Runtimes
+        configuration    = $Configuration
+        runtimeAsync     = if ($runtimeAsyncApplies) { -not $NoRuntimeAsync } else { $null }
+        inProcess        = [string]::IsNullOrWhiteSpace($Runtimes)
+        isa              = if ($requestedIsa.Count -gt 0) { [ordered]@{ disabled = @($requestedIsa); resolved = $isaLine } } else { $null }
+        pinToCore        = if ($pinnedCores.Count -gt 0) { @($pinnedCores | Sort-Object -Unique) } else { $null }
+        powerPlan        = if ($PowerPlan) { $PowerPlan } else { $null }
+        cooldownSeconds  = $CooldownSeconds
+        launchCount      = if ($LaunchCount -gt 0) { $LaunchCount } else { $null }
+        dryRun           = [bool]$DryRun
+        codeCommit       = if ($headCommit) { $headCommit.Trim() } else { $null }
+        workingTreeClean = if ($headCommit) { -not $trackedChanges } else { $null }
+        command          = $cmdDisplay
+        startedAt        = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        completedAt      = $null
+    }
+    New-Item -ItemType Directory -Force -Path $resultsPath | Out-Null
+    [System.IO.File]::WriteAllText($runSettingsFile, ($runSettings | ConvertTo-Json -Depth 4) + "`n",
+                                   (New-Object System.Text.UTF8Encoding $false))
 }
 
 # Change to test project directory and run
@@ -871,20 +992,28 @@ try {
         exit $exitCode
     }
 
+    if ($runSettings) {
+        $runSettings.completedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        [System.IO.File]::WriteAllText($runSettingsFile, ($runSettings | ConvertTo-Json -Depth 4) + "`n",
+                                       (New-Object System.Text.UTF8Encoding $false))
+    }
+
     Write-Host ""
     Write-Host "========================================"
     Write-Host " Benchmarks completed successfully!"
     Write-Host "========================================"
     Write-Host ""
     Write-Host "Results saved to:"
-    $resultsPath = Join-Path $resolvedTestProject 'BenchmarkDotNet.Artifacts' 'results'
     Write-Host "  $resultsPath"
     Write-Host ""
-    
+
     # Recording is a separate, deliberate step: not every local run is worth keeping as history.
+    $recordArgs = "-Project $Project"
+    if ($addArtifactsArg) { $recordArgs += " -RunConfig $runConfig" }
+    elseif ($customArtifacts) { $recordArgs += " -SourceDir `"$resultsPath`"" }
     Write-Host "To record this run into the archive on the benchmarks branch:"
     Write-Host "  git worktree add ../foundation-bench benchmarks"
-    Write-Host "  .\scripts\update-benchmark-docs.ps1 -Project $Project -DestDir ../foundation-bench/$($Project.ToLowerInvariant())"
+    Write-Host "  .\scripts\update-benchmark-docs.ps1 $recordArgs -DestDir ../foundation-bench/$($Project.ToLowerInvariant())"
     Write-Host ""
     Write-Host "Then commit in that worktree. To rebuild the dashboard database locally:"
     Write-Host "  .\scripts\build-trends-database.ps1"

@@ -43,7 +43,7 @@
   <label>Platform
     <select id="platform"></select>
   </label>
-  <label id="framework-picker" hidden>Framework
+  <label id="framework-picker" hidden>Build
     <select id="framework"></select>
   </label>
   <label>Run
@@ -275,7 +275,7 @@
   }
 
   function refreshFrameworks() {
-    const frameworks = distinct("framework", "WHERE platform = ?", [platformSel.value]);
+    const frameworks = distinct("build", "WHERE platform = ?", [platformSel.value]);
     populateSelect(frameworkSel, frameworks);
     refreshRuns();
   }
@@ -283,7 +283,7 @@
   function refreshRuns() {
     const stmt = db.prepare(
       "SELECT DISTINCT run_id, run_date, commit_sha FROM benchmark_results " +
-      "WHERE platform = ? AND framework = ? ORDER BY run_date DESC"
+      "WHERE platform = ? AND build = ? ORDER BY run_date DESC"
     );
     stmt.bind([platformSel.value, frameworkSel.value]);
     const runs = [];
@@ -320,7 +320,7 @@
   function loadRunAverages(runId, platform, framework) {
     const stmt = db.prepare(
       "SELECT family, variant, param_value, cancellation, mean_ns FROM benchmark_results " +
-      "WHERE run_id = ? AND platform = ? AND framework = ? AND family != 'SyncLock' " +
+      "WHERE run_id = ? AND platform = ? AND build = ? AND family != 'SyncLock' " +
       "AND param_value IS NOT NULL"
     );
     stmt.bind([runId, platform, framework]);
@@ -509,7 +509,7 @@
     db = new SQL.Database(new Uint8Array(buffer));
 
     populateSelect(platformSel, distinct("platform", ""));
-    const hasMultipleFrameworks = distinct("framework", "").length > 1;
+    const hasMultipleFrameworks = distinct("build", "").length > 1;
     frameworkPickerEl.hidden = !hasMultipleFrameworks;
 
     platformSel.onchange = refreshFrameworks;

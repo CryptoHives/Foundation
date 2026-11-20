@@ -37,6 +37,7 @@ jobs:
         with:
           dotnet-version: |
             10.x
+            11.x
 
       - name: dotnet --info
         run: dotnet --info

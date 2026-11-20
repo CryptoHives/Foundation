@@ -29,7 +29,7 @@ using System.Threading;
 /// a smaller group and simply contribute fewer rows, instead of being emulated into an unfair comparison.
 /// </para>
 /// </remarks>
-public partial class CancellationType : IFormattable
+public partial class CancellationType : IFormattable, IEquatable<CancellationType>
 {
     /// <summary>
     /// A timeout long enough that it never elapses during a benchmark, so what gets measured is the cost
@@ -53,21 +53,21 @@ public partial class CancellationType : IFormattable
     /// Provides a predefined array of cancellation type groups representing None, cancelled, and not cancelled token
     /// states.
     /// </summary>
-    public static IEnumerable<object[]> NoneCancelledNotCancelledGroup()
+    public static IEnumerable<CancellationType> NoneCancelledNotCancelledGroup()
     {
-        yield return new object[] { None };
-        yield return new object[] { Cancelled };
-        yield return new object[] { NotCancelled };
+        yield return None;
+        yield return Cancelled;
+        yield return NotCancelled;
     }
 
     /// <summary>
     /// Provides a predefined array of cancellation type groups representing None and a not cancelled token.
     /// states.
     /// </summary>
-    public static IEnumerable<object[]> NoneNotCancelledGroup()
+    public static IEnumerable<CancellationType> NoneNotCancelledGroup()
     {
-        yield return new object[] { None };
-        yield return new object[] { NotCancelled };
+        yield return None;
+        yield return NotCancelled;
     }
 
     /// <summary>
@@ -78,20 +78,20 @@ public partial class CancellationType : IFormattable
     /// For implementations supporting both. Point ones with no timeout overload at
     /// <see cref="NoneNotCancelledGroup"/>, and ones with neither at <see cref="NoneGroup"/>.
     /// </remarks>
-    public static IEnumerable<object[]> NoneNotCancelledTimedGroup()
+    public static IEnumerable<CancellationType> NoneNotCancelledTimedGroup()
     {
-        yield return new object[] { None };
-        yield return new object[] { NotCancelled };
-        yield return new object[] { Timed };
+        yield return None;
+        yield return NotCancelled;
+        yield return Timed;
     }
 
     /// <summary>
     /// Provides None and a timed variant, for implementations offering a timeout but no cancellation token.
     /// </summary>
-    public static IEnumerable<object[]> NoneTimedGroup()
+    public static IEnumerable<CancellationType> NoneTimedGroup()
     {
-        yield return new object[] { None };
-        yield return new object[] { Timed };
+        yield return None;
+        yield return Timed;
     }
 
     /// <summary>
@@ -105,17 +105,17 @@ public partial class CancellationType : IFormattable
     /// they get their own method pinned to this group. It keeps them out of the untimed rows while still
     /// landing them in the same timed group, which is what gives that group something to compare.
     /// </remarks>
-    public static IEnumerable<object[]> TimedGroup()
+    public static IEnumerable<CancellationType> TimedGroup()
     {
-        yield return new object[] { Timed };
+        yield return Timed;
     }
 
     /// <summary>
     /// Provides a predefined array of cancellation type group representing None.
     /// </summary>
-    public static IEnumerable<object[]> NoneGroup()
+    public static IEnumerable<CancellationType> NoneGroup()
     {
-        yield return new object[] { None };
+        yield return None;
     }
 
     public CancellationType(string description, CancellationToken cancellationToken)
@@ -151,6 +151,23 @@ public partial class CancellationType : IFormattable
     public override string ToString()
     {
         return Description;
+    }
+
+    // BenchmarkDotNet groups report rows by argument equality, so the ProtoPromise variants must
+    // equal the variant of the same name to share its group and baseline.
+    public bool Equals(CancellationType? other)
+    {
+        return other is not null && string.Equals(Description, other.Description, StringComparison.Ordinal);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is CancellationType other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return StringComparer.Ordinal.GetHashCode(Description);
     }
 }
 

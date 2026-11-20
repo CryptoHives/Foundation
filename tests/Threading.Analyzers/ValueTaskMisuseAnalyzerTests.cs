@@ -401,6 +401,52 @@ public class TestClass
     }
 
     [Test]
+    public async Task AwaitThenGuardedResultOnSameValueTaskReportsMultipleAwait()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    static ValueTask<int> Get() => new ValueTask<int>(42);
+
+    public async Task<int> TestMethod()
+    {
+        ValueTask<int> v = Get();
+        int r = await v.ConfigureAwait(false);
+        return r * 1000 + (v.IsCompletedSuccessfully ? {|#0:v|}.Result : -1);
+    }
+}";
+        DiagnosticResult expected = Diagnostic(DiagnosticDescriptors.MultipleAwait)
+            .WithLocation(0)
+            .WithArguments("v");
+
+        await VerifyAnalyzerAsync(code, expected).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task PreservedAwaitThenGuardedResultNoDiagnostic()
+    {
+        string code = @"
+using System;
+using System.Threading.Tasks;
+
+public class TestClass
+{
+    static ValueTask<int> Get() => new ValueTask<int>(42);
+
+    public async Task<int> TestMethod()
+    {
+        ValueTask<int> v = Get().Preserve();
+        int r = await v.ConfigureAwait(false);
+        return r * 1000 + (v.IsCompletedSuccessfully ? v.Result : -1);
+    }
+}";
+        await VerifyNoDiagnosticsAsync(code).ConfigureAwait(false);
+    }
+
+    [Test]
     public async Task PreservedValueTaskGetAwaiterGetResultNoDiagnostic()
     {
         string code = @"

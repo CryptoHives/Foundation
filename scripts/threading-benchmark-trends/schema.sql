@@ -42,10 +42,17 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     -- names it), so a missing value means something upstream broke and should fail loudly rather
     -- than be labelled with whatever was current when this file was written.
     framework   TEXT    NOT NULL,
+    -- What else the run varied beyond the framework, e.g. 'classic-async' (net11.0+ built without
+    -- runtime-async) or 'isa-avx2' (a narrower instruction set masked in on a wider CPU); '' for a
+    -- default run. Taken from the run's run.json, or from the suffix of its framework directory.
+    run_config  TEXT    NOT NULL DEFAULT '',
+    -- The framework directory name, e.g. 'net11.0' or 'net11.0-classic-async': what the dashboards
+    -- select and key runs by, so two configurations of one framework never share a line.
+    build       TEXT    GENERATED ALWAYS AS (CASE WHEN run_config = '' THEN framework ELSE framework || '-' || run_config END) VIRTUAL,
     param_label TEXT,              -- e.g. '10' (contention level; NULL for non-parameterized benchmarks)
     param_value INTEGER,           -- 10 (for numeric sort/filter; NULL alongside label)
     mean_ns     REAL    NOT NULL,
-    stddev_ns   REAL,              -- usually NULL: ThreadingConfig hides the StdDev/Error columns
+    stddev_ns   REAL,              -- NULL for the earlier runs, recorded while ThreadingConfig hid StdDev/Error
     allocated_bytes REAL,
     -- The report's Ratio column, kept solely to identify the declared baseline: every Threading
     -- benchmark marks one method `[Benchmark(Baseline = true)]`, and BenchmarkDotNet records that
@@ -55,7 +62,7 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     -- NULL for Cryptography-shaped data and for any report without the column. Not part of the
     -- primary key - it is a derived measurement, not a dimension.
     ratio       REAL,
-    PRIMARY KEY (run_id, platform, framework, class_name, method, family, variant, cancellation, param_label)
+    PRIMARY KEY (run_id, platform, framework, run_config, class_name, method, family, variant, cancellation, param_label)
 );
 
 -- Powers "all variants of one family/contention-level over time" and "one variant across
@@ -89,7 +96,9 @@ CREATE TABLE IF NOT EXISTS benchmark_runs (
     runtime_version TEXT,           -- host runtime, e.g. '10.0.10'
     jit             TEXT,           -- e.g. 'X64 RyuJIT x86-64-v4'
     framework       TEXT NOT NULL,  -- target framework, e.g. 'net10.0' - see benchmark_results
-    PRIMARY KEY (run_id, platform, framework)
+    run_config      TEXT NOT NULL DEFAULT '',  -- see benchmark_results
+    build           TEXT GENERATED ALWAYS AS (CASE WHEN run_config = '' THEN framework ELSE framework || '-' || run_config END) VIRTUAL,
+    PRIMARY KEY (run_id, platform, framework, run_config)
 );
 
 CREATE INDEX IF NOT EXISTS idx_runs_runtime ON benchmark_runs(runtime_version);
@@ -123,7 +132,9 @@ CREATE TABLE IF NOT EXISTS benchmark_run_packages (
     -- packages are net8.0+ only, Threading's KeyedSemaphores and ProtoPromise exclude net48), so
     -- one run's package set is not the other's.
     framework   TEXT NOT NULL,
-    PRIMARY KEY (run_id, platform, framework, package_id)
+    run_config  TEXT NOT NULL DEFAULT '',  -- see benchmark_results
+    build       TEXT GENERATED ALWAYS AS (CASE WHEN run_config = '' THEN framework ELSE framework || '-' || run_config END) VIRTUAL,
+    PRIMARY KEY (run_id, platform, framework, run_config, package_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_run_packages_id ON benchmark_run_packages(package_id);

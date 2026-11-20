@@ -81,7 +81,7 @@
   <label>Platform
     <select id="platform"></select>
   </label>
-  <label id="framework-picker" hidden>Framework
+  <label id="framework-picker" hidden>Build
     <select id="framework"></select>
   </label>
   <label>Family
@@ -453,13 +453,13 @@
   // must never share a line. Which frameworks exist is per platform - a net48 run only happens on
   // Windows - so this is re-derived on every platform change rather than filled once.
   function refreshFrameworks(preferred) {
-    const frameworks = distinct("framework", "WHERE platform = ?", [platformSel.value]);
+    const frameworks = distinct("build", "WHERE platform = ?", [platformSel.value]);
     populateSelect(frameworkSel, frameworks, null, preferred?.framework);
     refreshFamilies(preferred);
   }
 
   function refreshFamilies(preferred) {
-    const families = distinct("family", "WHERE platform = ? AND framework = ?",
+    const families = distinct("family", "WHERE platform = ? AND build = ?",
                               [platformSel.value, frameworkSel.value]);
     populateSelect(familySel, families, null, preferred?.family);
     refreshMethods(preferred);
@@ -470,7 +470,7 @@
     // "Multiple") — these measure different scenarios and must never be plotted on one line.
     const methods = distinct(
       "method",
-      "WHERE platform = ? AND framework = ? AND family = ?",
+      "WHERE platform = ? AND build = ? AND family = ?",
       [platformSel.value, frameworkSel.value, familySel.value]
     );
     populateSelect(methodSel, methods, null, preferred?.method);
@@ -514,7 +514,7 @@
     // making it the most comparable choice across the whole family.
     const states = distinct(
       "cancellation",
-      "WHERE platform = ? AND framework = ? AND family = ? AND method = ?",
+      "WHERE platform = ? AND build = ? AND family = ? AND method = ?",
       [platformSel.value, frameworkSel.value, familySel.value, methodSel.value]
     );
     populateSelect(cancellationSel, states, null, preferred?.cancellation ?? "None", cancellationLabel);
@@ -536,7 +536,7 @@
     // query anyway, so a level with no rows for the selected state simply plots nothing.
     const stmt = db.prepare(
       `SELECT DISTINCT param_label, param_value FROM benchmark_results
-       WHERE platform = ? AND framework = ? AND family = ? AND method = ?
+       WHERE platform = ? AND build = ? AND family = ? AND method = ?
          AND param_label IS NOT NULL
        ORDER BY param_value`
     );
@@ -583,14 +583,14 @@
     runPackagesSource = new Map();
     let stmt;
     try {
-      stmt = db.prepare("SELECT run_id, platform, framework, package_id, version, source " +
+      stmt = db.prepare("SELECT run_id, platform, build, package_id, version, source " +
                         "FROM benchmark_run_packages");
     } catch {
       return;   // database built before the table existed; the UI just shows no versions
     }
     while (stmt.step()) {
       const row = stmt.getAsObject();
-      const key = runKey(row.run_id, row.platform, row.framework);
+      const key = runKey(row.run_id, row.platform, row.build);
       if (!runPackages.has(key)) runPackages.set(key, {});
       runPackages.get(key)[row.package_id] = row.version;
       if (row.source) runPackagesSource.set(key, row.source);
@@ -692,7 +692,7 @@
              r.${metric} AS value
       FROM benchmark_results r
       LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
-      WHERE r.platform = ? AND r.framework = ? AND r.family = ? AND r.method = ?
+      WHERE r.platform = ? AND r.build = ? AND r.family = ? AND r.method = ?
         AND r.cancellation = ? ${paramClause.replace(/param_label/g, "r.param_label")}
         ${cutoff ? "AND r.run_date >= ?" : ""}
       ORDER BY r.variant, r.param_value, r.run_date
@@ -882,8 +882,8 @@
                r.commit_sha, b.runtime_version, r.mean_ns, r.allocated_bytes
         FROM benchmark_results r
         LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform
-                                  AND b.framework = r.framework
-        WHERE r.run_id = ? AND r.platform = ? AND r.framework = ?
+                                  AND b.build = r.build
+        WHERE r.run_id = ? AND r.platform = ? AND r.build = ?
           AND r.family = ? AND r.method = ? ${paramClause}
         ORDER BY r.variant, r.cancellation, r.param_value
       `);
@@ -1174,14 +1174,14 @@
   // is for.
   function availableRuns(scoped) {
     const stmt = db.prepare(
-      "SELECT DISTINCT r.run_id, r.platform, r.framework, r.run_date, r.commit_sha, " +
+      "SELECT DISTINCT r.run_id, r.platform, r.build, r.run_date, r.commit_sha, " +
       "       b.runtime_version " +
       "FROM benchmark_results r " +
       "LEFT JOIN benchmark_runs b ON b.run_id = r.run_id AND b.platform = r.platform " +
-      "                          AND b.framework = r.framework " +
+      "                          AND b.build = r.build " +
       "WHERE r.family = ? AND r.method = ? " +
-      (scoped ? "  AND r.platform = ? AND r.framework = ? " : "") +
-      "ORDER BY r.run_date DESC, r.platform, r.framework"
+      (scoped ? "  AND r.platform = ? AND r.build = ? " : "") +
+      "ORDER BY r.run_date DESC, r.platform, r.build"
     );
     stmt.bind([familySel.value, methodSel.value,
                ...(scoped ? [platformSel.value, frameworkSel.value] : [])]);
@@ -1197,7 +1197,7 @@
     const rt = run.runtime_version ? " · .NET " + run.runtime_version : "";
     // The framework only earns a place in the label once more than one has been recorded;
     // otherwise it is the same word on every option and says nothing.
-    const fw = hasMultipleFrameworks ? " · " + run.framework : "";
+    const fw = hasMultipleFrameworks ? " · " + run.build : "";
     return date + " · " + run.platform + fw + " · " + sha + rt;
   }
 
@@ -1209,7 +1209,7 @@
     runSel.innerHTML = "";
     for (const run of runs) {
       const opt = document.createElement("option");
-      opt.value = runKey(run.run_id, run.platform, run.framework);
+      opt.value = runKey(run.run_id, run.platform, run.build);
       opt.textContent = runOptionLabel(run);
       runSel.appendChild(opt);
     }
@@ -1221,18 +1221,18 @@
     const previousRunId = previousRun.split(" ")[0];
     const preferred = runs.find((r) => r.run_id === previousRunId
                                    && r.platform === platformSel.value
-                                   && r.framework === frameworkSel.value)
+                                   && r.build === frameworkSel.value)
                    || runs.find((r) => r.platform === platformSel.value
-                                   && r.framework === frameworkSel.value)
+                                   && r.build === frameworkSel.value)
                    || runs.find((r) => r.platform === platformSel.value)
                    || runs[0];
     // A run named in the URL wins once, on first render, then normal selection takes over.
     const fromUrl = pendingRunFromUrl;
     pendingRunFromUrl = null;
-    const wanted = (fromUrl && runs.some((r) => runKey(r.run_id, r.platform, r.framework) === fromUrl)) ? fromUrl
-                 : (runs.some((r) => runKey(r.run_id, r.platform, r.framework) === previousRun) ? previousRun : null);
+    const wanted = (fromUrl && runs.some((r) => runKey(r.run_id, r.platform, r.build) === fromUrl)) ? fromUrl
+                 : (runs.some((r) => runKey(r.run_id, r.platform, r.build) === previousRun) ? previousRun : null);
     runSel.value = wanted
-      || (preferred ? runKey(preferred.run_id, preferred.platform, preferred.framework) : "");
+      || (preferred ? runKey(preferred.run_id, preferred.platform, preferred.build) : "");
 
     const chosenRunId = (runSel.value || "").split(" ")[0];
     compareSel.innerHTML = "";
@@ -1241,9 +1241,9 @@
     none.textContent = "(nothing — single run)";
     compareSel.appendChild(none);
     for (const run of runs) {
-      if (runKey(run.run_id, run.platform, run.framework) === runSel.value) continue;
+      if (runKey(run.run_id, run.platform, run.build) === runSel.value) continue;
       const opt = document.createElement("option");
-      opt.value = runKey(run.run_id, run.platform, run.framework);
+      opt.value = runKey(run.run_id, run.platform, run.build);
       opt.textContent = runOptionLabel(run) + (run.run_id === chosenRunId ? "   (same commit)" : "");
       compareSel.appendChild(opt);
     }
@@ -1258,7 +1258,7 @@
     const parts = key.split(" ");
     const stmt = db.prepare(
       "SELECT variant, cancellation, param_label, mean_ns, allocated_bytes, ratio " +
-      "FROM benchmark_results WHERE run_id = ? AND platform = ? AND framework = ? " +
+      "FROM benchmark_results WHERE run_id = ? AND platform = ? AND build = ? " +
       "  AND family = ? AND method = ?"
     );
     stmt.bind([parts[0], parts[1], parts[2], familySel.value, methodSel.value]);
@@ -1525,7 +1525,7 @@
     const restoreState = parseUrlState();
 
     populateSelect(platformSel, distinct("platform", ""), null, restoreState?.platform);
-    hasMultipleFrameworks = distinct("framework", "").length > 1;
+    hasMultipleFrameworks = distinct("build", "").length > 1;
     frameworkPickerEl.hidden = !hasMultipleFrameworks;
     // Keep the current family/method/cancellation selected across a platform switch when the
     // other platform has that same combination too — e.g. flipping between windows and macos

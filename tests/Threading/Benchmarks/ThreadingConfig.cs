@@ -27,7 +27,7 @@ public class ThreadingConfig : ManualConfig
 
         AddDiagnoser(MemoryDiagnoser.Default);
         Orderer = new ParameterGroupOrderer();
-        HideColumns("Namespace", "Error", "StdDev", "Median", "RatioSD", "Alloc Ratio", "Gen0", "Gen1", "Gen2", "Method");
+        HideColumns("Namespace", "Median", "RatioSD", "Alloc Ratio", "Gen0", "Gen1", "Gen2", "Method");
 
         AddColumn(new DescriptionColumn());
         AddExporter(ShortNameMarkdownExporter.Default);

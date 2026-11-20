@@ -29,6 +29,7 @@ jobs:
           dotnet-version: |
             8.x
             10.x
+            11.x
 
       - name: Restore dependencies
         run: dotnet restore "CryptoHives .NET Foundation.sln"

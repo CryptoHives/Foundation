@@ -466,6 +466,98 @@ public class AesTests
     }
 
     // ========================================================================
+    // Fixed Key Tests
+    // ========================================================================
+
+    [Test]
+    [TestCase(16, CipherMode.CBC, PaddingMode.PKCS7, Description = "AES-128")]
+    [TestCase(24, CipherMode.CBC, PaddingMode.PKCS7, Description = "AES-192")]
+    [TestCase(32, CipherMode.CBC, PaddingMode.PKCS7, Description = "AES-256")]
+    [TestCase(16, CipherMode.CTR, PaddingMode.None, Description = "AES-128")]
+    [TestCase(24, CipherMode.CTR, PaddingMode.None, Description = "AES-192")]
+    [TestCase(32, CipherMode.CTR, PaddingMode.None, Description = "AES-256")]
+    public void CreateWithKeyMatchesKeyProperty(int keyLength, CipherMode mode, PaddingMode padding)
+    {
+        byte[] key = CreateSequence(keyLength, 0x10);
+        byte[] iv = CreateSequence(16, 0xA0);
+        byte[] plaintext = CreateSequence(37, 0x40);
+
+        using SymmetricCipher settable = CreateAes(keyLength);
+        settable.Mode = mode;
+        settable.Padding = padding;
+        settable.Key = key;
+        settable.IV = iv;
+
+        using SymmetricCipher fixedKey = CreateAes(key);
+        fixedKey.Mode = mode;
+        fixedKey.Padding = padding;
+        fixedKey.IV = iv;
+
+        byte[] ciphertext = fixedKey.Encrypt(plaintext);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ciphertext, Is.EqualTo(settable.Encrypt(plaintext)));
+            Assert.That(fixedKey.Decrypt(ciphertext), Is.EqualTo(plaintext));
+            Assert.That(fixedKey.KeySize, Is.EqualTo(keyLength * 8));
+        }
+    }
+
+    [Test]
+    [TestCase(16, Description = "AES-128")]
+    [TestCase(24, Description = "AES-192")]
+    [TestCase(32, Description = "AES-256")]
+    public void CreateWithKeyRejectsKeyAccess(int keyLength)
+    {
+        using SymmetricCipher aes = CreateAes(new byte[keyLength]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.Throws<OS.CryptographicException>(() => _ = aes.Key);
+            Assert.Throws<OS.CryptographicException>(() => aes.Key = new byte[keyLength]);
+            Assert.Throws<OS.CryptographicException>(() => aes.KeySize = keyLength * 8);
+            Assert.Throws<OS.CryptographicException>(aes.GenerateKey);
+#if NET10_0_OR_GREATER
+            Assert.Throws<OS.CryptographicException>(() => aes.SetKey(new byte[keyLength]));
+#endif
+        }
+    }
+
+    [Test]
+    public void CreateWithKeyRejectsWrongKeySize()
+    {
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.Throws<OS.CryptographicException>(() => Aes128.Create(new byte[24]));
+            Assert.Throws<OS.CryptographicException>(() => Aes192.Create(new byte[16]));
+            Assert.Throws<OS.CryptographicException>(() => Aes256.Create(new byte[16]));
+            Assert.Throws<OS.CryptographicException>(() => Aes256.Create(ReadOnlySpan<byte>.Empty));
+        }
+    }
+
+    [Test]
+    public void CreateWithKeyAllowsModeAndIVChanges()
+    {
+        byte[] plaintext = CreateSequence(32, 0x40);
+        using var aes = Aes256.Create(CreateSequence(32, 0x10));
+
+        aes.Mode = CipherMode.ECB;
+        aes.Padding = PaddingMode.None;
+        aes.IV = new byte[16];
+        byte[] ecb = aes.Encrypt(plaintext);
+
+        aes.Mode = CipherMode.CBC;
+        aes.IV = CreateSequence(16, 0xA0);
+        byte[] cbc = aes.Encrypt(plaintext);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(cbc, Is.Not.EqualTo(ecb));
+            Assert.That(aes.Decrypt(cbc), Is.EqualTo(plaintext));
+        }
+    }
+
+    // ========================================================================
     // Dispose Tests
     // ========================================================================
 
@@ -506,6 +598,26 @@ public class AesTests
             32 => Aes256.Create(),
             _ => throw new ArgumentException($"Invalid key length: {keyLength}")
         };
+    }
+
+    private static SymmetricCipher CreateAes(byte[] key)
+    {
+        return key.Length switch {
+            16 => Aes128.Create(key),
+            24 => Aes192.Create(key),
+            32 => Aes256.Create(key),
+            _ => throw new ArgumentException($"Invalid key length: {key.Length}")
+        };
+    }
+
+    private static byte[] CreateSequence(int length, byte seed)
+    {
+        byte[] bytes = new byte[length];
+        for (int i = 0; i < length; i++)
+        {
+            bytes[i] = unchecked((byte)(seed + i));
+        }
+        return bytes;
     }
 
     private static byte[] FromHex(string hex)

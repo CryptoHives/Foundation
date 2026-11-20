@@ -52,11 +52,13 @@ jobs:
             folder: './tests/Security'
         framework: 
           - 'net10.0'
+          - 'net11.0'
         configuration:
           - 'Release'
           - 'Debug'
         # When macOS is in the matrix, only run the SIMD/ARM-intrinsic-heavy Cryptography
-        # tests on it (Threading and Memory add little arm64-specific coverage). These rules
+        # tests on it, on the latest framework only (Threading and Memory add little
+        # arm64-specific coverage). These rules
         # are no-ops on runs where macOS is not included.
         exclude:
           - os: macOS-latest
@@ -67,14 +69,17 @@ jobs:
             csproj:
               name: Memory
               folder: './tests'
+          - os: macOS-latest
+            framework: 'net10.0'
         include:
-          - dotnet-version: '10.0.x'
-          - customtesttarget: 'net10.0'
-          - csproj.folder: './tests'
+          - framework: 'net10.0'
+            customtesttarget: 'net10.0'
+          - framework: 'net11.0'
+            customtesttarget: 'net11.0'
 
     env:
       OS: ${{ matrix.os }}
-      DOTNET_VERSION: ${{ matrix.dotnet-version }}
+      FRAMEWORK: ${{ matrix.framework }}
       CONFIGURATION: ${{ matrix.configuration }}
       CSPROJ: ${{ matrix.csproj.name }}
       CSPROJECT: "${{ matrix.csproj.folder }}/${{ matrix.csproj.name }}/${{ matrix.csproj.name }}.Tests.csproj"
@@ -85,10 +90,12 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Setup .NET ${{ matrix.dotnet-version }}
+    - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: ${{ matrix.dotnet-version }}
+        dotnet-version: |
+          10.0.x
+          11.0.x
 
     - name: Set Cloud Version
       shell: pwsh
@@ -115,7 +122,7 @@ jobs:
         name: codecov-umbrella
         token: ${{ secrets.CODECOV_TOKEN }}
         directory: ${{ env.TESTRESULTS }}
-        env_vars: CSPROJ,OS,DOTNET_VERSION,CONFIGURATION
+        env_vars: CSPROJ,OS,FRAMEWORK,CONFIGURATION
         fail_ci_if_error: false
         verbose: true
       # Use always() to always run this step to publish test results when there are test failures

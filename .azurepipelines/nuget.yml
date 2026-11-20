@@ -34,11 +34,16 @@ jobs:
   - checkout: self
     fetchDepth: 0  # fetch all commits for versioning
   - task: UseDotNet@2
-    displayName: 'Install .NET 10.0'
+    displayName: 'Install .NET 11.0 SDK'
     inputs:
       packageType: 'sdk'
-      version: '10.0.x'
+      version: '11.0.x'
       includePreviewVersions: false  
+  - task: UseDotNet@2
+    displayName: 'Install .NET 10.0 Runtime'
+    inputs:
+      packageType: 'runtime'
+      version: '10.0.x'
   - task: DownloadSecureFile@1
     name: strongnamefile
     displayName: 'Download Strong Name Key'
@@ -128,18 +133,31 @@ jobs:
       custom: 'nuget'
       arguments: 'add source "$(Build.ArtifactStagingDirectory)" --name LocalPackages'
   - task: DotNetCoreCLI@2
-    displayName: 'Build Tests (NuGet package validation ${{parameters.config}})'
+    displayName: 'Build Tests (NuGet package validation ${{parameters.config}} net10.0)'
     inputs:
       command: build
       projects: 'tests/**/*.Tests.csproj'
       arguments: '--force --configuration ${{parameters.config}} ${{variables.msbuildsign}} /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:CustomTestTarget=net10.0 /p:EnableExperimentalAlgorithms=false'
       restoreArguments: '--disable-parallel'
   - task: DotNetCoreCLI@2
-    displayName: 'Test NuGet packages (${{parameters.config}})'
+    displayName: 'Test NuGet packages (${{parameters.config}} net10.0)'
     inputs:
       command: test
       projects: 'tests/**/*.Tests.csproj'
       arguments: '--no-restore --no-build --configuration ${{parameters.config}} ${{variables.msbuildsign}} /p:CustomTestTarget=net10.0 /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:EnableExperimentalAlgorithms=false'
+  - task: DotNetCoreCLI@2
+    displayName: 'Build Tests (NuGet package validation ${{parameters.config}} net11.0)'
+    inputs:
+      command: build
+      projects: 'tests/**/*.Tests.csproj'
+      arguments: '--force --configuration ${{parameters.config}} ${{variables.msbuildsign}} /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:CustomTestTarget=net11.0 /p:EnableExperimentalAlgorithms=false'
+      restoreArguments: '--disable-parallel'
+  - task: DotNetCoreCLI@2
+    displayName: 'Test NuGet packages (${{parameters.config}} net11.0)'
+    inputs:
+      command: test
+      projects: 'tests/**/*.Tests.csproj'
+      arguments: '--no-restore --no-build --configuration ${{parameters.config}} ${{variables.msbuildsign}} /p:CustomTestTarget=net11.0 /p:UsePackedNuGetPackages=true /p:NuGetPackageVersion=$(nugetversion) /p:EnableExperimentalAlgorithms=false'
   - ${{ if eq(parameters.upload, 'True') }}:
     - task: NuGetCommand@2
       displayName: Upload Nuget Preview

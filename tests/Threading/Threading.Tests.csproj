@@ -50,7 +50,7 @@
     <PackageReference Include="AsyncUtilities" Aliases="AsyncUtilitiesLib" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net10.0'))">
     <PackageReference Include="DotNext.Threading" />
   </ItemGroup>
 

@@ -107,6 +107,7 @@ The full list, with the test vectors behind each entry, is on the [Cryptography 
 
 ## Target Frameworks
 
+- .NET 11.0
 - .NET 10.0
 - .NET 8.0
 - .NET Framework 4.7.2

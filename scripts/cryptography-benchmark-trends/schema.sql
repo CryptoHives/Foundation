@@ -26,12 +26,19 @@ CREATE TABLE IF NOT EXISTS benchmark_results (
     -- without a DEFAULT - the importer always knows it, since the archive path names it, so a
     -- missing value means something upstream broke and should fail loudly.
     framework   TEXT    NOT NULL,
+    -- What else the run varied beyond the framework, e.g. 'classic-async' (net11.0+ built without
+    -- runtime-async) or 'isa-avx2' (a narrower instruction set masked in on a wider CPU); '' for a
+    -- default run. Taken from the run's run.json, or from the suffix of its framework directory.
+    run_config  TEXT    NOT NULL DEFAULT '',
+    -- The framework directory name, e.g. 'net11.0' or 'net11.0-classic-async': what the dashboards
+    -- select and key runs by, so two configurations of one framework never share a line.
+    build       TEXT    GENERATED ALWAYS AS (CASE WHEN run_config = '' THEN framework ELSE framework || '-' || run_config END) VIRTUAL,
     data_size_label TEXT,              -- e.g. '128KB' (NULL for benchmarks with no size axis)
     data_size_bytes INTEGER,           -- 131072 (for numeric sort/filter; NULL alongside label)
     mean_ns         REAL    NOT NULL,
     stddev_ns       REAL,
     allocated_bytes REAL,
-    PRIMARY KEY (run_id, platform, framework, class_name, method, family, variant, data_size_label)
+    PRIMARY KEY (run_id, platform, framework, run_config, class_name, method, family, variant, data_size_label)
 );
 
 -- Powers "all variants of one family/size over time" and "one variant across sizes" queries.
@@ -67,7 +74,9 @@ CREATE TABLE IF NOT EXISTS benchmark_runs (
     runtime_version TEXT,           -- host runtime, e.g. '10.0.2'
     jit             TEXT,           -- e.g. 'X64 RyuJIT x86-64-v3'
     framework       TEXT NOT NULL,  -- target framework, e.g. 'net10.0' - see benchmark_results
-    PRIMARY KEY (run_id, platform, framework)
+    run_config      TEXT NOT NULL DEFAULT '',  -- see benchmark_results
+    build           TEXT GENERATED ALWAYS AS (CASE WHEN run_config = '' THEN framework ELSE framework || '-' || run_config END) VIRTUAL,
+    PRIMARY KEY (run_id, platform, framework, run_config)
 );
 
 CREATE INDEX IF NOT EXISTS idx_runs_runtime ON benchmark_runs(runtime_version);
@@ -98,7 +107,9 @@ CREATE TABLE IF NOT EXISTS benchmark_run_packages (
     -- the Blake3 packages are referenced only for net8.0 and later, so a net48 run measures
     -- against a smaller set than a net10.0 run of the same commit.
     framework   TEXT NOT NULL,
-    PRIMARY KEY (run_id, platform, framework, package_id)
+    run_config  TEXT NOT NULL DEFAULT '',  -- see benchmark_results
+    build       TEXT GENERATED ALWAYS AS (CASE WHEN run_config = '' THEN framework ELSE framework || '-' || run_config END) VIRTUAL,
+    PRIMARY KEY (run_id, platform, framework, run_config, package_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_run_packages_id ON benchmark_run_packages(package_id);
