@@ -532,8 +532,8 @@ public class AesKeyWrapPadTests
         using var kwp = new AesKeyWrapPad(new byte[16]);
         byte[] padded = kwp.EncryptKeyWrapPadded(CreateSequence(20, seed: 0x01));
         byte[] unpadded = kwp.EncryptKeyWrap(CreateSequence(24, seed: 0x01));
-        padded[padded.Length - 1] ^= 0x01;
-        unpadded[unpadded.Length - 1] ^= 0x01;
+        padded[^1] ^= 0x01;
+        unpadded[^1] ^= 0x01;
 
         byte[] destination = new byte[padded.Length - 8];
         Assert.Throws<OS.CryptographicException>(() => kwp.TryDecryptKeyWrapPadded(padded, destination, out _));
@@ -601,10 +601,10 @@ public class AesKeyWrapPadTests
         using var os = CreateOSAes(kek);
 
         byte[] wrapped = kwp.EncryptKeyWrapPadded(key);
-        wrapped[wrapped.Length - 1] ^= 0x01;
+        wrapped[^1] ^= 0x01;
 
         Assert.Throws<OS.CryptographicException>(() => kwp.DecryptKeyWrapPadded(wrapped));
-        Assert.Throws<OS.CryptographicException>(() => os.DecryptKeyWrapPadded(wrapped));
+        Assert.That(() => os.DecryptKeyWrapPadded(wrapped), Throws.InstanceOf<OS.CryptographicException>());
     }
 
 #if NET11_0_OR_GREATER
@@ -647,10 +647,10 @@ public class AesKeyWrapPadTests
         using var os = CreateOSAes(kek);
 
         byte[] wrapped = kwp.EncryptKeyWrap(key);
-        wrapped[wrapped.Length - 1] ^= 0x01;
+        wrapped[^1] ^= 0x01;
 
         Assert.Throws<OS.CryptographicException>(() => kwp.DecryptKeyWrap(wrapped));
-        Assert.Throws<OS.CryptographicException>(() => os.DecryptKeyWrap(wrapped));
+        Assert.That(() => os.DecryptKeyWrap(wrapped), Throws.InstanceOf<OS.CryptographicException>());
     }
 
     [TestCase(16)]
