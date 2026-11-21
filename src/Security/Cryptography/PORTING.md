@@ -138,7 +138,9 @@ interface IAeadCipher : IDisposable {
 }
 ```
 AEAD types: `AesGcm128/192/256`, `AesCcm128/192/256`, `AesGcmSiv128/256` (nonce-misuse
-resistant), `ChaCha20Poly1305`, `XChaCha20Poly1305`, `AsconAead128`. Construct via the static
+resistant), `ChaCha20Poly1305`, `XChaCha20Poly1305`, `AsconAead128`; GCM and CCM over the regional
+ciphers (`Sm4Gcm`, `AriaGcm`, `CamelliaGcm`, `SeedGcm`, `KuznyechikGcm`, `Sm4Ccm`, `AriaCcm`,
+`CamelliaCcm`), and `KuznyechikMgm`/`MagmaMgm`. Construct via the static
 `Create(key)`, e.g. `using var gcm = AesGcm256.Create(key);` — the AES types take a
 `ReadOnlySpan<byte>`, the ChaCha and Ascon types a `byte[]`.
 
@@ -146,7 +148,15 @@ resistant), `ChaCha20Poly1305`, `XChaCha20Poly1305`, `AsconAead128`. Construct v
 (drop-in: set `Key`/`IV`, use `CreateEncryptor()`/`CreateDecryptor()`, or the type's
 `Encrypt(plaintext)`/`Decrypt(ciphertext)` convenience methods):
 `Aes128/192/256`, `Aria128/192/256`, `Camellia128/192/256`, `Kalyna128/256/512`,
-`Kuznyechik`, `Seed`, `Sm4`. Stream cipher: `ChaCha20`.
+`Kuznyechik`, `Magma`, `Seed`, `Sm4`. Stream cipher: `ChaCha20`.
+`Aes128/192/256.Create(key)` fixes the key for the instance's lifetime: `Key`, `KeySize`,
+`GenerateKey` and `SetKey` then throw, `Mode`/`Padding`/`IV` stay settable. Prefer it over
+`Create()` plus `Key = …` unless the code reads the key back.
+
+**Key wrap:** `AesKeyWrapPad(kek)` has the member names of the in-box `Aes` key wrap methods
+(`EncryptKeyWrap`/`DecryptKeyWrap`/`TryDecryptKeyWrap`, the `…Padded` variants,
+`GetKeyWrapLength`/`GetKeyWrapPaddedLength`), so `aes.Key = kek; aes.EncryptKeyWrapPadded(x)`
+ports to `using var kw = new AesKeyWrapPad(kek); kw.EncryptKeyWrapPadded(x)` on every target.
 
 **Cipher hard rules:** never reuse a `(key, nonce)` pair for AEAD; a `false`/throwing
 `Decrypt` means tampering or wrong key — discard the output, never use partial plaintext.

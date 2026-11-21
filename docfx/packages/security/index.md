@@ -112,6 +112,7 @@ The full list, with the test vectors behind each entry, is on the [Cryptography 
 - .NET 8.0
 - .NET Framework 4.7.2
 - .NET Framework 4.6.2
+- .NET Standard 2.1
 - .NET Standard 2.0
 - .NET Standard 2.1
 

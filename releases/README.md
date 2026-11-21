@@ -8,6 +8,7 @@ Newest first.
 
 | Version | Tag | Date | Headline |
 |---|---|---|---|
+| [0.7.79](0.7.79.md) | `0.7.79.59799` | 2026-11-21 | .NET 11 with runtime-async, BCL key wrap API for `AesKeyWrapPad`, fixed-key AES `Create(key)` |
 | [0.7.75](0.7.75.md) | `0.7.75.50202` | 2026-11-14 | BLAKE3 partial batches and AVX2-only performance, CHT severity settings honored |
 | [0.7.59](0.7.59.md) | `0.7.59.31593` | 2026-10-30 | AES-GCM-SIV, regional GCM/CCM, GOST MGM and Magma, CFB/OFB/CTS, experimental `AsyncReentrantLock` |
 | [0.7.37](0.7.37.md) | `0.7.37.24694` | 2026-09-30 | ML-DSA and SLH-DSA (FIPS 204/205), PQC key formats, BLAKE2/BLAKE3 kernel work |
@@ -72,3 +73,7 @@ through memory that can be erased.
 regional ciphers, and the GOST MGM mode, and it takes stack secrets the rest of the way to
 erasure. A new CI run on big-endian and other Mono runtimes reaches code paths that ordinary
 CI never executes. The project becomes dual-licensed under MIT OR Apache-2.0.
+
+0.7.79 brings every package to .NET 11, compiled with runtime-async. The AES key wrap gets the
+API of the in-box `Aes` type, and AES gains instances whose key is fixed at creation and cannot be
+read back.

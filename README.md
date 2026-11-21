@@ -37,6 +37,8 @@ The **CryptoHives Open Source Initiative** is maintained by **The Keepers of the
 
 All packages are published under the `CryptoHives.Foundation` prefix and namespace — see [CryptoHives on NuGet](https://www.nuget.org/packages?q=CryptoHives) for the full list.
 
+All of them target `net462`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0` and `net11.0` (Cryptography adds `net472`). The `net11.0` build is compiled with runtime-async.
+
 ### 🩺 Health
 
 [![Azure DevOps](https://dev.azure.com/cryptohives/Foundation/_apis/build/status%2FCryptoHives.Foundation?branchName=main)](https://dev.azure.com/cryptohives/Foundation/_build/latest?definitionId=6&branchName=main)
@@ -143,6 +145,7 @@ Async-compatible synchronization primitives built on `ObjectPool` and `ValueTask
 - `AsyncBarrier` / `AsyncCountdownEvent`
 - `AsyncConditionVariable` — pairs with `AsyncLock` for "wait until condition" semantics
 - `AsyncExchange<T>` — two-party value rendezvous
+- `AsyncReentrantLock` — exclusive lock that a nested call on the same flow can re-acquire (experimental, opt in with `CHTEXP001`; allocates per acquisition)
 
 All primitives support `CancellationToken` and `ConfigureAwait(false)` without extra allocations, timeout support via `TimeProvider` (an `ITimer` is only allocated once there's actual contention). 
 New in 0.7: synchronous non-blocking attempts — `TryLock` / `TryWait` / `TryReaderLock` / `TryUpgradeableReaderLock` / `TryWriterLock` / `Releaser.TryUpgradeToWriterLock` — that return `false` on a miss instead of throwing.
@@ -168,10 +171,10 @@ and ARM AES, ARM SHA-1/SHA-2, PMULL and NEON on Arm64, kick in automatically —
 | TurboSHAKE / KT | TurboSHAKE128, TurboSHAKE256, KT128, KT256 |
 | BLAKE | BLAKE2b, BLAKE2s, BLAKE3 (all SIMD-accelerated) |
 | Ascon | Ascon-Hash256, Ascon-XOF128 (NIST SP 800-232 lightweight) |
-| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256, AES-CMAC, AES-GMAC, Poly1305, KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
-| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128 |
-| Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR), ChaCha20 |
-| Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Kalyna (128/256/512), SEED |
+| MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256/384/512, AES-CMAC, AES-GMAC, Poly1305, KMAC128, KMAC256, BLAKE2 keyed, BLAKE3 keyed |
+| Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), AES-GCM-SIV (128/256), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128; GCM over SM4, ARIA, Camellia, SEED and Kuznyechik; CCM over SM4, ARIA and Camellia; Kuznyechik-MGM and Magma-MGM |
+| Cipher (Block) | AES-128, AES-192, AES-256 (ECB/CBC/CTR, and OFB/CFB/CTS for interoperability), ChaCha20 |
+| Cipher (Regional) | SM4, ARIA (128/192/256), Camellia (128/192/256), Kuznyechik, Magma, Kalyna (128/256/512), SEED |
 | KDF / key wrap | HKDF, KBKDF, Concat KDF, PBKDF2, BLAKE3 DeriveKey, AES Key Wrap (RFC 3394/5649) |
 | KEM (post-quantum) | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
 | Signatures (post-quantum) | ML-DSA-44, ML-DSA-65, ML-DSA-87 (FIPS 204), SLH-DSA all 12 parameter sets (FIPS 205), plus the HashML-DSA / HashSLH-DSA pre-hash variants |
@@ -181,6 +184,8 @@ and ARM AES, ARM SHA-1/SHA-2, PMULL and NEON on Arm64, kick in automatically —
 All XOF algorithms implement `IExtendableOutput` for streaming variable-length output via `Absorb` / `Squeeze` / `Reset`.
 
 `MLKem`, `MLDsa` and `SlhDsa` deliberately mirror the names and signatures of .NET 10's in-box types, so moving from them is a `using` swap — and unlike them, `IsSupported` is always `true` on every target down to net462, because nothing here depends on Windows CNG or OpenSSL.
+
+`AesKeyWrapPad` has the key wrap API of the in-box `Aes` type (KWP from .NET 10, KW from .NET 11) on every target, and `Aes128/192/256.Create(key)` creates an instance whose key is fixed and cannot be read back, as with the AEAD types.
 
 All three import and export PKCS#8, SubjectPublicKeyInfo and PEM, including PBES2-encrypted private keys, byte for byte compatible with .NET 10. No member takes a password or returns a plaintext private key as a `string`; secrets stay in spans the caller can wipe with `CryptographicOperations.ZeroMemory` — see [Erasable Memory](https://cryptohives.github.io/Foundation/packages/security/cryptography/erasable-memory.html).
 

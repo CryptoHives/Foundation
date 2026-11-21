@@ -16,7 +16,7 @@ The Cryptography package implements hash algorithms, message authentication code
 - **Hardware acceleration** — optional x86/x64 (AES-NI, PCLMULQDQ, VPCLMULQDQ, SSE2, SSSE3, AVX2, AVX-512) and Arm64 (ARM AES, ARM SHA, PMULL, NEON) intrinsics, with automatic scalar fallback
 - **Broad coverage** — SHA-1/2/3, BLAKE2/3, KMAC, AES-GCM/CCM, ChaCha20-Poly1305, Ascon-AEAD128, and more
 - **AEAD support** — AES-GCM, AES-CCM, AES-GCM-SIV, ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128, GCM/CCM over the regional block ciphers (SM4, ARIA, Camellia, SEED, Kuznyechik), and Kuznyechik-MGM and Magma-MGM
-- **Key management** — AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649)
+- **Key management** — AES Key Wrap (RFC 3394) and AES Key Wrap with Padding (RFC 5649), with the key wrap API of the in-box `Aes` type
 - **Post-quantum KEM** — ML-KEM-512/768/1024 (FIPS 203) on every target framework, mirroring the .NET 10 `MLKem` API
 - **Post-quantum signatures** — ML-DSA-44/65/87 (FIPS 204) and SLH-DSA (FIPS 205, all 12 parameter sets) on every target framework, mirroring the .NET 10 `MLDsa`/`SlhDsa` APIs — the complete NIST PQC trio
 - **Key formats** — PKCS#8, SubjectPublicKeyInfo and PEM import/export for ML-KEM, ML-DSA and SLH-DSA keys, including PBES2-encrypted PKCS#8, matching .NET 10 byte for byte
@@ -161,22 +161,22 @@ using CryptoHives.Foundation.Security.Cryptography.Rng;
 
 | Algorithm | Key Sizes | Modes | Documentation |
 |-----------|-----------|-------|---------------|
-| AES-128 | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
-| AES-192 | 192 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
-| AES-256 | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
+| AES-128 | 128 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
+| AES-192 | 192 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
+| AES-256 | 256 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#aes-advanced-encryption-standard) |
 | ChaCha20 | 256 bits | Stream cipher | [Details](cipher-algorithms.md#chacha20) |
 
 ### Cipher Algorithms (Regional)
 
 | Algorithm | Origin | Key Sizes | Modes | Documentation |
 |-----------|--------|-----------|-------|---------------|
-| SM4 | China | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#sm4-china) |
-| ARIA | Korea | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#aria-korea) |
-| Camellia | Japan | 128/192/256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#camellia-japan) |
-| Kuznyechik | Russia | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kuznyechik-russia) |
-| Magma | Russia | 256 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#magma-russia) |
-| Kalyna | Ukraine | 128/256/512 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#kalyna-ukraine) |
-| SEED | Korea | 128 bits | ECB, CBC, CTR | [Details](cipher-algorithms.md#seed-korea) |
+| SM4 | China | 128 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#sm4-china) |
+| ARIA | Korea | 128/192/256 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#aria-korea) |
+| Camellia | Japan | 128/192/256 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#camellia-japan) |
+| Kuznyechik | Russia | 256 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#kuznyechik-russia) |
+| Magma | Russia | 256 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#magma-russia) |
+| Kalyna | Ukraine | 128/256/512 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#kalyna-ukraine) |
+| SEED | Korea | 128 bits | ECB, CBC, CTR, OFB, CFB, CTS | [Details](cipher-algorithms.md#seed-korea) |
 
 ### Cipher Algorithms (AEAD)
 
@@ -492,7 +492,8 @@ Every implementation uses fixed-size internal buffers sized to its block size �
 | AES-GCM/CCM | Yes (managed + AES-NI) | Yes (OS-dependent) |
 | ChaCha20-Poly1305 | Yes (managed + SSSE3/AVX2) | .NET 8+ only (OS-dependent) |
 | XChaCha20-Poly1305 | Yes | No |
-| AES block modes (ECB/CBC/CTR) | Yes (managed + AES-NI) | Yes (OS-dependent) |
+| AES block modes (ECB/CBC/CTR/OFB/CFB/CTS) | Yes (managed + AES-NI) | Yes (OS-dependent) |
+| AES Key Wrap (KW/KWP) | Yes (all TFMs, managed + AES-NI) | KWP .NET 10+, KW .NET 11+ (OS-dependent) |
 | ChaCha20 stream cipher | Yes (managed + SSSE3/AVX2) | No |
 | HKDF | Yes (all TFMs, pluggable HMAC) | .NET Core 3.0+ only |
 | ML-KEM (FIPS 203) | Yes (all TFMs, fully managed) | .NET 10+ only (OS-dependent) |

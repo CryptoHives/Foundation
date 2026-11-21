@@ -21,6 +21,8 @@ No OS crypto dependency means deterministic results on every platform. Where the
 dotnet add package CryptoHives.Foundation.Security.Cryptography
 ```
 
+Targets `net462`, `net472`, `netstandard2.0`, `netstandard2.1`, `net8.0`, `net10.0` and `net11.0`.
+
 ---
 
 ## ✨ Key Features
@@ -51,9 +53,10 @@ dotnet add package CryptoHives.Foundation.Security.Cryptography
 | Legacy | SHA-1, MD5, HMAC-SHA-1, HMAC-MD5 (backward compatibility only) |
 | MAC | HMAC-SHA-256/384/512, HMAC-SHA3-256/384/512, AES-CMAC, AES-GMAC, Poly1305, KMAC128/256, BLAKE2/3 keyed |
 | Cipher (AEAD) | AES-GCM (128/192/256), AES-CCM (128/192/256), AES-GCM-SIV (128/256, RFC 8452), ChaCha20-Poly1305, XChaCha20-Poly1305, Ascon-AEAD128; GCM over SM4, ARIA, Camellia, SEED and Kuznyechik; CCM over SM4, ARIA and Camellia; Kuznyechik-MGM and Magma-MGM (RFC 9058) |
-| Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR), ChaCha20 |
+| Cipher (block/stream) | AES-128/192/256 (ECB/CBC/CTR, and OFB/CFB/CTS for interoperability), ChaCha20 |
 | Cipher (regional) | SM4, ARIA, Camellia, Kuznyechik, Magma, Kalyna (128/256/512), SEED |
 | KDF | HKDF, KBKDF, ConcatKDF, PBKDF2 |
+| Key wrap | AES-KW (RFC 3394), AES-KWP (RFC 5649), with the key wrap API of the in-box `Aes` type |
 | Post-quantum KEM | ML-KEM-512, ML-KEM-768, ML-KEM-1024 (FIPS 203) |
 | Post-quantum signatures | ML-DSA-44/65/87 (FIPS 204); SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f} (FIPS 205) |
 
@@ -119,6 +122,23 @@ if (!aesGcm.Decrypt(nonce, ciphertext, tag, recovered, associatedData))
 {
     throw new CryptographicException("Authentication failed.");
 }
+```
+
+### AES with a Fixed Key and Key Wrap
+
+```csharp
+using CryptoHives.Foundation.Security.Cryptography.Cipher;
+
+// The key is fixed for the instance's lifetime; Key, KeySize and GenerateKey throw.
+using var aes = Aes256.Create(key);
+aes.Mode = CipherMode.CBC;
+aes.IV = iv;
+byte[] ciphertext = aes.Encrypt(plaintext);
+
+// Same member names as the key wrap methods of System.Security.Cryptography.Aes.
+using var kw = new AesKeyWrapPad(kek);
+byte[] wrapped = kw.EncryptKeyWrapPadded(keyToWrap);
+byte[] unwrapped = kw.DecryptKeyWrapPadded(wrapped); // throws CryptographicException if tampered
 ```
 
 ### Post-Quantum Key Encapsulation (`ML-KEM`)
